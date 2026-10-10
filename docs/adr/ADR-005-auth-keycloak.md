@@ -61,3 +61,4 @@ As above. Authorization (workspace membership, roles Owner/Member/Guest) lives i
 
 - [ADR-001](ADR-001-agent-parity.md) — actor attribution
 - [ADR-004](ADR-004-hosting.md) — deployment
+- [ADR-013](ADR-013-seats-billing.md) — member status; deactivation revokes tokens

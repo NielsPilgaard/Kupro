@@ -47,3 +47,4 @@ Startups → many small workspaces. Schema-per-tenant or DB-per-tenant adds ops 
 
 - [ADR-002](ADR-002-backend-stack.md) — EF Core
 - [ADR-008](ADR-008-work-item-model.md) — entities
+- [ADR-013](ADR-013-seats-billing.md) — workspace is the billing unit

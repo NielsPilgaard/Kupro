@@ -46,3 +46,4 @@ Sovereignty buyers value source visibility and the ability to self-host. AGPL pr
 ## Related Decisions
 
 - [ADR-006](ADR-006-eu-vendor-policy.md) — sovereignty positioning
+- [ADR-013](ADR-013-seats-billing.md) — whether billing code is core or `ee/`

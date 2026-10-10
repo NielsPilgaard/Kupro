@@ -53,3 +53,4 @@ Sovereignty is a core selling point. Customers will ask for a sub-processor list
 ## Related Decisions
 
 - [ADR-004](ADR-004-hosting.md) — hosting choice
+- [ADR-013](ADR-013-seats-billing.md) — billing model using Alunta

@@ -96,3 +96,4 @@ Supply per month = people × hours per week × weeks in month. No per-person cap
 ## Related Decisions
 
 - [ADR-009](ADR-009-multi-tenancy.md) — every entity carries `workspace_id`
+- [ADR-013](ADR-013-seats-billing.md) — whether agent members count as seats

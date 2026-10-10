@@ -55,5 +55,7 @@ and delivery dates over the year and shows whether the team you have can deliver
 
 - **AI in the room**: agent listens during meetings and updates tickets live; voice control of the UI
   ("move FLOW-12 to next sprint"). Speech-to-text via EU vendor (syv.ai Hviske or Scaleway), LLM via EU vendor (e.g. Mistral).
+  Starts in suggest mode (every action approved per ticket) so teams see it work safely; full auto is opt-in.
+  Spec: [task 015](../tasks/015-meeting-agent.md).
 - Self-hosting package (single compose file).
-- Webhooks, billing, enterprise SSO (open-core, see [ADR-007](adr/ADR-007-licensing.md)).
+- Webhooks, billing ([ADR-013](adr/ADR-013-seats-billing.md)), enterprise SSO (open-core, see [ADR-007](adr/ADR-007-licensing.md)).
