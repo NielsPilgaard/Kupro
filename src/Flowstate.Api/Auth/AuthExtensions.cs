@@ -86,6 +86,7 @@ public static class AuthExtensions
         var identity = new ExternalIdentity(
             subject,
             principal.FindFirstValue("email") ?? username,
+            string.Equals(principal.FindFirstValue("email_verified"), "true", StringComparison.OrdinalIgnoreCase),
             principal.FindFirstValue("name") ?? username,
             // Keycloak only sends a locale once the user picked one; otherwise the browser's language decides.
             principal.FindFirstValue("locale") ?? PreferredLanguage(context.HttpContext.Request));

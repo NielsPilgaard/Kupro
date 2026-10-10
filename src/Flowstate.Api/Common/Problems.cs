@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace Flowstate.Api.Common;
 
@@ -15,6 +16,15 @@ public static class Problems
         var result = controller.Problem(statusCode: status, type: TypePrefix + code, detail: detail);
         ((ProblemDetails)result.Value!).Extensions["code"] = code;
         return result;
+    }
+
+    /// <summary>Problem result outside a controller (filters).</summary>
+    public static ObjectResult Create(HttpContext http, int status, string code, string? detail = null)
+    {
+        var factory = http.RequestServices.GetRequiredService<ProblemDetailsFactory>();
+        var problem = factory.CreateProblemDetails(http, statusCode: status, type: TypePrefix + code, detail: detail);
+        problem.Extensions["code"] = code;
+        return new ObjectResult(problem) { StatusCode = status, ContentTypes = { "application/problem+json" } };
     }
 
     /// <summary>Gives model-validation failures the same stable <c>type</c>/<c>code</c> shape.</summary>

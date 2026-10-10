@@ -6,7 +6,8 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Flowstate.Api.Features.Users;
 
 /// <summary>Identity claims from Keycloak used to provision or refresh a <see cref="User"/>.</summary>
-public sealed record ExternalIdentity(string ExternalId, string Email, string DisplayName, string? Locale);
+public sealed record ExternalIdentity(
+    string ExternalId, string Email, bool EmailVerified, string DisplayName, string? Locale);
 
 /// <param name="Id">Flowstate user id.</param>
 /// <param name="Email">Login email.</param>
@@ -43,6 +44,8 @@ public sealed class UserService(IDbContextFactory<FlowstateDbContext> dbFactory,
             return cached;
         }
 
+        // Emails are stored lower-cased so invites match regardless of how the address was typed.
+        var emailAddress = identity.Email.ToLowerInvariant();
         var locale = identity.Locale is { } l && SupportedLocales.Contains(l) ? l : "en";
         var newId = Guid.CreateVersion7();
         var now = clock.GetUtcNow();
@@ -50,9 +53,11 @@ public sealed class UserService(IDbContextFactory<FlowstateDbContext> dbFactory,
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Upsert: concurrent first requests from the same new user must not race into a unique violation.
         var ids = await db.Database.SqlQuery<Guid>($"""
-            INSERT INTO users (id, external_id, email, display_name, locale, time_zone, created_at)
-            VALUES ({newId}, {identity.ExternalId}, {identity.Email}, {identity.DisplayName}, {locale}, {DefaultTimeZone}, {now})
-            ON CONFLICT (external_id) DO UPDATE SET email = EXCLUDED.email, display_name = EXCLUDED.display_name
+            INSERT INTO users (id, external_id, email, email_verified, display_name, locale, time_zone, created_at)
+            VALUES ({newId}, {identity.ExternalId}, {emailAddress}, {identity.EmailVerified}, {identity.DisplayName},
+                    {locale}, {DefaultTimeZone}, {now})
+            ON CONFLICT (external_id) DO UPDATE
+            SET email = EXCLUDED.email, email_verified = EXCLUDED.email_verified, display_name = EXCLUDED.display_name
             RETURNING id AS "Value"
             """).ToListAsync(ct);
 

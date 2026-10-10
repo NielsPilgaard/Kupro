@@ -35,6 +35,11 @@ public sealed class ApiTokenAuthenticationHandler(
             new(FlowstateClaims.UserId, token.UserId.ToString()),
             new(FlowstateClaims.TokenId, token.TokenId.ToString()),
         ];
+        if (token.WorkspaceId is { } workspaceId)
+        {
+            claims.Add(new(FlowstateClaims.WorkspaceId, workspaceId.ToString()));
+        }
+
         if (token.AgentName is not null)
         {
             claims.Add(new(FlowstateClaims.AgentName, token.AgentName));

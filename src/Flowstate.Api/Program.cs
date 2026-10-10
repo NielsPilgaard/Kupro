@@ -3,6 +3,10 @@ using System.Text.Json.Serialization;
 using Flowstate.Api.Auth;
 using Flowstate.Api.Common;
 using Flowstate.Api.Data;
+using Flowstate.Api.Features.Email;
+using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Workspaces;
+using Flowstate.Api.Tenancy;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,8 +16,15 @@ builder.AddFlowstateDatabase();
 builder.AddFlowstateAuth();
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+builder.Services.AddScoped<WorkspaceService>();
+builder.Services.AddScoped<ProjectService>();
 builder.Services
-    .AddControllers(options => options.Filters.Add(new ProducesAttribute("application/json")))
+    .AddControllers(options =>
+    {
+        options.Filters.Add(new ProducesAttribute("application/json"));
+        options.Filters.Add<WorkspaceAccessFilter>();
+    })
     .AddJsonOptions(options => ConfigureJson(options.JsonSerializerOptions))
     .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = Problems.ValidationProblem);
 // OpenAPI generation reads the minimal-API JSON options, so both must agree.

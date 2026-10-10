@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Flowstate.Api.Features.Tokens;
 using Flowstate.Api.Features.Users;
 using Flowstate.Tests.Infrastructure;
@@ -52,7 +51,7 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     {
         using var human = Factory.CreateUserClient(TestUser.New());
         var me = await human.GetFromJsonAsync<MeResponse>("/api/v1/me", Json.Options, Ct);
-        var created = await CreateTokenAsync(human, new("laptop", ApiTokenKind.Personal, null, null));
+        var created = await NewTokenAsync(human, new("laptop", ApiTokenKind.Personal, null, null));
 
         created.Secret.ShouldStartWith("fs_pat_");
         created.Token.Hint.ShouldEndWith(created.Secret[^4..]);
@@ -67,7 +66,7 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     public async Task Revoked_token_is_rejected_immediately()
     {
         using var human = Factory.CreateUserClient(TestUser.New());
-        var created = await CreateTokenAsync(human, new("ci", ApiTokenKind.Personal, null, null));
+        var created = await NewTokenAsync(human, new("ci", ApiTokenKind.Personal, null, null));
         using var viaToken = Factory.CreateBearerClient(created.Secret);
         (await viaToken.GetAsync("/api/v1/me", Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -82,8 +81,8 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     [Fact]
     public async Task Agent_token_acts_on_behalf_of_user_but_cannot_manage_tokens()
     {
-        using var human = Factory.CreateUserClient(TestUser.New());
-        var created = await CreateTokenAsync(human, new("triage", ApiTokenKind.Agent, "triage-agent", 30));
+        var (human, workspace, _) = await NewWorkspaceAsync();
+        var created = await NewTokenAsync(human, new("triage", ApiTokenKind.Agent, "triage-agent", 30, workspace.Slug));
         created.Secret.ShouldStartWith("fs_agent_");
 
         using var agent = Factory.CreateBearerClient(created.Secret);
@@ -99,12 +98,11 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     {
         using var owner = Factory.CreateUserClient(TestUser.New());
         using var other = Factory.CreateUserClient(TestUser.New());
-        var created = await CreateTokenAsync(owner, new("mine", ApiTokenKind.Personal, null, null));
+        var created = await NewTokenAsync(owner, new("mine", ApiTokenKind.Personal, null, null));
 
         var response = await other.DeleteAsync($"/api/v1/tokens/{created.Token.Id}", Ct);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        (await ReadProblemCodeAsync(response)).ShouldBe("token_not_found");
+        await ShouldBeProblemAsync(response, HttpStatusCode.NotFound, "token_not_found");
     }
 
     [Fact]
@@ -125,8 +123,7 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var response = await human.PostAsJsonAsync(
             "/api/v1/tokens", new CreateApiTokenRequest("x", ApiTokenKind.Agent, null, null), Json.Options, Ct);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await ReadProblemCodeAsync(response)).ShouldBe("validation");
+        await ShouldBeProblemAsync(response, HttpStatusCode.BadRequest, "validation");
     }
 
     [Fact]
@@ -140,18 +137,5 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var me = await response.Content.ReadFromJsonAsync<MeResponse>(Json.Options, Ct);
         me!.Locale.ShouldBe("da");
-    }
-
-    private static async Task<CreatedApiTokenResponse> CreateTokenAsync(HttpClient client, CreateApiTokenRequest request)
-    {
-        var response = await client.PostAsJsonAsync("/api/v1/tokens", request, Json.Options, Ct);
-        response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        return (await response.Content.ReadFromJsonAsync<CreatedApiTokenResponse>(Json.Options, Ct))!;
-    }
-
-    private static async Task<string?> ReadProblemCodeAsync(HttpResponseMessage response)
-    {
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
-        return doc.RootElement.GetProperty("code").GetString();
     }
 }

@@ -40,8 +40,29 @@ public sealed class FlowstateApiFactory(PostgresFixture postgres) : WebApplicati
             }));
     }
 
-    /// <summary>Starts the server and applies migrations, the same way the migrations resource does.</summary>
-    public async Task InitializeDatabaseAsync() => await Services.MigrateDatabaseAsync();
+    private static readonly SemaphoreSlim MigrationGate = new(1, 1);
+    private static bool _migrated;
+
+    /// <summary>
+    /// Starts the server and applies migrations once per test run (test classes run in parallel against one database),
+    /// the same way the migrations resource does.
+    /// </summary>
+    public async Task InitializeDatabaseAsync()
+    {
+        await MigrationGate.WaitAsync();
+        try
+        {
+            if (!_migrated)
+            {
+                await Services.MigrateDatabaseAsync();
+                _migrated = true;
+            }
+        }
+        finally
+        {
+            MigrationGate.Release();
+        }
+    }
 
     /// <summary>A client authenticated as a Keycloak user (created on first request).</summary>
     public HttpClient CreateUserClient(TestUser user) => CreateBearerClient(CreateJwt(user));
@@ -64,6 +85,7 @@ public sealed class FlowstateApiFactory(PostgresFixture postgres) : WebApplicati
             [
                 new Claim("sub", user.Subject),
                 new Claim("email", user.Email),
+                new Claim("email_verified", "true", ClaimValueTypes.Boolean),
                 new Claim("name", user.Name),
             ]),
         });

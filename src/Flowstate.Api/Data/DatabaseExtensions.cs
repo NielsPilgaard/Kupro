@@ -1,3 +1,4 @@
+using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -13,10 +14,13 @@ public static class DatabaseExtensions
 
     public static IHostApplicationBuilder AddFlowstateDatabase(this IHostApplicationBuilder builder)
     {
-        builder.Services.AddPooledDbContextFactory<FlowstateDbContext>(options =>
-            options
+        // Scoped (not pooled) factory: contexts take the request's WorkspaceContext for the tenant filter.
+        builder.Services.AddScoped<WorkspaceContext>();
+        builder.Services.AddDbContextFactory<FlowstateDbContext>(
+            options => options
                 .UseNpgsql(builder.Configuration.GetConnectionString(ConnectionName))
-                .UseSnakeCaseNamingConvention());
+                .UseSnakeCaseNamingConvention(),
+            ServiceLifetime.Scoped);
 
         // Adds the Npgsql health check, retries and OpenTelemetry on top of our own registration.
         builder.EnrichNpgsqlDbContext<FlowstateDbContext>();
@@ -30,8 +34,9 @@ public static class DatabaseExtensions
     /// </summary>
     public static async Task MigrateDatabaseAsync(this IServiceProvider services, CancellationToken ct = default)
     {
-        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DatabaseExtensions));
-        var factory = services.GetRequiredService<IDbContextFactory<FlowstateDbContext>>();
+        await using var scope = services.CreateAsyncScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DatabaseExtensions));
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FlowstateDbContext>>();
 
         for (var attempt = 1; ; attempt++)
         {

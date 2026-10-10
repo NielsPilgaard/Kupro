@@ -1,4 +1,5 @@
 using Flowstate.Api.Features.Users;
+using Flowstate.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,6 +19,10 @@ public sealed class ApiToken
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+
+    /// <summary>Workspace the token is limited to; null for a personal token valid in all the user's workspaces.</summary>
+    public Guid? WorkspaceId { get; set; }
+
     public ApiTokenKind Kind { get; set; }
     public required string Name { get; set; }
     public string? AgentName { get; set; }
@@ -39,6 +44,7 @@ internal sealed class ApiTokenConfiguration : IEntityTypeConfiguration<ApiToken>
         builder.HasIndex(t => t.Hash).IsUnique();
         builder.HasIndex(t => t.UserId);
         builder.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Workspace>().WithMany().HasForeignKey(t => t.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(t => t.Kind).HasConversion<string>().HasMaxLength(16);
         builder.Property(t => t.Name).HasMaxLength(100);
         builder.Property(t => t.AgentName).HasMaxLength(64);

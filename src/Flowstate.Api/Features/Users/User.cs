@@ -15,6 +15,9 @@ public sealed class User
     public required string ExternalId { get; set; }
 
     public required string Email { get; set; }
+
+    /// <summary>Keycloak verified the email; required before invites addressed to it can be accepted.</summary>
+    public bool EmailVerified { get; set; }
     public required string DisplayName { get; set; }
 
     /// <summary>UI language, <c>en</c> or <c>da</c> (ADR-011).</summary>

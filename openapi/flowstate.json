@@ -6,6 +6,434 @@
     "version": "v1"
   },
   "paths": {
+    "/api/v1/workspaces": {
+      "get": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "List workspaces you are an active member of.",
+        "operationId": "listWorkspaces",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Create a workspace. You become its Owner.",
+        "operationId": "createWorkspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSummary"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}": {
+      "get": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Get a workspace, your role in it and its seat count.",
+        "operationId": "getWorkspace",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Rename a workspace or change its hours per person per week.",
+        "operationId": "updateWorkspace",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/members": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "List members, including pending invites and deactivated members.",
+        "operationId": "listMembers",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemberResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Invite someone by email. They join when they accept.",
+        "operationId": "inviteMember",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/members/{memberId}": {
+      "patch": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Change a member's role.",
+        "operationId": "updateMember",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/members/{memberId}/deactivate": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Deactivate a member: access and their tokens for this workspace are revoked; history keeps their name.",
+        "operationId": "deactivateMember",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invites": {
+      "get": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "List your pending workspace invites.",
+        "operationId": "listInvites",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InviteResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invites/{memberId}/accept": {
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Accept an invite and join the workspace.",
+        "operationId": "acceptInvite",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -136,6 +564,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -195,6 +633,205 @@
           }
         }
       }
+    },
+    "/api/v1/workspaces/{workspace}/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List projects.",
+        "operationId": "listProjects",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create a project.",
+        "operationId": "createProject",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/projects/{key}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get a project by key.",
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Update a project. The key can only change while the project has no issues.",
+        "operationId": "updateProject",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -212,6 +849,7 @@
           "kind",
           "agentName",
           "hint",
+          "workspaceId",
           "createdAt",
           "expiresAt",
           "lastUsedAt"
@@ -241,6 +879,14 @@
           "hint": {
             "type": "string",
             "description": "Prefix and last four characters of the secret."
+          },
+          "workspaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Workspace the token is limited to, if any.",
+            "format": "uuid"
           },
           "createdAt": {
             "type": "string",
@@ -294,6 +940,13 @@
             ],
             "description": "Days until expiry (1-365); omit for a token that does not expire.",
             "format": "int32"
+          },
+          "workspace": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Workspace slug to limit the token to. Required for agent tokens."
           }
         }
       },
@@ -313,6 +966,180 @@
             "description": "The token secret. Shown once; only its hash is stored."
           }
         }
+      },
+      "CreateProjectRequest": {
+        "required": [
+          "key",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Issue key prefix: 2-10 uppercase letters/digits starting with a letter, e.g. `FLOW`."
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional Markdown description."
+          },
+          "color": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Colour in lists and the delivery plan; picked automatically when omitted.",
+                "$ref": "#/components/schemas/ProjectColor"
+              }
+            ]
+          }
+        }
+      },
+      "CreateWorkspaceRequest": {
+        "required": [
+          "name",
+          "slug"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name, e.g. \"Acme\"."
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL id: lowercase letters, digits and dashes, e.g. `acme`. Immutable."
+          }
+        }
+      },
+      "InviteMemberRequest": {
+        "required": [
+          "email",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Who to invite."
+          },
+          "role": {
+            "description": "Role they get on accepting.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          }
+        }
+      },
+      "InviteResponse": {
+        "required": [
+          "memberId",
+          "workspaceSlug",
+          "workspaceName",
+          "role",
+          "invitedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "Id to accept the invite with.",
+            "format": "uuid"
+          },
+          "workspaceSlug": {
+            "type": "string",
+            "description": "Workspace URL id."
+          },
+          "workspaceName": {
+            "type": "string",
+            "description": "Workspace name."
+          },
+          "role": {
+            "description": "Role you get on accepting.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "invitedAt": {
+            "type": "string",
+            "description": "When the invite was sent.",
+            "format": "date-time"
+          }
+        }
+      },
+      "MemberKind": {
+        "enum": [
+          "human",
+          "agent"
+        ]
+      },
+      "MemberResponse": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "email",
+          "role",
+          "status",
+          "ownerName",
+          "joinedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Member id.",
+            "format": "uuid"
+          },
+          "kind": {
+            "description": "Human or agent.",
+            "$ref": "#/components/schemas/MemberKind"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name; the agent name for agents, the email for pending invites."
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Email for humans and invites."
+          },
+          "role": {
+            "description": "Workspace role.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "status": {
+            "description": "Invited, active or deactivated.",
+            "$ref": "#/components/schemas/MemberStatus"
+          },
+          "ownerName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For agents: the person the agent acts for."
+          },
+          "joinedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the member became active.",
+            "format": "date-time"
+          }
+        }
+      },
+      "MemberStatus": {
+        "enum": [
+          "invited",
+          "active",
+          "deactivated"
+        ]
       },
       "MeResponse": {
         "required": [
@@ -391,6 +1218,67 @@
           }
         }
       },
+      "ProjectColor": {
+        "enum": [
+          "verdigris",
+          "copper",
+          "plum",
+          "moss",
+          "ochre",
+          "brick",
+          "slate",
+          "fjord"
+        ],
+        "description": "Named project colours; the SPA maps each to a design token (no hex in the API)."
+      },
+      "ProjectResponse": {
+        "required": [
+          "id",
+          "key",
+          "name",
+          "description",
+          "color",
+          "issueCount",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Project id.",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "description": "Issue key prefix."
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Markdown description."
+          },
+          "color": {
+            "description": "Display colour.",
+            "$ref": "#/components/schemas/ProjectColor"
+          },
+          "issueCount": {
+            "type": "integer",
+            "description": "Issues created so far (including deleted ones; it is the key counter).",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time.",
+            "format": "date-time"
+          }
+        }
+      },
       "StatusResponse": {
         "required": [
           "service",
@@ -405,6 +1293,18 @@
           "version": {
             "type": "string",
             "description": "API build version."
+          }
+        }
+      },
+      "UpdateMemberRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "New role.",
+            "$ref": "#/components/schemas/WorkspaceRole"
           }
         }
       },
@@ -433,6 +1333,139 @@
             "description": "IANA time zone id, e.g. `Europe/Copenhagen`."
           }
         }
+      },
+      "UpdateProjectRequest": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New key; only allowed while the project has no issues."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New name."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New description."
+          },
+          "color": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New colour.",
+                "$ref": "#/components/schemas/ProjectColor"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateWorkspaceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "hoursPerWeek": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Capacity per person per week used by the delivery plan.",
+            "format": "double"
+          }
+        }
+      },
+      "WorkspaceResponse": {
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "hoursPerWeek",
+          "role",
+          "seats"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Workspace id.",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "hoursPerWeek": {
+            "type": "number",
+            "description": "Capacity per person per week.",
+            "format": "double"
+          },
+          "role": {
+            "description": "Your role.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "seats": {
+            "type": "integer",
+            "description": "Active human owners and members (ADR-013).",
+            "format": "int32"
+          }
+        }
+      },
+      "WorkspaceRole": {
+        "enum": [
+          "guest",
+          "member",
+          "owner"
+        ],
+        "description": "Ordered by power, so `role &gt;= Member` reads naturally."
+      },
+      "WorkspaceSummary": {
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Workspace id.",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL id used in every workspace route."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "role": {
+            "description": "Your role in this workspace.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -450,6 +1483,15 @@
   ],
   "tags": [
     {
+      "name": "Workspaces"
+    },
+    {
+      "name": "Members"
+    },
+    {
+      "name": "Invites"
+    },
+    {
       "name": "Me"
     },
     {
@@ -457,6 +1499,9 @@
     },
     {
       "name": "Status"
+    },
+    {
+      "name": "Projects"
     }
   ]
 }

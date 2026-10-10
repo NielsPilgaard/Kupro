@@ -14,9 +14,15 @@ public static class FlowstateClaims
     /// <summary>Set when the caller authenticated with an API token.</summary>
     public const string TokenId = "fs:tid";
 
+    /// <summary>Set when the caller's API token is scoped to one workspace.</summary>
+    public const string WorkspaceId = "fs:ws";
+
     public static Guid GetUserId(this ClaimsPrincipal principal) =>
         Guid.Parse(principal.FindFirstValue(UserId)
             ?? throw new InvalidOperationException("Authenticated principal has no Flowstate user id."));
 
     public static string? GetAgentName(this ClaimsPrincipal principal) => principal.FindFirstValue(AgentName);
+
+    public static Guid? GetTokenWorkspaceId(this ClaimsPrincipal principal) =>
+        principal.FindFirstValue(WorkspaceId) is { } id ? Guid.Parse(id) : null;
 }

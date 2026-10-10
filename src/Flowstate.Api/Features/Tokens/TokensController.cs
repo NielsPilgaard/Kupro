@@ -20,10 +20,14 @@ public sealed class TokensController(ApiTokenService tokens) : ControllerBase
     [HttpPost(Name = "createApiToken")]
     [ProducesResponseType<CreatedApiTokenResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CreatedApiTokenResponse>> Create(CreateApiTokenRequest request, CancellationToken ct)
     {
-        var created = await tokens.CreateAsync(User.GetUserId(), request, ct);
-        return StatusCode(StatusCodes.Status201Created, created);
+        var (created, error) = await tokens.CreateAsync(User.GetUserId(), request, ct);
+        return created is not null
+            ? StatusCode(StatusCodes.Status201Created, created)
+            : this.Problem(StatusCodes.Status403Forbidden, "workspace_not_allowed",
+                $"Cannot create this token in that workspace ({error}).");
     }
 
     /// <summary>Revoke an API token. Takes effect immediately.</summary>
