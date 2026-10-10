@@ -1,0 +1,55 @@
+---
+title: 'ADR-006: EU Vendor Policy'
+status: 'Accepted'
+date: '2026-10-03'
+authors: 'Niels'
+tags: ['sovereignty', 'vendors', 'compliance']
+supersedes: ''
+superseded_by: ''
+description: >-
+  All vendors, infrastructure and data processors must be EU-headquartered and under EU jurisdiction. Open-source
+  libraries and frameworks of any origin are allowed. GitHub is allowed for source hosting and CI only.
+---
+
+# ADR-006: EU Vendor Policy
+
+## TL;DR
+
+- Anything that processes customer data or runs production = EU company, EU jurisdiction.
+- OSS libraries/frameworks: any origin (React, .NET, Keycloak, …).
+- Exception: GitHub for source code + Actions (no customer data).
+- Vendor register below is the source of truth; add a row before adopting a vendor.
+
+## Status
+
+**Accepted**
+
+## Context
+
+Sovereignty is a core selling point. Customers will ask for a sub-processor list; it must be short and European.
+
+## Vendor register
+
+| Purpose | Vendor | Country | Status |
+|---|---|---|---|
+| Hosting, object storage | OVHcloud | FR | Chosen |
+| Identity | Keycloak (self-hosted OSS) | — | Chosen |
+| Subscription billing | Alunta | DK | Chosen — card acquiring via OnPay or QuickPay (DK), **not** Alunta's Stripe option |
+| Transactional email | Scaleway Transactional Email | FR | Chosen |
+| Speech-to-text (post-v1) | syv.ai (Hviske) or Scaleway | DK / FR | Candidate — verify Hviske realtime/streaming API |
+| LLM (post-v1) | Mistral, Scaleway-hosted models, or syv.ai | FR / DK | Candidate |
+| Source + CI | GitHub | US | Exception (no customer data) |
+
+## Consequences
+
+### Positive
+
+- **POS-001**: Clean sovereignty story; short sub-processor list for DPAs.
+
+### Negative
+
+- **NEG-001**: Fewer turnkey integrations (e.g. Stripe, Sentry SaaS off-limits) — self-host or pick EU alternatives.
+
+## Related Decisions
+
+- [ADR-004](ADR-004-hosting.md) — hosting choice

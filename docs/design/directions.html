@@ -1,0 +1,782 @@
+<meta charset="utf-8">
+<title>Flowstate Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=Fragment+Mono&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Archivo:wght@400;500;600;800&family=Albert+Sans:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Familjen+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=Red+Hat+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: neutral look-book chrome (so directions carry the colour) → direction grid → live mock + tuning rail → marks → picks. */
+:root{
+  --pg-bg:#F2F3F3; --pg-panel:#FFFFFF; --pg-sunk:#E8EAEA; --pg-line:#D6DADB;
+  --pg-ink:#15191A; --pg-mute:#5C6466; --pg-focus:#2F6FDB;
+  --pg-f-display:"Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --pg-f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --pg-bg:#101213; --pg-panel:#171A1B; --pg-sunk:#0B0D0D; --pg-line:#2A2F31;
+  --pg-ink:#E6EAEB; --pg-mute:#949C9E; --pg-focus:#7EA6F0; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --pg-bg:#101213; --pg-panel:#171A1B; --pg-sunk:#0B0D0D; --pg-line:#2A2F31;
+  --pg-ink:#E6EAEB; --pg-mute:#949C9E; --pg-focus:#7EA6F0; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--pg-bg); color:var(--pg-ink); font-family:var(--pg-f-display); font-size:15px; line-height:1.5}
+.wrap{max-width:1360px; margin:0 auto; padding-inline:clamp(16px,3vw,36px); padding-block:28px 64px; display:flex; flex-direction:column; gap:44px}
+h1,h2,h3{text-wrap:balance; margin:0; line-height:1.15}
+h1{font-size:clamp(28px,4vw,44px); font-weight:800; letter-spacing:-.02em}
+h2{font-size:22px; font-weight:700; letter-spacing:-.01em}
+.eyebrow{font-family:var(--pg-f-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--pg-mute)}
+.lede{max-width:68ch; color:var(--pg-mute); margin:10px 0 0}
+.steps{display:flex; flex-wrap:wrap; gap:8px 22px; margin:16px 0 0; padding:0; list-style:none; font-size:14px}
+.steps li{display:flex; gap:8px; align-items:baseline}
+.steps b{font-family:var(--pg-f-mono); font-weight:500; color:var(--pg-mute)}
+section{display:flex; flex-direction:column; gap:16px; min-width:0}
+.sec-head{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 20px}
+.sec-head p{margin:0; color:var(--pg-mute); font-size:14px; max-width:70ch}
+button{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--pg-focus); outline-offset:2px}
+
+/* Direction cards */
+.dirs{display:grid; grid-template-columns:repeat(auto-fill,minmax(236px,1fr)); gap:12px}
+.dc{position:relative; background:var(--pg-panel); border:1px solid var(--pg-line); border-radius:10px; display:flex; flex-direction:column; min-width:0}
+.dc[aria-current="true"]{border-color:var(--pg-ink); box-shadow:0 0 0 1px var(--pg-ink)}
+.dc-main{all:unset; cursor:pointer; display:flex; flex-direction:column; gap:10px; padding:12px 12px 14px; border-radius:10px}
+.dc-main:focus-visible{outline:2px solid var(--pg-focus); outline-offset:2px}
+.dc-sw{display:grid; grid-template-columns:repeat(7,1fr); height:44px; border-radius:6px; overflow:hidden; border:1px solid var(--pg-line)}
+.dc-sw span{display:block}
+.dc-sw .row{display:contents}
+.dc-sw{grid-template-rows:1fr 1fr}
+.dc-name{display:flex; align-items:center; gap:8px; font-size:20px; font-weight:700; line-height:1.1}
+.dc-name svg{flex:none}
+.dc-name i{font-style:normal; font-family:var(--pg-f-mono); font-size:11.5px; font-weight:400; color:var(--pg-mute)}
+.dc p{margin:0; font-size:13.5px; color:var(--pg-mute); line-height:1.45}
+.dc-meta{font-family:var(--pg-f-mono); font-size:11px; color:var(--pg-mute)}
+.dc-star{position:absolute; top:6px; right:6px; width:32px; height:32px; border-radius:6px; border:0; background:var(--pg-panel); cursor:pointer; font-size:17px; line-height:1; color:var(--pg-mute)}
+.dc-star[aria-pressed="true"]{color:#C98A0B}
+.badge{display:inline-block; font-family:var(--pg-f-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 6px; border-radius:4px; background:var(--pg-ink); color:var(--pg-bg); align-self:flex-start}
+
+/* Stage */
+.stage{display:grid; grid-template-columns:minmax(0,1fr) 288px; gap:16px; align-items:start}
+@media (max-width:1040px){ .stage{grid-template-columns:minmax(0,1fr)} }
+.bar{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin-bottom:10px}
+.seg{display:inline-flex; background:var(--pg-sunk); border:1px solid var(--pg-line); border-radius:8px; padding:2px; gap:2px; flex-wrap:wrap}
+.seg button{border:0; background:transparent; padding:5px 10px; border-radius:6px; font-size:13px; cursor:pointer; color:var(--pg-mute); position:relative}
+.seg button[aria-pressed="true"]{background:var(--pg-panel); color:var(--pg-ink); box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+.seg button.def::after{content:""; position:absolute; top:3px; right:3px; width:4px; height:4px; border-radius:50%; background:currentColor; opacity:.55}
+.bar .lbl{font-family:var(--pg-f-mono); font-size:11px; color:var(--pg-mute); text-transform:uppercase; letter-spacing:.06em}
+.mk-wrap{container-type:inline-size; min-width:0}
+.tune{background:var(--pg-panel); border:1px solid var(--pg-line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:14px}
+.tune h3{font-size:15px}
+.tune .grp{display:flex; flex-direction:column; gap:6px}
+.tune .grp > span{font-size:12.5px; color:var(--pg-mute)}
+.tune .seg button{padding:4px 8px; font-size:12.5px}
+.linkbtn{border:0; background:none; padding:0; color:var(--pg-mute); text-decoration:underline; cursor:pointer; font-size:12.5px; align-self:flex-start}
+.tune small{color:var(--pg-mute); font-size:12px; line-height:1.4}
+
+.notes{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:14px}
+.note{background:var(--pg-panel); border:1px solid var(--pg-line); border-radius:10px; padding:14px; min-width:0; display:flex; flex-direction:column; gap:8px}
+.note h3{font-size:14px}
+.note p{margin:0; font-size:14px; color:var(--pg-mute)}
+.tok{display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:6px}
+.tok div{display:flex; align-items:center; gap:6px; font-family:var(--pg-f-mono); font-size:11px; color:var(--pg-mute); min-width:0}
+.tok i{width:16px; height:16px; border-radius:4px; border:1px solid var(--pg-line); flex:none}
+.spec{display:flex; flex-direction:column; gap:4px; overflow:hidden}
+.spec .d{font-size:30px; line-height:1.1; letter-spacing:-.01em}
+.spec .b{font-size:14px}
+.spec .m{font-size:12.5px; color:var(--pg-mute)}
+
+/* Marks */
+.marks{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px}
+.mark{all:unset; box-sizing:border-box; cursor:pointer; background:var(--pg-panel); border:1px solid var(--pg-line); border-radius:10px; padding:18px 14px 12px; display:flex; flex-direction:column; gap:14px; min-width:0}
+.mark[aria-pressed="true"]{border-color:var(--pg-ink); box-shadow:0 0 0 1px var(--pg-ink)}
+.mark:focus-visible{outline:2px solid var(--pg-focus); outline-offset:2px}
+.mark .lock{display:flex; align-items:center; gap:10px; font-size:24px; font-weight:700; letter-spacing:-.01em; min-width:0; overflow:hidden}
+.mark .lock span{white-space:nowrap}
+.mark .dark{display:flex; align-items:center; gap:10px; padding:10px; border-radius:7px}
+.mark .cap{font-size:12.5px; color:var(--pg-mute); line-height:1.4}
+.mark .cap b{color:var(--pg-ink); font-weight:600}
+
+/* Picks */
+.picks{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px}
+@media (max-width:760px){ .picks{grid-template-columns:minmax(0,1fr)} }
+.picks pre{margin:0; background:var(--pg-panel); border:1px solid var(--pg-line); border-radius:10px; padding:14px; font-family:var(--pg-f-mono); font-size:12.5px; line-height:1.6; white-space:pre-wrap; overflow-x:auto}
+.picks textarea{width:100%; min-height:150px; resize:vertical; background:var(--pg-panel); color:var(--pg-ink); border:1px solid var(--pg-line); border-radius:10px; padding:12px; font:inherit; font-size:14px}
+.picks .act{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.btn{border:1px solid var(--pg-ink); background:var(--pg-ink); color:var(--pg-bg); border-radius:8px; padding:8px 14px; cursor:pointer; font-weight:600; font-size:14px}
+.btn.ghost{background:transparent; color:var(--pg-ink)}
+#copyMsg{font-size:13px; color:var(--pg-mute)}
+
+/* ───────── Mock app (all colours come from the direction's tokens set inline) ───────── */
+.mk{font-family:var(--f-ui); color:var(--ink); background:var(--bg); display:grid; grid-template-columns:212px minmax(0,1fr); height:560px; border-radius:12px; overflow:hidden; border:1px solid var(--line); font-size:var(--fs); line-height:1.35; position:relative}
+.mk.rail{grid-template-columns:52px minmax(0,1fr)}
+.mk *{box-sizing:border-box}
+.mk svg{display:block; flex:none}
+.mk .mono{font-family:var(--f-mono); font-feature-settings:"tnum"}
+.mk-side{background:var(--side); color:var(--sideInk); padding:12px 10px; display:flex; flex-direction:column; gap:16px; border-right:1px solid var(--sideLine); min-width:0; overflow:hidden}
+.mk-ws{display:flex; align-items:center; gap:8px; padding:2px 6px; font-family:var(--f-display); font-weight:700; font-size:15px; white-space:nowrap}
+.mk-ws small{display:block; font-family:var(--f-ui); font-weight:400; font-size:11.5px; opacity:.7}
+.mk-nav{display:flex; flex-direction:column; gap:1px}
+.mk-nav h4{margin:6px 8px 4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; opacity:.6}
+.mk-nav a{display:flex; align-items:center; gap:9px; height:28px; padding:0 8px; border-radius:var(--r); color:inherit; text-decoration:none; white-space:nowrap; overflow:hidden}
+.mk-nav a.on{background:var(--sideSel); font-weight:600}
+.mk-nav a .n{margin-left:auto; font-size:11px; opacity:.7}
+.mk-nav .sq{width:10px; height:10px; border-radius:3px; flex:none; margin:0 3px}
+.mk-agents{margin-top:auto; display:flex; align-items:center; gap:8px; font-size:12px; padding:8px; border-radius:var(--r); background:var(--sideSel); white-space:nowrap; overflow:hidden}
+.mk-agents i{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none; box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.mk.rail .mk-side{padding:12px 8px; align-items:center}
+.mk.rail .mk-ws b, .mk.rail .mk-ws small, .mk.rail .mk-nav h4, .mk.rail .mk-nav a span, .mk.rail .mk-nav a .n, .mk.rail .mk-agents span{display:none}
+.mk.rail .mk-nav a{justify-content:center; padding:0; width:34px}
+.mk.rail .mk-agents{padding:8px; justify-content:center}
+
+.mk-main{display:flex; flex-direction:column; min-width:0; min-height:0; background:var(--bg)}
+.mk-top{display:flex; align-items:center; gap:10px; padding:0 14px; height:48px; border-bottom:1px solid var(--line); flex:none; min-width:0}
+.mk-crumb{font-family:var(--f-display); font-weight:var(--hw); font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.mk-crumb span{color:var(--mute); font-weight:400}
+.mk-tabs{display:flex; gap:2px; background:var(--sunk); padding:2px; border-radius:calc(var(--r) + 2px); flex:none}
+.mk-tabs span{padding:3px 9px; border-radius:var(--r); color:var(--mute); font-size:12.5px}
+.mk-tabs span.on{background:var(--panel); color:var(--ink); box-shadow:0 0 0 1px var(--line)}
+.mk-search{margin-left:auto; display:flex; align-items:center; gap:8px; height:30px; padding:0 8px; border:1px solid var(--line); background:var(--panel); border-radius:var(--r); color:var(--mute); font-size:12.5px; min-width:0; white-space:nowrap; overflow:hidden}
+.mk kbd{font-family:var(--f-mono); font-size:10.5px; padding:1px 5px; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; color:var(--mute); background:var(--bg); white-space:nowrap}
+.mk-new{display:flex; align-items:center; gap:8px; height:30px; padding:0 10px; border-radius:var(--r); background:var(--acc); color:var(--onAcc); font-weight:600; font-size:12.5px; white-space:nowrap; flex:none}
+.mk-new kbd{background:transparent; color:inherit; border-color:color-mix(in srgb,var(--onAcc) 40%,transparent); opacity:.85}
+.mk.btn-outline .mk-new{background:transparent; color:var(--accInk); box-shadow:inset 0 0 0 1.5px var(--accInk)}
+.mk.btn-outline .mk-new kbd{border-color:currentColor}
+.mk-body{flex:1; min-height:0; overflow:auto; position:relative}
+.mk.caps .mk-gh b, .mk.caps .mk-col h5, .mk.caps .mk-tabs span, .mk.caps .mk-plan-h div{text-transform:uppercase; letter-spacing:.06em; font-size:11px}
+
+/* list */
+.mk-gh{display:flex; align-items:center; gap:8px; height:var(--row); padding:0 14px; background:var(--sunk); border-bottom:1px solid var(--line); font-size:12.5px; position:sticky; top:0; z-index:1}
+.mk-gh b{font-weight:600}
+.mk-gh .c{color:var(--mute)}
+.mk-gh .h{margin-left:auto; color:var(--mute); font-size:11.5px}
+.mk-row{display:grid; grid-template-columns:auto 66px 16px minmax(0,1fr) auto 38px 22px; align-items:center; gap:10px; height:var(--row); padding:0 14px; border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent); white-space:nowrap}
+.mk-row.sel{background:var(--sel); box-shadow:inset 2px 0 0 var(--accInk)}
+.mk.st-bar .mk-row{box-shadow:inset 3px 0 0 var(--stc)}
+.mk.st-bar .mk-row.sel{box-shadow:inset 3px 0 0 var(--stc)}
+.mk-row .k{color:var(--mute); font-size:11.5px}
+.mk-row .t{overflow:hidden; text-overflow:ellipsis}
+.mk-row .e{color:var(--mute); font-size:11.5px; text-align:right}
+.mk-row.done .t{color:var(--mute)}
+.lbls{display:flex; gap:4px}
+.lb{display:inline-flex; align-items:center; gap:5px; height:19px; padding:0 7px; border:1px solid var(--line); border-radius:999px; font-size:11px; color:var(--mute)}
+.mk.sq .lb{border-radius:var(--r)}
+.lb i{width:6px; height:6px; border-radius:50%; background:var(--lc)}
+@container (max-width:620px){ .mk{grid-template-columns:minmax(0,1fr)} .mk-side{display:none} .mk-row{grid-template-columns:auto 62px 16px minmax(0,1fr) 22px} .mk-row .lbls,.mk-row .e{display:none} .mk-search span.txt{display:none} .mk-new span{display:none} }
+
+/* avatars */
+.av{width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-size:9.5px; font-weight:700; color:var(--panel); background:var(--avc); flex:none}
+.av.ag{border-radius:6px; background:var(--ink); color:var(--bg); font-family:var(--f-mono); font-weight:500; font-size:10px}
+.av.none{background:transparent; border:1.5px dashed var(--line)}
+
+/* status styles */
+.sd{width:8px; height:8px; border-radius:50%; display:block; margin:0 3px}
+.sp{display:inline-flex; align-items:center; height:19px; padding:0 7px; border-radius:var(--r); font-size:11px; font-weight:600; color:var(--c); background:color-mix(in srgb,var(--c) 14%,transparent); width:76px; justify-content:center}
+.sg{font-size:14px; line-height:1; width:14px; text-align:center}
+.mk.st-bar .mk-row > .sti{width:0}
+/* types */
+.ty{display:grid; place-items:center; width:16px; height:16px}
+.tl{width:16px; height:16px; display:grid; place-items:center; border-radius:4px; font-family:var(--f-mono); font-size:10px; font-weight:700; color:var(--c); background:color-mix(in srgb,var(--c) 16%,transparent)}
+.tt{font-size:10.5px; font-weight:600; color:var(--c); padding:0 5px; border-radius:4px; background:color-mix(in srgb,var(--c) 14%,transparent); line-height:16px; margin-right:6px}
+
+/* board */
+.mk-board{display:grid; grid-auto-flow:column; grid-auto-columns:minmax(196px,1fr); gap:10px; padding:12px; min-height:100%; overflow-x:auto}
+.mk-col{display:flex; flex-direction:column; gap:8px; min-width:0}
+.mk-col h5{margin:0; display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; padding:2px 2px 4px}
+.mk-col h5 .c{color:var(--mute); font-weight:400}
+.mk-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:10px; display:flex; flex-direction:column; gap:8px; font-size:12.5px; position:relative}
+.mk.st-bar .mk-card{box-shadow:inset 0 3px 0 var(--stc)}
+.mk-card .hd{display:flex; align-items:center; gap:6px; color:var(--mute); font-size:11.5px}
+.mk-card .hd .sti{margin-left:auto}
+.mk-card .ft{display:flex; align-items:center; gap:6px}
+.mk-card .ft .e{margin-left:auto; color:var(--mute); font-size:11.5px}
+.mk-card.drag{transform:rotate(-1.6deg) translateY(-3px); box-shadow:0 10px 24px -8px rgb(0 0 0 / .35), 0 0 0 1.5px var(--accInk)}
+.mk-card.ghost{border-style:dashed; background:transparent; color:transparent; height:62px; box-shadow:none}
+.mk-toast{position:absolute; right:12px; bottom:12px; width:max-content; max-width:calc(100% - 24px); display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:var(--r2); background:var(--ink); color:var(--bg); font-size:12px; box-shadow:0 8px 20px -6px rgb(0 0 0 / .4)}
+.mk-toast .av{width:18px; height:18px; background:var(--bg); color:var(--ink)}
+.mk-toast em{font-style:normal; opacity:.65}
+
+/* plan */
+.mk-plan{min-width:760px; font-size:12px}
+.mk-plan-h, .mk-prow, .mk-cap{display:grid; grid-template-columns:132px minmax(0,1fr)}
+.mk-plan-h{position:sticky; top:0; z-index:2; background:var(--bg); border-bottom:1px solid var(--line); height:34px}
+.mk-plan-h .ms{display:grid; grid-template-columns:repeat(12,1fr); position:relative}
+.mk-plan-h .ms div{display:flex; align-items:center; padding-left:6px; color:var(--mute); border-left:1px solid var(--line)}
+.mk-plan-h > div:first-child{display:flex; align-items:center; padding-left:12px; font-weight:600; color:var(--mute)}
+.mk-prow{border-bottom:1px solid var(--line)}
+.mk-prow .pl{padding:8px 10px 8px 12px; display:flex; flex-direction:column; gap:3px; border-right:1px solid var(--line); background:var(--panel)}
+.mk-prow .pl b{display:flex; align-items:center; gap:7px; font-weight:600; font-size:12.5px}
+.mk-prow .pl b i{width:9px; height:9px; border-radius:3px; background:var(--pc)}
+.mk-prow .pl small{color:var(--mute); font-size:11px}
+.trk{position:relative; background-image:repeating-linear-gradient(to right,transparent 0 calc(100%/12 - 1px),color-mix(in srgb,var(--line) 70%,transparent) calc(100%/12 - 1px) calc(100%/12))}
+.pc{position:absolute; height:20px; display:flex; align-items:center; gap:5px; padding:0 7px; border-radius:var(--r); font-size:11.5px; white-space:nowrap; overflow:hidden; color:var(--ink)}
+.pc span{overflow:hidden; text-overflow:ellipsis}
+.pc.epic{font-weight:700}
+.pc .pct{margin-left:auto; font-family:var(--f-mono); font-size:10.5px; color:var(--mute)}
+.pv-bar .pc{background:linear-gradient(to right,color-mix(in srgb,var(--pc) 52%,var(--panel)) var(--p),color-mix(in srgb,var(--pc) 20%,var(--panel)) var(--p))}
+.pv-outline .pc{background:var(--panel); box-shadow:inset 0 0 0 1.5px var(--pc)}
+.pv-outline .pc::after{content:""; position:absolute; left:0; bottom:0; height:2.5px; width:var(--p); background:var(--pc)}
+.pv-tag .pc{background:var(--sunk); box-shadow:inset 3px 0 0 var(--pc); padding-left:9px}
+.pc.warn{box-shadow:inset 0 0 0 1.5px var(--bad); background:color-mix(in srgb,var(--bad) 10%,var(--panel)); outline:1.5px dashed var(--bad); outline-offset:2px}
+.pc .wi{width:14px; height:14px; border-radius:50%; background:var(--bad); color:var(--panel); display:grid; place-items:center; font-size:10px; font-weight:800; flex:none}
+.empty-plan{position:absolute; inset:0; display:flex; align-items:center; padding-left:12px; color:var(--warn); font-style:italic; gap:6px}
+.msl{position:absolute; top:0; bottom:0; width:0; border-left:1.5px dashed var(--accInk); z-index:1; pointer-events:none}
+.msl b{position:absolute; top:-1px; left:4px; font-size:10.5px; font-weight:700; color:var(--accInk); background:var(--bg); padding:0 4px; white-space:nowrap; border-radius:3px}
+.dep{position:absolute; z-index:1; pointer-events:none; overflow:visible}
+.mk-cap{background:var(--panel); border-bottom:1px solid var(--line); min-height:64px}
+.mk-cap .pl{padding:8px 10px 8px 12px; border-right:1px solid var(--line); display:flex; flex-direction:column; gap:2px}
+.mk-cap .pl b{font-size:12.5px}
+.mk-cap .pl small{color:var(--mute); font-size:10.5px; line-height:1.3}
+.capc{display:grid; grid-template-columns:repeat(12,1fr)}
+.capc > div{display:flex; align-items:flex-end; justify-content:center; gap:3px; padding:6px 4px; border-left:1px solid color-mix(in srgb,var(--line) 70%,transparent); position:relative; font-family:var(--f-mono); font-size:10.5px}
+.cb-d{width:9px; background:var(--cc); border-radius:2px 2px 0 0}
+.cb-s{width:9px; box-shadow:inset 0 0 0 1.5px var(--mute); border-radius:2px 2px 0 0}
+.cap-heat > div{align-items:center; flex-direction:column; justify-content:center; gap:0; background:var(--hc)}
+.cap-heat > div small{font-size:9.5px; color:var(--mute)}
+.cap-num > div{align-items:center; flex-direction:column; justify-content:center; gap:1px}
+.cap-num > div b{font-weight:500; color:var(--cc)}
+.cap-num > div small{font-size:9.5px; color:var(--mute)}
+
+/* command palette */
+.mk-dim{opacity:.35; filter:saturate(.6); pointer-events:none}
+.mk-cmd{position:absolute; top:44px; left:50%; transform:translateX(-50%); width:min(540px,92%); background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); box-shadow:0 24px 60px -12px rgb(0 0 0 / .45); overflow:hidden; z-index:3}
+.mk-cmd .q{display:flex; align-items:center; gap:10px; padding:13px 14px; border-bottom:1px solid var(--line); font-size:14.5px}
+.mk-cmd .q .caret{width:1.5px; height:17px; background:var(--accInk); margin-left:-8px; animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){ .mk-cmd .q .caret{animation:none} }
+.mk-cmd ul{list-style:none; margin:0; padding:6px}
+.mk-cmd li{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--r); font-size:13px}
+.mk-cmd li.on{background:var(--sel)}
+.mk-cmd li .s{margin-left:auto; color:var(--mute); font-size:11.5px}
+.mk-cmd .cli{border-top:1px solid var(--line); padding:9px 14px; display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; font-size:11.5px; color:var(--mute); background:var(--sunk)}
+.mk-cmd .cli code{font-family:var(--f-mono); color:var(--ink); font-size:11.5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Task 000 · Frontend ideas</div>
+    <h1>Flowstate design directions</h1>
+    <p class="lede">Eleven visual directions for the web app, each rendered as the same working screen: the issue list, the board, the 2027 delivery plan and the command palette. Every direction is a full token set (colour in light and dark, type, radius, density defaults). The component variants on the right apply on top of any direction, so you can mix.</p>
+    <ol class="steps">
+      <li><b>1</b>Star the directions you like</li>
+      <li><b>2</b>Open one, switch views, flip light/dark and EN/DA</li>
+      <li><b>3</b>Tune the component variants</li>
+      <li><b>4</b>Pick a logo mark, then copy your picks back</li>
+    </ol>
+  </header>
+
+  <section aria-labelledby="h-dirs">
+    <div class="sec-head">
+      <h2 id="h-dirs">Directions</h2>
+      <p>Top swatch row is light mode, bottom row is dark: sidebar, ground, panel, accent, in progress, in review, done.</p>
+    </div>
+    <div class="dirs" id="dirs"></div>
+  </section>
+
+  <section aria-labelledby="h-stage">
+    <div class="sec-head">
+      <h2 id="h-stage">Try it: <span id="stageName"></span></h2>
+      <p id="stagePitch"></p>
+    </div>
+    <div class="stage">
+      <div style="min-width:0">
+        <div class="bar">
+          <div class="seg" role="group" aria-label="View" id="segView"></div>
+          <div class="seg" role="group" aria-label="Mode" id="segMode"></div>
+          <div class="seg" role="group" aria-label="Language" id="segLang"></div>
+        </div>
+        <div class="mk-wrap" id="mock"></div>
+        <div class="notes" id="notes"></div>
+      </div>
+      <aside class="tune" aria-labelledby="h-tune">
+        <h3 id="h-tune">Component variants</h3>
+        <small>A dot marks the direction's own default. Your choices stay when you switch direction.</small>
+        <div id="tune" style="display:flex;flex-direction:column;gap:14px"></div>
+        <button class="linkbtn" id="resetTune" type="button">Reset to direction defaults</button>
+      </aside>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-marks">
+    <div class="sec-head">
+      <h2 id="h-marks">Logo mark</h2>
+      <p>Shown in the current direction's display face and accent. Each mark has to work at 16 px as a favicon and in the sidebar.</p>
+    </div>
+    <div class="marks" id="marks"></div>
+  </section>
+
+  <section aria-labelledby="h-picks">
+    <div class="sec-head">
+      <h2 id="h-picks">Your picks</h2>
+      <p>Copy this and paste it back into the chat. The design guide and branding doc get written from it.</p>
+    </div>
+    <div class="picks">
+      <pre id="picksOut"></pre>
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <label for="picksNotes" style="font-size:13px;color:var(--pg-mute)">Notes (what to borrow from other directions, what to drop)</label>
+        <textarea id="picksNotes" placeholder="e.g. Kobber palette, but Strøm's density and Fjord's sidebar"></textarea>
+        <div class="act">
+          <button class="btn" id="copyBtn" type="button">Copy picks</button>
+          <span id="copyMsg" role="status"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ───────── Directions: full token sets ───────── */
+const P = (bg,panel,sunk,line,ink,mute,acc,accInk,onAcc,side,sideInk,prog,rev,ok,warn,bad) =>
+  ({bg,panel,sunk,line,ink,mute,acc,accInk,onAcc,side,sideInk,prog,rev,ok,warn,bad});
+
+const DIRS = [
+ { id:'kobber', name:'Kobber', gloss:'copper', rec:true,
+   pitch:'Verdigris green from Copenhagen’s copper spires, copper orange for work in motion. Calm, unmistakably Danish, not another blue SaaS.',
+   why:'The palette is local without being folkloric: the green roofs of Christiansborg and Frederik’s Church are recognisable to every Dane. Green and copper are complementary, so “in progress” stands out without shouting. Bricolage Grotesque gives the wordmark character; Hanken Grotesk stays quiet at 13 px.',
+   risk:'Green accent can read as “success”. Done therefore uses a yellower green and the check glyph, never colour alone.',
+   f:{ui:'"Hanken Grotesk"', display:'"Bricolage Grotesque"', mono:'"Fragment Mono"'}, fn:'Bricolage Grotesque · Hanken Grotesk · Fragment Mono',
+   r:5, mark:'oe', word:'flowstate', hw:700, caps:false, btn:'solid',
+   def:{status:'ring', types:'shapes', density:'compact', sidebar:'tinted', plan:'outline', cap:'bars'},
+   L:P('#F2F4F3','#FFFFFF','#E7ECEA','#D3DBD8','#16201D','#56655F','#2C7A6A','#246859','#FFFFFF','#1C2A26','#CFE0DA','#B5651F','#6553A8','#3F8A3C','#A9801A','#B3393B'),
+   D:P('#0F1514','#161F1D','#0B100F','#25322E','#E2ECE8','#8FA29B','#5BB8A3','#6CC4AF','#08130F','#0B100F','#B7CAC3','#E08E52','#A194E6','#78C36F','#E3BC55','#EE6E6E') },
+ { id:'fjord', name:'Fjord', gloss:'fjord',
+   pitch:'Cool slate and deep water blue. The trustworthy, enterprise-ready option for when public sector buyers arrive.',
+   why:'Reads as serious infrastructure, which helps the sovereignty story with CTOs and procurement. IBM Plex has excellent Danish glyph coverage and a mono sibling for keys and hours.',
+   risk:'Closest to Jira and Azure DevOps in feel. Needs sharp density and speed to not read as “another blue tracker”.',
+   f:{ui:'"IBM Plex Sans"', display:'"IBM Plex Sans"', mono:'"IBM Plex Mono"'}, fn:'IBM Plex Sans · IBM Plex Mono',
+   r:4, mark:'stream', word:'Flowstate', hw:600, caps:false, btn:'solid',
+   def:{status:'ring', types:'shapes', density:'comfortable', sidebar:'flat', plan:'bar', cap:'bars'},
+   L:P('#F4F6F8','#FFFFFF','#EAEEF2','#D5DCE3','#15202A','#566573','#1D5B7C','#1D5B7C','#FFFFFF','#EAEEF2','#253441','#2C7DB3','#7556B3','#2D7F57','#AD7C22','#B23B3B'),
+   D:P('#0E141A','#141C24','#0A0F14','#24313D','#E0E8EF','#8797A7','#6DB3D6','#7CBEDF','#07131B','#0A0F14','#B4C3D0','#6DB3D6','#A891E0','#5DBB8A','#E2B15A','#E57373') },
+ { id:'strom', name:'Strøm', gloss:'current',
+   pitch:'Electric cobalt on clean white, near-black in dark mode. Speed first: tight, sharp and fast-feeling, Linear’s home turf.',
+   why:'Directly signals the “Linear speed” promise to the startup audience who are switching from Linear. Geist is designed for interface text and has a matching mono.',
+   risk:'The most generic of the set. Without a strong mark it looks like every developer tool from 2024.',
+   f:{ui:'"Geist"', display:'"Geist"', mono:'"Geist Mono"'}, fn:'Geist · Geist Mono',
+   r:6, mark:'wave', word:'flowstate', hw:600, caps:false, btn:'solid',
+   def:{status:'ring', types:'shapes', density:'compact', sidebar:'flat', plan:'bar', cap:'numbers'},
+   L:P('#FFFFFF','#FFFFFF','#F4F5F8','#E3E5EC','#0F1222','#5A5F70','#2E46F5','#2E46F5','#FFFFFF','#F7F8FB','#2A2F45','#2E46F5','#9447E0','#1E8A5A','#B8740F','#D23B4B'),
+   D:P('#0B0C14','#11131E','#08090F','#22263A','#E8EAF5','#8C91A8','#7A8BFF','#8E9CFF','#0B0C14','#08090F','#BFC4DA','#7A8BFF','#C08BFF','#4CC38A','#F0AE4A','#FF6B7A') },
+ { id:'tegl', name:'Tegl', gloss:'brick',
+   pitch:'Danish yellow-and-red brick architecture: brick red on stone grey with a dark masonry sidebar. Warm, crafted, sturdy.',
+   why:'Grounded in Danish building culture rather than flags. The dark sidebar gives a strong frame, and the warm palette makes long planning sessions feel less clinical.',
+   risk:'Red accent competes with error states. Errors use a deeper wine red and always carry an icon.',
+   f:{ui:'"Instrument Sans"', display:'"Instrument Sans"', mono:'"JetBrains Mono"'}, fn:'Instrument Sans · JetBrains Mono',
+   r:3, mark:'blocks', word:'Flowstate', hw:700, caps:false, btn:'solid',
+   def:{status:'dot', types:'letters', density:'comfortable', sidebar:'tinted', plan:'tag', cap:'heat'},
+   L:P('#EEEDEB','#FAF9F8','#E4E2DF','#D3CFCA','#211C1A','#665D58','#A63D24','#A63D24','#FFFFFF','#2A2321','#D9CFCA','#C0662A','#4F6A8F','#4C7A3F','#A87418','#8E1F3A'),
+   D:P('#171312','#1F1A18','#120F0E','#332B28','#ECE5E1','#A2958E','#E07A5C','#E8876A','#1A0F0B','#120F0E','#CDBFB8','#E39A5C','#8FAAD4','#86B873','#E0B154','#E86A8A') },
+ { id:'kort', name:'Kort', gloss:'map',
+   pitch:'Cartographic: survey-map paper, contour lines and a signal-orange accent. The delivery plan is the map of your year.',
+   why:'Puts the differentiator, the delivery plan, at the centre of the identity. Public Sans was built for government services, which suits the later public-sector audience.',
+   risk:'Orange on white needs a darkened tone for text. The bright orange is reserved for fills and markers.',
+   f:{ui:'"Public Sans"', display:'"Public Sans"', mono:'"DM Mono"'}, fn:'Public Sans · DM Mono',
+   r:2, mark:'contour', word:'Flowstate', hw:700, caps:true, btn:'solid',
+   def:{status:'glyph', types:'shapes', density:'comfortable', sidebar:'flat', plan:'tag', cap:'bars'},
+   L:P('#F6F7F3','#FFFFFF','#EDEFE8','#D7DCCF','#1B2420','#5A655B','#D4561A','#B5470F','#FFFFFF','#EDEFE8','#2B352F','#D4561A','#3B6EA8','#4D7A3A','#A88214','#B3261E'),
+   D:P('#121612','#191E19','#0D100D','#2A3229','#E6EBE3','#95A091','#FF8A4C','#FF9A62','#1A0C04','#0D100D','#C4CEC0','#FF8A4C','#7FA8DB','#8CC47A','#E8C25A','#F07068') },
+ { id:'dannebrog', name:'Dannebrog', gloss:'the flag',
+   pitch:'Flag red sidebar, white ground, square corners, heavy grotesque. Loud, proud and impossible to mistake for an American tool.',
+   why:'The most direct way to say “Danish” at a glance in a screenshot, a booth or a LinkedIn post. Archivo’s extra-bold weights make a strong wordmark.',
+   risk:'National symbol use can feel kitsch or exclusionary to EU customers outside Denmark. A red UI is tiring over a full day.',
+   f:{ui:'"Archivo"', display:'"Archivo"', mono:'"JetBrains Mono"'}, fn:'Archivo · JetBrains Mono',
+   r:0, mark:'cross', word:'FLOWSTATE', hw:800, caps:true, btn:'solid',
+   def:{status:'pill', types:'letters', density:'comfortable', sidebar:'tinted', plan:'bar', cap:'numbers'}, sideAcc:'#FFFFFF',
+   L:P('#FFFFFF','#FFFFFF','#F6F3F3','#E5DEDE','#140A0B','#675B5C','#C8102E','#C8102E','#FFFFFF','#C8102E','#FFFFFF','#1D5FA8','#7A4BB0','#1F7A4A','#AE7A14','#C8102E'),
+   D:P('#120A0B','#1A1011','#0C0607','#33222A','#F5ECEC','#A89597','#FF4D63','#FF6577','#1A0508','#6E0918','#FFE9EC','#6FA8EA','#B48BEB','#5CC48C','#E8B65A','#FF4D63') },
+ { id:'midnat', name:'Midnatssol', gloss:'midnight sun',
+   pitch:'Dark-first: deep blue night with a low amber sun. Built for people who live in the tool all day with the lights down.',
+   why:'Developers mostly run dark mode; designing dark first gets that experience right. Albert Sans was drawn by a Danish designer and has a Scandinavian geometric feel.',
+   risk:'Light mode is the afterthought here and amber needs darkening to pass contrast on white.',
+   f:{ui:'"Albert Sans"', display:'"Albert Sans"', mono:'"DM Mono"'}, fn:'Albert Sans · DM Mono',
+   r:8, mark:'sun', word:'flowstate', hw:700, caps:false, btn:'solid', darkFirst:true,
+   def:{status:'ring', types:'color', density:'comfortable', sidebar:'tinted', plan:'bar', cap:'heat'},
+   L:P('#F1F1F4','#FFFFFF','#E8E8ED','#D6D6DE','#1A1A24','#5D5D6E','#A9581A','#A9581A','#FFFFFF','#1C1C2A','#D8D6E6','#A9581A','#5B57B8','#2E8159','#9E8210','#C2393B'),
+   D:P('#0F0F18','#171724','#0A0A11','#26263A','#ECEAF5','#9592AE','#F2A93B','#F2A93B','#1A1206','#0A0A11','#C9C6DE','#F2A93B','#9D97F2','#5BC28C','#E8D25A','#F06A6A') },
+ { id:'prompt', name:'Prompt', gloss:'agent-first',
+   pitch:'Monospace everything. The UI looks like what an agent sees: keys in brackets, terse labels, a terminal pane you can click.',
+   why:'Makes the agent-parity principle visible: what you see is what the CLI prints. Schibsted Grotesk (from the Norwegian newspaper group) is used only for headings.',
+   risk:'Alienates non-developer users (PMs, founders). Long issue titles are harder to scan in mono.',
+   f:{ui:'"JetBrains Mono"', display:'"Schibsted Grotesk"', mono:'"JetBrains Mono"'}, fn:'Schibsted Grotesk · JetBrains Mono (UI)',
+   r:0, mark:'prompt', word:'flowstate', hw:700, caps:true, btn:'outline', bracket:true,
+   def:{status:'glyph', types:'letters', density:'compact', sidebar:'tinted', plan:'outline', cap:'numbers'},
+   L:P('#F5F6F6','#FFFFFF','#ECEEEE','#D5D9D9','#101414','#596262','#0E7490','#0E7490','#FFFFFF','#101414','#C7D0D0','#0E7490','#8A4FB0','#2F7D3A','#A07010','#B42318'),
+   D:P('#0A0D0D','#101414','#060808','#1F2727','#DDE5E5','#849090','#3CC6E0','#3CC6E0','#041013','#060808','#A7B4B4','#3CC6E0','#C08FE8','#6CCB7A','#E8BC4A','#F2685C') },
+ { id:'papir', name:'Papir', gloss:'paper',
+   pitch:'Danish modernism: white paper, black type, one signal yellow. Arne Jacobsen’s timetables, not a dashboard.',
+   why:'Restraint is the brand: the UI is almost colourless so state colours and the yellow selection carry all meaning. Familjen Grotesk comes from a Stockholm studio and has a confident editorial voice.',
+   risk:'Yellow cannot be used for text, so the accent only appears as fills. Easy to make look unfinished.',
+   f:{ui:'"Familjen Grotesk"', display:'"Familjen Grotesk"', mono:'"Red Hat Mono"'}, fn:'Familjen Grotesk · Red Hat Mono',
+   r:0, mark:'stack', word:'flowstate', hw:700, caps:false, btn:'solid',
+   def:{status:'dot', types:'color', density:'roomy', sidebar:'flat', plan:'outline', cap:'numbers'},
+   L:P('#FFFFFF','#FFFFFF','#F3F3F1','#DCDCD8','#111111','#5A5A56','#F2C200','#111111','#111111','#FFFFFF','#111111','#2D5BD7','#8B4BC2','#2E7D32','#B88A00','#D32F2F'),
+   D:P('#121212','#1A1A1A','#0C0C0C','#2E2E2E','#F2F2F0','#9C9C96','#FFD21F','#FFD21F','#111111','#0C0C0C','#DADAD6','#7C9BFF','#C190F0','#6CC070','#FFD21F','#FF6B6B') },
+ { id:'hav', name:'Hav', gloss:'sea',
+   pitch:'Soft sea blues, generous radius, friendly type. The approachable option for teams coming from Trello and Monday.',
+   why:'Lowers the barrier for non-developers on the team. Figtree is round and legible at small sizes without looking childish.',
+   risk:'Least “power tool” of the set; may undersell speed and keyboard-first to the core developer audience.',
+   f:{ui:'"Figtree"', display:'"Figtree"', mono:'"DM Mono"'}, fn:'Figtree · DM Mono',
+   r:10, mark:'ring', word:'flowstate', hw:700, caps:false, btn:'solid',
+   def:{status:'pill', types:'color', density:'roomy', sidebar:'flat', plan:'bar', cap:'bars'},
+   L:P('#F3F7FA','#FFFFFF','#E8F0F5','#D3E0E8','#142230','#566E80','#1A6FA6','#1A6FA6','#FFFFFF','#FFFFFF','#1E3242','#1A6FA6','#7B5CC9','#20885E','#BA7E14','#CC4040'),
+   D:P('#0D1620','#13202C','#09111A','#22344A','#E4EEF6','#8DA6BA','#5DB6EE','#6DC0F2','#06121C','#09111A','#BFD2E0','#5DB6EE','#AE98F2','#55C79A','#EDB75A','#F07474') },
+ { id:'granit', name:'Granit', gloss:'granite',
+   pitch:'Bornholm granite greys and moss green, tight rows and a hyper-legible face. Maximum information per screen.',
+   why:'Atkinson Hyperlegible was designed for low-vision readers, so a dense UI stays readable. Suits people who triage 200 issues before lunch.',
+   risk:'Dense and grey can feel austere in screenshots and marketing. Needs the logo to carry the personality.',
+   f:{ui:'"Atkinson Hyperlegible"', display:'"Atkinson Hyperlegible"', mono:'"Red Hat Mono"'}, fn:'Atkinson Hyperlegible · Red Hat Mono',
+   r:3, mark:'stack', word:'Flowstate', hw:700, caps:false, btn:'solid',
+   def:{status:'bar', types:'letters', density:'compact', sidebar:'flat', plan:'tag', cap:'numbers'},
+   L:P('#EDEEEE','#FBFBFB','#E2E4E4','#CDD1D1','#1A1D1D','#566060','#3B6E3F','#3B6E3F','#FFFFFF','#E2E4E4','#252A2A','#2F6596','#7A4E9E','#3B6E3F','#9E7018','#A83232'),
+   D:P('#131515','#1A1D1D','#0E1010','#2A2F2F','#E2E6E6','#939C9C','#7DBB7F','#88C48A','#0C140C','#0E1010','#C2CACA','#7FAEE0','#BB98DE','#7DBB7F','#DDB560','#E87878') },
+];
+// font stacks are interpolated into style="" attributes, so they must use single quotes
+DIRS.forEach(d=>Object.keys(d.f).forEach(k=>{ d.f[k]=d.f[k].replace(/"/g,"'"); }));
+
+/* ───────── Variants ───────── */
+const VARIANTS = [
+ {key:'status', label:'Status indicator', opts:[['ring','Ring'],['dot','Dot'],['pill','Pill'],['glyph','Glyph'],['bar','Edge bar']]},
+ {key:'types', label:'Issue type marker', opts:[['shapes','Shapes'],['letters','Letters'],['color','Tags']]},
+ {key:'density', label:'Density', opts:[['compact','Compact'],['comfortable','Comfortable'],['roomy','Roomy']]},
+ {key:'sidebar', label:'Sidebar', opts:[['tinted','Tinted'],['flat','Flat'],['rail','Icon rail']]},
+ {key:'plan', label:'Plan cards', opts:[['bar','Filled'],['outline','Outline'],['tag','Edge tag']]},
+ {key:'cap', label:'Capacity band', opts:[['bars','Bars'],['heat','Heat'],['numbers','Numbers']]},
+];
+
+/* ───────── Mock copy (EN/DA) ───────── */
+const STR = {
+ en:{inbox:'Inbox',my:'My issues',plan:'Delivery plan',sprints:'Sprints',projects:'Projects',issues:'Issues',list:'List',board:'Board',planTab:'Plan',
+     search:'Search or run a command',newI:'New issue',agents:'2 agents working',
+     st_backlog:'Backlog',st_todo:'Todo',st_progress:'In Progress',st_review:'In Review',st_done:'Done',st_canceled:'Canceled',
+     toast:'moved FLOW-139 to In Review via MCP',ago:'2s ago',cap:'Capacity',capSub:'people needed vs. available',noplan:'No dated work in 2027',
+     cmdq:'move FLOW-12 to next sprint',cmd1:'Move FLOW-12 to Sprint 24',cmd1s:'14–27 Oct',cmd2:'Open FLOW-12',cmd3:'Assign FLOW-12 to triage-agent',cmd4:'Change state of FLOW-12…',cli:'Same action from the CLI',
+     hrs:'h',planTitle:'Delivery plan',year:'2027',people:'people',
+     months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],ms1:'Launch',ms2:'Atlas GA', ppl:n=>`${n} people from Jan`},
+ da:{inbox:'Indbakke',my:'Mine opgaver',plan:'Leveranceplan',sprints:'Sprints',projects:'Projekter',issues:'Opgaver',list:'Liste',board:'Tavle',planTab:'Plan',
+     search:'Søg eller kør en kommando',newI:'Ny opgave',agents:'2 agenter arbejder',
+     st_backlog:'Backlog',st_todo:'Klar',st_progress:'I gang',st_review:'Til review',st_done:'Færdig',st_canceled:'Annulleret',
+     toast:'flyttede FLOW-139 til Til review via MCP',ago:'for 2 sek. siden',cap:'Kapacitet',capSub:'behov vs. tilgængelige personer',noplan:'Intet dateret arbejde i 2027',
+     cmdq:'flyt FLOW-12 til næste sprint',cmd1:'Flyt FLOW-12 til Sprint 24',cmd1s:'14.–27. okt.',cmd2:'Åbn FLOW-12',cmd3:'Tildel FLOW-12 til triage-agent',cmd4:'Skift status på FLOW-12…',cli:'Samme handling fra CLI’en',
+     hrs:' t',planTitle:'Leveranceplan',year:'2027',people:'personer',
+     months:['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'],ms1:'Lancering',ms2:'Atlas GA', ppl:n=>`${n} personer fra jan`},
+};
+
+const ISSUES = [
+ {k:'FLOW-142',t:'Optimistic rollback when a state change is rejected',ty:'task',st:'progress',lb:['web'],h:8,who:'NG'},
+ {k:'FLOW-128',t:'Delivery plan capacity band',ty:'feature',st:'progress',lb:['plan'],h:40,who:'MK'},
+ {k:'FLOW-139',t:'MCP tool: move issue to sprint',ty:'task',st:'review',lb:['mcp'],h:5,who:'agent'},
+ {k:'FLOW-120',t:'Self-serve workspaces',ty:'epic',st:'todo',lb:[],h:160,who:'NG'},
+ {k:'FLOW-151',t:'Danish translations for issue detail',ty:'task',st:'todo',lb:['i18n'],h:3,who:'agent'},
+ {k:'FLOW-147',t:'Command palette fuzzy ranking',ty:'task',st:'todo',lb:['web'],h:6,who:'SL'},
+ {k:'FLOW-155',t:'Board drag jitters on Firefox',ty:'task',st:'backlog',lb:['bug','web'],h:2,who:null},
+ {k:'FLOW-133',t:'CLI: flowstate issue list --json',ty:'task',st:'done',lb:['cli'],h:4,who:'agent'},
+ {k:'FLOW-131',t:'Keycloak token exchange for MCP',ty:'task',st:'done',lb:['auth'],h:12,who:'MK'},
+];
+const LABEL_C = {web:'var(--prog)',plan:'var(--accInk)',mcp:'var(--rev)',i18n:'var(--warn)',bug:'var(--bad)',cli:'var(--mute)',auth:'var(--ok)'};
+const AV_C = {NG:'#7A5C3E',MK:'#3E6A7A',SL:'#6A3E7A'};
+
+const PLAN = [
+ {name:'Atlas', c:'var(--accInk)', ppl:3, cards:[
+   {l:0,s:0,e:6,t:'Atlas GA',epic:true,p:45},
+   {l:1,s:0.9,e:3.4,t:'SSO (SAML + OIDC)',p:80,id:'sso'},
+   {l:1,s:3.6,e:6.8,t:'Audit log',p:10}]},
+ {name:'Flow', c:'var(--rev)', ppl:4, cards:[
+   {l:0,s:0,e:2.4,t:'Realtime sync',p:100},
+   {l:0,s:2.6,e:8,t:'Delivery plan v2',p:30},
+   {l:1,s:4,e:6.2,t:'GitHub integration',p:0}]},
+ {name:'Nord', c:'var(--prog)', ppl:2, cards:[
+   {l:0,s:3,e:7.6,t:'Jira importer',p:0,warn:true,id:'jira'},
+   {l:1,s:8,e:12,t:'Self-hosting package',epic:true,p:0}]},
+ {name:'Billing', c:'var(--warn)', ppl:1, cards:[]},
+];
+const DEMAND=[3.5,4,4.5,6.5,7,7.5,6,5.5,5,4.5,4,3], SUPPLY=[4.5,4.5,4.5,5,5,5,6,6,6,6,6,6];
+const MILESTONES=[{m:3,k:'ms1'},{m:6,k:'ms2'}];
+
+/* ───────── Marks ───────── */
+const ACC='var(--lm-acc)';
+const MARKS = {
+ oe:{n:'Ø',d:'The Danish Ø: a circle (the loop of work) crossed by a forward slash. Doubles as “no blockers”.',
+   s:`<circle cx="16" cy="16" r="9.5" fill="none" stroke="currentColor" stroke-width="3.4"/><path d="M6.5 26.5 25.5 5.5" stroke="${ACC}" stroke-width="3.4" stroke-linecap="round"/>`},
+ stream:{n:'Stream',d:'Three staggered bars: a delivery plan in miniature, work flowing left to right.',
+   s:`<rect x="3" y="6.5" width="17" height="5" rx="2.5" fill="currentColor"/><rect x="9" y="13.5" width="20" height="5" rx="2.5" fill="${ACC}"/><rect x="5" y="20.5" width="12" height="5" rx="2.5" fill="currentColor" opacity=".5"/>`},
+ wave:{n:'Wave',d:'Two currents (strøm). Motion and speed without an arrow cliché.',
+   s:`<path d="M3 12.5c3.5-5 7-5 10 0s6.5 5 10 0c1.6-2.3 3.4-3.2 6-2.6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M3 21.5c3.5-5 7-5 10 0s6.5 5 10 0c1.6-2.3 3.4-3.2 6-2.6" fill="none" stroke="${ACC}" stroke-width="3.2" stroke-linecap="round"/>`},
+ blocks:{n:'Blocks',d:'Four bricks, one shifted: a card moving across the board.',
+   s:`<rect x="4" y="4" width="10.5" height="10.5" rx="1.5" fill="currentColor"/><rect x="17.5" y="4" width="10.5" height="10.5" rx="1.5" fill="currentColor" opacity=".4"/><rect x="4" y="17.5" width="10.5" height="10.5" rx="1.5" fill="currentColor" opacity=".4"/><rect x="19" y="19" width="10.5" height="10.5" rx="1.5" fill="${ACC}"/>`},
+ contour:{n:'Contour',d:'Survey-map contour lines with a target: you know where you are on the plan.',
+   s:`<ellipse cx="16" cy="16.5" rx="12.5" ry="10.5" fill="none" stroke="currentColor" stroke-width="2.4"/><ellipse cx="17.2" cy="17" rx="7.4" ry="6" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".6"/><circle cx="18.2" cy="17.4" r="2.8" fill="${ACC}"/>`},
+ cross:{n:'Cross',d:'An off-centre Nordic cross whose arm runs out as an arrow.',
+   s:`<rect x="3" y="7" width="22" height="18" fill="${ACC}"/><rect x="10" y="7" width="4" height="18" fill="var(--lm-bg)"/><path d="M3 14h22v-3.5l5 5.5-5 5.5V18H3z" fill="var(--lm-bg)"/><path d="M25 10.5l5 5.5-5 5.5" fill="${ACC}"/>`},
+ sun:{n:'Midnight sun',d:'A low sun resting on the horizon: work that never quite stops, calmly.',
+   s:`<path d="M9 22a7 7 0 0 1 14 0z" fill="${ACC}"/><path d="M16 7.5v3.2M8.6 11l2.1 2.1M23.4 11l-2.1 2.1" stroke="${ACC}" stroke-width="2.4" stroke-linecap="round"/><path d="M4 22.5h24" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M9 26.5h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".45"/>`},
+ prompt:{n:'Prompt',d:'A shell prompt with a cursor: the product is something you can type to.',
+   s:`<path d="M5 8.5l7.5 7.5L5 23.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="15.5" y="20.5" width="12" height="3.6" rx="1" fill="${ACC}"/>`},
+ ring:{n:'Ring',d:'A status ring three-quarters full: the state indicator is the logo.',
+   s:`<circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="3.2" opacity=".22"/><path d="M16 5a11 11 0 1 1-11 11" fill="none" stroke="${ACC}" stroke-width="3.2" stroke-linecap="round"/><circle cx="16" cy="16" r="3.6" fill="currentColor"/>`},
+ stack:{n:'Stack',d:'Three slanted layers: epic, feature, task. The hierarchy in one glyph.',
+   s:`<path d="M9 5.5h19l-5 5.5H4z" fill="currentColor"/><path d="M9 13.3h19l-5 5.5H4z" fill="currentColor" opacity=".5"/><path d="M9 21h19l-5 5.5H4z" fill="${ACC}"/>`},
+};
+const markSvg=(id,size=22)=>`<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true">${MARKS[id].s}</svg>`;
+
+/* ───────── State ───────── */
+const LS='flowstate-directions-v1';
+const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
+let S = {dir:'kobber', mode: sysDark?'dark':'light', view:'list', lang:'en', ov:{}, mark:null, stars:['kobber']};
+try{ const saved=JSON.parse(localStorage.getItem(LS)||'null'); if(saved) S={...S,...saved,mode:S.mode}; }catch(e){}
+const save=()=>{ try{ localStorage.setItem(LS, JSON.stringify({dir:S.dir,view:S.view,lang:S.lang,ov:S.ov,mark:S.mark,stars:S.stars})); }catch(e){} };
+const cur=()=>DIRS.find(d=>d.id===S.dir)||DIRS[0];
+const opts=()=>({...cur().def, ...S.ov});
+const T=k=>STR[S.lang][k];
+const nf=v=>new Intl.NumberFormat(S.lang==='da'?'da-DK':'en-GB',{maximumFractionDigits:1}).format(v);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ───────── Mock pieces ───────── */
+const ICON = {
+ inbox:'<path d="M2.5 9.5 4.5 3.5h7l2 6v3h-11zM2.5 9.5h3.5l1 1.5h2l1-1.5h3.5"/>',
+ me:'<circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c.8-2.6 2.8-4 5-4s4.2 1.4 5 4"/>',
+ plan:'<path d="M2.5 4h7M5 8h8.5M3.5 12h6"/>',
+ sprint:'<path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v2.5h-2.5"/>',
+ search:'<circle cx="7" cy="7" r="4"/><path d="m10 10 3.5 3.5"/>',
+ plus:'<path d="M8 3.5v9M3.5 8h9"/>'
+};
+const ic=(n,s=16)=>`<svg viewBox="0 0 16 16" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+
+function stIcon(st,style){
+  const c=`var(--s-${st})`;
+  if(style==='dot') return `<span class="sti"><span class="sd" style="background:${c}"></span></span>`;
+  if(style==='pill') return `<span class="sti"><span class="sp" style="--c:${c}">${T('st_'+st)}</span></span>`;
+  if(style==='glyph') return `<span class="sti"><span class="sg" style="color:${c}">${{backlog:'◌',todo:'○',progress:'◑',review:'◕',done:'●',canceled:'⊘'}[st]}</span></span>`;
+  if(style==='bar') return `<span class="sti"></span>`;
+  const frac={backlog:0,todo:0,progress:.5,review:.75,done:1,canceled:0}[st];
+  let inner='';
+  if(st==='done') inner=`<circle cx="7" cy="7" r="6.2" fill="${c}"/><path d="M4.4 7.2 6.2 9l3.4-3.6" fill="none" stroke="var(--panel)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  else inner=`<circle cx="7" cy="7" r="5.6" fill="none" stroke="${c}" stroke-width="1.6" ${st==='backlog'?'stroke-dasharray="2.2 2"':''}/>`+
+    (frac?`<circle cx="7" cy="7" r="2.6" fill="none" stroke="${c}" stroke-width="5.2" stroke-dasharray="${(frac*16.336).toFixed(2)} 16.336" transform="rotate(-90 7 7)"/>`:'');
+  return `<span class="sti"><svg viewBox="0 0 14 14" width="14" height="14" aria-label="${T('st_'+st)}">${inner}</svg></span>`;
+}
+function tyIcon(ty,style){
+  const c={epic:'var(--rev)',feature:'var(--accInk)',task:'var(--mute)'}[ty];
+  if(style==='letters') return `<span class="tl" style="--c:${c}">${ty[0].toUpperCase()}</span>`;
+  if(style==='color') return `<span class="ty"></span>`;
+  const shape={epic:`<path d="M8 1.8 14.2 8 8 14.2 1.8 8z" fill="${c}"/>`,
+    feature:`<rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="${c}" stroke-width="2"/>`,
+    task:`<rect x="4.5" y="4.5" width="7" height="7" rx="1.5" fill="none" stroke="${c}" stroke-width="1.6"/>`}[ty];
+  return `<span class="ty"><svg viewBox="0 0 16 16" width="14" height="14" aria-label="${ty}">${shape}</svg></span>`;
+}
+function tyTag(ty,style){
+  if(style!=='color'||ty==='task') return '';
+  const c={epic:'var(--rev)',feature:'var(--accInk)'}[ty];
+  return `<span class="tt" style="--c:${c}">${ty==='epic'?'Epic':'Feature'}</span>`;
+}
+const av=w=> !w?`<span class="av none"></span>`: w==='agent'?`<span class="av ag" title="triage-agent">&gt;_</span>`:`<span class="av" style="--avc:${AV_C[w]}">${w}</span>`;
+const key=k=>cur().bracket?`[${k}]`:k;
+const hrs=h=>`${h}${T('hrs')}`;
+
+function sidebar(d,o){
+  const nav=[['inbox','inbox','3'],['me','my',''],['plan','plan',''],['sprint','sprints','']];
+  const projs=[['Atlas','var(--accInk)'],['Flow','var(--rev)'],['Nord','var(--prog)'],['Billing','var(--warn)']];
+  const onPlan=S.view==='plan';
+  return `<aside class="mk-side">
+    <div class="mk-ws">${markSvg(d.mark,22)}<div><b>Fjordlab ApS</b><small>${d.word}</small></div></div>
+    <nav class="mk-nav">
+      ${nav.map(([i,k,n])=>`<a class="${(k==='plan'&&onPlan)?'on':''}">${ic(i)}<span>${T(k)}</span>${n?`<span class="n">${n}</span>`:''}</a>`).join('')}
+      <h4>${T('projects')}</h4>
+      ${projs.map(([n,c])=>`<a class="${(!onPlan&&n==='Flow')?'on':''}"><i class="sq" style="background:${c}"></i><span>${n}</span></a>`).join('')}
+    </nav>
+    <div class="mk-agents"><i></i><span>${T('agents')}</span></div>
+  </aside>`;
+}
+function topbar(){
+  const plan=S.view==='plan';
+  return `<div class="mk-top">
+    <div class="mk-crumb">${plan?`${T('planTitle')} <span>· ${T('year')}</span>`:`Flow <span>/ ${T('issues')}</span>`}</div>
+    <div class="mk-tabs">${['list','board','planTab'].map(v=>`<span class="${(S.view===v||(v==='planTab'&&plan)||(v==='list'&&S.view==='cmd'))?'on':''}">${T(v)}</span>`).join('')}</div>
+    <div class="mk-search">${ic('search',14)}<span class="txt">${T('search')}</span><kbd>Ctrl K</kbd></div>
+    <div class="mk-new">${ic('plus',14)}<span>${T('newI')}</span><kbd>C</kbd></div>
+  </div>`;
+}
+const ORDER=['progress','review','todo','backlog','done'];
+function listView(o){
+  return ORDER.map(st=>{
+    const rows=ISSUES.filter(i=>i.st===st); if(!rows.length) return '';
+    const sum=rows.reduce((a,i)=>a+i.h,0);
+    return `<div class="mk-gh">${stIcon(st,o.status==='bar'||o.status==='pill'?'dot':o.status)}<b>${T('st_'+st)}</b><span class="c">${rows.length}</span><span class="h mono">${hrs(sum)}</span></div>`+
+      rows.map(i=>`<div class="mk-row ${i.k==='FLOW-142'?'sel':''} ${st==='done'?'done':''}" style="--stc:var(--s-${st})">
+        ${stIcon(st,o.status)}<span class="k mono">${key(i.k)}</span>${tyIcon(i.ty,o.types)}
+        <span class="t">${tyTag(i.ty,o.types)}${esc(i.t)}</span>
+        <span class="lbls">${i.lb.map(l=>`<span class="lb" style="--lc:${LABEL_C[l]}"><i></i>${l}</span>`).join('')}</span>
+        <span class="e mono">${hrs(i.h)}</span>${av(i.who)}
+      </div>`).join('');
+  }).join('');
+}
+function boardView(o){
+  const cols=['todo','progress','review','done'];
+  return `<div class="mk-board">${cols.map(st=>{
+    const cards=ISSUES.filter(i=>i.st===st);
+    return `<div class="mk-col"><h5>${stIcon(st,o.status==='bar'||o.status==='pill'?'dot':o.status)}${T('st_'+st)} <span class="c">${cards.length}</span></h5>
+      ${cards.map(i=>`<div class="mk-card ${i.k==='FLOW-147'?'drag':''}" style="--stc:var(--s-${st})">
+        <div class="hd">${tyIcon(i.ty,o.types)}<span class="mono">${key(i.k)}</span>${o.status==='pill'||o.status==='bar'?'':stIcon(st,o.status)}</div>
+        <div>${tyTag(i.ty,o.types)}${esc(i.t)}</div>
+        <div class="ft">${i.lb.map(l=>`<span class="lb" style="--lc:${LABEL_C[l]}"><i></i>${l}</span>`).join('')}<span class="e mono">${hrs(i.h)}</span>${av(i.who)}</div>
+      </div>`).join('')}
+      ${st==='progress'?'<div class="mk-card ghost"></div>':''}
+    </div>`;}).join('')}</div>
+    <div class="mk-toast">${av('agent')}<span><b>triage-agent</b> ${T('toast')} <em>· ${T('ago')}</em></span></div>`;
+}
+function planView(o){
+  const pct=v=>`${(v/12*100).toFixed(3)}%`;
+  const rowH=PLAN.map(pr=>Math.max(1,...pr.cards.map(c=>c.l+1))*26+14);
+  const rowTop=rowH.map((_,i)=>rowH.slice(0,i).reduce((a,h)=>a+h+1,0)), totalH=rowTop.at(-1)+rowH.at(-1)+1;
+  const y1=rowTop[0]+26+18, y2=rowTop[2]+18, x1=3.4/12*1200, x2=3.0/12*1200;
+  const rows=PLAN.map((pr,ri)=>{
+    const h=rowH[ri];
+    const cards=pr.cards.map(c=>`<div class="pc ${c.epic?'epic':''} ${c.warn?'warn':''}" style="left:calc(${pct(c.s)} + 2px);width:calc(${pct(c.e-c.s)} - 4px);top:${c.l*26+8}px;--pc:${pr.c};--p:${c.p}%" title="${esc(c.t)}">
+        ${c.warn?'<span class="wi">!</span>':''}${c.epic?tyIcon('epic','shapes'):''}<span>${esc(c.t)}</span>${c.p&&o.plan==='tag'?`<span class="pct">${c.p}%</span>`:''}</div>`).join('');
+    return `<div class="mk-prow"><div class="pl"><b><i style="--pc:${pr.c}"></i>${pr.name}</b><small>${T('ppl')(pr.ppl)}</small></div>
+      <div class="trk" style="height:${h}px">${cards}${pr.cards.length?'':`<div class="empty-plan"><span class="wi" style="width:14px;height:14px;border-radius:50%;display:grid;place-items:center;background:var(--warn);color:var(--panel);font-size:10px;font-weight:800;font-style:normal">!</span>${T('noplan')}</div>`}</div></div>`;
+  }).join('');
+  const max=8;
+  const cap=DEMAND.map((dm,i)=>{
+    const sp=SUPPLY[i], def=dm>sp, cc=def?'var(--bad)':'var(--ok)';
+    if(o.cap==='heat'){ const a=Math.min(60,Math.round(Math.abs(dm-sp)/sp*90)+8);
+      return `<div style="--hc:color-mix(in srgb,${cc} ${a}%,var(--panel))"><b style="font-weight:500">${nf(dm)}</b><small>/${nf(sp)}</small></div>`; }
+    if(o.cap==='numbers') return `<div style="--cc:${def?'var(--bad)':'var(--ink)'}"><b>${nf(dm)}</b><small>${def?'−'+nf(dm-sp):'/'+nf(sp)}</small></div>`;
+    return `<div style="--cc:${cc}" title="${nf(dm)} / ${nf(sp)}"><span class="cb-d" style="height:${dm/max*44}px"></span><span class="cb-s" style="height:${sp/max*44}px"></span></div>`;
+  }).join('');
+  // dependency arrow: SSO (Atlas lane1, ends 3.4) -> Jira importer (Nord lane0, starts 3.0)
+  return `<div class="mk-plan pv-${o.plan}">
+    <div class="mk-plan-h"><div>${T('projects')}</div><div class="ms">${T('months').map(m=>`<div>${m}</div>`).join('')}</div></div>
+    <div style="position:relative">
+      ${rows}
+      <div style="position:absolute;inset:0 0 0 132px;pointer-events:none">
+        ${MILESTONES.map(m=>`<div class="msl" style="left:${pct(m.m)}"><b>${T(m.k)}</b></div>`).join('')}
+        <svg class="dep" style="left:0;top:0;width:100%;height:100%" preserveAspectRatio="none" viewBox="0 0 1200 ${totalH}" aria-hidden="true">
+          <path d="M${x1} ${y1} C ${x1+60} ${y1}, ${x2-60} ${y2}, ${x2} ${y2}" fill="none" stroke="var(--bad)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-dasharray="4 3"/>
+        </svg>
+      </div>
+    </div>
+    <div class="mk-cap"><div class="pl"><b>${T('cap')}</b><small>${T('capSub')}</small></div><div class="capc cap-${o.cap}">${cap}</div></div>
+  </div>`;
+}
+function cmdView(o){
+  return `<div class="mk-dim">${listView(o)}</div>
+  <div class="mk-cmd" role="dialog" aria-label="Command palette">
+    <div class="q">${ic('search',16)}<span>${T('cmdq')}</span><span class="caret"></span></div>
+    <ul>
+      <li class="on">${ic('sprint',15)}<span>${T('cmd1')}</span><span class="s">${T('cmd1s')}</span><kbd>↵</kbd></li>
+      <li>${ic('inbox',15)}<span>${T('cmd2')}</span><kbd>O</kbd></li>
+      <li>${ic('me',15)}<span>${T('cmd3')}</span><kbd>A</kbd></li>
+      <li>${stIcon('progress','ring')}<span>${T('cmd4')}</span><kbd>S</kbd></li>
+    </ul>
+    <div class="cli">${T('cli')}: <code>flowstate issue move FLOW-12 --sprint next</code></div>
+  </div>`;
+}
+
+function mockVars(d,o){
+  const p=d[S.mode==='dark'?'D':'L'];
+  const den={compact:['28px','12.5px'],comfortable:['34px','13px'],roomy:['42px','14px']}[o.density];
+  const flat=o.sidebar!=='tinted';
+  const side=flat?p.bg:p.side, sideInk=flat?p.ink:p.sideInk;
+  const v={...p, side, sideInk,
+    sideLine: flat?p.line:'transparent',
+    sideSel:`color-mix(in srgb, ${sideInk} 11%, transparent)`,
+    sel:`color-mix(in srgb, ${p.acc} 13%, transparent)`,
+    's-backlog':p.mute,'s-todo':p.ink,'s-progress':p.prog,'s-review':p.rev,'s-done':p.ok,'s-canceled':p.mute,
+    'f-ui':d.f.ui+',system-ui,sans-serif','f-display':d.f.display+',system-ui,sans-serif','f-mono':d.f.mono+',ui-monospace,Consolas,monospace',
+    r:d.r+'px', r2:Math.max(d.r, Math.round(d.r*1.4))+'px', row:den[0], fs:den[1], hw:d.hw,
+    'lm-acc': flat ? ((p.acc==='#F2C200'||p.acc==='#FFD21F')?p.acc:p.accInk) : (d.sideAcc||d.D.accInk), 'lm-bg':side};
+  return Object.entries(v).map(([k,x])=>`--${k}:${x}`).join(';');
+}
+function renderMock(){
+  const d=cur(), o=opts();
+  const body={list:listView,board:boardView,plan:planView,cmd:cmdView}[S.view](o);
+  const cls=['mk', o.sidebar==='rail'?'rail':'', 'st-'+o.status, d.caps?'caps':'', d.btn==='outline'?'btn-outline':'', d.r<=3?'sq':''].join(' ');
+  document.getElementById('mock').innerHTML =
+    `<div class="${cls}" style="${mockVars(d,o)}" lang="${S.lang}">${sidebar(d,o)}<div class="mk-main">${topbar()}<div class="mk-body">${body}</div></div></div>`;
+}
+
+/* ───────── Chrome ───────── */
+function seg(el,items,val,on){
+  el.innerHTML=items.map(([v,l,def])=>`<button type="button" aria-pressed="${v===val}" class="${def?'def':''}" data-v="${v}">${l}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button'); if(b) on(b.dataset.v);};
+}
+function renderDirs(){
+  const el=document.getElementById('dirs');
+  el.innerHTML=DIRS.map(d=>{
+    const sw=m=>[m.side,m.bg,m.panel,m.acc,m.prog,m.rev,m.ok].map(c=>`<span style="background:${c}"></span>`).join('');
+    const starred=S.stars.includes(d.id);
+    return `<article class="dc" aria-current="${d.id===S.dir}">
+      <button class="dc-main" type="button" data-id="${d.id}">
+        <div class="dc-sw">${sw(d.L)}${sw(d.D)}</div>
+        <div class="dc-name" style="font-family:${d.f.display},sans-serif;font-weight:${d.hw}">
+          <span style="color:${S.mode==='dark'?d.D.accInk:d.L.accInk}">${markSvg(d.mark,22).replace('<svg','<svg style="--lm-acc:currentColor;color:inherit"')}</span>${d.name} <i>${d.gloss}</i></div>
+        ${d.rec?'<span class="badge">Recommended</span>':''}
+        <p>${d.pitch}</p>
+        <div class="dc-meta">${d.fn}${d.darkFirst?' · dark-first':''}</div>
+      </button>
+      <button class="dc-star" type="button" data-star="${d.id}" aria-pressed="${starred}" aria-label="Shortlist ${d.name}">${starred?'★':'☆'}</button>
+    </article>`;}).join('');
+  el.onclick=e=>{
+    const st=e.target.closest('[data-star]');
+    if(st){ const id=st.dataset.star; S.stars=S.stars.includes(id)?S.stars.filter(x=>x!==id):[...S.stars,id]; save(); renderDirs(); renderPicks(); return; }
+    const b=e.target.closest('[data-id]');
+    if(b){ S.dir=b.dataset.id; save(); renderAll(); document.getElementById('h-stage').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); }
+  };
+}
+function renderStage(){
+  const d=cur();
+  document.getElementById('stageName').textContent=d.name;
+  document.getElementById('stagePitch').textContent=d.pitch;
+  seg(document.getElementById('segView'),[['list','List'],['board','Board'],['plan','Delivery plan'],['cmd','Command palette']],S.view,v=>{S.view=v;save();renderStage();});
+  seg(document.getElementById('segMode'),[['light','Light'],['dark','Dark']],S.mode,v=>{S.mode=v;renderStage();renderDirs();renderMarks();});
+  seg(document.getElementById('segLang'),[['en','EN'],['da','DA']],S.lang,v=>{S.lang=v;save();renderStage();});
+  const o=opts();
+  const tune=document.getElementById('tune');
+  tune.innerHTML=VARIANTS.map(vr=>`<div class="grp"><span>${vr.label}</span><div class="seg" role="group" aria-label="${vr.label}" data-k="${vr.key}"></div></div>`).join('');
+  VARIANTS.forEach(vr=>seg(tune.querySelector(`[data-k="${vr.key}"]`),vr.opts.map(([v,l])=>[v,l,d.def[vr.key]===v]),o[vr.key],v=>{S.ov[vr.key]=v;save();renderStage();renderPicks();}));
+  renderMock();
+  const p=d[S.mode==='dark'?'D':'L'];
+  const toks=['bg','panel','sunk','line','ink','mute','acc','accInk','side','prog','rev','ok','warn','bad'];
+  document.getElementById('notes').innerHTML=`
+    <div class="note"><h3>Why it fits</h3><p>${d.why}</p></div>
+    <div class="note"><h3>Risk</h3><p>${d.risk}</p></div>
+    <div class="note"><h3>Type</h3><div class="spec">
+      <div class="d" style="font-family:${d.f.display},sans-serif;font-weight:${d.hw}">${d.word} æøå</div>
+      <div class="b" style="font-family:${d.f.ui},sans-serif">Flyt FLOW-12 til næste sprint. Leveranceplan for 2027.</div>
+      <div class="m" style="font-family:${d.f.mono},monospace">FLOW-142 · 8h · 4,5/3 personer</div>
+      <div class="m">${d.fn}</div></div></div>
+    <div class="note"><h3>Tokens (${S.mode})</h3><div class="tok">${toks.map(t=>`<div><i style="background:${p[t]}"></i>${t} ${p[t].toLowerCase()}</div>`).join('')}</div></div>`;
+}
+function renderMarks(){
+  const d=cur(), p=d[S.mode==='dark'?'D':'L'], dk=d.D;
+  const acc=p.acc==='#F2C200'||p.acc==='#FFD21F'?p.acc:p.accInk;
+  const el=document.getElementById('marks');
+  el.innerHTML=Object.entries(MARKS).map(([id,m])=>`<button class="mark" type="button" data-m="${id}" aria-pressed="${S.mark===id}">
+      <div class="lock" style="--lm-acc:${acc};--lm-bg:var(--pg-panel);font-family:${d.f.display},sans-serif;font-weight:${d.hw}">${markSvg(id,32)}<span>${d.word}</span></div>
+      <div class="dark" style="background:${dk.side};color:${dk.sideInk};--lm-acc:${d.sideAcc||dk.accInk};--lm-bg:${dk.side}">${markSvg(id,16)}${markSvg(id,22)}<span style="font-family:${d.f.display},sans-serif;font-weight:${d.hw};font-size:14px">${d.word}</span></div>
+      <div class="cap"><b>${m.n}${id===d.mark?' · direction default':''}</b><br>${m.d}</div>
+    </button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('[data-m]'); if(b){S.mark=S.mark===b.dataset.m?null:b.dataset.m; save(); renderMarks(); renderPicks();}};
+}
+function picksText(){
+  const d=cur(), o=opts();
+  const lab=(k,v)=>VARIANTS.find(x=>x.key===k).opts.find(x=>x[0]===v)[1];
+  const mk=S.mark||d.mark;
+  const notes=document.getElementById('picksNotes').value.trim();
+  return [`Flowstate design picks`,
+   `Direction: ${d.name} (${d.gloss})`,
+   ...VARIANTS.map(vr=>`${vr.label}: ${lab(vr.key,o[vr.key])}${o[vr.key]===d.def[vr.key]?'':' (changed)'}`),
+   `Logo mark: ${MARKS[mk].n}${S.mark?'':' (direction default)'}`,
+   `Shortlist: ${S.stars.map(id=>DIRS.find(x=>x.id===id)?.name).filter(Boolean).join(', ')||'none'}`,
+   notes?`Notes: ${notes}`:''].filter(Boolean).join('\n');
+}
+function renderPicks(){ document.getElementById('picksOut').textContent=picksText(); }
+document.getElementById('picksNotes').addEventListener('input',renderPicks);
+document.getElementById('resetTune').onclick=()=>{S.ov={};save();renderStage();renderPicks();};
+document.getElementById('copyBtn').onclick=()=>{
+  const txt=picksText(), msg=document.getElementById('copyMsg');
+  const fallback=()=>{const r=document.createRange(); r.selectNodeContents(document.getElementById('picksOut')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); msg.textContent='Selected. Press Ctrl+C to copy.';};
+  try{ navigator.clipboard.writeText(txt).then(()=>{msg.textContent='Copied. Paste it into the chat.';},fallback); }catch(e){ fallback(); }
+};
+function renderAll(){ renderDirs(); renderStage(); renderMarks(); renderPicks(); }
+renderAll();
+</script>
