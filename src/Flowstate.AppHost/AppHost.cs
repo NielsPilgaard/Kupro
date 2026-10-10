@@ -21,7 +21,8 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8180)
     .WithLifetime(ContainerLifetime.Persistent);
 
 // Same API image in `migrate` mode: applies EF migrations, then exits (ADR-012 IMP-003).
-var migrations = builder.AddProject<Projects.Flowstate_Api>("migrations")
+// No launch profile, so it does not claim the API's port.
+var migrations = builder.AddProject<Projects.Flowstate_Api>("migrations", launchProfileName: null)
     .WithArgs("migrate")
     .WithReference(database)
     .WaitFor(database);
@@ -43,7 +44,9 @@ if (builder.ExecutionContext.IsPublishMode)
     keycloak
         .WithEnvironment("KC_HOSTNAME", keycloakPublicUrl)
         .WithEnvironment("KC_HTTP_ENABLED", "true")
-        .WithEnvironment("KC_PROXY_HEADERS", "xforwarded");
+        .WithEnvironment("KC_PROXY_HEADERS", "xforwarded")
+        // Tokens carry the public issuer, but the API fetches keys over the internal network.
+        .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true");
 
     // Prod SPA = web/Dockerfile (bun build → nginx), build context = repo root (ADR-012 IMP-002).
     builder.AddDockerfile("web", "../..", "web/Dockerfile")
@@ -57,6 +60,8 @@ else
 {
     builder.AddViteApp("web", "../../web")
         .WithBun()
+        // Fixed port: the dev realm allows exactly this origin and redirect URI.
+        .WithEndpoint("http", endpoint => endpoint.Port = 5180)
         .WithEnvironment("VITE_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
         .WithReference(api)
         .WaitFor(api);

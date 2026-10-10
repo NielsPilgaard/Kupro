@@ -11,5 +11,10 @@
   "notFound": {
     "title": "Page not found",
     "back": "Go to start"
+  },
+  "auth": {
+    "signOut": "Sign out",
+    "signInFailed": "Sign-in didn't complete.",
+    "retry": "Try again"
   }
 }

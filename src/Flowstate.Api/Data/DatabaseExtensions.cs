@@ -14,7 +14,9 @@ public static class DatabaseExtensions
     public static IHostApplicationBuilder AddFlowstateDatabase(this IHostApplicationBuilder builder)
     {
         builder.Services.AddPooledDbContextFactory<FlowstateDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString(ConnectionName)));
+            options
+                .UseNpgsql(builder.Configuration.GetConnectionString(ConnectionName))
+                .UseSnakeCaseNamingConvention());
 
         // Adds the Npgsql health check, retries and OpenTelemetry on top of our own registration.
         builder.EnrichNpgsqlDbContext<FlowstateDbContext>();

@@ -38,6 +38,7 @@ services:
       KC_HOSTNAME: "${KEYCLOAK_PUBLIC_URL}"
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: "xforwarded"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "keycloak"
@@ -61,8 +62,6 @@ services:
       - "migrate"
     environment:
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
-      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
-      HTTP_PORTS: "${MIGRATIONS_PORT}"
       ConnectionStrings__flowstate: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=flowstate"
       FLOWSTATE_HOST: "postgres"
       FLOWSTATE_PORT: "5432"
@@ -74,8 +73,6 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "migrations"
-    expose:
-      - "${MIGRATIONS_PORT}"
     depends_on:
       postgres:
         condition: "service_started"

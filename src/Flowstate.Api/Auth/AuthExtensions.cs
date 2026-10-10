@@ -1,0 +1,98 @@
+using System.Security.Claims;
+using Flowstate.Api.Features.Tokens;
+using Flowstate.Api.Features.Users;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+
+namespace Flowstate.Api.Auth;
+
+public static class AuthExtensions
+{
+    /// <summary>Keycloak realm (ADR-005) and the audience its access tokens carry for this API.</summary>
+    public const string Realm = "flowstate";
+    public const string Audience = "flowstate-api";
+
+    private const string SelectorScheme = "Flowstate";
+
+    public static class Policies
+    {
+        /// <summary>A human session or personal token, not an agent token.</summary>
+        public const string Human = "human";
+    }
+
+    public static IHostApplicationBuilder AddFlowstateAuth(this IHostApplicationBuilder builder)
+    {
+        builder.Services.AddMemoryCache();
+
+        builder.Services
+            .AddAuthentication(SelectorScheme)
+            // One Bearer header, two credential types: fs_ API tokens; everything else is a Keycloak JWT.
+            .AddPolicyScheme(SelectorScheme, SelectorScheme, options =>
+                options.ForwardDefaultSelector = context => GetApiTokenFromHeader(context.Request) is not null
+                    ? ApiTokenAuthenticationHandler.SchemeName
+                    : JwtBearerDefaults.AuthenticationScheme)
+            .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
+                ApiTokenAuthenticationHandler.SchemeName, null)
+            .AddKeycloakJwtBearer("keycloak", Realm, options =>
+            {
+                options.Audience = Audience;
+                options.MapInboundClaims = false;
+                // Inside the compose network Keycloak is plain HTTP behind the TLS-terminating proxy.
+                options.RequireHttpsMetadata = false;
+                options.Events = new JwtBearerEvents { OnTokenValidated = ProvisionUserAsync };
+            });
+
+        builder.Services.AddAuthorizationBuilder()
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
+            .AddPolicy(Policies.Human, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(context => !context.User.HasClaim(c => c.Type == FlowstateClaims.AgentName)));
+
+        builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<ApiTokenService>();
+
+        return builder;
+    }
+
+    internal static string? GetApiTokenFromHeader(HttpRequest request)
+    {
+        var header = request.Headers.Authorization.ToString();
+        const string bearer = "Bearer ";
+        return header.StartsWith(bearer, StringComparison.OrdinalIgnoreCase)
+               && header.AsSpan(bearer.Length).StartsWith(ApiTokenService.CommonPrefix, StringComparison.Ordinal)
+            ? header[bearer.Length..].Trim()
+            : null;
+    }
+
+    private static string? PreferredLanguage(HttpRequest request) =>
+        request.GetTypedHeaders().AcceptLanguage
+            .OrderByDescending(l => l.Quality ?? 1)
+            .Select(l => l.Value.Value?.Split('-')[0].ToLowerInvariant())
+            .FirstOrDefault(l => l is not null && UserService.SupportedLocales.Contains(l));
+
+    /// <summary>First login creates the Flowstate user; every JWT gets our user id claim.</summary>
+    private static async Task ProvisionUserAsync(TokenValidatedContext context)
+    {
+        var principal = context.Principal!;
+        var subject = principal.FindFirstValue("sub");
+        if (subject is null)
+        {
+            context.Fail("Token has no subject.");
+            return;
+        }
+
+        var username = principal.FindFirstValue("preferred_username") ?? subject;
+        var identity = new ExternalIdentity(
+            subject,
+            principal.FindFirstValue("email") ?? username,
+            principal.FindFirstValue("name") ?? username,
+            // Keycloak only sends a locale once the user picked one; otherwise the browser's language decides.
+            principal.FindFirstValue("locale") ?? PreferredLanguage(context.HttpContext.Request));
+
+        var users = context.HttpContext.RequestServices.GetRequiredService<UserService>();
+        var userId = await users.EnsureUserAsync(identity, context.HttpContext.RequestAborted);
+
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(FlowstateClaims.UserId, userId.ToString()));
+    }
+}

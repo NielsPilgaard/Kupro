@@ -11,5 +11,10 @@
   "notFound": {
     "title": "Siden findes ikke",
     "back": "Gå til start"
+  },
+  "auth": {
+    "signOut": "Log ud",
+    "signInFailed": "Login blev ikke gennemført.",
+    "retry": "Prøv igen"
   }
 }

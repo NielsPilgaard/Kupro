@@ -2,9 +2,179 @@
   "openapi": "3.1.1",
   "info": {
     "title": "Flowstate API",
+    "description": "Agent-first issue tracker. Authenticate with a Keycloak access token or a Flowstate API token (fs_pat_..., fs_agent_...) as a Bearer token. Errors are Problem Details with a stable `code`.",
     "version": "v1"
   },
   "paths": {
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Get the current user.",
+        "description": "For an agent token, `agent` names the agent acting on behalf of this user.",
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Me"
+        ],
+        "summary": "Update the current user's profile (display name, language, time zone).",
+        "operationId": "updateMe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens": {
+      "get": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "List your active API tokens.",
+        "operationId": "listApiTokens",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiTokenResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Create an API token. The secret is returned once.",
+        "operationId": "createApiToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tokens/{id}": {
+      "delete": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Revoke an API token. Takes effect immediately.",
+        "operationId": "revokeApiToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/status": {
       "get": {
         "tags": [
@@ -29,6 +199,198 @@
   },
   "components": {
     "schemas": {
+      "ApiTokenKind": {
+        "enum": [
+          "personal",
+          "agent"
+        ]
+      },
+      "ApiTokenResponse": {
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "agentName",
+          "hint",
+          "createdAt",
+          "expiresAt",
+          "lastUsedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Token id, used to revoke it.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Label given at creation."
+          },
+          "kind": {
+            "description": "Personal or agent.",
+            "$ref": "#/components/schemas/ApiTokenKind"
+          },
+          "agentName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Agent name for agent tokens."
+          },
+          "hint": {
+            "type": "string",
+            "description": "Prefix and last four characters of the secret."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time.",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Expiry time, or null if it never expires.",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Last successful use (updated at most once a minute).",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateApiTokenRequest": {
+        "required": [
+          "name",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Label to recognise the token, e.g. \"CI deploy\" or \"laptop CLI\"."
+          },
+          "kind": {
+            "description": "`personal` acts as you; `agent` acts on your behalf under the agent's name.",
+            "$ref": "#/components/schemas/ApiTokenKind"
+          },
+          "agentName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Required for agent tokens: lowercase name shown in the activity log, e.g. `triage-agent`."
+          },
+          "expiresInDays": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Days until expiry (1-365); omit for a token that does not expire.",
+            "format": "int32"
+          }
+        }
+      },
+      "CreatedApiTokenResponse": {
+        "required": [
+          "token",
+          "secret"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "description": "The stored token.",
+            "$ref": "#/components/schemas/ApiTokenResponse"
+          },
+          "secret": {
+            "type": "string",
+            "description": "The token secret. Shown once; only its hash is stored."
+          }
+        }
+      },
+      "MeResponse": {
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "locale",
+          "timeZone",
+          "agent"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Flowstate user id.",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "description": "Login email."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Name shown in the UI and activity log."
+          },
+          "locale": {
+            "type": "string",
+            "description": "UI language: `en` or `da`."
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "IANA time zone id."
+          },
+          "agent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Agent name when the caller is an agent token acting for this user; otherwise null."
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "StatusResponse": {
         "required": [
           "service",
@@ -45,10 +407,54 @@
             "description": "API build version."
           }
         }
+      },
+      "UpdateMeRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New display name."
+          },
+          "locale": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "UI language: `en` or `da`."
+          },
+          "timeZone": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "IANA time zone id, e.g. `Europe/Copenhagen`."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "description": "Keycloak JWT or Flowstate API token.",
+        "scheme": "bearer"
       }
     }
   },
+  "security": [
+    {
+      "bearer": [ ]
+    }
+  ],
   "tags": [
+    {
+      "name": "Me"
+    },
+    {
+      "name": "Tokens"
+    },
     {
       "name": "Status"
     }

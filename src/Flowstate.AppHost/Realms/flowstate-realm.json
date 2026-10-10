@@ -16,7 +16,10 @@
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
   "internationalizationEnabled": true,
-  "supportedLocales": ["en", "da"],
+  "supportedLocales": [
+    "en",
+    "da"
+  ],
   "defaultLocale": "en",
   "clients": [
     {
@@ -28,13 +31,29 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
-      "redirectUris": ["http://localhost:*", "https://localhost:*"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://localhost:5180/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5180"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:*##https://localhost:*"
+        "post.logout.redirect.uris": "http://localhost:5180/*"
       },
-      "defaultClientScopes": ["web-origins", "profile", "roles", "email", "flowstate-api"]
+      "protocolMappers": [
+        {
+          "name": "flowstate-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "flowstate-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "cli",
@@ -47,15 +66,6 @@
       "attributes": {
         "oauth2.device.authorization.grant.enabled": "true"
       },
-      "defaultClientScopes": ["profile", "email", "flowstate-api"]
-    }
-  ],
-  "clientScopes": [
-    {
-      "name": "flowstate-api",
-      "description": "Audience mapper so access tokens are accepted by the Flowstate API.",
-      "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
       "protocolMappers": [
         {
           "name": "flowstate-api-audience",
@@ -64,7 +74,8 @@
           "config": {
             "included.custom.audience": "flowstate-api",
             "access.token.claim": "true",
-            "id.token.claim": "false"
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
           }
         }
       ]
@@ -78,7 +89,13 @@
       "lastName": "User",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "dev", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev",
+          "temporary": false
+        }
+      ]
     },
     {
       "username": "other@flowstate.local",
@@ -87,7 +104,13 @@
       "lastName": "User",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [{ "type": "password", "value": "other", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "other",
+          "temporary": false
+        }
+      ]
     }
   ]
 }
