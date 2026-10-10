@@ -1,0 +1,56 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Flowstate API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/v1/status": {
+      "get": {
+        "tags": [
+          "Status"
+        ],
+        "summary": "Get API status.",
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StatusResponse": {
+        "required": [
+          "service",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Service name, always `flowstate`."
+          },
+          "version": {
+            "type": "string",
+            "description": "API build version."
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Status"
+    }
+  ]
+}

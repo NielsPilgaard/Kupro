@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Flowstate.AppHost/Flowstate.AppHost.csproj"
+  }
+}

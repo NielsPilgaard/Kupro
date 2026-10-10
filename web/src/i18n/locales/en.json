@@ -1,0 +1,15 @@
+{
+  "app": {
+    "name": "Flowstate",
+    "tagline": "Plan the year. Ship the week."
+  },
+  "status": {
+    "checking": "Connecting to API…",
+    "online": "API online · v{{version}}",
+    "offline": "API unreachable. Is `aspire run` running?"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Go to start"
+  }
+}

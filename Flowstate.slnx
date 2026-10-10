@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Flowstate.Api/Flowstate.Api.csproj" />
+    <Project Path="src/Flowstate.AppHost/Flowstate.AppHost.csproj" />
+    <Project Path="src/Flowstate.Cli/Flowstate.Cli.csproj" />
+    <Project Path="src/Flowstate.ServiceDefaults/Flowstate.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Flowstate.Tests/Flowstate.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -2,7 +2,7 @@
 title: 'Task 001: Repo scaffold, dev environment, CI'
 description: >-
   Create solution layout, React app, Aspire AppHost dev stack (Postgres, Keycloak), OpenAPI → TS codegen, editorconfig and GitHub Actions CI.
-status: 'Todo'
+status: 'Done'
 phase: 0
 depends_on: []
 purpose: 'Implementation spec for task 001.'
@@ -44,8 +44,16 @@ purpose: 'Implementation spec for task 001.'
 
 ## Acceptance criteria
 
-- [ ] `aspire run` gives a running API (`/health`), SPA and Aspire dashboard on localhost.
-- [ ] `docker compose -f deploy/docker-compose.yaml up` (generated) also starts the full stack.
-- [ ] SPA calls `/health` (or a sample endpoint) through the generated client.
-- [ ] CI green on an empty feature set.
-- [ ] README has a 3-step quickstart.
+- [x] `aspire run` gives a running API (`/health`), SPA and Aspire dashboard on localhost.
+- [x] `docker compose -f deploy/docker-compose.yaml up` (generated) also starts the full stack.
+- [x] SPA calls `/health` (or a sample endpoint) through the generated client.
+- [x] CI green on an empty feature set.
+- [x] README has a 3-step quickstart.
+
+## Implementation notes
+
+- Compose file uses `${API_IMAGE}` / `${WEB_IMAGE}` / `${MIGRATIONS_IMAGE}`: `aspire deploy` builds the images, fills
+  the env file and runs `docker compose up` (verified locally). Image registry/build in prod is task 013.
+- Keycloak realm is bind-mounted from the AppHost dir (`KEYCLOAK_BINDMOUNT_0`); task 013 should bake it into an image.
+- Migrations run as a separate `migrations` resource (API image with `migrate` arg) before `api` starts.
+- Keycloak dev port is 8180 (8080 often taken by other local stacks).

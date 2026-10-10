@@ -22,3 +22,6 @@ test-results/
 .DS_Store
 Thumbs.db
 .idea/
+
+# Tooling output
+.playwright-mcp/

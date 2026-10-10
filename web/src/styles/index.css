@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Map Kobber tokens into Tailwind so components use classes like bg-panel, text-mute, rounded-r1. */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-acc: var(--acc);
+  --color-acc-ink: var(--acc-ink);
+  --color-on-acc: var(--on-acc);
+  --color-side: var(--side);
+  --color-side-ink: var(--side-ink);
+  --color-prog: var(--prog);
+  --color-rev: var(--rev);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-sel: var(--sel);
+  --color-side-sel: var(--side-sel);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-display: var(--font-display);
+  --font-ui: var(--font-ui);
+  --font-mono: var(--font-mono);
+
+  --text-xs: 11px;
+  --text-xs--line-height: 16px;
+  --text-sm: 12px;
+  --text-sm--line-height: 16px;
+  --text-base: 13px;
+  --text-base--line-height: 18px;
+  --text-md: 14px;
+  --text-md--line-height: 22px;
+  --text-lg: 16px;
+  --text-lg--line-height: 22px;
+  --text-xl: 20px;
+  --text-xl--line-height: 26px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 32px;
+
+  --radius-r1: var(--r1);
+  --radius-r2: var(--r2);
+
+  --shadow-float: var(--shadow-float);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--acc-ink);
+    outline-offset: 1px;
+  }
+
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 16px;
+    padding: 0 4px;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    color: var(--mute);
+  }
+}

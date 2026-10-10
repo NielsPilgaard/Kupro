@@ -1,0 +1,15 @@
+{
+  "app": {
+    "name": "Flowstate",
+    "tagline": "Planlæg året. Lever ugen."
+  },
+  "status": {
+    "checking": "Forbinder til API…",
+    "online": "API online · v{{version}}",
+    "offline": "API'et svarer ikke. Kører `aspire run`?"
+  },
+  "notFound": {
+    "title": "Siden findes ikke",
+    "back": "Gå til start"
+  }
+}

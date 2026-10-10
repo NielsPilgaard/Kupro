@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  ASPIRE_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  dotnet:
+    name: .NET build, test, drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Build (emits openapi/flowstate.json)
+        run: dotnet build Flowstate.slnx -c Release
+
+      - name: OpenAPI spec drift
+        run: git diff --exit-code -- openapi/ || (echo "::error::openapi/ is stale — build locally and commit the spec" && exit 1)
+
+      - name: Test
+        run: dotnet test --solution Flowstate.slnx -c Release --no-build
+
+      - name: Compose drift
+        run: |
+          dotnet aspire publish -o deploy --non-interactive --nologo
+          git diff --exit-code -- deploy/docker-compose.yaml || (echo "::error::deploy/ is stale — run 'aspire publish -o deploy' and commit" && exit 1)
+
+  web:
+    name: Web lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: web/package.json
+
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run i18n:check
+      - run: bun run test
+      - run: bun run build
+
+  web-image:
+    name: Web image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f web/Dockerfile .

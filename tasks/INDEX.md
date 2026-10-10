@@ -27,7 +27,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
-| 1 | [001 Repo scaffold, dev environment, CI](001-repo-scaffold.md) | P0 | 0 | — | Todo |
 | 2 | [002 Authentication and API tokens](002-auth.md) | P0 | 0 | 001 | Todo |
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
 | 4 | [003 Workspaces, projects, members](003-workspaces-projects.md) | P0 | 1 | 002 | Todo |
@@ -48,6 +47,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | Task | Phase | Status |
 |---|---|---|
 | [000 Frontend ideas, branding and design guide](completed/000-frontend-ideas.md) | 0 | Done |
+| [001 Repo scaffold, dev environment, CI](completed/001-repo-scaffold.md) | 0 | Done |
 
 ## Rationale
 
