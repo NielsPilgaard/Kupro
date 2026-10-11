@@ -4,6 +4,7 @@ using Flowstate.Cli.Api;
 using Flowstate.Cli.Api.Models;
 using Flowstate.Cli.Commands;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Serialization.Json;
 
 namespace Flowstate.Cli;
 
@@ -82,6 +83,10 @@ public static class Cli
 
     public static RootCommand BuildRoot()
     {
+        // JSON in/out (--file, --json) must work before any API client has registered Kiota's factories.
+        ApiClientBuilder.RegisterDefaultSerializer<JsonSerializationWriterFactory>();
+        ApiClientBuilder.RegisterDefaultDeserializer<JsonParseNodeFactory>();
+
         var root = new RootCommand("Flowstate CLI: the issue tracker your agents can use too.");
         root.Options.Add(JsonOption);
         root.Options.Add(WorkspaceOption);

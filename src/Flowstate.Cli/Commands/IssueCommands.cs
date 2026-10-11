@@ -277,8 +277,15 @@ internal static class IssueCommands
     private static async Task<T> ReadJsonAsync<T>(string path, ParsableFactory<T> factory, CancellationToken ct) where T : IParsable
     {
         var json = path == "-" ? await Console.In.ReadToEndAsync(ct) : await File.ReadAllTextAsync(path, ct);
-        return await KiotaJsonSerializer.DeserializeAsync(json, factory, ct)
-            ?? throw new CliException("The JSON file is empty.");
+        try
+        {
+            return await KiotaJsonSerializer.DeserializeAsync(json, factory, ct)
+                ?? throw new CliException("The JSON file is empty.");
+        }
+        catch (System.Text.Json.JsonException e)
+        {
+            throw new CliException($"The file isn't valid JSON: {e.Message}");
+        }
     }
 
     private static double? ParseEffort(string? value) =>

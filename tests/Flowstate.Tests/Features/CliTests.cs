@@ -50,6 +50,24 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Create_many_reads_a_json_file_with_batch_parent_references()
+    {
+        var file = Path.GetTempFileName();
+        await File.WriteAllTextAsync(file, """
+            { "issues": [
+              { "project": "CLI", "title": "Epic", "type": "epic" },
+              { "project": "CLI", "title": "Child", "parent": "#0" } ] }
+            """, Ct);
+
+        var (exit, output, error) = await RunAsync(json: true, "issue", "create-many", "--file", file);
+
+        exit.ShouldBe(0, error);
+        var created = JsonDocument.Parse(output).RootElement;
+        created.GetArrayLength().ShouldBe(2);
+        created[1].GetProperty("parentKey").GetString().ShouldBe(created[0].GetProperty("key").GetString());
+    }
+
+    [Fact]
     public async Task Table_output_lists_issues_for_people()
     {
         await RunAsync(json: true, "issue", "create", "-p", "CLI", "-t", "Readable row");
