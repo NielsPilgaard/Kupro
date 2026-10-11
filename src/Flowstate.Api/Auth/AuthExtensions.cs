@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Flowstate.Api.Features.Tokens;
+using Flowstate.Api.Features.Realtime;
 using Flowstate.Api.Features.Users;
 using Flowstate.Api.Mcp;
 using Microsoft.AspNetCore.Authentication;
@@ -32,7 +33,7 @@ public static class AuthExtensions
             // One Bearer header, two credential types: fs_ API tokens; everything else is a Keycloak JWT.
             .AddPolicyScheme(SelectorScheme, SelectorScheme, options =>
             {
-                options.ForwardDefaultSelector = context => GetApiTokenFromHeader(context.Request) is not null
+                options.ForwardDefaultSelector = context => GetApiToken(context.Request) is not null
                     ? ApiTokenAuthenticationHandler.SchemeName
                     : JwtBearerDefaults.AuthenticationScheme;
                 // 401s point MCP clients (and anyone else) at the Protected Resource Metadata (RFC 9728).
@@ -51,7 +52,15 @@ public static class AuthExtensions
                 options.MapInboundClaims = false;
                 // Inside the compose network Keycloak is plain HTTP behind the TLS-terminating proxy.
                 options.RequireHttpsMetadata = false;
-                options.Events = new JwtBearerEvents { OnTokenValidated = ProvisionUserAsync };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = ProvisionUserAsync,
+                    OnMessageReceived = context =>
+                    {
+                        context.Token ??= GetRealtimeQueryToken(context.Request);
+                        return Task.CompletedTask;
+                    },
+                };
             });
 
         builder.Services.AddAuthorizationBuilder()
@@ -66,15 +75,31 @@ public static class AuthExtensions
         return builder;
     }
 
-    internal static string? GetApiTokenFromHeader(HttpRequest request)
+    /// <summary>A Flowstate API token from the Bearer header, or from the realtime hub's query string.</summary>
+    internal static string? GetApiToken(HttpRequest request)
     {
         var header = request.Headers.Authorization.ToString();
         const string bearer = "Bearer ";
-        return header.StartsWith(bearer, StringComparison.OrdinalIgnoreCase)
-               && header.AsSpan(bearer.Length).StartsWith(ApiTokenService.CommonPrefix, StringComparison.Ordinal)
-            ? header[bearer.Length..].Trim()
+        if (header.StartsWith(bearer, StringComparison.OrdinalIgnoreCase))
+        {
+            return header.AsSpan(bearer.Length).StartsWith(ApiTokenService.CommonPrefix, StringComparison.Ordinal)
+                ? header[bearer.Length..].Trim()
+                : null;
+        }
+
+        return GetRealtimeQueryToken(request) is { } token && token.StartsWith(ApiTokenService.CommonPrefix, StringComparison.Ordinal)
+            ? token
             : null;
     }
+
+    /// <summary>
+    /// Browsers can't set headers on a WebSocket, so the SignalR client sends the token as <c>access_token</c>.
+    /// Accepted on the hub path only; request logging records paths, not query strings.
+    /// </summary>
+    private static string? GetRealtimeQueryToken(HttpRequest request) =>
+        request.Path.StartsWithSegments(WorkspaceHub.Path) && request.Query["access_token"].ToString() is { Length: > 0 } token
+            ? token
+            : null;
 
     private static string? PreferredLanguage(HttpRequest request) =>
         request.GetTypedHeaders().AcceptLanguage

@@ -4,6 +4,7 @@ import { CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLef
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
+import { useRealtime } from '../api/realtime';
 import { signOut } from '../auth/auth';
 import { Kbd } from '../components/ui';
 import { CommandPalette } from '../features/palette/CommandPalette';
@@ -21,6 +22,7 @@ export function AppShell() {
   const search = useSearch({ strict: false }) as { issue?: string };
   const navigate = useNavigate();
   const { data: me } = useQuery(getMeOptions());
+  useRealtime(workspace, search.issue);
 
   // The profile's language wins over the browser's (ADR-011).
   useEffect(() => {

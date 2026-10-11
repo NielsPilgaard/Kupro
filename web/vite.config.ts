@@ -10,7 +10,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': { target: apiTarget, changeOrigin: true, secure: false },
+      // ws: the realtime hub (task 012) lives under /api too.
+      '/api': { target: apiTarget, changeOrigin: true, secure: false, ws: true },
     },
   },
   test: {

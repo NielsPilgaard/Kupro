@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Realtime;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
@@ -93,7 +94,8 @@ public sealed record PlanResponse(
 /// The delivery plan (task 011, docs/delivery-plan.md): a read model over issues plus milestones and project capacity,
 /// which this service owns. Demand is spread evenly over each card's days (OQ-3).
 /// </summary>
-public sealed class PlanService(IDbContextFactory<FlowstateDbContext> dbFactory, WorkspaceContext workspace, TimeProvider clock)
+public sealed class PlanService(
+    IDbContextFactory<FlowstateDbContext> dbFactory, WorkspaceContext workspace, RealtimeEvents realtime, TimeProvider clock)
 {
     public async Task<IssueResult<PlanResponse>> GetPlanAsync(DateOnly? from, DateOnly? to, string[]? projectKeys, CancellationToken ct)
     {
@@ -250,6 +252,7 @@ public sealed class PlanService(IDbContextFactory<FlowstateDbContext> dbFactory,
             People = e.People,
         }));
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Plan);
         return entries;
     }
 
@@ -286,6 +289,7 @@ public sealed class PlanService(IDbContextFactory<FlowstateDbContext> dbFactory,
         };
         db.Milestones.Add(milestone);
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Plan);
         return new MilestoneResponse(milestone.Id, milestone.Name, milestone.Date, request.Project?.ToUpperInvariant());
     }
 
@@ -301,6 +305,7 @@ public sealed class PlanService(IDbContextFactory<FlowstateDbContext> dbFactory,
         milestone.Name = request.Name?.Trim() ?? milestone.Name;
         milestone.Date = request.Date ?? milestone.Date;
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Plan);
         var projectKey = await db.Projects.Where(p => p.Id == milestone.ProjectId).Select(p => p.Key).FirstOrDefaultAsync(ct);
         return new MilestoneResponse(milestone.Id, milestone.Name, milestone.Date, projectKey);
     }
@@ -308,7 +313,13 @@ public sealed class PlanService(IDbContextFactory<FlowstateDbContext> dbFactory,
     public async Task<bool> DeleteMilestoneAsync(Guid id, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return await db.Milestones.Where(m => m.Id == id).ExecuteDeleteAsync(ct) > 0;
+        var deleted = await db.Milestones.Where(m => m.Id == id).ExecuteDeleteAsync(ct) > 0;
+        if (deleted)
+        {
+            await realtime.ChangedAsync(ChangeTopic.Plan);
+        }
+
+        return deleted;
     }
 
     /// <summary>Demand and supply for one month of one project. Mirrored in web/src/features/plan/demand.ts.</summary>

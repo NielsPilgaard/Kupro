@@ -271,5 +271,8 @@
   "upload": {
     "uploading": "Uploader {{name}}…",
     "failed": "Kunne ikke uploade {{name}}."
+  },
+  "realtime": {
+    "changed": "{{key}} blev lige ændret af {{name}} via {{via}}."
   }
 }

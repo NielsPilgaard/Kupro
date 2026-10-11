@@ -10,6 +10,7 @@ using Flowstate.Api.Features.Email;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Realtime;
 using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Mcp;
@@ -37,6 +38,9 @@ builder.Services.AddScoped<ActivityFeed>();
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.Section));
 builder.Services.AddSingleton<ObjectStorage>();
 builder.Services.AddScoped<AttachmentService>();
+builder.Services.AddScoped<RealtimeEvents>();
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services
     .AddControllers(options =>
     {
@@ -68,6 +72,7 @@ app.UseMiddleware<IdempotencyMiddleware>();
 app.MapOpenApi().AllowAnonymous();
 app.MapControllers();
 app.MapFlowstateMcp();
+app.MapHub<WorkspaceHub>(WorkspaceHub.Path);
 app.MapDefaultEndpoints();
 
 await app.RunAsync();

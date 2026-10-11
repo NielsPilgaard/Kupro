@@ -18,7 +18,7 @@ public sealed class ApiTokenAuthenticationHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var secret = AuthExtensions.GetApiTokenFromHeader(Request);
+        var secret = AuthExtensions.GetApiToken(Request);
         if (secret is null)
         {
             return AuthenticateResult.NoResult();

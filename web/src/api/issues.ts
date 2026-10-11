@@ -36,7 +36,7 @@ export function useMembers(workspace: string) {
   return useQuery({ ...listMembersOptions({ path: { workspace } }), staleTime: 60_000 });
 }
 
-const isIssueList = (q: Query) => (q.queryKey[0] as { _id?: string } | undefined)?._id === 'listIssues';
+export const isIssueList = (q: Query) => (q.queryKey[0] as { _id?: string } | undefined)?._id === 'listIssues';
 
 /** Snapshot of every cached issue list plus one detail, for rollback. */
 type Snapshot = { lists: [readonly unknown[], IssuePage | undefined][]; detail?: IssueDetail; detailKey: readonly unknown[] };

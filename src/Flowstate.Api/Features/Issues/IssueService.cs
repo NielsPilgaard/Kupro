@@ -4,6 +4,7 @@ using System.Text;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Realtime;
 using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
@@ -22,6 +23,7 @@ public sealed class IssueService(
     WorkspaceContext workspace,
     LabelService labels,
     ActivityLog activity,
+    RealtimeEvents realtime,
     TimeProvider clock)
 {
     public const string Me = "me";
@@ -355,7 +357,9 @@ public sealed class IssueService(
 
         var ids = created.Select(i => i.Id).ToList();
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
-        return summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
+        var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
+        await realtime.IssuesAsync(ordered, created: true);
+        return ordered;
     }
 
     // ---------------------------------------------------------------- update
@@ -564,7 +568,9 @@ public sealed class IssueService(
 
         var ids = updates.Select(u => issues[NormalizeKey(u.Key)].Id).Distinct().ToList();
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
-        return summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
+        var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
+        await realtime.IssuesAsync(ordered);
+        return ordered;
     }
 
     /// <summary>Board move: optional state change plus a position between two neighbours.</summary>
@@ -604,7 +610,9 @@ public sealed class IssueService(
 
         issue.UpdatedAt = now;
         await db.SaveChangesAsync(ct);
-        return await db.Issues.AsNoTracking().Where(i => i.Id == issue.Id).Select(SummaryOf(db)).SingleAsync(ct);
+        var moved = await db.Issues.AsNoTracking().Where(i => i.Id == issue.Id).Select(SummaryOf(db)).SingleAsync(ct);
+        await realtime.IssuesAsync([moved]);
+        return moved;
     }
 
     // ---------------------------------------------------------------- relations
@@ -668,6 +676,8 @@ public sealed class IssueService(
             return new IssueError("relation_exists", $"{keys[0]} already {request.Type} {keys[1]}.");
         }
 
+        await realtime.ChangedAsync(ChangeTopic.Issue, keys[0]);
+        await realtime.ChangedAsync(ChangeTopic.Issue, keys[1]);
         return new IssueRelationResponse(relation.Id, request.Type, other.Ref);
     }
 
@@ -693,6 +703,8 @@ public sealed class IssueService(
         await db.IssueRelations.Where(r => r.Id == relationId).ExecuteDeleteAsync(ct);
         activity.Record(db, issueId.Value, "relation_removed", new { type = relation.Type, issue = relation.Other });
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Issue, normalized);
+        await realtime.ChangedAsync(ChangeTopic.Issue, relation.Other);
         return null;
     }
 
@@ -717,6 +729,8 @@ public sealed class IssueService(
         }
 
         await db.SaveChangesAsync(ct);
+        var ids = open.Select(i => i.Id).ToList();
+        await realtime.IssuesAsync(await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct));
         return open.Count;
     }
 

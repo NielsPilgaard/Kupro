@@ -271,5 +271,8 @@
   "upload": {
     "uploading": "Uploading {{name}}…",
     "failed": "Couldn’t upload {{name}}."
+  },
+  "realtime": {
+    "changed": "{{key}} was just changed by {{name}} via {{via}}."
   }
 }

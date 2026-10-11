@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Realtime;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -73,6 +74,7 @@ public sealed class SprintService(
     IDbContextFactory<FlowstateDbContext> dbFactory,
     WorkspaceContext workspace,
     IssueService issues,
+    RealtimeEvents realtime,
     TimeProvider clock)
 {
     public async Task<IssueResult<IReadOnlyList<SprintResponse>>> ListAsync(string? projectKey, SprintState[]? states, CancellationToken ct)
@@ -135,6 +137,7 @@ public sealed class SprintService(
         };
         db.Sprints.Add(sprint);
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Sprints);
         return await GetAsync(sprint.Id, ct);
     }
 
@@ -157,6 +160,7 @@ public sealed class SprintService(
         }
 
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Sprints);
         return await GetAsync(id, ct);
     }
 
@@ -185,6 +189,7 @@ public sealed class SprintService(
             return new IssueError("sprint_already_active", "The project already has an active sprint. Close it first.");
         }
 
+        await realtime.ChangedAsync(ChangeTopic.Sprints);
         return await GetAsync(id, ct);
     }
 
@@ -219,6 +224,7 @@ public sealed class SprintService(
         sprint.State = SprintState.Closed;
         sprint.ClosedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Sprints);
 
         var closed = (await GetAsync(id, ct)).Value!;
         var next = target is { } t ? (await GetAsync(t, ct)).Value : null;

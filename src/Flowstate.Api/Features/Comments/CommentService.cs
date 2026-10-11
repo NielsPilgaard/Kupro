@@ -1,5 +1,6 @@
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Realtime;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Flowstate.Api.Features.Comments;
 
 /// <summary>Comments on issues (task 008). Owns Comment; anyone in the workspace may comment, only the author edits.</summary>
-public sealed class CommentService(IDbContextFactory<FlowstateDbContext> dbFactory, WorkspaceContext workspace, TimeProvider clock)
+public sealed class CommentService(
+    IDbContextFactory<FlowstateDbContext> dbFactory, WorkspaceContext workspace, RealtimeEvents realtime, TimeProvider clock)
 {
     public async Task<IssueResult<CommentResponse>> AddAsync(string key, CommentRequest request, CancellationToken ct)
     {
@@ -31,6 +33,7 @@ public sealed class CommentService(IDbContextFactory<FlowstateDbContext> dbFacto
         };
         db.Comments.Add(comment);
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Issue, normalized);
         return (await GetAsync(db, comment.Id, ct))!;
     }
 
@@ -46,7 +49,9 @@ public sealed class CommentService(IDbContextFactory<FlowstateDbContext> dbFacto
         comment!.Body = request.Body.Trim();
         comment.EditedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
-        return (await GetAsync(db, id, ct))!;
+        var response = (await GetAsync(db, id, ct))!;
+        await realtime.ChangedAsync(ChangeTopic.Issue, response.IssueKey);
+        return response;
     }
 
     public async Task<IssueError?> DeleteAsync(Guid id, CancellationToken ct)
@@ -58,8 +63,10 @@ public sealed class CommentService(IDbContextFactory<FlowstateDbContext> dbFacto
             return error;
         }
 
+        var key = await db.Issues.Where(i => i.Id == comment!.IssueId).Select(i => i.Key).SingleAsync(ct);
         db.Comments.Remove(comment!);
         await db.SaveChangesAsync(ct);
+        await realtime.ChangedAsync(ChangeTopic.Issue, key);
         return null;
     }
 
