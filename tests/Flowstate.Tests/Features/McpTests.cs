@@ -66,6 +66,30 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Agent_runs_a_sprint_through_mcp()
+    {
+        await using var mcp = await ConnectAsync();
+
+        var sprint = await CallAsync(mcp, "manage_sprint", new()
+        {
+            ["action"] = "create",
+            ["project"] = "MCP",
+            ["name"] = "Agent sprint",
+            ["startDate"] = "2027-02-01",
+            ["endDate"] = "2027-02-12",
+        });
+        var id = sprint.GetProperty("id").GetString();
+        await CallAsync(mcp, "manage_sprint", new() { ["action"] = "start", ["id"] = id });
+        await CallAsync(mcp, "create_issues", new() { ["issues"] = new object[] { new { project = "MCP", title = "In sprint", sprint = "active" } } });
+
+        var sprints = await CallAsync(mcp, "list_sprints", new() { ["project"] = "MCP", ["state"] = new[] { "active" } });
+        sprints.EnumerateArray().ShouldHaveSingleItem().GetProperty("issueCount").GetInt32().ShouldBe(1);
+
+        var closed = await CallAsync(mcp, "manage_sprint", new() { ["action"] = "close", ["id"] = id, ["moveUnfinishedTo"] = "backlog" });
+        closed.GetProperty("moved").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Service_errors_come_back_as_tool_errors_with_the_stable_code()
     {
         await using var mcp = await ConnectAsync();

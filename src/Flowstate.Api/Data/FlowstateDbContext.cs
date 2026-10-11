@@ -3,6 +3,7 @@ using Flowstate.Api.Common;
 using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Tokens;
 using Flowstate.Api.Features.Users;
 using Flowstate.Api.Features.Workspaces;
@@ -28,6 +29,7 @@ public sealed class FlowstateDbContext(DbContextOptions<FlowstateDbContext> opti
     public DbSet<Member> Members => Set<Member>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Issue> Issues => Set<Issue>();
+    public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<Label> Labels => Set<Label>();
     public DbSet<IssueLabel> IssueLabels => Set<IssueLabel>();
     public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();

@@ -4,6 +4,7 @@ using System.Text;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,7 @@ public sealed class IssueService(
 {
     public const string Me = "me";
     public const string Unassigned = "none";
+    public const string ActiveSprint = "active";
 
     // ---------------------------------------------------------------- reads
 
@@ -74,7 +76,7 @@ public sealed class IssueService(
             .ToList();
         return new IssueDetail(s.Id, s.Key, row.ProjectKey, s.Type, s.Title, row.Description, s.State, s.Priority,
             s.Assignee, row.Parent, s.Effort, row.Children.Count > 0 ? row.ChildEffort : null, s.StartDate, s.DueDate,
-            s.Labels, row.Children, relations, s.Rank, row.CreatedBy, s.CreatedAt, s.UpdatedAt, row.CompletedAt);
+            s.Labels, row.Children, relations, s.Rank, s.SprintId, row.CreatedBy, s.CreatedAt, s.UpdatedAt, row.CompletedAt);
     }
 
     public async Task<IssueResult<IssuePage>> ListAsync(IssueQuery query, CancellationToken ct)
@@ -120,6 +122,26 @@ public sealed class IssueService(
             var name = LabelService.Normalize(label);
             issues = issues.Where(i => db.IssueLabels.Any(il => il.IssueId == i.Id
                 && db.Labels.Any(l => l.Id == il.LabelId && l.Name == name)));
+        }
+
+        if (query.Sprint is { } sprint)
+        {
+            if (sprint == Unassigned)
+            {
+                issues = issues.Where(i => i.SprintId == null);
+            }
+            else if (sprint == ActiveSprint)
+            {
+                issues = issues.Where(i => db.Sprints.Any(s => s.Id == i.SprintId && s.State == SprintState.Active));
+            }
+            else if (Guid.TryParse(sprint, out var sprintId))
+            {
+                issues = issues.Where(i => i.SprintId == sprintId);
+            }
+            else
+            {
+                return new IssueError("invalid_filter", "sprint must be a sprint id, 'active' or 'none'.");
+            }
         }
 
         if (query.Parent is { } parent)
@@ -169,6 +191,7 @@ public sealed class IssueService(
             .ToDictionaryAsync(i => i.Key, i => new ParentInfo(i.Id, i.Type), ct);
         var assignees = await ResolveAssigneesAsync(db, requests.Select(r => r.Assignee), ct);
 
+        var sprintIds = new Guid?[requests.Count];
         for (var n = 0; n < requests.Count; n++)
         {
             var r = requests[n];
@@ -204,6 +227,17 @@ public sealed class IssueService(
             {
                 return new IssueError("invalid_dates", $"{where}Start date is after due date.");
             }
+
+            if (r.Sprint is not null)
+            {
+                var (sprintId, sprintError) = await ResolveSprintAsync(db, r.Sprint, projects[r.Project.ToUpperInvariant()], ct);
+                if (sprintError is not null)
+                {
+                    return sprintError with { Detail = where + sprintError.Detail };
+                }
+
+                sprintIds[n] = sprintId;
+            }
         }
 
         var numbers = new Dictionary<Guid, int>();
@@ -215,7 +249,7 @@ public sealed class IssueService(
 
         var now = clock.GetUtcNow();
         var created = new List<Issue>(requests.Count);
-        foreach (var r in requests)
+        foreach (var (r, index) in requests.Select((r, i) => (r, i)))
         {
             var projectKey = r.Project.ToUpperInvariant();
             var projectId = projects[projectKey];
@@ -241,6 +275,7 @@ public sealed class IssueService(
                 DueDate = r.DueDate,
                 // New issues go to the bottom of their column; the project counter is monotonic.
                 Rank = number,
+                SprintId = sprintIds[index],
                 CreatedById = workspace.MemberId,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -431,6 +466,27 @@ public sealed class IssueService(
                 issue.ParentId = newParentId;
             }
 
+            if (c.Sprint is not null || clear.Contains(IssueField.Sprint))
+            {
+                Guid? sprintId = null;
+                if (!clear.Contains(IssueField.Sprint))
+                {
+                    var (resolved, sprintError) = await ResolveSprintAsync(db, c.Sprint!, issue.ProjectId, ct);
+                    if (sprintError is not null)
+                    {
+                        return sprintError with { Detail = where + sprintError.Detail };
+                    }
+
+                    sprintId = resolved;
+                }
+
+                if (sprintId != issue.SprintId)
+                {
+                    changes["sprint"] = new(issue.SprintId, sprintId);
+                    issue.SprintId = sprintId;
+                }
+            }
+
             var labelsChanged = await ApplyLabelsAsync(db, issue, c, labelNames, ct);
             if (labelsChanged is not null)
             {
@@ -582,6 +638,45 @@ public sealed class IssueService(
 
     // ---------------------------------------------------------------- helpers
 
+    /// <summary>
+    /// Moves a sprint's unfinished issues to another sprint, or out of sprints when <paramref name="to"/> is null.
+    /// Called by SprintService when a sprint closes; each move is logged on the issue.
+    /// </summary>
+    public async Task<int> MoveUnfinishedAsync(Guid from, Guid? to, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var open = await db.Issues
+            .Where(i => i.SprintId == from && i.State != IssueState.Done && i.State != IssueState.Canceled)
+            .ToListAsync(ct);
+        var now = clock.GetUtcNow();
+        foreach (var issue in open)
+        {
+            activity.Record(db, issue.Id, "updated", new Dictionary<string, FieldChange> { ["sprint"] = new(from, to) });
+            issue.SprintId = to;
+            issue.UpdatedAt = now;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return open.Count;
+    }
+
+    /// <summary>Sprint id for <c>active</c> or an id; it must belong to the issue's project and not be closed.</summary>
+    private static async Task<(Guid? Id, IssueError? Error)> ResolveSprintAsync(
+        FlowstateDbContext db, string value, Guid projectId, CancellationToken ct)
+    {
+        var candidates = db.Sprints.Where(s => s.ProjectId == projectId && s.State != SprintState.Closed);
+        var id = value == ActiveSprint
+            ? await candidates.Where(s => s.State == SprintState.Active).Select(s => (Guid?)s.Id).SingleOrDefaultAsync(ct)
+            : Guid.TryParse(value, out var parsed)
+                ? await candidates.Where(s => s.Id == parsed).Select(s => (Guid?)s.Id).SingleOrDefaultAsync(ct)
+                : null;
+        return id is null
+            ? (null, new IssueError("invalid_sprint", value == ActiveSprint
+                ? "The project has no active sprint."
+                : $"Sprint {value} isn't an open sprint in this issue's project."))
+            : (id, null);
+    }
+
     private static string NormalizeKey(string key) => key.Trim().ToUpperInvariant();
 
     /// <summary><c>#2</c> in a bulk create: the third issue of the same request.</summary>
@@ -681,6 +776,7 @@ public sealed class IssueService(
                 .OrderBy(n => n)
                 .ToList(),
             i.Rank,
+            i.SprintId,
             i.CreatedAt,
             i.UpdatedAt);
 

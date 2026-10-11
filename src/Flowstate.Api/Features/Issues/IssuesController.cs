@@ -116,8 +116,9 @@ internal static class IssueResults
     public static ObjectResult ToProblem(this ControllerBase controller, IssueError error) =>
         controller.Problem(error.Code switch
         {
-            "issue_not_found" or "label_not_found" or "relation_not_found" => StatusCodes.Status404NotFound,
-            "relation_exists" or "label_taken" => StatusCodes.Status409Conflict,
+            "issue_not_found" or "label_not_found" or "relation_not_found" or "sprint_not_found" => StatusCodes.Status404NotFound,
+            "relation_exists" or "label_taken" or "sprint_already_active" or "sprint_not_active" or "sprint_not_planned"
+                or "no_next_sprint" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         }, error.Code, error.Detail);
 }

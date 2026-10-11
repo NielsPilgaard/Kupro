@@ -35,12 +35,13 @@ internal static class IssueCommands
         var assignee = new Option<string?>("--assignee") { Description = "Member id, `me`, or `none`." };
         var label = new Option<string?>("--label") { Description = "Label name." };
         var parent = new Option<string?>("--parent") { Description = "Parent issue key: list its children." };
+        var sprint = new Option<string?>("--sprint") { Description = "Sprint id, `active` or `none`." };
         var sort = Cli.EnumOption<IssueSort>("--sort", "Order");
         var limit = new Option<int?>("--limit") { Description = "Page size, 1-200 (default 50)." };
         var cursor = new Option<string?>("--cursor") { Description = "Continue from a previous page's nextCursor." };
         var all = new Option<bool>("--all") { Description = "Follow pages until the end." };
         var command = new ApiCommand("list", "List issues with filters.", "listIssues")
-            { project, state, type, assignee, label, parent, sort, limit, cursor, all };
+            { project, state, type, assignee, label, parent, sprint, sort, limit, cursor, all };
 
         return command.Handle(async (c, ct) =>
         {
@@ -60,6 +61,7 @@ internal static class IssueCommands
                     q.Assignee = c.Get(assignee);
                     q.Label = c.Get(label);
                     q.Parent = c.Get(parent);
+                    q.Sprint = c.Get(sprint);
                     q.Sort = c.Get(sort);
                     q.Limit = c.Get(limit);
                     q.Cursor = pageCursor;
@@ -136,6 +138,7 @@ internal static class IssueCommands
                 StartDate = ParseDate(c.Get(f.Start)),
                 DueDate = ParseDate(c.Get(f.Due)),
                 Labels = c.Get(f.Labels) is { Length: > 0 } l ? [.. l] : null,
+                Sprint = c.Get(f.Sprint),
             };
             var created = await (await c.InWorkspaceAsync(ct)).Issues.PostAsync(request, cancellationToken: ct);
             await c.Out.DoneAsync(created!, $"Created {created!.Key}: {created.Title}");
@@ -196,6 +199,7 @@ internal static class IssueCommands
                 Labels = c.Get(f.Labels) is { Length: > 0 } l ? [.. l] : null,
                 AddLabels = c.Get(add) is { Length: > 0 } a ? [.. a] : null,
                 RemoveLabels = c.Get(remove) is { Length: > 0 } r ? [.. r] : null,
+                Sprint = Field(f.Sprint, IssueField.Sprint),
                 Clear = clear.Count > 0 ? clear : null,
             };
             var updated = await (await c.InWorkspaceAsync(ct)).Issues[c.Get(key)].PatchAsync(request, cancellationToken: ct);
@@ -314,11 +318,12 @@ internal static class IssueCommands
         public Option<string?> Effort { get; } = new("--effort", "-e") { Description = "Estimate in hours, e.g. 6 or 1.5." };
         public Option<string?> Start { get; } = new("--start") { Description = "Start date, YYYY-MM-DD." };
         public Option<string?> Due { get; } = new("--due") { Description = "Due date, YYYY-MM-DD." };
+        public Option<string?> Sprint { get; } = new("--sprint") { Description = "Sprint id or `active`." };
         public Option<string[]> Labels { get; } = new("--label", "-l") { Description = "Label; repeatable.", AllowMultipleArgumentsPerToken = true };
 
         public void AddTo(Command command)
         {
-            foreach (var option in new[] { Assignee, Parent, Effort, Start, Due })
+            foreach (var option in new[] { Assignee, Parent, Effort, Start, Due, Sprint })
             {
                 option.Description += _clearHint;
             }
@@ -339,6 +344,7 @@ internal static class IssueCommands
             command.Options.Add(Start);
             command.Options.Add(Due);
             command.Options.Add(Labels);
+            command.Options.Add(Sprint);
         }
 
         public async Task<string?> DescriptionAsync(CommandContext c, CancellationToken ct) =>

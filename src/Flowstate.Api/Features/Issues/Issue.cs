@@ -1,4 +1,5 @@
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +64,9 @@ public sealed class Issue : ITenantOwned
     public Guid? AssigneeId { get; set; }
     public Guid? ParentId { get; set; }
 
+    /// <summary>At most one sprint (ADR-008).</summary>
+    public Guid? SprintId { get; set; }
+
     /// <summary>Hours (ADR-008 OQ-1).</summary>
     public decimal? Effort { get; set; }
 
@@ -118,6 +122,7 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
         builder.HasOne<Member>().WithMany().HasForeignKey(i => i.AssigneeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Member>().WithMany().HasForeignKey(i => i.CreatedById).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Issue>().WithMany().HasForeignKey(i => i.ParentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Sprint>().WithMany().HasForeignKey(i => i.SprintId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(i => i.Labels).WithOne().HasForeignKey(l => l.IssueId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(i => i.Key).HasMaxLength(24);
@@ -136,6 +141,7 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
         builder.HasIndex(i => new { i.WorkspaceId, i.AssigneeId });
         builder.HasIndex(i => new { i.WorkspaceId, i.ParentId });
         builder.HasIndex(i => new { i.WorkspaceId, i.Type });
+        builder.HasIndex(i => new { i.WorkspaceId, i.SprintId });
     }
 }
 

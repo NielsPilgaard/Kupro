@@ -28,7 +28,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
-| 10 | [010 Sprints](010-sprints.md) | P1 | 1 | 004, 007 | Todo |
 | 11 | [011 Delivery plan view v1](011-delivery-plan.md) | P1 | 1 | 007, 010 | Todo |
 | 12 | [009 Search](009-search.md) | P2 | 1 | 004 | Todo |
 | 13 | [008 Comments, attachments, activity feed](008-comments-attachments.md) | P2 | 1 | 004 | Todo |
@@ -48,6 +47,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | [006 MCP server](completed/006-mcp.md) | 1 | Done |
 | [014 Performance budget enforcement](completed/014-perf-budget.md) | 1 | Done |
 | [007 Web UI — list, board, issue detail, command palette](completed/007-web-core-ui.md) | 1 | Done |
+| [010 Sprints](completed/010-sprints.md) | 1 | Done |
 
 ## Rationale
 

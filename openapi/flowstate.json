@@ -741,6 +741,400 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/sprints": {
+      "get": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "List sprints, optionally for one project and in given states.",
+        "operationId": "listSprints",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/SprintState"
+              }
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SprintResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "Plan a sprint for a project.",
+        "operationId": "createSprint",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSprintRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSprintRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSprintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/sprints/{id}": {
+      "get": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "Get a sprint with its issue count and effort totals.",
+        "operationId": "getSprint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "Rename a sprint or change its dates or goal.",
+        "operationId": "updateSprint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSprintRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSprintRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSprintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/sprints/{id}/start": {
+      "post": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "Start a planned sprint. A project has at most one active sprint.",
+        "operationId": "startSprint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/sprints/{id}/close": {
+      "post": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "Close the active sprint; unfinished issues move to the next sprint or the backlog.",
+        "operationId": "closeSprint",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseSprintRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseSprintRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseSprintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseSprintResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/projects": {
       "get": {
         "tags": [
@@ -1025,6 +1419,13 @@
           },
           {
             "name": "label",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sprint",
             "in": "query",
             "schema": {
               "type": "string"
@@ -1894,6 +2295,45 @@
           }
         }
       },
+      "CloseSprintRequest": {
+        "type": "object",
+        "properties": {
+          "moveUnfinishedTo": {
+            "description": "Where open issues go: `next` sprint or `backlog`.",
+            "$ref": "#/components/schemas/UnfinishedDestination"
+          }
+        }
+      },
+      "CloseSprintResponse": {
+        "required": [
+          "sprint",
+          "moved",
+          "movedTo"
+        ],
+        "type": "object",
+        "properties": {
+          "sprint": {
+            "description": "The closed sprint.",
+            "$ref": "#/components/schemas/SprintResponse"
+          },
+          "moved": {
+            "type": "integer",
+            "description": "How many unfinished issues moved.",
+            "format": "int32"
+          },
+          "movedTo": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Sprint they moved to; null when they went to the backlog.",
+                "$ref": "#/components/schemas/SprintResponse"
+              }
+            ]
+          }
+        }
+      },
       "CreateApiTokenRequest": {
         "required": [
           "name",
@@ -2031,6 +2471,13 @@
               "type": "string"
             },
             "description": "Label names; unknown names are created."
+          },
+          "sprint": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Sprint id, or `active` for the project's active sprint."
           }
         }
       },
@@ -2081,6 +2528,42 @@
                 "$ref": "#/components/schemas/ProjectColor"
               }
             ]
+          }
+        }
+      },
+      "CreateSprintRequest": {
+        "required": [
+          "project",
+          "name",
+          "startDate",
+          "endDate"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Project key."
+          },
+          "name": {
+            "type": "string",
+            "description": "Sprint name, e.g. \"Sprint 14\"."
+          },
+          "startDate": {
+            "type": "string",
+            "description": "First day.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Last day.",
+            "format": "date"
+          },
+          "goal": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What the sprint should achieve."
           }
         }
       },
@@ -2172,6 +2655,7 @@
           "children",
           "relations",
           "rank",
+          "sprintId",
           "createdBy",
           "createdAt",
           "updatedAt",
@@ -2278,6 +2762,13 @@
             "type": "number",
             "format": "double"
           },
+          "sprintId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "createdBy": {
             "$ref": "#/components/schemas/MemberRef"
           },
@@ -2305,7 +2796,8 @@
           "parent",
           "effort",
           "startDate",
-          "dueDate"
+          "dueDate",
+          "sprint"
         ],
         "description": "Fields that can be cleared with `clear` in an update."
       },
@@ -2425,6 +2917,7 @@
           "dueDate",
           "labels",
           "rank",
+          "sprintId",
           "createdAt",
           "updatedAt"
         ],
@@ -2495,6 +2988,13 @@
           "rank": {
             "type": "number",
             "format": "double"
+          },
+          "sprintId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "createdAt": {
             "type": "string",
@@ -2832,6 +3332,79 @@
         ],
         "description": "Relation as seen from one issue."
       },
+      "SprintResponse": {
+        "required": [
+          "id",
+          "projectKey",
+          "name",
+          "goal",
+          "startDate",
+          "endDate",
+          "state",
+          "issueCount",
+          "effort",
+          "doneEffort"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Sprint id.",
+            "format": "uuid"
+          },
+          "projectKey": {
+            "type": "string",
+            "description": "Project key."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name."
+          },
+          "goal": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Goal."
+          },
+          "startDate": {
+            "type": "string",
+            "description": "First day.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Last day.",
+            "format": "date"
+          },
+          "state": {
+            "description": "Planned, active or closed.",
+            "$ref": "#/components/schemas/SprintState"
+          },
+          "issueCount": {
+            "type": "integer",
+            "description": "Issues in the sprint.",
+            "format": "int32"
+          },
+          "effort": {
+            "type": "number",
+            "description": "Total effort of its issues, in hours.",
+            "format": "double"
+          },
+          "doneEffort": {
+            "type": "number",
+            "description": "Effort of its done issues, in hours.",
+            "format": "double"
+          }
+        }
+      },
+      "SprintState": {
+        "enum": [
+          "planned",
+          "active",
+          "closed"
+        ]
+      },
       "StatusResponse": {
         "required": [
           "service",
@@ -2861,6 +3434,13 @@
             "description": "OAuth client id for the CLI's device authorization grant."
           }
         }
+      },
+      "UnfinishedDestination": {
+        "enum": [
+          "next",
+          "backlog"
+        ],
+        "default": "next"
       },
       "UpdateIssueRequest": {
         "type": "object",
@@ -2989,6 +3569,13 @@
               "$ref": "#/components/schemas/IssueField"
             },
             "description": "Fields to empty."
+          },
+          "sprint": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Sprint id, or `active` for the project's active sprint. Clear with `clear: [sprint]`."
           }
         },
         "description": "Only the fields you set change. To empty a field, list it in `clear`."
@@ -3103,6 +3690,41 @@
                 "$ref": "#/components/schemas/ProjectColor"
               }
             ]
+          }
+        }
+      },
+      "UpdateSprintRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New name."
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New first day.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New last day.",
+            "format": "date"
+          },
+          "goal": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New goal."
           }
         }
       },
@@ -3234,6 +3856,9 @@
     },
     {
       "name": "Status"
+    },
+    {
+      "name": "Sprints"
     },
     {
       "name": "Projects"

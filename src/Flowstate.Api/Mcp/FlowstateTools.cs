@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Flowstate.Api.Common;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Projects;
+using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Users;
 using Flowstate.Api.Features.Workspaces;
 using ModelContextProtocol;
@@ -20,6 +21,7 @@ public sealed class FlowstateTools(
     ProjectService projects,
     IssueService issueService,
     LabelService labels,
+    SprintService sprints,
     UserService users)
 {
     private const string WorkspaceHelp = "Workspace slug. Optional when your token is limited to one workspace or you are in only one.";
@@ -168,6 +170,48 @@ public sealed class FlowstateTools(
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
         return await issueService.RemoveRelationAsync(key, relationId, ct) is { } error ? throw new McpException(Message(error)) : "removed";
+    }
+
+    [McpServerTool(Name = "list_sprints", ReadOnly = true), Description(
+        "Sprints with dates, state and effort totals (hours, done hours). Put issues in a sprint with update_issues " +
+        "(`sprint`: id or `active`); find a sprint's issues with search_issues `sprint`.")]
+    [CoversOperations("listSprints", "getSprint")]
+    public async Task<IReadOnlyList<SprintResponse>> ListSprints(
+        [Description("Project key; all projects when omitted.")] string? project = null,
+        [Description("States: planned, active, closed.")] SprintState[]? state = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return Unwrap(await sprints.ListAsync(project, state, ct));
+    }
+
+    [McpServerTool(Name = "manage_sprint"), Description(
+        "Create, start or close a sprint. create needs project, name, startDate, endDate. close moves unfinished " +
+        "issues to the next planned sprint (default) or to the backlog (moveUnfinishedTo=backlog).")]
+    [CoversOperations("createSprint", "startSprint", "closeSprint")]
+    public async Task<object> ManageSprint(
+        [Description("create, start or close.")] string action,
+        [Description("Sprint id (start, close).")] Guid? id = null,
+        [Description("Project key (create).")] string? project = null,
+        [Description("Name (create).")] string? name = null,
+        [Description("First day, YYYY-MM-DD (create).")] DateOnly? startDate = null,
+        [Description("Last day, YYYY-MM-DD (create).")] DateOnly? endDate = null,
+        [Description("Goal (create).")] string? goal = null,
+        [Description("next or backlog (close).")] UnfinishedDestination? moveUnfinishedTo = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
+        return action switch
+        {
+            "create" when project is not null && name is not null && startDate is { } start && endDate is { } end =>
+                Unwrap(await sprints.CreateAsync(new CreateSprintRequest(project, name, start, end, goal), ct)),
+            "start" when id is { } startId => Unwrap(await sprints.StartAsync(startId, ct)),
+            "close" when id is { } closeId => Unwrap(await sprints.CloseAsync(closeId,
+                new CloseSprintRequest(moveUnfinishedTo ?? UnfinishedDestination.Next), ct)),
+            _ => throw new McpException("invalid_arguments: create needs project, name, startDate, endDate; start and close need id."),
+        };
     }
 
     private static T Unwrap<T>(IssueResult<T> result) =>

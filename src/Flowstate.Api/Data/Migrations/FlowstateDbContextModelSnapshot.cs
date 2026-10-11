@@ -191,6 +191,10 @@ namespace Flowstate.Api.Data.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("rank");
 
+                    b.Property<Guid?>("SprintId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sprint_id");
+
                     b.Property<DateOnly?>("StartDate")
                         .HasColumnType("date")
                         .HasColumnName("start_date");
@@ -231,6 +235,9 @@ namespace Flowstate.Api.Data.Migrations
                     b.HasIndex("ParentId")
                         .HasDatabaseName("ix_issues_parent_id");
 
+                    b.HasIndex("SprintId")
+                        .HasDatabaseName("ix_issues_sprint_id");
+
                     b.HasIndex("ProjectId", "Number")
                         .IsUnique()
                         .HasDatabaseName("ix_issues_project_id_number");
@@ -244,6 +251,9 @@ namespace Flowstate.Api.Data.Migrations
 
                     b.HasIndex("WorkspaceId", "ParentId")
                         .HasDatabaseName("ix_issues_workspace_id_parent_id");
+
+                    b.HasIndex("WorkspaceId", "SprintId")
+                        .HasDatabaseName("ix_issues_workspace_id_sprint_id");
 
                     b.HasIndex("WorkspaceId", "Type")
                         .HasDatabaseName("ix_issues_workspace_id_type");
@@ -416,6 +426,68 @@ namespace Flowstate.Api.Data.Migrations
                         .HasDatabaseName("ix_projects_workspace_id_key");
 
                     b.ToTable("projects", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Sprints.Sprint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Goal")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("goal");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sprints");
+
+                    b.HasIndex("ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sprints_one_active_per_project")
+                        .HasFilter("state = 'Active'");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "StartDate")
+                        .HasDatabaseName("ix_sprints_workspace_id_project_id_start_date");
+
+                    b.ToTable("sprints", (string)null);
                 });
 
             modelBuilder.Entity("Flowstate.Api.Features.Tokens.ApiToken", b =>
@@ -727,6 +799,12 @@ namespace Flowstate.Api.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_issues_projects_project_id");
 
+                    b.HasOne("Flowstate.Api.Features.Sprints.Sprint", null)
+                        .WithMany()
+                        .HasForeignKey("SprintId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issues_sprints_sprint_id");
+
                     b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
@@ -787,6 +865,23 @@ namespace Flowstate.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_projects_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Sprints.Sprint", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sprints_projects_project_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sprints_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("Flowstate.Api.Features.Tokens.ApiToken", b =>

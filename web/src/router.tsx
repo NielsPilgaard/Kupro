@@ -4,6 +4,7 @@ import { AppShell } from './app/AppShell';
 import { callbackPath, completeSignIn, getSession, signIn } from './auth/auth';
 import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/IssuePages';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { SprintsPage } from './features/sprints/SprintsPage';
 import { HomePage, NewProjectPage, WorkspaceIndexPage } from './features/workspace/WorkspacePages';
 import { AuthCallbackError } from './routes/AuthCallbackError';
 import { NotFound } from './routes/NotFound';
@@ -55,6 +56,15 @@ const myIssuesRoute = createRoute({
   component: MyIssuesPage,
   validateSearch: withIssue,
 });
+const sprintsRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/sprints',
+  component: SprintsPage,
+  validateSearch: (search: Record<string, unknown>): { project?: string; issue?: string } => ({
+    ...(typeof search.project === 'string' ? { project: search.project } : {}),
+    ...withIssue(search),
+  }),
+});
 const projectRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/p/$project',
@@ -70,7 +80,7 @@ const routeTree = rootRoute.addChildren([
   authedRoute.addChildren([
     homeRoute,
     settingsRoute,
-    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, myIssuesRoute, projectRoute]),
+    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, myIssuesRoute, sprintsRoute, projectRoute]),
   ]),
 ]);
 

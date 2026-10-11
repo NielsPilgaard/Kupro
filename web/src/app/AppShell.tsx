@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { CircleUser, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search } from 'lucide-react';
+import { CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
@@ -100,6 +100,10 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
         <Link to="/w/$workspace/my-issues" params={{ workspace }} className={nav} activeProps={active}>
           <Inbox size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.myIssues')}
+        </Link>
+        <Link to="/w/$workspace/sprints" params={{ workspace }} className={nav} activeProps={active}>
+          <IterationCw size={16} strokeWidth={1.5} aria-hidden="true" />
+          {!collapsed && t('nav.sprints')}
         </Link>
       </div>
 

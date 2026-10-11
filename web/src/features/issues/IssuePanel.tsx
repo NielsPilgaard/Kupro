@@ -5,7 +5,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { addIssueRelationMutation, getIssueQueryKey, removeIssueRelationMutation } from '../../api/gen/@tanstack/react-query.gen';
+import { useQuery } from '@tanstack/react-query';
+import { addIssueRelationMutation, getIssueQueryKey, listSprintsOptions, removeIssueRelationMutation } from '../../api/gen/@tanstack/react-query.gen';
 import type { IssueDetail, IssueType, RelationKind, UpdateIssueRequest } from '../../api/gen/types.gen';
 import { useIssue, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
@@ -150,6 +151,9 @@ function IssueBody({
             <DateInput value={issue.dueDate} label={t('issue.dueDate')} onCommit={(v) => save(v ? { dueDate: v } : { clear: ['dueDate'] })} />
           </span>
         </Field>
+        <Field label={t('issue.sprint')}>
+          <SprintSelect workspace={workspace} issue={issue} onChange={(id) => save(id ? { sprint: id } : { clear: ['sprint'] })} />
+        </Field>
         {issue.parent && (
           <Field label={t('issue.parent')}>
             <IssueLink issueRef={issue.parent} />
@@ -210,6 +214,27 @@ function IssueBody({
 
       <p className="text-sm text-mute">{t('issue.createdBy', { name: issue.createdBy.name })}</p>
     </div>
+  );
+}
+
+function SprintSelect({ workspace, issue, onChange }: { workspace: string; issue: IssueDetail; onChange(id: string | null): void }) {
+  const { t } = useTranslation();
+  const { data: sprints } = useQuery(listSprintsOptions({ path: { workspace }, query: { project: issue.projectKey, state: ['planned', 'active'] } }));
+  return (
+    <select
+      value={issue.sprintId ?? ''}
+      aria-label={t('issue.sprint')}
+      onChange={(e) => onChange(e.target.value || null)}
+      className="h-7 max-w-full rounded-r1 border border-line bg-panel px-1"
+    >
+      <option value="">{t('issue.noSprint')}</option>
+      {sprints?.map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}
+          {s.state === 'active' ? ` (${t('sprint.active')})` : ''}
+        </option>
+      ))}
+    </select>
   );
 }
 

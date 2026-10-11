@@ -1,13 +1,29 @@
 {
-  "app": { "name": "Flowstate", "tagline": "Planlæg året. Lever ugen." },
+  "app": {
+    "name": "Flowstate",
+    "tagline": "Planlæg året. Lever ugen."
+  },
   "status": {
     "checking": "Forbinder til API…",
     "online": "API online · v{{version}}",
     "offline": "API'et svarer ikke. Kører `aspire run`?"
   },
-  "notFound": { "title": "Siden findes ikke", "back": "Gå til start" },
-  "auth": { "signOut": "Log ud", "signInFailed": "Login blev ikke gennemført.", "retry": "Prøv igen" },
-  "common": { "dismiss": "Luk", "close": "Luk", "edit": "Rediger", "cancel": "Annuller", "loading": "Indlæser…" },
+  "notFound": {
+    "title": "Siden findes ikke",
+    "back": "Gå til start"
+  },
+  "auth": {
+    "signOut": "Log ud",
+    "signInFailed": "Login blev ikke gennemført.",
+    "retry": "Prøv igen"
+  },
+  "common": {
+    "dismiss": "Luk",
+    "close": "Luk",
+    "edit": "Rediger",
+    "cancel": "Annuller",
+    "loading": "Indlæser…"
+  },
   "nav": {
     "label": "Hovedmenu",
     "expand": "Udvid sidepanel",
@@ -16,9 +32,15 @@
     "myIssues": "Mine opgaver",
     "projects": "Projekter",
     "newProject": "Nyt projekt",
-    "settings": "Indstillinger"
+    "settings": "Indstillinger",
+    "sprints": "Sprints"
   },
-  "views": { "label": "Visning", "list": "Liste", "board": "Tavle", "issues": "Opgaver" },
+  "views": {
+    "label": "Visning",
+    "list": "Liste",
+    "board": "Tavle",
+    "issues": "Opgaver"
+  },
   "state": {
     "backlog": "Backlog",
     "todo": "Klar",
@@ -27,8 +49,18 @@
     "done": "Færdig",
     "canceled": "Annulleret"
   },
-  "type": { "task": "Task", "feature": "Feature", "epic": "Epic" },
-  "priority": { "none": "Ingen prioritet", "low": "Lav", "medium": "Middel", "high": "Høj", "urgent": "Akut" },
+  "type": {
+    "task": "Task",
+    "feature": "Feature",
+    "epic": "Epic"
+  },
+  "priority": {
+    "none": "Ingen prioritet",
+    "low": "Lav",
+    "medium": "Middel",
+    "high": "Høj",
+    "urgent": "Akut"
+  },
   "relation": {
     "blocks": "Blokerer",
     "blockedBy": "Blokeret af",
@@ -36,7 +68,9 @@
     "duplicates": "Dublet af",
     "duplicatedBy": "Har dublet"
   },
-  "units": { "hours": "{{value}} t" },
+  "units": {
+    "hours": "{{value}} t"
+  },
   "issue": {
     "new": "Ny opgave",
     "create": "Opret opgave",
@@ -75,7 +109,9 @@
     "labelsPlaceholder": "Labels, kommasepareret",
     "needProject": "Opret et projekt først.",
     "emptyProject": "Ingen opgaver endnu. Tryk C for at oprette en.",
-    "emptyMine": "Du har ingen opgaver, {{name}}."
+    "emptyMine": "Du har ingen opgaver, {{name}}.",
+    "sprint": "Sprint",
+    "noSprint": "Ingen sprint"
   },
   "errors": {
     "updateFailed": "{{key}} kunne ikke gemmes. Ændringen er rullet tilbage.",
@@ -137,5 +173,31 @@
     "lastUsed": "Brugt {{date}}",
     "neverUsed": "Aldrig brugt",
     "revoke": "Tilbagekald"
+  },
+  "sprint": {
+    "title": "Sprints",
+    "active": "aktiv",
+    "noneActive": "Ingen aktiv sprint. Planlæg en herunder, og start den.",
+    "hours": "{{done}} af {{total}} færdig",
+    "hoursHint": "Estimat på færdige opgaver ud af alle opgaver i sprinten",
+    "close": "Luk sprint",
+    "closePrompt_one": "{{count}} ufærdig opgave. Hvor skal den hen?",
+    "closePrompt_other": "{{count}} ufærdige opgaver. Hvor skal de hen?",
+    "toNext": "Næste sprint",
+    "toBacklog": "Backlog",
+    "noNext": "Planlæg en sprint først",
+    "closed_one": "{{name}} er lukket. {{count}} opgave flyttet til {{target}}.",
+    "closed_other": "{{name}} er lukket. {{count}} opgaver flyttet til {{target}}.",
+    "backlog": "backloggen",
+    "closeFailed": "Sprinten kunne ikke lukkes.",
+    "planned": "Planlagte",
+    "issueCount_one": "{{count}} opgave · {{hours}}",
+    "issueCount_other": "{{count}} opgaver · {{hours}}",
+    "start": "Start",
+    "startFailed": "Sprinten kunne ikke startes. Er en anden aktiv?",
+    "createFailed": "Sprinten kunne ikke planlægges. Tjek datoerne.",
+    "name": "Sprintens navn",
+    "namePlaceholder": "Sprintens navn, fx Sprint 15",
+    "plan": "Planlæg sprint"
   }
 }

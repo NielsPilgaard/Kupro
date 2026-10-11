@@ -68,6 +68,23 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Sprint_cycle_with_only_the_cli()
+    {
+        var one = await RunJsonAsync("sprint", "create", "-p", "CLI", "--name", "One", "--start", "2027-01-04", "--end", "2027-01-15");
+        await RunJsonAsync("sprint", "create", "-p", "CLI", "--name", "Two", "--start", "2027-01-18", "--end", "2027-01-29");
+        var id = one.GetProperty("id").GetString()!;
+        await RunJsonAsync("sprint", "start", id);
+        var issue = await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Sprint work", "--sprint", "active", "--effort", "2");
+
+        var closed = await RunJsonAsync("sprint", "close", id);
+
+        closed.GetProperty("moved").GetInt32().ShouldBe(1);
+        closed.GetProperty("movedTo").GetProperty("name").GetString().ShouldBe("Two");
+        var list = await RunJsonAsync("issue", "list", "--sprint", closed.GetProperty("movedTo").GetProperty("id").GetString()!);
+        list.GetProperty("items")[0].GetProperty("key").GetString().ShouldBe(issue.GetProperty("key").GetString());
+    }
+
+    [Fact]
     public async Task Table_output_lists_issues_for_people()
     {
         await RunAsync(json: true, "issue", "create", "-p", "CLI", "-t", "Readable row");

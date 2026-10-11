@@ -1,13 +1,29 @@
 {
-  "app": { "name": "Flowstate", "tagline": "Plan the year. Ship the week." },
+  "app": {
+    "name": "Flowstate",
+    "tagline": "Plan the year. Ship the week."
+  },
   "status": {
     "checking": "Connecting to API…",
     "online": "API online · v{{version}}",
     "offline": "API unreachable. Is `aspire run` running?"
   },
-  "notFound": { "title": "Page not found", "back": "Go to start" },
-  "auth": { "signOut": "Sign out", "signInFailed": "Sign-in didn't complete.", "retry": "Try again" },
-  "common": { "dismiss": "Dismiss", "close": "Close", "edit": "Edit", "cancel": "Cancel", "loading": "Loading…" },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Go to start"
+  },
+  "auth": {
+    "signOut": "Sign out",
+    "signInFailed": "Sign-in didn't complete.",
+    "retry": "Try again"
+  },
+  "common": {
+    "dismiss": "Dismiss",
+    "close": "Close",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "loading": "Loading…"
+  },
   "nav": {
     "label": "Main",
     "expand": "Expand sidebar",
@@ -16,9 +32,15 @@
     "myIssues": "My issues",
     "projects": "Projects",
     "newProject": "New project",
-    "settings": "Settings"
+    "settings": "Settings",
+    "sprints": "Sprints"
   },
-  "views": { "label": "View", "list": "List", "board": "Board", "issues": "Issues" },
+  "views": {
+    "label": "View",
+    "list": "List",
+    "board": "Board",
+    "issues": "Issues"
+  },
   "state": {
     "backlog": "Backlog",
     "todo": "Todo",
@@ -27,8 +49,18 @@
     "done": "Done",
     "canceled": "Canceled"
   },
-  "type": { "task": "Task", "feature": "Feature", "epic": "Epic" },
-  "priority": { "none": "No priority", "low": "Low", "medium": "Medium", "high": "High", "urgent": "Urgent" },
+  "type": {
+    "task": "Task",
+    "feature": "Feature",
+    "epic": "Epic"
+  },
+  "priority": {
+    "none": "No priority",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent"
+  },
   "relation": {
     "blocks": "Blocks",
     "blockedBy": "Blocked by",
@@ -36,7 +68,9 @@
     "duplicates": "Duplicates",
     "duplicatedBy": "Duplicated by"
   },
-  "units": { "hours": "{{value}}h" },
+  "units": {
+    "hours": "{{value}}h"
+  },
   "issue": {
     "new": "New issue",
     "create": "Create issue",
@@ -75,7 +109,9 @@
     "labelsPlaceholder": "Labels, comma separated",
     "needProject": "Create a project first.",
     "emptyProject": "No issues yet. Press C to create one.",
-    "emptyMine": "Nothing assigned to you, {{name}}."
+    "emptyMine": "Nothing assigned to you, {{name}}.",
+    "sprint": "Sprint",
+    "noSprint": "No sprint"
   },
   "errors": {
     "updateFailed": "Couldn't save {{key}}. Your change was undone.",
@@ -137,5 +173,31 @@
     "lastUsed": "Used {{date}}",
     "neverUsed": "Never used",
     "revoke": "Revoke"
+  },
+  "sprint": {
+    "title": "Sprints",
+    "active": "active",
+    "noneActive": "No active sprint. Plan one below and start it.",
+    "hours": "{{done}} of {{total}} done",
+    "hoursHint": "Effort of done issues out of all issues in the sprint",
+    "close": "Close sprint",
+    "closePrompt_one": "{{count}} unfinished issue. Where should it go?",
+    "closePrompt_other": "{{count}} unfinished issues. Where should they go?",
+    "toNext": "Next sprint",
+    "toBacklog": "Backlog",
+    "noNext": "Plan a sprint first",
+    "closed_one": "{{name}} closed. {{count}} issue moved to {{target}}.",
+    "closed_other": "{{name}} closed. {{count}} issues moved to {{target}}.",
+    "backlog": "the backlog",
+    "closeFailed": "Couldn't close the sprint.",
+    "planned": "Planned",
+    "issueCount_one": "{{count}} issue · {{hours}}",
+    "issueCount_other": "{{count}} issues · {{hours}}",
+    "start": "Start",
+    "startFailed": "Couldn't start the sprint. Is another one active?",
+    "createFailed": "Couldn't plan the sprint. Check the dates.",
+    "name": "Sprint name",
+    "namePlaceholder": "Sprint name, e.g. Sprint 15",
+    "plan": "Plan sprint"
   }
 }

@@ -18,6 +18,7 @@ namespace Flowstate.Api.Features.Issues;
 /// <param name="StartDate">Planned start (drives the delivery plan).</param>
 /// <param name="DueDate">Planned delivery date.</param>
 /// <param name="Labels">Label names; unknown names are created.</param>
+/// <param name="Sprint">Sprint id, or <c>active</c> for the project's active sprint.</param>
 public sealed record CreateIssueRequest(
     [Required, StringLength(10)] string Project,
     [Required, StringLength(500, MinimumLength = 1)] string Title,
@@ -30,7 +31,8 @@ public sealed record CreateIssueRequest(
     [Range(0, 100_000)] decimal? Effort = null,
     DateOnly? StartDate = null,
     DateOnly? DueDate = null,
-    [MaxLength(20)] IReadOnlyList<string>? Labels = null);
+    [MaxLength(20)] IReadOnlyList<string>? Labels = null,
+    [StringLength(40)] string? Sprint = null);
 
 /// <param name="Issues">Up to 100 issues, created all-or-nothing.</param>
 public sealed record CreateIssuesRequest([Required, MinLength(1), MaxLength(100)] IReadOnlyList<CreateIssueRequest> Issues);
@@ -44,6 +46,7 @@ public enum IssueField
     Effort,
     StartDate,
     DueDate,
+    Sprint,
 }
 
 /// <summary>Only the fields you set change. To empty a field, list it in <c>clear</c>.</summary>
@@ -60,6 +63,7 @@ public enum IssueField
 /// <param name="Labels">Replace all labels with these names.</param>
 /// <param name="AddLabels">Label names to add.</param>
 /// <param name="RemoveLabels">Label names to remove.</param>
+/// <param name="Sprint">Sprint id, or <c>active</c> for the project's active sprint. Clear with <c>clear: [sprint]</c>.</param>
 /// <param name="Clear">Fields to empty.</param>
 public sealed record UpdateIssueRequest(
     [StringLength(500, MinimumLength = 1)] string? Title = null,
@@ -75,7 +79,8 @@ public sealed record UpdateIssueRequest(
     [MaxLength(20)] IReadOnlyList<string>? Labels = null,
     [MaxLength(20)] IReadOnlyList<string>? AddLabels = null,
     [MaxLength(20)] IReadOnlyList<string>? RemoveLabels = null,
-    IReadOnlyList<IssueField>? Clear = null);
+    IReadOnlyList<IssueField>? Clear = null,
+    [StringLength(40)] string? Sprint = null);
 
 /// <param name="Key">Issue to update.</param>
 /// <param name="Changes">Changes for that issue.</param>
@@ -141,6 +146,10 @@ public sealed class IssueQuery
     [FromQuery(Name = "label")]
     public string? Label { get; init; }
 
+    /// <summary>Sprint id, <c>active</c> (each project's active sprint) or <c>none</c>.</summary>
+    [FromQuery(Name = "sprint")]
+    public string? Sprint { get; init; }
+
     /// <summary>Parent issue key: its direct children.</summary>
     [FromQuery(Name = "parent")]
     public string? Parent { get; init; }
@@ -182,6 +191,7 @@ public sealed record IssueSummary(
     DateOnly? DueDate,
     IReadOnlyList<string> Labels,
     double Rank,
+    Guid? SprintId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -214,6 +224,7 @@ public sealed record IssueDetail(
     IReadOnlyList<IssueRef> Children,
     IReadOnlyList<IssueRelationResponse> Relations,
     double Rank,
+    Guid? SprintId,
     MemberRef CreatedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
