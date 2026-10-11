@@ -36,6 +36,12 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `GRAFANA_SMTP_PASSWORD` | yes | Scaleway API secret key | `grafana` | Key needs TEM permissions only. |
 | `GRAFANA_SMTP_FROM` | | `alerts@<domain>` | `grafana` | Domain must be verified in Scaleway TEM (SPF/DKIM). |
 | `ALERT_EMAIL` | | `ops@<domain>` | `grafana` | Comma-separated for several recipients. |
+| `API_PUBLIC_URL` | | `https://<domain>` | `api` | No trailing slash. Audience of MCP tokens issued with a resource indicator. |
+| `STORAGE_URL` | | `https://s3.gra.io.cloud.ovh.net` | `api` | OVHcloud Object Storage S3 endpoint for the bucket's region. Browsers upload to it directly. |
+| `STORAGE_REGION` | | `gra` | `api` | Must match the endpoint. |
+| `STORAGE_BUCKET` | | `flowstate-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
+| `STORAGE_ACCESS_KEY` | | S3 user access key | `api` | User with read/write on the bucket only. |
+| `STORAGE_SECRET_KEY` | yes | S3 user secret key | `api` | |
 
 `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
 (`builder.AddParameter`) adds a row here.
@@ -50,34 +56,41 @@ In Dokploy → the compose app → **Domains**, with HTTPS (Let's Encrypt):
 | `auth.<domain>` | `keycloak` | 8080 | Must equal `KEYCLOAK_PUBLIC_URL`. |
 | `grafana.<domain>` | `grafana` | 3000 | Must equal `GRAFANA_PUBLIC_URL`. |
 
-Nothing else is routed: Postgres, the API, Loki, Tempo, Prometheus and the Collector are internal only. The generated
-compose still has `ports:` on `api` and `web`, which publish random host ports. Close them with the VPS firewall
-(allow 22, 80 and 443 only) until the AppHost stops emitting them.
+Nothing else is routed: Postgres, the API, Loki, Tempo, Prometheus and the Collector are internal only, and the
+compose publishes no host ports. Still allow only 22, 80 and 443 in the VPS firewall.
 
 ## First deploy (once per environment)
 
 1. **DNS**: A records for the three domains point at the VPS.
-2. **Variables and domains**: set both tables above, then deploy.
-3. **Keycloak: admin.** Sign in at `https://auth.<domain>/admin` with `admin` / `KEYCLOAK_PASSWORD`. Create a
+2. **Object Storage**: in the OVHcloud control panel create an S3 bucket for attachments in the VPS's region and an
+   S3 user with read/write on it only; its keys go in `STORAGE_ACCESS_KEY`/`STORAGE_SECRET_KEY`. Browsers upload
+   straight to the bucket with presigned URLs, so allow the app origin once:
+
+   ```sh
+   aws s3api put-bucket-cors --endpoint-url "$STORAGE_URL" --region "$STORAGE_REGION" --bucket "$STORAGE_BUCKET"      --cors-configuration '{"CORSRules":[{"AllowedOrigins":["https://<domain>"],"AllowedMethods":["PUT"],"AllowedHeaders":["*"],"MaxAgeSeconds":3600}]}'
+   ```
+
+3. **Variables and domains**: set both tables above, then deploy.
+4. **Keycloak: admin.** Sign in at `https://auth.<domain>/admin` with `admin` / `KEYCLOAK_PASSWORD`. Create a
    permanent admin user in the `master` realm with 2FA, then delete the temporary `admin`.
-4. **Keycloak: production clients.** The realm comes from `src/Flowstate.AppHost/Realms/flowstate-realm.json`.
+5. **Keycloak: production clients.** The realm comes from `src/Flowstate.AppHost/Realms/flowstate-realm.json`.
    Keycloak imports it only when the realm doesn't exist yet, so later edits to that file don't reach production. In
    realm `flowstate` → Clients:
    - `web`: Valid redirect URIs `https://<domain>/*`, Web origins `https://<domain>`, Valid post-logout redirect URIs
      `https://<domain>/*`. Remove the `localhost` entries.
    - `mcp`: keep the loopback redirect URIs, because MCP clients run on the user's machine.
    - Dynamic client registration for MCP: Trusted Hosts policy as in [ADR-005](../adr/ADR-005-auth-keycloak.md) IMP-001.
-5. **Keycloak: delete the dev users.** The realm file seeds `dev@flowstate.local` and `other@flowstate.local`, both
+6. **Keycloak: delete the dev users.** The realm file seeds `dev@flowstate.local` and `other@flowstate.local`, both
    with password `dev`. Delete both from realm `flowstate` → Users before the domain is public.
-6. **Keycloak: email.** Realm `flowstate` → Realm settings → Email: same Scaleway TEM host and credentials as Grafana,
+7. **Keycloak: email.** Realm `flowstate` → Realm settings → Email: same Scaleway TEM host and credentials as Grafana,
    sender `no-reply@<domain>`. Password reset is enabled in the realm and needs this to work. Send a test mail.
-7. **Grafana**: sign in at `https://grafana.<domain>` as `admin`. Go to Alerting → Contact points → `flowstate-email`
+8. **Grafana**: sign in at `https://grafana.<domain>` as `admin`. Go to Alerting → Contact points → `flowstate-email`
    → **Test** and confirm the mail arrives. For agent access, create a service account with role **Viewer**
    ([observability README](../../infrastructure/observability/README.md#querying-from-an-agent)).
-8. **PingPuffin** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): add an HTTP check on
+9. **PingPuffin** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): add an HTTP check on
    `https://<domain>/api/v1/status`, expect 200, alert by email and SMS. Grafana runs on the same VPS and can't report
    the VPS itself being down; this check catches that, plus DNS, TLS and Traefik failures.
-9. **Smoke test**: register a user, then create a workspace and an issue. Run `flowstate login` against the domain.
+10. **Smoke test**: register a user, then create a workspace and an issue, and paste an image into a comment. Run `flowstate login` against the domain.
    Connect an MCP client to `https://<domain>/mcp`. Check that requests show up on Grafana's **Service health**
    dashboard.
 
@@ -99,7 +112,5 @@ These are not wired yet. Each one blocks or degrades production:
 | Gap | Effect | Fix |
 |---|---|---|
 | Deploy pipeline | No image push, version stamping or webhook yet ([task 013](../../tasks/013-deploy.md)). | CI job: build with `-p:SourceRevisionId=<sha>` ([ADR-014](../adr/ADR-014-observability.md) IMP-005), build web with `VITE_KEYCLOAK_URL`, push, call the Dokploy webhook. |
-| `Api__PublicUrl` | Set only under `aspire run`. In production, MCP tokens issued with a resource indicator fail audience validation. | AppHost: an `api-public-url` parameter (`https://<domain>`) in publish mode. |
-| Attachment storage | `Storage__ServiceUrl`, `__Bucket`, `__Region`, `__AccessKey` and `__SecretKey` aren't in the compose, so attachments are disabled in production. Variables set only in Dokploy don't reach the container. | AppHost: parameters for OVHcloud Object Storage, plus a bucket CORS rule allowing `PUT` from `https://<domain>`, because browsers upload directly. |
 | Backups | No `pg_dump` or WAL archiving yet ([ADR-004](../adr/ADR-004-hosting.md)); losing the VPS loses all data. | Task 013, with a restore drill in `docs/runbooks/`. |
-| Realm drift | Production realm settings live only in Keycloak (step 4). | Export the realm after setup, or move the client URLs into a parameterized production realm file. |
+| Realm drift | Production realm settings live only in Keycloak (step 5). | Export the realm after setup, or move the client URLs into a parameterized production realm file. |

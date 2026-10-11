@@ -224,8 +224,12 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_SERVICE_NAME: "api"
       Auth__PublicAuthority: "${KEYCLOAK_PUBLIC_URL}/realms/flowstate"
-    ports:
-      - "${API_PORT}"
+      Api__PublicUrl: "${API_PUBLIC_URL}"
+      Storage__ServiceUrl: "${STORAGE_URL}"
+      Storage__Region: "${STORAGE_REGION}"
+      Storage__Bucket: "${STORAGE_BUCKET}"
+      Storage__AccessKey: "${STORAGE_ACCESS_KEY}"
+      Storage__SecretKey: "${STORAGE_SECRET_KEY}"
     depends_on:
       migrations:
         condition: "service_completed_successfully"
@@ -249,8 +253,6 @@ services:
     image: "${WEB_IMAGE}"
     environment:
       API_UPSTREAM: "http://api:${API_PORT}"
-    ports:
-      - "80"
     depends_on:
       api:
         condition: "service_started"

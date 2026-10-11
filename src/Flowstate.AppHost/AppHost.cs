@@ -56,19 +56,34 @@ if (builder.ExecutionContext.IsPublishMode)
         // Tokens carry the public issuer, but the API fetches keys over the internal network.
         .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true");
 
+    // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001), e.g. https://flowstate.dk.
+    api.WithEnvironment("Api__PublicUrl", builder.AddParameter("api-public-url"));
+
+    // Attachments in OVHcloud Object Storage (ADR-004). Bucket and CORS rule are set up once by hand (deploy runbook).
+    api.WithEnvironment("Storage__ServiceUrl", builder.AddParameter("storage-url"))
+        .WithEnvironment("Storage__Region", builder.AddParameter("storage-region"))
+        .WithEnvironment("Storage__Bucket", builder.AddParameter("storage-bucket"))
+        .WithEnvironment("Storage__AccessKey", builder.AddParameter("storage-access-key"))
+        .WithEnvironment("Storage__SecretKey", builder.AddParameter("storage-secret-key", secret: true));
+
     // Docker probes /alive every 10 s. Besides restart/health status, Grafana's "API down" alert counts these
     // requests (ADR-014), so without a healthcheck the API would look down. The runtime image has bash, no curl.
-    api.PublishAsDockerComposeService((_, service) => service.Healthcheck = new()
+    // No `ports:`: Traefik reaches services over the Docker network, so a published host port would only bypass it.
+    api.PublishAsDockerComposeService((_, service) =>
     {
-        Test =
-        [
-            "CMD", "bash", "-c",
-            "exec 3<>/dev/tcp/localhost/$${HTTP_PORTS} && printf 'GET /alive HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '",
-        ],
-        Interval = "10s",
-        Timeout = "5s",
-        Retries = 6,
-        StartPeriod = "30s",
+        service.Ports.Clear();
+        service.Healthcheck = new()
+        {
+            Test =
+            [
+                "CMD", "bash", "-c",
+                "exec 3<>/dev/tcp/localhost/$${HTTP_PORTS} && printf 'GET /alive HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '",
+            ],
+            Interval = "10s",
+            Timeout = "5s",
+            Retries = 6,
+            StartPeriod = "30s",
+        };
     });
 
     // Prod SPA = web/Dockerfile (bun build → nginx), build context = repo root (ADR-012 IMP-002).
@@ -77,6 +92,7 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("API_UPSTREAM", api.GetEndpoint("http"))
         .WithHttpEndpoint(targetPort: 80)
         .WithExternalHttpEndpoints()
+        .PublishAsDockerComposeService((_, service) => service.Ports.Clear())
         .WaitFor(api);
 }
 else
