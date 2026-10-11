@@ -34,8 +34,10 @@ jobs:
       - name: OpenAPI spec drift
         run: git diff --exit-code -- openapi/ || (echo "::error::openapi/ is stale — build locally and commit the spec" && exit 1)
 
-      - name: Test
+      - name: Test (incl. ADR-010 latency budget on 10k issues)
         run: dotnet test --solution Flowstate.slnx -c Release --no-build
+        env:
+          FLOWSTATE_PERF_REPORT: ${{ github.step_summary }}
 
       - name: Compose drift
         run: |
