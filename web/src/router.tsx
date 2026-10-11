@@ -4,6 +4,7 @@ import { AppShell } from './app/AppShell';
 import { callbackPath, completeSignIn, getSession, signIn } from './auth/auth';
 import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/IssuePages';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { PlanPage, type Zoom } from './features/plan/PlanPage';
 import { SprintsPage } from './features/sprints/SprintsPage';
 import { HomePage, NewProjectPage, WorkspaceIndexPage } from './features/workspace/WorkspacePages';
 import { AuthCallbackError } from './routes/AuthCallbackError';
@@ -65,6 +66,19 @@ const sprintsRoute = createRoute({
     ...withIssue(search),
   }),
 });
+const planRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/plan',
+  component: PlanPage,
+  // Horizon, zoom and projects live in the URL (docs/delivery-plan.md: no plan entity).
+  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string; zoom?: Zoom; project?: string; issue?: string } => ({
+    ...(typeof search.from === 'string' ? { from: search.from } : {}),
+    ...(typeof search.to === 'string' ? { to: search.to } : {}),
+    ...(search.zoom === 'month' || search.zoom === 'quarter' || search.zoom === 'year' ? { zoom: search.zoom } : {}),
+    ...(typeof search.project === 'string' ? { project: search.project } : {}),
+    ...withIssue(search),
+  }),
+});
 const projectRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/p/$project',
@@ -80,7 +94,7 @@ const routeTree = rootRoute.addChildren([
   authedRoute.addChildren([
     homeRoute,
     settingsRoute,
-    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, myIssuesRoute, sprintsRoute, projectRoute]),
+    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, myIssuesRoute, sprintsRoute, planRoute, projectRoute]),
   ]),
 ]);
 

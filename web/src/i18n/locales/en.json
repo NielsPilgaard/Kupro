@@ -33,7 +33,8 @@
     "projects": "Projects",
     "newProject": "New project",
     "settings": "Settings",
-    "sprints": "Sprints"
+    "sprints": "Sprints",
+    "plan": "Delivery plan"
   },
   "views": {
     "label": "View",
@@ -199,5 +200,48 @@
     "name": "Sprint name",
     "namePlaceholder": "Sprint name, e.g. Sprint 15",
     "plan": "Plan sprint"
+  },
+  "plan": {
+    "title": "Delivery plan",
+    "zoom": "Zoom",
+    "zooms": {
+      "month": "Months",
+      "quarter": "Quarters",
+      "year": "Year"
+    },
+    "from": "From",
+    "to": "To",
+    "milestoneName": "Milestone",
+    "milestoneDate": "Milestone date",
+    "addMilestone": "Add milestone",
+    "noProjects": "Create a project to start planning.",
+    "selectedMonth": "Selected month",
+    "noDatedWork": "No dated work in this horizon. Drag in this row to add a feature.",
+    "undated_one": "{{count}} card without dates",
+    "undated_other": "{{count}} cards without dates",
+    "noEffort_one": "{{count}} without effort",
+    "noEffort_other": "{{count}} without effort",
+    "violated": "Starts before its blocker is done",
+    "capacity": "Capacity",
+    "needsHas": "needs {{needs}}, has {{has}}",
+    "total": "All projects",
+    "shortMonths_one": "Short of people in {{count}} month",
+    "shortMonths_other": "Short of people in {{count}} months",
+    "covered": "Covered every month",
+    "newFeature": "New feature {{from}} to {{to}}, type a title and press Enter",
+    "newFeatureLabel": "New feature title",
+    "capacityFailed": "Couldn't save capacity.",
+    "peopleFrom_one": "{{people}} person from {{month}}",
+    "peopleFrom_other": "{{people}} people from {{month}}",
+    "moreFrom_one": "{{people}} from {{month}}",
+    "moreFrom_other": "{{people}} from {{month}}",
+    "noCapacity": "Set capacity",
+    "editCapacity": "Edit capacity",
+    "capacityFor": "People on {{key}}",
+    "people": "People",
+    "fromMonth": "From month",
+    "removeStep": "Remove",
+    "addStep": "Add a step",
+    "save": "Save"
   }
 }

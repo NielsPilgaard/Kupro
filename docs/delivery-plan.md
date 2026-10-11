@@ -80,13 +80,16 @@ is the board and sprints ([ADR-008](adr/ADR-008-work-item-model.md)).
 - **OQ-2**: Supply → **people per project, from a month onward**; workspace total = sum. See ADR-008 Planning.
 - **OQ-4**: Plan entity → **none**; the view is a reflection of issues.
 - **OQ-6**: Rows → **projects only**; no team entity.
+- **OQ-3**: Demand spreading → **even spread over the card's days** (task 011). Front/back-loaded profiles later.
+- **OQ-5**: What-if scenarios → **later**; v1 is edit-in-place.
+- **OQ-7**: Rendering → **DOM cards + one SVG layer for dependency curves**; 500 cards drag at 60 fps (task 011).
+- **OQ-8**: Build vs. library → **custom build**.
 
-## Open questions
+## Not in v1 yet
 
-- **OQ-3**: Demand spreading. Proposal: even spread over the card's span. Later: front/back-loaded profiles.
-- **OQ-5**: What-if scenarios ("hire 2 in March", "drop project Y") — v1 or later? Proposal: later; v1 is edit-in-place.
-- **OQ-7**: Rendering — SVG/DOM vs. canvas. Proposal: SVG/DOM; card counts at this level are hundreds, not thousands.
-- **OQ-8**: Build vs. library. Proposal: build custom — this is the differentiator; libraries constrain interaction.
+- Dragging a card to another project row (an issue's project is fixed in the API today).
+- "Target date past its milestone" health flag.
+- Grouping rows by epic within a project.
 
 ## Related
 

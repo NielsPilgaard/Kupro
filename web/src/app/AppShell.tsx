@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search } from 'lucide-react';
+import { CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
@@ -29,7 +29,7 @@ export function AppShell() {
 
   useShortcuts({
     'mod+k': () => ui.openPalette(),
-    c: () => ui.setCreateOpen(true),
+    c: () => (ui.createOverride ? ui.createOverride() : ui.setCreateOpen(true)),
     '[': () => ui.toggleSidebar(),
     s: () => ui.activeKey && ui.openPalette('state'),
     a: () => ui.activeKey && ui.openPalette('assign'),
@@ -100,6 +100,10 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
         <Link to="/w/$workspace/my-issues" params={{ workspace }} className={nav} activeProps={active}>
           <Inbox size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.myIssues')}
+        </Link>
+        <Link to="/w/$workspace/plan" params={{ workspace }} className={nav} activeProps={active}>
+          <CalendarRange size={16} strokeWidth={1.5} aria-hidden="true" />
+          {!collapsed && t('nav.plan')}
         </Link>
         <Link to="/w/$workspace/sprints" params={{ workspace }} className={nav} activeProps={active}>
           <IterationCw size={16} strokeWidth={1.5} aria-hidden="true" />

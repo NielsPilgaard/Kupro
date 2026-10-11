@@ -33,7 +33,8 @@
     "projects": "Projekter",
     "newProject": "Nyt projekt",
     "settings": "Indstillinger",
-    "sprints": "Sprints"
+    "sprints": "Sprints",
+    "plan": "Leveranceplan"
   },
   "views": {
     "label": "Visning",
@@ -199,5 +200,48 @@
     "name": "Sprintens navn",
     "namePlaceholder": "Sprintens navn, fx Sprint 15",
     "plan": "Planlæg sprint"
+  },
+  "plan": {
+    "title": "Leveranceplan",
+    "zoom": "Zoom",
+    "zooms": {
+      "month": "Måneder",
+      "quarter": "Kvartaler",
+      "year": "År"
+    },
+    "from": "Fra",
+    "to": "Til",
+    "milestoneName": "Milepæl",
+    "milestoneDate": "Milepælens dato",
+    "addMilestone": "Tilføj milepæl",
+    "noProjects": "Opret et projekt for at begynde at planlægge.",
+    "selectedMonth": "Valgt måned",
+    "noDatedWork": "Intet dateret arbejde i perioden. Træk i rækken for at tilføje en feature.",
+    "undated_one": "{{count}} kort uden datoer",
+    "undated_other": "{{count}} kort uden datoer",
+    "noEffort_one": "{{count}} uden estimat",
+    "noEffort_other": "{{count}} uden estimat",
+    "violated": "Starter før det, der blokerer, er færdigt",
+    "capacity": "Kapacitet",
+    "needsHas": "behov {{needs}}, har {{has}}",
+    "total": "Alle projekter",
+    "shortMonths_one": "Mangler folk i {{count}} måned",
+    "shortMonths_other": "Mangler folk i {{count}} måneder",
+    "covered": "Dækket hver måned",
+    "newFeature": "Ny feature {{from}} til {{to}}, skriv en titel og tryk Enter",
+    "newFeatureLabel": "Ny features titel",
+    "capacityFailed": "Kapaciteten kunne ikke gemmes.",
+    "peopleFrom_one": "{{people}} person fra {{month}}",
+    "peopleFrom_other": "{{people}} personer fra {{month}}",
+    "moreFrom_one": "{{people}} fra {{month}}",
+    "moreFrom_other": "{{people}} fra {{month}}",
+    "noCapacity": "Angiv kapacitet",
+    "editCapacity": "Rediger kapacitet",
+    "capacityFor": "Personer på {{key}}",
+    "people": "Personer",
+    "fromMonth": "Fra måned",
+    "removeStep": "Fjern",
+    "addStep": "Tilføj et trin",
+    "save": "Gem"
   }
 }

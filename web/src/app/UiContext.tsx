@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 /** Palette pages double as pickers, so S/A/P/L and the palette share one keyboard-first UI. */
 export type PalettePage = 'root' | 'state' | 'assign' | 'priority' | 'label';
@@ -14,6 +14,9 @@ interface UiState {
   setCreateOpen(open: boolean): void;
   sidebarCollapsed: boolean;
   toggleSidebar(): void;
+  /** A view can take over `C` (the plan creates in the selected month); null restores the issue dialog. */
+  createOverride: (() => void) | null;
+  setCreateOverride(fn: (() => void) | null): void;
 }
 
 const UiContext = createContext<UiState | null>(null);
@@ -30,6 +33,9 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [palette, setPalette] = useState<PalettePage | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [createOverride, setOverride] = useState<(() => void) | null>(null);
+  // Stable, so views can set it from an effect without re-running it. Functions in state must be wrapped.
+  const setCreateOverride = useCallback((fn: (() => void) | null) => setOverride(() => fn), []);
 
   const value = useMemo<UiState>(
     () => ({
@@ -42,8 +48,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
       setCreateOpen,
       sidebarCollapsed,
       toggleSidebar: () => setSidebarCollapsed((c) => !c),
+      createOverride,
+      setCreateOverride,
     }),
-    [activeKey, palette, createOpen, sidebarCollapsed],
+    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride],
   );
 
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
