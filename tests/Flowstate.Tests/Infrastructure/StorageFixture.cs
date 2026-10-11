@@ -3,20 +3,20 @@ using DotNet.Testcontainers.Containers;
 
 namespace Flowstate.Tests.Infrastructure;
 
-/// <summary>S3-compatible storage (versitygw, as in dev) for attachment tests; one container per test class.</summary>
+/// <summary>S3-compatible storage (Silo, the MinIO fork, as in dev) for attachment tests; one container per test class.</summary>
 public sealed class StorageFixture : IAsyncLifetime
 {
-    private const int Port = 7070;
+    private const int Port = 9000;
     private const string AccessKey = "flowstate";
     private const string SecretKey = "flowstate-test-secret";
 
-    private readonly IContainer _container = new ContainerBuilder("versity/versitygw:v1.8.0")
-        .WithCommand("posix", "/data")
-        .WithEnvironment("ROOT_ACCESS_KEY_ID", AccessKey)
-        .WithEnvironment("ROOT_SECRET_ACCESS_KEY", SecretKey)
+    private readonly IContainer _container = new ContainerBuilder("pgsty/silo:RELEASE.2026-09-16T00-00-00Z")
+        .WithCommand("server", "/data")
+        .WithEnvironment("MINIO_ROOT_USER", AccessKey)
+        .WithEnvironment("MINIO_ROOT_PASSWORD", SecretKey)
         .WithTmpfsMount("/data")
         .WithPortBinding(Port, true)
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("listening on"))
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(Port).ForPath("/minio/health/live")))
         .Build();
 
     public IReadOnlyDictionary<string, string?> Settings => new Dictionary<string, string?>

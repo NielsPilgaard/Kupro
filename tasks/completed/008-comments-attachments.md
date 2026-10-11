@@ -33,8 +33,8 @@ purpose: 'Implementation spec for task 008.'
   them. Images download inline; everything else, SVG included, as a file.
 - Storage: AWSSDK.S3 against any S3-compatible endpoint (`Storage__*` settings; attachments return 503
   `attachments_unavailable` until configured). MinIO no longer publishes images, so dev and tests use
-  [versitygw](https://github.com/versity/versitygw) (Apache-2.0, self-hosted, dev only) on port 8190 with CORS for
-  the SPA origin. Production needs an OVHcloud bucket, keys and a CORS rule for the app origin in task 013.
+  [Silo](https://silo.pgsty.io/) (`pgsty/silo`, AGPL-3.0 MinIO fork, self-hosted, dev only) on port 8190 with CORS
+  for the SPA origin. Production needs an OVHcloud bucket, keys and a CORS rule for the app origin in task 013.
 - Parity: CLI `issue activity|comment|attach`, `comment edit|delete`, `attachment get [-o]`; MCP
   `get_issue_activity`, `comment`, `get_attachment`. Upload create/complete opt out of MCP (MCP clients can't PUT
   bytes); agents use `flowstate issue attach`.

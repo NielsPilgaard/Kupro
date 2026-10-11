@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace Flowstate.Api.Features.Attachments;
 
 /// <summary>
-/// S3-compatible object storage: OVHcloud Object Storage in production (ADR-004), versitygw in dev and tests.
+/// S3-compatible object storage: OVHcloud Object Storage in production (ADR-004), Silo (MinIO fork) in dev and tests.
 /// Attachments are disabled while <see cref="ServiceUrl"/> is unset.
 /// </summary>
 public sealed class StorageOptions

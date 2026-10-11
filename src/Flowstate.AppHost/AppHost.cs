@@ -87,16 +87,17 @@ else
     // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001).
     api.WithEnvironment("Api__PublicUrl", api.GetEndpoint("http"));
 
-    // Attachments (task 008): versitygw as the local S3 endpoint; production uses OVHcloud Object Storage (ADR-004).
+    // Attachments (task 008): Silo (maintained MinIO fork) as the local S3 endpoint; production uses OVHcloud Object Storage (ADR-004).
     // Fixed port and CORS for the SPA origin: browsers upload straight to it with presigned URLs.
     var storageSecret = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "storage-secret", special: false);
-    var storage = builder.AddContainer("storage", "versity/versitygw", "v1.8.0")
-        .WithArgs("posix", "/data")
+    var storage = builder.AddContainer("storage", "pgsty/silo", "RELEASE.2026-09-16T00-00-00Z")
+        .WithArgs("server", "/data")
         .WithVolume("flowstate-storage-data", "/data")
-        .WithEnvironment("ROOT_ACCESS_KEY_ID", "flowstate")
-        .WithEnvironment("ROOT_SECRET_ACCESS_KEY", ReferenceExpression.Create($"{storageSecret}"))
-        .WithEnvironment("VGW_CORS_ALLOW_ORIGIN", "http://localhost:5180")
-        .WithHttpEndpoint(port: 8190, targetPort: 7070);
+        .WithEnvironment("MINIO_ROOT_USER", "flowstate")
+        .WithEnvironment("MINIO_ROOT_PASSWORD", ReferenceExpression.Create($"{storageSecret}"))
+        .WithEnvironment("MINIO_API_CORS_ALLOW_ORIGIN", "http://localhost:5180")
+        .WithHttpEndpoint(port: 8190, targetPort: 9000)
+        .WithHttpHealthCheck("/minio/health/live");
     api.WithEnvironment("Storage__ServiceUrl", storage.GetEndpoint("http"))
         .WithEnvironment("Storage__AccessKey", "flowstate")
         .WithEnvironment("Storage__SecretKey", ReferenceExpression.Create($"{storageSecret}"))
