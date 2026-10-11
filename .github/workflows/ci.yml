@@ -70,9 +70,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Regenerate dashboards and alert rules
-        run: python3 infrastructure/grafana/build_dashboards.py
+        run: python3 infrastructure/observability/build_dashboards.py
       - name: Drift
-        run: git diff --exit-code -- infrastructure/grafana/ || (echo "::error::infrastructure/grafana/ is stale — run build_dashboards.py and commit" && exit 1)
+        run: git diff --exit-code -- infrastructure/observability/ || (echo "::error::infrastructure/observability/ is stale — run build_dashboards.py and commit" && exit 1)
 
   cli:
     name: CLI AOT (${{ matrix.rid }})

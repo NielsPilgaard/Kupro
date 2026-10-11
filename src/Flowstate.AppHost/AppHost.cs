@@ -2,7 +2,12 @@
 // `aspire run` → local dev stack; `aspire publish` → deploy/docker-compose.yaml.
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddDockerComposeEnvironment("compose");
+builder.AddDockerComposeEnvironment("compose")
+    // Production telemetry goes to the self-hosted Grafana stack (ADR-014), not to an Aspire dashboard container.
+    .WithDashboard(false)
+    .WithRepoRelativeBindMounts();
+
+var otelCollector = builder.AddObservability();
 
 var postgres = builder.AddPostgres("postgres")
     .WithImageTag("18")
@@ -25,7 +30,8 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8180)
 var migrations = builder.AddProject<Projects.Flowstate_Api>("migrations", launchProfileName: null)
     .WithArgs("migrate")
     .WithReference(database)
-    .WaitFor(database);
+    .WaitFor(database)
+    .WithTelemetryTo(otelCollector);
 
 var api = builder.AddProject<Projects.Flowstate_Api>("api")
     .WithReference(database)
@@ -33,7 +39,8 @@ var api = builder.AddProject<Projects.Flowstate_Api>("api")
     .WithReference(keycloak)
     .WaitFor(keycloak)
     .WithHttpHealthCheck("/health")
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .WithTelemetryTo(otelCollector);
 
 if (builder.ExecutionContext.IsPublishMode)
 {
@@ -48,6 +55,21 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("KC_PROXY_HEADERS", "xforwarded")
         // Tokens carry the public issuer, but the API fetches keys over the internal network.
         .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true");
+
+    // Docker probes /alive every 10 s. Besides restart/health status, Grafana's "API down" alert counts these
+    // requests (ADR-014), so without a healthcheck the API would look down. The runtime image has bash, no curl.
+    api.PublishAsDockerComposeService((_, service) => service.Healthcheck = new()
+    {
+        Test =
+        [
+            "CMD", "bash", "-c",
+            "exec 3<>/dev/tcp/localhost/$${HTTP_PORTS} && printf 'GET /alive HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '",
+        ],
+        Interval = "10s",
+        Timeout = "5s",
+        Retries = 6,
+        StartPeriod = "30s",
+    });
 
     // Prod SPA = web/Dockerfile (bun build → nginx), build context = repo root (ADR-012 IMP-002).
     builder.AddDockerfile("web", "../..", "web/Dockerfile")

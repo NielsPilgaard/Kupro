@@ -16,7 +16,7 @@ description: >-
 
 ## TL;DR
 
-- `src/Flowstate.AppHost` declares the topology: `api`, `web` (Vite), `postgres`, `keycloak` (+ dev realm import).
+- `src/Flowstate.AppHost` declares the topology: `api`, `web` (Vite), `postgres`, `keycloak` (+ dev realm import), and the observability stack ([ADR-014](ADR-014-observability.md)).
 - Local dev: `aspire run` — one command, dashboard with logs/traces/metrics (OpenTelemetry) out of the box.
 - Prod: `aspire publish` with the Docker Compose publisher → `deploy/docker-compose.yaml` + `.env` template → Dokploy ([ADR-004](ADR-004-hosting.md)).
 - `src/Flowstate.ServiceDefaults` holds shared OTel, health checks and resilience defaults.
@@ -85,6 +85,7 @@ and emits compose for production. Aspire is MIT-licensed OSS — no vendor ([ADR
 - [ADR-002](ADR-002-backend-stack.md) — API, migrations, Testcontainers
 - [ADR-003](ADR-003-frontend-stack.md) — SPA orchestrated as `web`
 - [ADR-005](ADR-005-auth-keycloak.md) — Keycloak resource + realm import
+- [ADR-014](ADR-014-observability.md) — telemetry stack in dev and prod (the Aspire dashboard is dev-only)
 
 ## References
 

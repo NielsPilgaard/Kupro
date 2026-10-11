@@ -22,3 +22,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Internationalization (English + Danish) | [ADR-011](ADR-011-i18n.md) | Accepted |
 | Local orchestration (Aspire), prod compose generation (`aspire publish`) | [ADR-012](ADR-012-aspire.md) | Accepted |
 | Seats, billing unit, member status | [ADR-013](ADR-013-seats-billing.md) | Proposed |
+| Observability: self-hosted Grafana stack, request log, dashboards, alerts, uptime check | [ADR-014](ADR-014-observability.md) | Accepted |

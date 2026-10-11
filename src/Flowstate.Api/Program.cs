@@ -52,16 +52,33 @@ builder.Services
 // OpenAPI generation reads the minimal-API JSON options, so both must agree.
 builder.Services.ConfigureHttpJsonOptions(options => ConfigureJson(options.SerializerOptions));
 builder.Services.AddProblemDetails();
+builder.Services.AddFlowstateRequestLogging();
 builder.Services.AddFlowstateOpenApi();
 
 var app = builder.Build();
 
 if (args.Contains(DatabaseExtensions.MigrateCommand))
 {
-    await app.Services.MigrateDatabaseAsync();
+    try
+    {
+        await app.Services.MigrateDatabaseAsync();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(ex, "Database migration failed");
+        throw;
+    }
+    finally
+    {
+        // A one-shot run exits before the exporters' first batch; without this its logs never reach Grafana (ADR-014).
+        app.Services.FlushTelemetry();
+    }
+
     return;
 }
 
+// Outermost, so the logged status and duration include exception handling.
+app.UseHttpLogging();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 

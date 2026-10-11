@@ -1,0 +1,363 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "flowstate-api",
+      "folder": "Flowstate",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "flowstate-api-down",
+          "title": "Flowstate API down",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 300,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"flowstate/api\", http_route=~\"/alive|/health\"}[5m]))",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        0.001
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "5m",
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Flowstate API has not answered a health probe for 5 minutes.",
+            "description": "No /alive (or local /health) requests recorded. The container is down or crash-looping, a migration failed (the API waits for it), or telemetry stopped reaching Prometheus (otel-collector). Check Dokploy and 'Startups, shutdowns and migrations'.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "2"
+          }
+        },
+        {
+          "uid": "flowstate-errors-logged",
+          "title": "Flowstate errors logged",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "loki",
+              "queryType": "instant",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "sum(count_over_time({service_namespace=\"flowstate\"} | severity_number >= 17 [10m]))",
+                "queryType": "instant",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                }
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "0s",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Flowstate logged {{ $values.B.Value }} error line(s) in the last 10 minutes.",
+            "description": "Covers 500 responses, failed migrations and background work. See 'Distinct errors' on the Errors & logs dashboard for message, stack trace and TraceId.",
+            "__dashboardUid__": "flowstate-errors",
+            "__panelId__": "4"
+          }
+        },
+        {
+          "uid": "flowstate-restart-loop",
+          "title": "Flowstate API restart loop",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "loki",
+              "queryType": "instant",
+              "relativeTimeRange": {
+                "from": 900,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "sum(count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\" [15m]))",
+                "queryType": "instant",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                }
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        2
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "0s",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Flowstate API started {{ $values.B.Value }} times in 15 minutes.",
+            "description": "Three or more 'Application started' lines in 15 minutes: the container is crash-looping (missing config, OOM, Keycloak unreachable). A normal deploy starts once.",
+            "__dashboardUid__": "flowstate-errors",
+            "__panelId__": "8"
+          }
+        },
+        {
+          "uid": "flowstate-latency-budget",
+          "title": "Flowstate latency budget breached",
+          "condition": "D",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "loki",
+              "queryType": "instant",
+              "relativeTimeRange": {
+                "from": 3600,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "quantile_over_time(0.99, {service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | RequestId!~\".*:00000001\" | unwrap Duration [1h]) by (service_name)",
+                "queryType": "instant",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                }
+              }
+            },
+            {
+              "refId": "E",
+              "datasourceUid": "loki",
+              "queryType": "instant",
+              "relativeTimeRange": {
+                "from": 3600,
+                "to": 0
+              },
+              "model": {
+                "refId": "E",
+                "expr": "sum by (service_name) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | RequestId!~\".*:00000001\" [1h]))",
+                "queryType": "instant",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "F",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "F",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "E",
+                "reducer": "last",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                }
+              }
+            },
+            {
+              "refId": "D",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "D",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "math",
+                "expression": "$B > 500 && $F >= 100"
+              }
+            }
+          ],
+          "for": "15m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Flowstate warm p99 is {{ printf \"%.0f\" $values.B.Value }} ms over the last hour (budget 500 ms).",
+            "description": "ADR-010: every endpoint < 500 ms p99. Warm requests only (reused connections), so a deploy's cold-start burst can't trigger it; needs 100+ requests in the hour. Open 'Endpoints' and 'Requests over budget' on the Service health dashboard for the route and the trace.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "17"
+          }
+        }
+      ]
+    }
+  ]
+}

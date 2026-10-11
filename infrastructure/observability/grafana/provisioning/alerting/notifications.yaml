@@ -1,0 +1,20 @@
+# Every alert goes to one email contact point; ALERT_EMAIL and SMTP (GF_SMTP_*) are set by the AppHost.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: flowstate-email
+    receivers:
+      - uid: flowstate-email
+        type: email
+        settings:
+          addresses: $ALERT_EMAIL
+          singleEmail: true
+
+policies:
+  - orgId: 1
+    receiver: flowstate-email
+    group_by: [grafana_folder, alertname]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "GRAFANA_URL",
+        "-e", "GRAFANA_SERVICE_ACCOUNT_TOKEN",
+        "grafana/mcp-grafana:2.0.2",
+        "-t", "stdio",
+        "--disable-write"
+      ],
+      "env": {
+        "GRAFANA_URL": "${GRAFANA_URL:-http://host.docker.internal:3180}",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_SERVICE_ACCOUNT_TOKEN:-}"
+      }
+    }
+  }
+}

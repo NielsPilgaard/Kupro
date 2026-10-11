@@ -1,0 +1,48 @@
+# Fixed uids: build_dashboards.py references them. URLs are set by the AppHost.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    url: $PROMETHEUS_URL
+    access: proxy
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    type: loki
+    uid: loki
+    url: $LOKI_URL
+    access: proxy
+    editable: false
+    jsonData:
+      maxLines: 5000
+      # OTLP logs carry the trace id as structured metadata; link it to Tempo.
+      derivedFields:
+        - name: TraceID
+          matcherType: label
+          matcherRegex: trace_id
+          datasourceUid: tempo
+          url: "$${__value.raw}"
+          urlDisplayLabel: View trace
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: $TEMPO_URL
+    access: proxy
+    editable: false
+    jsonData:
+      streamingEnabled:
+        search: true
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: true
+        spanStartTimeShift: -5m
+        spanEndTimeShift: 5m
+        tags:
+          - key: service.namespace
+            value: service_namespace
+          - key: service.name
+            value: service_name

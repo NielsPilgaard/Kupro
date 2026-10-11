@@ -1,0 +1,12 @@
+# Metrics arrive over OTLP from the collector (--web.enable-otlp-receiver); nothing is scraped. ADR-014.
+# Retention is a flag in the AppHost (--storage.tsdb.retention.time).
+otlp:
+  # job = service.namespace/service.name ("flowstate/api"); these become labels on every series too.
+  promote_resource_attributes:
+    - deployment.environment.name
+    - service.version
+
+storage:
+  tsdb:
+    # Batches from a restarted collector can arrive slightly late.
+    out_of_order_time_window: 30m

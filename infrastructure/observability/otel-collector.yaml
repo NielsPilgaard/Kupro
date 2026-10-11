@@ -1,0 +1,48 @@
+# One OTLP endpoint for the apps; fans out to Loki (logs), Tempo (traces) and Prometheus (metrics). ADR-014.
+# Backend URLs come from the AppHost, so the same file works under `aspire run` and in the published compose.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Drop data rather than grow past the container's memory limit when a backend is slow or down.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 200
+    spike_limit_mib: 50
+  batch: {}
+
+exporters:
+  otlp_http/loki:
+    endpoint: ${env:LOKI_URL}/otlp
+  otlp_http/prometheus:
+    endpoint: ${env:PROMETHEUS_URL}/api/v1/otlp
+  otlp_http/tempo:
+    endpoint: ${env:TEMPO_OTLP_URL}
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/prometheus]

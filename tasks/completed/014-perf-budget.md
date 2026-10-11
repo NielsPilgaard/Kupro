@@ -15,7 +15,7 @@ See [ADR-010](../../docs/adr/ADR-010-performance-budget.md).
 ## Acceptance criteria
 
 - [x] CI fails if any endpoint p99 > 500 ms on seeded dataset.
-- [ ] Prod dashboard shows p50/p99 per endpoint.
+- [x] Prod dashboard shows p50/p99 per endpoint (Flowstate – Service health, [ADR-014](../../docs/adr/ADR-014-observability.md)).
 
 ## Implementation notes
 

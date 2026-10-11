@@ -18,7 +18,7 @@ description: >-
 - Server: < 500 ms p99, < 100 ms p50 for every endpoint, measured at the API.
 - UI: user action visible < 50 ms (optimistic); initial app load < 1.5 s on broadband.
 - CI: load test (k6 or NBomber) against seeded DB (10k issues/workspace) fails the build on budget breach.
-- Prod: OpenTelemetry latency histograms + alert on p99 > 500 ms.
+- Prod: per-endpoint p50/p99 dashboard + alert on p99 > 500 ms ([ADR-014](ADR-014-observability.md)).
 
 ## Status
 
@@ -47,3 +47,4 @@ count asserted in integration tests for hot endpoints).
 
 - [ADR-002](ADR-002-backend-stack.md) — backend
 - [ADR-003](ADR-003-frontend-stack.md) — optimistic UI
+- [ADR-014](ADR-014-observability.md) — production latency dashboards and alert
