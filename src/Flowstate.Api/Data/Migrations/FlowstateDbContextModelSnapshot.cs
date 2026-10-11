@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 
 #nullable disable
 
@@ -20,6 +21,7 @@ namespace Flowstate.Api.Data.Migrations
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Flowstate.Api.Common.IdempotencyRecord", b =>
@@ -191,6 +193,12 @@ namespace Flowstate.Api.Data.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("rank");
 
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasColumnName("search_vector")
+                        .HasComputedColumnSql("setweight(to_tsvector('simple', key), 'A') || setweight(to_tsvector('english', title), 'A') || setweight(to_tsvector('danish', title), 'A') || setweight(to_tsvector('english', coalesce(description, '')), 'B') || setweight(to_tsvector('danish', coalesce(description, '')), 'B')", true);
+
                     b.Property<Guid?>("SprintId")
                         .HasColumnType("uuid")
                         .HasColumnName("sprint_id");
@@ -234,6 +242,11 @@ namespace Flowstate.Api.Data.Migrations
 
                     b.HasIndex("ParentId")
                         .HasDatabaseName("ix_issues_parent_id");
+
+                    b.HasIndex("SearchVector")
+                        .HasDatabaseName("ix_issues_search_vector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
 
                     b.HasIndex("SprintId")
                         .HasDatabaseName("ix_issues_sprint_id");

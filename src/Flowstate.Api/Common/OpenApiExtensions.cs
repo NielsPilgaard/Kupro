@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.OpenApi;
 
 namespace Flowstate.Api.Common;
@@ -17,6 +18,22 @@ public static class OpenApiExtensions
                     Description = "Retry-safe key: repeating a request with the same key replays the first response.",
                     Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 255 },
                 });
+            }
+
+            return Task.CompletedTask;
+        }).AddSchemaTransformer((schema, _, _) =>
+        {
+            // An optional enum query parameter (IssueQuery.Sort) would otherwise add null to the shared enum schema,
+            // and every generated client would treat null as a valid value everywhere.
+            if (schema.Enum is { Count: > 0 } values)
+            {
+                for (var i = values.Count - 1; i >= 0; i--)
+                {
+                    if (values[i] is null || values[i]!.GetValueKind() == JsonValueKind.Null)
+                    {
+                        values.RemoveAt(i);
+                    }
+                }
             }
 
             return Task.CompletedTask;

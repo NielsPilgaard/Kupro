@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Command } from 'cmdk';
 import { CircleCheck, FolderKanban, Inbox, List, Plus, Search, Tag, UserRound } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getMeOptions, listLabelsOptions, listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
+import { getMeOptions, listIssuesOptions, listLabelsOptions, listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
 import type { IssuePriority, IssueState } from '../../api/gen/types.gen';
 import { useIssues, useMembers, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
@@ -19,6 +19,9 @@ interface Entry {
   cli?: string;
   run(): void;
 }
+
+/** Shortest text worth a server search; the API accepts the same syntax as the CLI and MCP (task 009). */
+const MIN_SEARCH = 2;
 
 /**
  * Ctrl/Cmd+K. Every action is here, and the footer shows the equivalent CLI command (parity made visible, design
@@ -38,6 +41,19 @@ export function CommandPalette({ workspace }: { workspace: string }) {
   const { data: labels } = useQuery({ ...listLabelsOptions({ path: { workspace } }), enabled: page === 'label' });
   const { data: members } = useMembers(workspace);
   const { data: recent } = useIssues(workspace, { sort: 'updated' });
+
+  // Debounced server search: free text plus filters such as `state:todo assignee:me`.
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(page === 'root' ? query.trim() : ''), 120);
+    return () => clearTimeout(id);
+  }, [query, page]);
+  const searching = search.length >= MIN_SEARCH;
+  const { data: found } = useQuery({
+    ...listIssuesOptions({ path: { workspace }, query: { q: search, limit: 20 } }),
+    enabled: searching,
+    placeholderData: keepPreviousData,
+  });
   const update = useUpdateIssue(workspace, members?.find((m) => m.kind === 'human' && m.email === me?.email)?.id);
 
   const close = () => {
@@ -116,11 +132,11 @@ export function CommandPalette({ workspace }: { workspace: string }) {
             { id: `nav:${p.key}:list`, label: t('palette.openList', { name: p.name }), icon: <List size={16} />, cli: `flowstate issue list --project ${p.key}`, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'list' } }); } },
             { id: `nav:${p.key}:board`, label: t('palette.openBoard', { name: p.name }), icon: <FolderKanban size={16} />, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'board' } }); } },
           ]),
-          ...(recent?.items ?? []).map((i) => ({
+          ...((searching ? found?.items : recent?.items) ?? []).map((i) => ({
             id: `issue:${i.key}`,
             label: `${i.key} ${i.title}`,
             icon: <StatusRing state={i.state} />,
-            cli: `flowstate issue get ${i.key}`,
+            cli: searching ? `flowstate issue search ${search}` : `flowstate issue get ${i.key}`,
             run: () => {
               close();
               ui.setActiveKey(i.key);
@@ -130,17 +146,24 @@ export function CommandPalette({ workspace }: { workspace: string }) {
         ];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, key, members, labels, projects, recent, query, me, t]);
+  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t]);
 
   if (!page) return null;
-  const current = entries.find((e) => e.id === selected) ?? entries[0];
+  // While searching, the server has already matched the issues; commands are matched here by a plain substring so
+  // cmdk's fuzzy filter doesn't drop the typo-tolerant results.
+  const needle = query.trim().toLowerCase();
+  const shown = searching
+    ? entries.filter((e) => e.id.startsWith('issue:') || e.label.toLowerCase().includes(needle))
+    : entries;
+  const current = shown.find((e) => e.id === selected) ?? shown[0];
 
   return (
     <div className="fixed inset-0 z-40 flex justify-center bg-scrim pt-11" onMouseDown={close}>
       <Command
         label={t('palette.title')}
         loop
-        value={selected}
+        shouldFilter={!searching}
+        value={searching ? (current?.id ?? '') : selected}
         onValueChange={setSelected}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
@@ -166,7 +189,7 @@ export function CommandPalette({ workspace }: { workspace: string }) {
         </div>
         <Command.List className="min-h-0 overflow-auto p-1">
           <Command.Empty className="p-3 text-mute">{t('palette.empty')}</Command.Empty>
-          {entries.map((entry) => (
+          {shown.map((entry) => (
             <Command.Item
               key={entry.id}
               value={entry.id}

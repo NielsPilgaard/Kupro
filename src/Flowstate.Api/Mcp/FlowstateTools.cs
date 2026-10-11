@@ -84,9 +84,12 @@ public sealed class FlowstateTools(
     }
 
     [McpServerTool(Name = "search_issues", ReadOnly = true), Description(
-        "Find issues. Filters combine with AND; list values combine with OR. Returns up to `limit` rows and a nextCursor for the next page.")]
+        "Find issues by text and filters. `query` takes free text (typo tolerant) plus filters, e.g. " +
+        "`drag epics type:feature state:todo,inProgress assignee:me sprint:current label:bug`. Filters combine with AND; " +
+        "list values combine with OR. Returns up to `limit` rows (best match first when searching) and a nextCursor.")]
     [CoversOperations("listIssues")]
     public async Task<IssuePage> SearchIssues(
+        [Description("Search text with optional key:value filters.")] string? query = null,
         [Description(WorkspaceHelp)] string? workspace = null,
         [Description("Project keys.")] string[]? project = null,
         [Description("States: backlog, todo, inProgress, inReview, done, canceled.")] IssueState[]? state = null,
@@ -94,7 +97,8 @@ public sealed class FlowstateTools(
         [Description("Member id, `me`, or `none`.")] string? assignee = null,
         [Description("Label name, e.g. bug.")] string? label = null,
         [Description("Parent key: list its children.")] string? parent = null,
-        [Description("updated (default), created, priority or rank.")] IssueSort? sort = null,
+        [Description("Sprint id, `active`, or `none`.")] string? sprint = null,
+        [Description("relevance (default when searching), updated (default otherwise), created, priority or rank.")] IssueSort? sort = null,
         [Description("Page size 1-200, default 50.")] int? limit = null,
         [Description("nextCursor from the previous call.")] string? cursor = null,
         CancellationToken ct = default)
@@ -102,13 +106,15 @@ public sealed class FlowstateTools(
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
         var result = await issueService.ListAsync(new IssueQuery
         {
+            Q = query,
             Project = project,
             State = state,
             Type = type,
             Assignee = assignee,
             Label = label,
             Parent = parent,
-            Sort = sort ?? IssueSort.Updated,
+            Sprint = sprint,
+            Sort = sort,
             Limit = Math.Clamp(limit ?? 50, 1, 200),
             Cursor = cursor,
         }, ct);

@@ -4,6 +4,7 @@ using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NpgsqlTypes;
 
 namespace Flowstate.Api.Features.Issues;
 
@@ -142,7 +143,20 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
         builder.HasIndex(i => new { i.WorkspaceId, i.ParentId });
         builder.HasIndex(i => new { i.WorkspaceId, i.Type });
         builder.HasIndex(i => new { i.WorkspaceId, i.SprintId });
+
+        // Full-text search (task 009): key and title weigh more than the description; titles and descriptions are
+        // stemmed as English and Danish both. A shadow property, so the entity stays plain.
+        builder.Property<NpgsqlTsVector>(SearchVector).HasComputedColumnSql(
+            "setweight(to_tsvector('simple', key), 'A') || "
+            + "setweight(to_tsvector('english', title), 'A') || setweight(to_tsvector('danish', title), 'A') || "
+            + "setweight(to_tsvector('english', coalesce(description, '')), 'B') || "
+            + "setweight(to_tsvector('danish', coalesce(description, '')), 'B')",
+            stored: true);
+        builder.HasIndex(SearchVector).HasMethod("GIN");
     }
+
+    /// <summary>Name of the stored <c>tsvector</c> column, for <c>EF.Property</c>.</summary>
+    public const string SearchVector = "SearchVector";
 }
 
 internal sealed class LabelConfiguration : IEntityTypeConfiguration<Label>

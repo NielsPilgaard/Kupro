@@ -1813,6 +1813,15 @@
         "operationId": "listIssues",
         "parameters": [
           {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "maxLength": 500,
+              "minLength": 0,
+              "type": "string"
+            }
+          },
+          {
             "name": "project",
             "in": "query",
             "schema": {
@@ -3364,7 +3373,8 @@
           "updated",
           "created",
           "priority",
-          "rank"
+          "rank",
+          "relevance"
         ]
       },
       "IssueState": {

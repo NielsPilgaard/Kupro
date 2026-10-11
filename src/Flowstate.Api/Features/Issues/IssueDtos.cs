@@ -123,11 +123,22 @@ public enum IssueSort
 
     /// <summary>Manual board order.</summary>
     Rank,
+
+    /// <summary>Best match for the search text first; the default when <c>q</c> has free text.</summary>
+    Relevance,
 }
 
 /// <summary>Filters combine with AND; repeated values of one filter combine with OR.</summary>
 public sealed class IssueQuery
 {
+    /// <summary>
+    /// Search: free text (typo tolerant, English and Danish stemming) plus filters such as
+    /// <c>type:epic state:todo,inProgress assignee:me sprint:current label:bug project:FLOW parent:FLOW-1</c>.
+    /// Combines with the other parameters by AND.
+    /// </summary>
+    [FromQuery(Name = "q"), StringLength(500)]
+    public string? Q { get; init; }
+
     /// <summary>Project keys.</summary>
     [FromQuery(Name = "project")]
     public string[]? Project { get; init; }
@@ -154,8 +165,9 @@ public sealed class IssueQuery
     [FromQuery(Name = "parent")]
     public string? Parent { get; init; }
 
+    /// <summary>Default: <c>relevance</c> when <c>q</c> has free text, otherwise <c>updated</c>.</summary>
     [FromQuery(Name = "sort")]
-    public IssueSort Sort { get; init; } = IssueSort.Updated;
+    public IssueSort? Sort { get; init; }
 
     /// <summary>Page size, 1-200 (default 50).</summary>
     [FromQuery(Name = "limit"), Range(1, 200)]

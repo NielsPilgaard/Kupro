@@ -45,8 +45,16 @@ public sealed class FlowstateDbContext(DbContextOptions<FlowstateDbContext> opti
     /// </summary>
     public Guid? CurrentWorkspaceId => workspace?.WorkspaceId;
 
+    /// <summary>
+    /// pg_trgm <c>word_similarity</c> (0-1): how well <paramref name="text"/> matches the best run of words in
+    /// <paramref name="target"/>. Typo tolerant, so "dependancy" finds "Render dependency curves".
+    /// </summary>
+    [DbFunction("word_similarity", IsBuiltIn = true)]
+    public static float WordSimilarity(string text, string target) => throw new NotSupportedException();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FlowstateDbContext).Assembly);
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()

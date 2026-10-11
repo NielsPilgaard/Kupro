@@ -5,7 +5,7 @@ using Microsoft.Kiota.Abstractions.Serialization;
 
 namespace Flowstate.Cli.Commands;
 
-/// <summary>issue list|get|create|create-many|update|update-many|move|close|relate|unrelate.</summary>
+/// <summary>issue list|search|get|create|create-many|update|update-many|move|close|relate|unrelate.</summary>
 internal static class IssueCommands
 {
     /// <summary>Value that empties a field in <c>issue update</c>.</summary>
@@ -13,8 +13,9 @@ internal static class IssueCommands
 
     public static IEnumerable<Command> Build()
     {
-        var issue = new Command("issue", "Issues: list, read, create, update, move, relate.");
-        issue.Subcommands.Add(List());
+        var issue = new Command("issue", "Issues: list, search, read, create, update, move, relate.");
+        issue.Subcommands.Add(List(search: false));
+        issue.Subcommands.Add(List(search: true));
         issue.Subcommands.Add(Get());
         issue.Subcommands.Add(Create());
         issue.Subcommands.Add(CreateMany());
@@ -27,8 +28,11 @@ internal static class IssueCommands
         yield return issue;
     }
 
-    private static Command List()
+    /// <summary><c>issue list [-q query]</c>, or <c>issue search words...</c> (the same operation, query as arguments).</summary>
+    private static Command List(bool search)
     {
+        var query = new Option<string?>("--query", "-q") { Description = "Search text and filters, e.g. \"drag epics type:feature state:todo assignee:me\"." };
+        var words = new Argument<string[]>("query") { Description = "Search text and filters, e.g. drag epics state:todo assignee:me.", Arity = ArgumentArity.OneOrMore };
         var project = new Option<string[]>("--project", "-p") { Description = "Project key; repeat for several.", AllowMultipleArgumentsPerToken = true };
         var state = Cli.EnumListOption<IssueState>("--state", "State");
         var type = Cli.EnumListOption<IssueType>("--type", "Type");
@@ -36,12 +40,17 @@ internal static class IssueCommands
         var label = new Option<string?>("--label") { Description = "Label name." };
         var parent = new Option<string?>("--parent") { Description = "Parent issue key: list its children." };
         var sprint = new Option<string?>("--sprint") { Description = "Sprint id, `active` or `none`." };
-        var sort = Cli.EnumOption<IssueSort>("--sort", "Order");
+        var sort = Cli.EnumOption<IssueSort>("--sort", "Order (default: relevance when searching, else updated)");
         var limit = new Option<int?>("--limit") { Description = "Page size, 1-200 (default 50)." };
         var cursor = new Option<string?>("--cursor") { Description = "Continue from a previous page's nextCursor." };
         var all = new Option<bool>("--all") { Description = "Follow pages until the end." };
-        var command = new ApiCommand("list", "List issues with filters.", "listIssues")
-            { project, state, type, assignee, label, parent, sprint, sort, limit, cursor, all };
+        var command = search
+            ? new ApiCommand("search", "Search issues: free text (typo tolerant) plus key:value filters.", "listIssues") { words }
+            : new ApiCommand("list", "List issues with filters.", "listIssues") { query };
+        foreach (var option in new Option[] { project, state, type, assignee, label, parent, sprint, sort, limit, cursor, all })
+        {
+            command.Options.Add(option);
+        }
 
         return command.Handle(async (c, ct) =>
         {
@@ -55,6 +64,7 @@ internal static class IssueCommands
                 page = await issues.GetAsync(r =>
                 {
                     var q = r.QueryParameters;
+                    q.Q = search ? string.Join(' ', c.Get(words) ?? []) : c.Get(query);
                     q.Project = c.Get(project) is { Length: > 0 } p ? p : null;
                     q.State = c.Get(state) is { Length: > 0 } s ? s : null;
                     q.Type = c.Get(type) is { Length: > 0 } t ? t : null;

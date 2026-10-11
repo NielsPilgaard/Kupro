@@ -9,6 +9,7 @@ using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace Flowstate.Api.Features.Issues;
 
@@ -81,9 +82,84 @@ public sealed class IssueService(
 
     public async Task<IssueResult<IssuePage>> ListAsync(IssueQuery query, CancellationToken ct)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var issues = db.Issues.AsNoTracking();
+        var parsed = IssueSearch.Parse(query.Q);
+        if (parsed.Error is { } invalid)
+        {
+            return invalid;
+        }
 
+        var search = parsed.Value!;
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+        // Parameters and q filters both apply (AND).
+        var filtered = Filter(db, db.Issues.AsNoTracking(), query);
+        if (filtered.Error is null)
+        {
+            filtered = Filter(db, filtered.Value!, search.Filters);
+        }
+
+        if (filtered.Error is { } error)
+        {
+            return error;
+        }
+
+        var issues = filtered.Value!;
+        var sort = query.Sort ?? (search.Text is null ? IssueSort.Updated : IssueSort.Relevance);
+        if (sort == IssueSort.Relevance && search.Text is null)
+        {
+            sort = IssueSort.Updated;
+        }
+
+        Cursor? cursor = null;
+        if (query.Cursor is { } raw && (cursor = Cursor.TryParse(raw, sort)) is null)
+        {
+            return new IssueError("invalid_cursor", "The cursor is malformed or from a different sort.");
+        }
+
+        if (search.Text is { } text)
+        {
+            // The tsquery is built inside each lambda: as a local it would be evaluated on the client and fail.
+            var key = text.Trim().ToUpperInvariant();
+            issues = issues.Where(i => EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
+                    .Matches(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
+                || FlowstateDbContext.WordSimilarity(text, i.Title) >= MinWordSimilarity
+                || i.Key == key);
+
+            if (sort == IssueSort.Relevance)
+            {
+                // Relevance is computed, so pages use an offset; deep paging through search results is rare.
+                var offset = (int)Math.Clamp(cursor?.Number ?? 0, 0, int.MaxValue);
+                var ranked = await issues
+                    .OrderByDescending(i => (i.Key == key ? 2 : 0)
+                        + EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
+                            .Rank(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
+                        + FlowstateDbContext.WordSimilarity(text, i.Title))
+                    .ThenByDescending(i => i.UpdatedAt).ThenByDescending(i => i.Id)
+                    .Skip(offset).Take(query.Limit + 1).Select(SummaryOf(db)).ToListAsync(ct);
+                return PageOf(ranked, query.Limit, _ => Cursor.ForOffset(offset + query.Limit));
+            }
+        }
+
+        var page = await Paginate(issues, sort, cursor).Take(query.Limit + 1).Select(SummaryOf(db)).ToListAsync(ct);
+        return PageOf(page, query.Limit, last => Cursor.For(last, sort));
+    }
+
+    /// <summary>Typo-tolerant title match threshold; pg_trgm's own default (0.6) misses one-letter typos in short words.</summary>
+    private const float MinWordSimilarity = 0.5f;
+
+    private static IssuePage PageOf(List<IssueSummary> rows, int limit, Func<IssueSummary, string> next)
+    {
+        if (rows.Count <= limit)
+        {
+            return new IssuePage(rows, null);
+        }
+
+        rows.RemoveAt(rows.Count - 1);
+        return new IssuePage(rows, next(rows[^1]));
+    }
+
+    private IssueResult<IQueryable<Issue>> Filter(FlowstateDbContext db, IQueryable<Issue> issues, IssueQuery query)
+    {
         if (query.Project is { Length: > 0 } projectKeys)
         {
             var keys = projectKeys.Select(k => k.ToUpperInvariant()).ToList();
@@ -150,23 +226,7 @@ public sealed class IssueService(
             issues = issues.Where(i => db.Issues.Any(p => p.Id == i.ParentId && p.Key == parentKey));
         }
 
-        Cursor? cursor = null;
-        if (query.Cursor is { } raw && (cursor = Cursor.TryParse(raw, query.Sort)) is null)
-        {
-            return new IssueError("invalid_cursor", "The cursor is malformed or from a different sort.");
-        }
-
-        issues = Paginate(issues, query.Sort, cursor);
-        var page = await issues.Take(query.Limit + 1).Select(SummaryOf(db)).ToListAsync(ct);
-
-        string? next = null;
-        if (page.Count > query.Limit)
-        {
-            page.RemoveAt(page.Count - 1);
-            next = Cursor.For(page[^1], query.Sort);
-        }
-
-        return new IssuePage(page, next);
+        return new IssueResult<IQueryable<Issue>>(issues, null);
     }
 
     // ---------------------------------------------------------------- create
@@ -826,6 +886,9 @@ public sealed class IssueService(
             IssueSort.Rank => $"{sort}|{last.Id}|{last.Rank.ToString("R", CultureInfo.InvariantCulture)}",
             _ => $"{sort}|{last.Id}|{last.UpdatedAt.ToString("O", CultureInfo.InvariantCulture)}",
         });
+
+        public static string ForOffset(int offset) =>
+            Encode($"{IssueSort.Relevance}|{Guid.Empty}|{offset.ToString(CultureInfo.InvariantCulture)}");
 
         public static Cursor? TryParse(string raw, IssueSort expected)
         {

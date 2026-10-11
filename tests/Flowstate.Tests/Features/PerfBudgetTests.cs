@@ -21,6 +21,8 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
     private static readonly TimeSpan P99Budget = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan P50Budget = TimeSpan.FromMilliseconds(100);
     private static readonly string[] Projects = ["CORE", "WEB", "API", "OPS"];
+    private static readonly string[] Topics = ["Render dependency curves", "Billing export", "Login with SSO", "Danish copy review",
+        "Drag epics between months", "Offline mode", "Audit log", "Notifications digest", "Search ranking", "Webhook retries"];
 
     [Fact]
     public async Task Endpoints_meet_the_latency_budget_on_10k_issues()
@@ -35,6 +37,9 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
             $"{ws}/issues", $"{ws}/issues?limit=200", $"{ws}/issues?project=CORE&state=todo&sort=rank",
             $"{ws}/issues?label=bug", $"{ws}/issues?assignee=me&sort=priority", $"{ws}/issues?type=epic",
             $"{ws}/issues/CORE-1", $"{ws}/issues/API-2400",
+            // Search (task 009): typo, text plus filters, a word in every title (ranks all 10k), filters only.
+            $"{ws}/issues?q=dependancy", $"{ws}/issues?q=billing%20state:todo,inProgress", $"{ws}/issues?q=issue",
+            $"{ws}/issues?q=type:epic%20assignee:me",
         };
 
         var results = new List<(string Name, double P50, double P99)>();
@@ -83,7 +88,7 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         {
             var items = Enumerable.Range(0, 100).Select(i => new CreateIssueRequest(
                 Projects[i % Projects.Length],
-                $"Seeded issue {batch}-{i}",
+                $"{Topics[(batch + i) % Topics.Length]} issue {batch}-{i}",
                 Type: i % 50 == 0 ? IssueType.Epic : IssueType.Task,
                 State: states[(batch + i) % states.Length],
                 Priority: priorities[i % priorities.Length],
