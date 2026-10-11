@@ -1,15 +1,21 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, createRoute, createRouter, redirect } from '@tanstack/react-router';
+import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
+import { AppShell } from './app/AppShell';
 import { callbackPath, completeSignIn, getSession, signIn } from './auth/auth';
+import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/IssuePages';
+import { SettingsPage } from './features/settings/SettingsPage';
+import { HomePage, NewProjectPage, WorkspaceIndexPage } from './features/workspace/WorkspacePages';
 import { AuthCallbackError } from './routes/AuthCallbackError';
-import { AuthedLayout } from './routes/AuthedLayout';
-import { HomePage } from './routes/HomePage';
 import { NotFound } from './routes/NotFound';
 import { RootLayout } from './routes/RootLayout';
 
 export interface RouterContext {
   queryClient: QueryClient;
 }
+
+/** `?issue=FLOW-12` opens the detail panel over whatever view is showing, so every issue view is linkable. */
+const withIssue = (search: Record<string, unknown>): { issue?: string } =>
+  typeof search.issue === 'string' ? { issue: search.issue } : {};
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
@@ -30,16 +36,43 @@ const callbackRoute = createRoute({
 const authedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'authed',
-  component: AuthedLayout,
+  component: Outlet,
   beforeLoad: async ({ location }) => {
     const session = (await getSession()) ?? (await signIn(location.href));
     return { session };
   },
 });
 
-const indexRoute = createRoute({ getParentRoute: () => authedRoute, path: '/', component: HomePage });
+const homeRoute = createRoute({ getParentRoute: () => authedRoute, path: '/', component: HomePage });
+const settingsRoute = createRoute({ getParentRoute: () => authedRoute, path: '/settings', component: SettingsPage });
 
-const routeTree = rootRoute.addChildren([callbackRoute, authedRoute.addChildren([indexRoute])]);
+const workspaceRoute = createRoute({ getParentRoute: () => authedRoute, path: '/w/$workspace', component: AppShell });
+const workspaceIndexRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/', component: WorkspaceIndexPage });
+const newProjectRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/new-project', component: NewProjectPage });
+const myIssuesRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/my-issues',
+  component: MyIssuesPage,
+  validateSearch: withIssue,
+});
+const projectRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/p/$project',
+  component: ProjectIssuesPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    view: (search.view === 'board' ? 'board' : 'list') as View,
+    ...withIssue(search),
+  }),
+});
+
+const routeTree = rootRoute.addChildren([
+  callbackRoute,
+  authedRoute.addChildren([
+    homeRoute,
+    settingsRoute,
+    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, myIssuesRoute, projectRoute]),
+  ]),
+]);
 
 export function createAppRouter(queryClient: QueryClient) {
   return createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

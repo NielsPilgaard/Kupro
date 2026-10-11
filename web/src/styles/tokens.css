@@ -20,6 +20,16 @@
   --warn: #a9801a;
   --bad: #b3393b;
 
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
   --sel: color-mix(in srgb, var(--acc) 13%, transparent);
   --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
 
@@ -36,6 +46,8 @@
   --sidebar: 212px;
 
   --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --dur-1: 120ms;
   --dur-2: 160ms;
@@ -60,6 +72,14 @@
     --ok: #78c36f;
     --warn: #e3bc55;
     --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
   }
 }
 
@@ -81,6 +101,14 @@
   --ok: #78c36f;
   --warn: #e3bc55;
   --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
 }
 
 @media (prefers-reduced-motion: reduce) {

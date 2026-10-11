@@ -1,20 +1,141 @@
 {
-  "app": {
-    "name": "Flowstate",
-    "tagline": "Plan the year. Ship the week."
-  },
+  "app": { "name": "Flowstate", "tagline": "Plan the year. Ship the week." },
   "status": {
     "checking": "Connecting to API…",
     "online": "API online · v{{version}}",
     "offline": "API unreachable. Is `aspire run` running?"
   },
-  "notFound": {
-    "title": "Page not found",
-    "back": "Go to start"
+  "notFound": { "title": "Page not found", "back": "Go to start" },
+  "auth": { "signOut": "Sign out", "signInFailed": "Sign-in didn't complete.", "retry": "Try again" },
+  "common": { "dismiss": "Dismiss", "close": "Close", "edit": "Edit", "cancel": "Cancel", "loading": "Loading…" },
+  "nav": {
+    "label": "Main",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "search": "Search",
+    "myIssues": "My issues",
+    "projects": "Projects",
+    "newProject": "New project",
+    "settings": "Settings"
   },
-  "auth": {
-    "signOut": "Sign out",
-    "signInFailed": "Sign-in didn't complete.",
-    "retry": "Try again"
+  "views": { "label": "View", "list": "List", "board": "Board", "issues": "Issues" },
+  "state": {
+    "backlog": "Backlog",
+    "todo": "Todo",
+    "inProgress": "In Progress",
+    "inReview": "In Review",
+    "done": "Done",
+    "canceled": "Canceled"
+  },
+  "type": { "task": "Task", "feature": "Feature", "epic": "Epic" },
+  "priority": { "none": "No priority", "low": "Low", "medium": "Medium", "high": "High", "urgent": "Urgent" },
+  "relation": {
+    "blocks": "Blocks",
+    "blockedBy": "Blocked by",
+    "relates": "Relates to",
+    "duplicates": "Duplicates",
+    "duplicatedBy": "Duplicated by"
+  },
+  "units": { "hours": "{{value}}h" },
+  "issue": {
+    "new": "New issue",
+    "create": "Create issue",
+    "created": "Created {{key}}",
+    "list": "Issues",
+    "detail": "Issue {{key}}",
+    "unassigned": "Unassigned",
+    "agent": "Agent {{name}}",
+    "me": "Me",
+    "changeState": "Change state",
+    "title": "Title",
+    "titlePlaceholder": "Issue title",
+    "state": "State",
+    "priority": "Priority",
+    "assignee": "Assignee",
+    "labels": "Labels",
+    "noLabels": "Add labels",
+    "type": "Type",
+    "effort": "Effort (hours)",
+    "childEffort": "Sub-issues: {{hours}}",
+    "dates": "Dates",
+    "startDate": "Start date",
+    "dueDate": "Due date",
+    "parent": "Parent",
+    "description": "Description",
+    "descriptionPlaceholder": "Add a description (Markdown)…",
+    "children_one": "{{count}} sub-issue",
+    "children_other": "{{count}} sub-issues",
+    "relations": "Relations",
+    "removeRelation": "Remove relation to {{key}}",
+    "relationType": "Relation",
+    "relationTarget": "Issue key",
+    "addRelation": "Add",
+    "createdBy": "Created by {{name}}",
+    "project": "Project",
+    "labelsPlaceholder": "Labels, comma separated",
+    "needProject": "Create a project first.",
+    "emptyProject": "No issues yet. Press C to create one.",
+    "emptyMine": "Nothing assigned to you, {{name}}."
+  },
+  "errors": {
+    "updateFailed": "Couldn't save {{key}}. Your change was undone.",
+    "moveFailed": "Couldn't move {{key}}. It's back where it was.",
+    "createFailed": "Couldn't create the issue.",
+    "issueNotFound": "{{key}} doesn't exist or you can't see it.",
+    "loadFailed": "Couldn't load issues.",
+    "relationFailed": "Couldn't add the relation. Check the issue key."
+  },
+  "palette": {
+    "title": "Command palette",
+    "empty": "No matches.",
+    "agentFor": "for {{name}}",
+    "newLabel": "Add new label \"{{name}}\"",
+    "changeState": "Change state of {{key}}…",
+    "assign": "Assign {{key}}…",
+    "priority": "Set priority of {{key}}…",
+    "label": "Add label to {{key}}…",
+    "assignMe": "Assign {{key}} to me",
+    "close": "Mark {{key}} done",
+    "openList": "{{name}}: list",
+    "openBoard": "{{name}}: board",
+    "placeholder": {
+      "root": "Type a command or search issues…",
+      "state": "Change state…",
+      "assign": "Assign to…",
+      "priority": "Set priority…",
+      "label": "Add a label…"
+    }
+  },
+  "onboarding": {
+    "title": "Create your workspace",
+    "invited": "You're invited to {{name}}.",
+    "join": "Join",
+    "workspaceName": "Workspace name",
+    "slug": "Address: /w/{{slug}}",
+    "workspaceHint": "Usually your team or company.",
+    "create": "Create workspace",
+    "slugTaken": "That address is taken. Try another name."
+  },
+  "project": {
+    "newTitle": "New project",
+    "name": "Project name",
+    "keyHint": "Issues will be {{key}}-1, {{key}}-2, …",
+    "nameHint": "The key comes from the name.",
+    "create": "Create project",
+    "keyTaken": "The key {{key}} is taken in this workspace."
+  },
+  "settings": {
+    "title": "Settings",
+    "back": "Back to work",
+    "profile": "Profile",
+    "language": "Language",
+    "tokens": "API tokens",
+    "tokensHint": "For the CLI, CI and agents. Use with `flowstate token set` or as a Bearer token.",
+    "tokenOnce": "Copy this token now. It won't be shown again.",
+    "tokenName": "Token name, e.g. laptop",
+    "createToken": "Create token",
+    "lastUsed": "Used {{date}}",
+    "neverUsed": "Never used",
+    "revoke": "Revoke"
   }
 }

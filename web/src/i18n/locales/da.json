@@ -1,20 +1,141 @@
 {
-  "app": {
-    "name": "Flowstate",
-    "tagline": "Planlæg året. Lever ugen."
-  },
+  "app": { "name": "Flowstate", "tagline": "Planlæg året. Lever ugen." },
   "status": {
     "checking": "Forbinder til API…",
     "online": "API online · v{{version}}",
     "offline": "API'et svarer ikke. Kører `aspire run`?"
   },
-  "notFound": {
-    "title": "Siden findes ikke",
-    "back": "Gå til start"
+  "notFound": { "title": "Siden findes ikke", "back": "Gå til start" },
+  "auth": { "signOut": "Log ud", "signInFailed": "Login blev ikke gennemført.", "retry": "Prøv igen" },
+  "common": { "dismiss": "Luk", "close": "Luk", "edit": "Rediger", "cancel": "Annuller", "loading": "Indlæser…" },
+  "nav": {
+    "label": "Hovedmenu",
+    "expand": "Udvid sidepanel",
+    "collapse": "Skjul sidepanel",
+    "search": "Søg",
+    "myIssues": "Mine opgaver",
+    "projects": "Projekter",
+    "newProject": "Nyt projekt",
+    "settings": "Indstillinger"
   },
-  "auth": {
-    "signOut": "Log ud",
-    "signInFailed": "Login blev ikke gennemført.",
-    "retry": "Prøv igen"
+  "views": { "label": "Visning", "list": "Liste", "board": "Tavle", "issues": "Opgaver" },
+  "state": {
+    "backlog": "Backlog",
+    "todo": "Klar",
+    "inProgress": "I gang",
+    "inReview": "Til review",
+    "done": "Færdig",
+    "canceled": "Annulleret"
+  },
+  "type": { "task": "Task", "feature": "Feature", "epic": "Epic" },
+  "priority": { "none": "Ingen prioritet", "low": "Lav", "medium": "Middel", "high": "Høj", "urgent": "Akut" },
+  "relation": {
+    "blocks": "Blokerer",
+    "blockedBy": "Blokeret af",
+    "relates": "Relateret til",
+    "duplicates": "Dublet af",
+    "duplicatedBy": "Har dublet"
+  },
+  "units": { "hours": "{{value}} t" },
+  "issue": {
+    "new": "Ny opgave",
+    "create": "Opret opgave",
+    "created": "{{key}} oprettet",
+    "list": "Opgaver",
+    "detail": "Opgave {{key}}",
+    "unassigned": "Ingen ansvarlig",
+    "agent": "Agent {{name}}",
+    "me": "Mig",
+    "changeState": "Skift status",
+    "title": "Titel",
+    "titlePlaceholder": "Opgavens titel",
+    "state": "Status",
+    "priority": "Prioritet",
+    "assignee": "Ansvarlig",
+    "labels": "Labels",
+    "noLabels": "Tilføj labels",
+    "type": "Type",
+    "effort": "Estimat (timer)",
+    "childEffort": "Underopgaver: {{hours}}",
+    "dates": "Datoer",
+    "startDate": "Startdato",
+    "dueDate": "Leveringsdato",
+    "parent": "Overordnet",
+    "description": "Beskrivelse",
+    "descriptionPlaceholder": "Tilføj en beskrivelse (Markdown)…",
+    "children_one": "{{count}} underopgave",
+    "children_other": "{{count}} underopgaver",
+    "relations": "Relationer",
+    "removeRelation": "Fjern relation til {{key}}",
+    "relationType": "Relation",
+    "relationTarget": "Opgavenøgle",
+    "addRelation": "Tilføj",
+    "createdBy": "Oprettet af {{name}}",
+    "project": "Projekt",
+    "labelsPlaceholder": "Labels, kommasepareret",
+    "needProject": "Opret et projekt først.",
+    "emptyProject": "Ingen opgaver endnu. Tryk C for at oprette en.",
+    "emptyMine": "Du har ingen opgaver, {{name}}."
+  },
+  "errors": {
+    "updateFailed": "{{key}} kunne ikke gemmes. Ændringen er rullet tilbage.",
+    "moveFailed": "{{key}} kunne ikke flyttes. Den er tilbage, hvor den var.",
+    "createFailed": "Opgaven kunne ikke oprettes.",
+    "issueNotFound": "{{key}} findes ikke, eller du har ikke adgang.",
+    "loadFailed": "Opgaverne kunne ikke indlæses.",
+    "relationFailed": "Relationen kunne ikke tilføjes. Tjek opgavenøglen."
+  },
+  "palette": {
+    "title": "Kommandopalet",
+    "empty": "Ingen resultater.",
+    "agentFor": "for {{name}}",
+    "newLabel": "Tilføj ny label \"{{name}}\"",
+    "changeState": "Skift status på {{key}}…",
+    "assign": "Tildel {{key}}…",
+    "priority": "Sæt prioritet på {{key}}…",
+    "label": "Tilføj label til {{key}}…",
+    "assignMe": "Tildel {{key}} til mig",
+    "close": "Markér {{key}} som færdig",
+    "openList": "{{name}}: liste",
+    "openBoard": "{{name}}: tavle",
+    "placeholder": {
+      "root": "Skriv en kommando eller søg i opgaver…",
+      "state": "Skift status…",
+      "assign": "Tildel til…",
+      "priority": "Sæt prioritet…",
+      "label": "Tilføj en label…"
+    }
+  },
+  "onboarding": {
+    "title": "Opret dit arbejdsområde",
+    "invited": "Du er inviteret til {{name}}.",
+    "join": "Deltag",
+    "workspaceName": "Arbejdsområdets navn",
+    "slug": "Adresse: /w/{{slug}}",
+    "workspaceHint": "Typisk dit team eller firma.",
+    "create": "Opret arbejdsområde",
+    "slugTaken": "Adressen er optaget. Prøv et andet navn."
+  },
+  "project": {
+    "newTitle": "Nyt projekt",
+    "name": "Projektnavn",
+    "keyHint": "Opgaver bliver {{key}}-1, {{key}}-2, …",
+    "nameHint": "Nøglen dannes ud fra navnet.",
+    "create": "Opret projekt",
+    "keyTaken": "Nøglen {{key}} er optaget i dette arbejdsområde."
+  },
+  "settings": {
+    "title": "Indstillinger",
+    "back": "Tilbage til arbejdet",
+    "profile": "Profil",
+    "language": "Sprog",
+    "tokens": "API-tokens",
+    "tokensHint": "Til CLI, CI og agenter. Brug med `flowstate token set` eller som Bearer-token.",
+    "tokenOnce": "Kopiér tokenet nu. Det vises ikke igen.",
+    "tokenName": "Tokenets navn, fx bærbar",
+    "createToken": "Opret token",
+    "lastUsed": "Brugt {{date}}",
+    "neverUsed": "Aldrig brugt",
+    "revoke": "Tilbagekald"
   }
 }

@@ -22,6 +22,15 @@
   --color-bad: var(--bad);
   --color-sel: var(--sel);
   --color-side-sel: var(--side-sel);
+  --color-proj-verdigris: var(--proj-verdigris);
+  --color-proj-copper: var(--proj-copper);
+  --color-proj-plum: var(--proj-plum);
+  --color-proj-moss: var(--proj-moss);
+  --color-proj-ochre: var(--proj-ochre);
+  --color-proj-brick: var(--proj-brick);
+  --color-proj-slate: var(--proj-slate);
+  --color-proj-fjord: var(--proj-fjord);
+  --color-scrim: var(--scrim);
   --color-transparent: transparent;
   --color-current: currentColor;
 
@@ -80,5 +89,43 @@
     border-bottom-width: 2px;
     border-radius: 4px;
     color: var(--mute);
+  }
+}
+
+/* Markdown in issue descriptions: readable at md size, links in accent ink. */
+@layer components {
+  .prose-flowstate {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .prose-flowstate h1,
+  .prose-flowstate h2,
+  .prose-flowstate h3 {
+    font-weight: 600;
+  }
+  .prose-flowstate a {
+    color: var(--acc-ink);
+    text-decoration: underline;
+  }
+  .prose-flowstate ul {
+    list-style: disc;
+    padding-left: 20px;
+  }
+  .prose-flowstate ol {
+    list-style: decimal;
+    padding-left: 20px;
+  }
+  .prose-flowstate code {
+    font-family: var(--font-mono);
+    background: var(--sunk);
+    padding: 0 4px;
+    border-radius: 4px;
+  }
+  .prose-flowstate pre {
+    background: var(--sunk);
+    padding: 8px;
+    border-radius: var(--r1);
+    overflow-x: auto;
   }
 }
