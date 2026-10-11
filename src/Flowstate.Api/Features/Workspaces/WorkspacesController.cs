@@ -99,6 +99,7 @@ public sealed class InvitesController(WorkspaceService workspaces) : ControllerB
 
     /// <summary>Accept an invite and join the workspace.</summary>
     [HttpPost("{memberId:guid}/accept", Name = "acceptInvite")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WorkspaceSummary>> Accept(Guid memberId, CancellationToken ct) =>
         await workspaces.AcceptInviteAsync(User.GetUserId(), memberId, ct) is { } joined

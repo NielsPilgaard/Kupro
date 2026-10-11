@@ -39,6 +39,7 @@ if (builder.ExecutionContext.IsPublishMode)
 {
     // Public URL users' browsers reach Keycloak on (e.g. https://auth.flowstate.dk); also baked into the SPA.
     var keycloakPublicUrl = builder.AddParameter("keycloak-public-url");
+    api.WithEnvironment("Auth__PublicAuthority", ReferenceExpression.Create($"{keycloakPublicUrl}/realms/flowstate"));
 
     // Keycloak runs in production mode (`start`) behind the reverse proxy, which terminates TLS.
     keycloak
@@ -58,6 +59,10 @@ if (builder.ExecutionContext.IsPublishMode)
 }
 else
 {
+    // Advertised to clients (CLI device login) via GET /api/v1/status.
+    api.WithEnvironment("Auth__PublicAuthority",
+        ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/flowstate"));
+
     builder.AddViteApp("web", "../../web")
         .WithBun()
         // Fixed port: the dev realm allows exactly this origin and redirect URI.

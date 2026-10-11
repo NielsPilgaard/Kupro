@@ -28,7 +28,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
-| 6 | [005 CLI](005-cli.md) | P1 | 1 | 004 | Todo |
 | 7 | [006 MCP server](006-mcp.md) | P1 | 1 | 004, 005 | Todo |
 | 8 | [014 Performance budget enforcement](014-perf-budget.md) | P1 | 1 | 004 | Todo |
 | 9 | [007 Web UI — list, board, issue detail, command palette](007-web-core-ui.md) | P1 | 1 | 000, 004 | Todo |
@@ -48,6 +47,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | [002 Authentication and API tokens](completed/002-auth.md) | 0 | Done |
 | [003 Workspaces, projects, members](completed/003-workspaces-projects.md) | 1 | Done |
 | [004 Issues core](completed/004-issues-core.md) | 1 | Done |
+| [005 CLI](completed/005-cli.md) | 1 | Done |
 
 ## Rationale
 

@@ -94,6 +94,7 @@ services:
       FLOWSTATE_DATABASENAME: "flowstate"
       KEYCLOAK_HTTP: "http://keycloak:8080"
       services__keycloak__http__0: "http://keycloak:8080"
+      Auth__PublicAuthority: "${KEYCLOAK_PUBLIC_URL}/realms/flowstate"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "api"

@@ -12,12 +12,14 @@ public sealed class IssuesController(IssueService issues) : ControllerBase
 {
     /// <summary>List issues with filters and cursor pagination.</summary>
     [HttpGet(Name = "listIssues")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IssuePage>> List([FromQuery] IssueQuery query, CancellationToken ct) =>
         this.ToResult(await issues.ListAsync(query, ct));
 
     /// <summary>Get an issue with its children, relations and labels.</summary>
     [HttpGet("{key}", Name = "getIssue")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IssueDetail>> Get(string key, CancellationToken ct) =>
         await issues.GetAsync(key, ct) is { } issue ? issue : this.ToProblem(IssueError.NotFound(key));
@@ -40,6 +42,7 @@ public sealed class IssuesController(IssueService issues) : ControllerBase
 
     /// <summary>Update an issue. Only fields you send change; list fields in <c>clear</c> to empty them.</summary>
     [HttpPatch("{key}", Name = "updateIssue")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -48,6 +51,7 @@ public sealed class IssuesController(IssueService issues) : ControllerBase
 
     /// <summary>Update up to 100 issues at once, all-or-nothing.</summary>
     [HttpPatch("bulk", Name = "updateIssues")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -56,6 +60,7 @@ public sealed class IssuesController(IssueService issues) : ControllerBase
 
     /// <summary>Move an issue on the board: change state and/or position between two neighbours.</summary>
     [HttpPost("{key}/move", Name = "moveIssue")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IssueSummary>> Move(string key, MoveIssueRequest request, CancellationToken ct) =>
@@ -90,6 +95,7 @@ public sealed class LabelsController(LabelService labels) : ControllerBase
 
     /// <summary>Rename or recolour a label.</summary>
     [HttpPatch("{name}", Name = "updateLabel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]

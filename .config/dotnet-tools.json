@@ -4,12 +4,23 @@
   "tools": {
     "aspire.cli": {
       "version": "13.6.1",
-      "commands": ["aspire"],
+      "commands": [
+        "aspire"
+      ],
       "rollForward": false
     },
     "dotnet-ef": {
       "version": "10.0.12",
-      "commands": ["dotnet-ef"],
+      "commands": [
+        "dotnet-ef"
+      ],
+      "rollForward": false
+    },
+    "microsoft.openapi.kiota": {
+      "version": "1.36.0",
+      "commands": [
+        "kiota"
+      ],
       "rollForward": false
     }
   }

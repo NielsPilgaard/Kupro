@@ -62,6 +62,51 @@ jobs:
       - run: bun run test
       - run: bun run build
 
+  grafana:
+    name: Grafana dashboards drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate dashboards and alert rules
+        run: python3 infrastructure/grafana/build_dashboards.py
+      - name: Drift
+        run: git diff --exit-code -- infrastructure/grafana/ || (echo "::error::infrastructure/grafana/ is stale — run build_dashboards.py and commit" && exit 1)
+
+  cli:
+    name: CLI AOT (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: windows-latest, rid: win-x64 }
+          - { os: macos-14, rid: osx-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - run: dotnet tool restore
+
+      - name: Publish native binary
+        run: dotnet publish src/Flowstate.Cli -c Release -r ${{ matrix.rid }} -o out
+
+      - name: Cold start under 50 ms (task 005)
+        if: matrix.rid == 'linux-x64'
+        run: |
+          ./out/flowstate --help > /dev/null
+          start=$(date +%s%N); ./out/flowstate --help > /dev/null; end=$(date +%s%N)
+          ms=$(( (end - start) / 1000000 )); echo "cold start: ${ms} ms"
+          test "$ms" -lt 50
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flowstate-${{ matrix.rid }}
+          path: out/flowstate*
+
   web-image:
     name: Web image builds
     runs-on: ubuntu-latest

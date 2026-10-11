@@ -16,6 +16,7 @@ public sealed class ProjectsController(ProjectService projects) : ControllerBase
 
     /// <summary>Get a project by key.</summary>
     [HttpGet("{key}", Name = "getProject")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProjectResponse>> Get(string key, CancellationToken ct) =>
         await projects.GetAsync(key, ct) is { } project
@@ -32,6 +33,7 @@ public sealed class ProjectsController(ProjectService projects) : ControllerBase
 
     /// <summary>Update a project. The key can only change while the project has no issues.</summary>
     [HttpPatch("{key}", Name = "updateProject")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]

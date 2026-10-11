@@ -1,5 +1,7 @@
-using System.CommandLine;
+namespace Flowstate.Cli;
 
-var root = new RootCommand("Flowstate CLI — agent-first issue tracking from the terminal.");
-
-return root.Parse(args).Invoke();
+/// <summary>Entry point. Namespaced (not top-level statements) so tests can reference both the API and the CLI.</summary>
+public static class Program
+{
+    public static Task<int> Main(string[] args) => Cli.RunAsync(args);
+}

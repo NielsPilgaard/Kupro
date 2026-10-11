@@ -477,6 +477,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSummary"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -549,6 +559,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -849,6 +869,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -915,6 +945,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -1031,6 +1071,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuePage"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -1138,6 +1188,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -1204,6 +1264,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -1345,6 +1415,19 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueSummary"
+                  }
+                }
+              }
+            }
+          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -1423,6 +1506,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueSummary"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -1673,6 +1766,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -2206,6 +2309,29 @@
         ],
         "description": "Fields that can be cleared with `clear` in an update."
       },
+      "IssuePage": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueSummary"
+            },
+            "description": "Issues on this page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page."
+          }
+        }
+      },
       "IssuePriority": {
         "enum": [
           "none",
@@ -2709,7 +2835,9 @@
       "StatusResponse": {
         "required": [
           "service",
-          "version"
+          "version",
+          "authority",
+          "cliClientId"
         ],
         "type": "object",
         "properties": {
@@ -2720,6 +2848,17 @@
           "version": {
             "type": "string",
             "description": "API build version."
+          },
+          "authority": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "OpenID Connect issuer users sign in with (Keycloak realm URL); null if not configured."
+          },
+          "cliClientId": {
+            "type": "string",
+            "description": "OAuth client id for the CLI's device authorization grant."
           }
         }
       },

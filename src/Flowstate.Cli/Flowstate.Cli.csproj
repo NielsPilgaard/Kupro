@@ -6,10 +6,36 @@
     <AssemblyName>flowstate</AssemblyName>
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <!-- Command builders return the base Command type on purpose; Command is IEnumerable for collection initializers. -->
+    <NoWarn>$(NoWarn);CA1859;CA1010</NoWarn>
+    <!-- Kiota client generated from the committed spec (ADR-001: CLI is a pure API client). Not committed. -->
+    <OpenApiSpec>$(MSBuildThisFileDirectory)../../openapi/flowstate.json</OpenApiSpec>
+    <KiotaOutput>$(BaseIntermediateOutputPath)kiota/</KiotaOutput>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Kiota.Bundle" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Flowstate.Tests" />
+  </ItemGroup>
+
+  <!-- Regenerates only when the spec changes. Requires `dotnet tool restore`. -->
+  <Target Name="GenerateApiClient" BeforeTargets="CoreCompile;BeforeBuild"
+          Inputs="$(OpenApiSpec)" Outputs="$(KiotaOutput).stamp">
+    <Exec Command="dotnet kiota generate -l CSharp -d &quot;$(OpenApiSpec)&quot; -o &quot;$(KiotaOutput)Api&quot; -c FlowstateClient -n Flowstate.Cli.Api --exclude-backward-compatible --clean-output --log-level Error"
+          WorkingDirectory="$(MSBuildThisFileDirectory)" />
+    <Touch Files="$(KiotaOutput).stamp" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="IncludeApiClient" AfterTargets="GenerateApiClient" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Remove="$(KiotaOutput)Api/**/*.cs" />
+      <Compile Include="$(KiotaOutput)Api/**/*.cs" />
+    </ItemGroup>
+  </Target>
 
 </Project>
