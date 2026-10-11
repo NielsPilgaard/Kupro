@@ -163,7 +163,8 @@ public sealed class IssueService(
 
         var projectKeys = requests.Select(r => r.Project.ToUpperInvariant()).Distinct().ToList();
         var projects = await db.Projects.Where(p => projectKeys.Contains(p.Key)).ToDictionaryAsync(p => p.Key, p => p.Id, ct);
-        var parentKeys = requests.Where(r => r.Parent is not null).Select(r => NormalizeKey(r.Parent!)).Distinct().ToList();
+        var parentKeys = requests.Where(r => r.Parent is not null && !IsBatchRef(r.Parent)).Select(r => NormalizeKey(r.Parent!))
+            .Distinct().ToList();
         var parents = await db.Issues.Where(i => parentKeys.Contains(i.Key))
             .ToDictionaryAsync(i => i.Key, i => new ParentInfo(i.Id, i.Type), ct);
         var assignees = await ResolveAssigneesAsync(db, requests.Select(r => r.Assignee), ct);
@@ -177,7 +178,19 @@ public sealed class IssueService(
                 return new IssueError("project_not_found", $"{where}No project {r.Project}.");
             }
 
-            if (r.Parent is not null && Validate.Parent(r.Type, parents.GetValueOrDefault(NormalizeKey(r.Parent))) is { } parentError)
+            if (r.Parent is not null && IsBatchRef(r.Parent))
+            {
+                if (!int.TryParse(r.Parent.AsSpan(1), out var index) || index < 0 || index >= n)
+                {
+                    return new IssueError("invalid_parent", $"{where}{r.Parent} must point to an earlier issue in this request.");
+                }
+
+                if (Validate.Parent(r.Type, new ParentInfo(Guid.Empty, requests[index].Type)) is { } batchError)
+                {
+                    return batchError with { Detail = where + batchError.Detail };
+                }
+            }
+            else if (r.Parent is not null && Validate.Parent(r.Type, parents.GetValueOrDefault(NormalizeKey(r.Parent))) is { } parentError)
             {
                 return parentError with { Detail = where + parentError.Detail };
             }
@@ -220,7 +233,9 @@ public sealed class IssueService(
                 State = r.State,
                 Priority = r.Priority,
                 AssigneeId = r.Assignee is null ? null : assignees[r.Assignee],
-                ParentId = r.Parent is null ? null : parents[NormalizeKey(r.Parent)].Id,
+                ParentId = r.Parent is null ? null
+                    : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
+                    : parents[NormalizeKey(r.Parent)].Id,
                 Effort = r.Effort,
                 StartDate = r.StartDate,
                 DueDate = r.DueDate,
@@ -568,6 +583,9 @@ public sealed class IssueService(
     // ---------------------------------------------------------------- helpers
 
     private static string NormalizeKey(string key) => key.Trim().ToUpperInvariant();
+
+    /// <summary><c>#2</c> in a bulk create: the third issue of the same request.</summary>
+    private static bool IsBatchRef(string parent) => parent.StartsWith('#');
 
     private static bool IsClosed(IssueState state) => state is IssueState.Done or IssueState.Canceled;
 

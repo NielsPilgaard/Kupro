@@ -12,7 +12,8 @@ namespace Flowstate.Api.Features.Issues;
 /// <param name="State">Workflow state; default backlog.</param>
 /// <param name="Priority">Default none.</param>
 /// <param name="Assignee">Member id, or <c>me</c>.</param>
-/// <param name="Parent">Parent issue key: a feature or epic (tasks), or an epic (features).</param>
+/// <param name="Parent">Parent issue key: a feature or epic (tasks), or an epic (features). In a bulk create, <c>#i</c>
+/// points to the i-th issue (0-based) earlier in the same request, so an epic and its children go in one call.</param>
 /// <param name="Effort">Estimate in hours.</param>
 /// <param name="StartDate">Planned start (drives the delivery plan).</param>
 /// <param name="DueDate">Planned delivery date.</param>

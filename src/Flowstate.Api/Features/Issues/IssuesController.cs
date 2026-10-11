@@ -60,6 +60,7 @@ public sealed class IssuesController(IssueService issues) : ControllerBase
 
     /// <summary>Move an issue on the board: change state and/or position between two neighbours.</summary>
     [HttpPost("{key}/move", Name = "moveIssue")]
+    [NoAgentSurface(AgentSurface.Mcp, "Board ordering is a UI gesture; agents change state with update_issues.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -95,6 +96,7 @@ public sealed class LabelsController(LabelService labels) : ControllerBase
 
     /// <summary>Rename or recolour a label.</summary>
     [HttpPatch("{name}", Name = "updateLabel")]
+    [NoAgentSurface(AgentSurface.Mcp, "Label presentation (name, colour) is a human concern.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

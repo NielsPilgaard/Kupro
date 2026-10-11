@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Flowstate.Api.Features.Tokens;
 using Flowstate.Api.Features.Users;
+using Flowstate.Api.Mcp;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using ModelContextProtocol.AspNetCore.Authentication;
 
 namespace Flowstate.Api.Auth;
 
@@ -29,14 +31,23 @@ public static class AuthExtensions
             .AddAuthentication(SelectorScheme)
             // One Bearer header, two credential types: fs_ API tokens; everything else is a Keycloak JWT.
             .AddPolicyScheme(SelectorScheme, SelectorScheme, options =>
+            {
                 options.ForwardDefaultSelector = context => GetApiTokenFromHeader(context.Request) is not null
                     ? ApiTokenAuthenticationHandler.SchemeName
-                    : JwtBearerDefaults.AuthenticationScheme)
+                    : JwtBearerDefaults.AuthenticationScheme;
+                // 401s point MCP clients (and anyone else) at the Protected Resource Metadata (RFC 9728).
+                options.ForwardChallenge = McpAuthenticationDefaults.AuthenticationScheme;
+            })
+            .AddMcp(options => McpSetup.ConfigureResourceMetadata(options, builder.Configuration))
             .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
                 ApiTokenAuthenticationHandler.SchemeName, null)
             .AddKeycloakJwtBearer("keycloak", Realm, options =>
             {
-                options.Audience = Audience;
+                // flowstate-api: our own clients (audience mapper). The MCP resource URL: tokens Keycloak issues with
+                // a resource indicator (RFC 8707) to MCP clients (ADR-005 IMP-001).
+                options.TokenValidationParameters.ValidAudiences = builder.Configuration["Api:PublicUrl"] is { } publicUrl
+                    ? [Audience, publicUrl.TrimEnd('/') + McpSetup.Path]
+                    : [Audience];
                 options.MapInboundClaims = false;
                 // Inside the compose network Keycloak is plain HTTP behind the TLS-terminating proxy.
                 options.RequireHttpsMetadata = false;

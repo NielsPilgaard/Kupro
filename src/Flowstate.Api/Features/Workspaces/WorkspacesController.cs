@@ -18,6 +18,7 @@ public sealed class WorkspacesController(WorkspaceService workspaces) : Controll
 
     /// <summary>Create a workspace. You become its Owner.</summary>
     [HttpPost(Name = "createWorkspace")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [Authorize(Policy = AuthExtensions.Policies.Human)]
     [ProducesResponseType<WorkspaceSummary>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
@@ -32,6 +33,7 @@ public sealed class WorkspacesController(WorkspaceService workspaces) : Controll
 
     /// <summary>Rename a workspace or change its hours per person per week.</summary>
     [HttpPatch("{workspace}", Name = "updateWorkspace")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]
     public Task<WorkspaceResponse> Update(UpdateWorkspaceRequest request, CancellationToken ct) =>
         workspaces.UpdateAsync(request, ct);
@@ -48,6 +50,7 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
 
     /// <summary>Invite someone by email. They join when they accept.</summary>
     [HttpPost(Name = "inviteMember")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]
     [ProducesResponseType<MemberResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
@@ -61,6 +64,7 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
 
     /// <summary>Change a member's role.</summary>
     [HttpPatch("{memberId:guid}", Name = "updateMember")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -70,6 +74,7 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
 
     /// <summary>Deactivate a member: access and their tokens for this workspace are revoked; history keeps their name.</summary>
     [HttpPost("{memberId:guid}/deactivate", Name = "deactivateMember")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -94,11 +99,13 @@ public sealed class InvitesController(WorkspaceService workspaces) : ControllerB
 {
     /// <summary>List your pending workspace invites.</summary>
     [HttpGet(Name = "listInvites")]
+    [NoAgentSurface(AgentSurface.Mcp, "Invites are addressed to people.")]
     public Task<IReadOnlyList<InviteResponse>> List(CancellationToken ct) =>
         workspaces.ListInvitesAsync(User.GetUserId(), ct);
 
     /// <summary>Accept an invite and join the workspace.</summary>
     [HttpPost("{memberId:guid}/accept", Name = "acceptInvite")]
+    [NoAgentSurface(AgentSurface.Mcp, "Invites are addressed to people.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WorkspaceSummary>> Accept(Guid memberId, CancellationToken ct) =>

@@ -8,6 +8,7 @@ using Flowstate.Api.Features.Email;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Workspaces;
+using Flowstate.Api.Mcp;
 using Flowstate.Api.Tenancy;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.AddFlowstateDatabase();
 builder.AddFlowstateAuth();
+builder.AddFlowstateMcp();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
@@ -54,6 +56,7 @@ app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapOpenApi().AllowAnonymous();
 app.MapControllers();
+app.MapFlowstateMcp();
 app.MapDefaultEndpoints();
 
 await app.RunAsync();

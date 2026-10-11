@@ -19,6 +19,18 @@ Prerequisites: [.NET 10 SDK](https://dot.net), [Bun](https://bun.sh) 1.4, Docker
 Production-style stack: `dotnet aspire deploy` builds the images and runs the generated
 [deploy/docker-compose.yaml](deploy/docker-compose.yaml) locally.
 
+## Connect an agent
+
+Everything in the UI is also in the REST API, the `flowstate` CLI and the MCP server ([ADR-001](docs/adr/ADR-001-agent-parity.md)).
+
+```sh
+flowstate login                                   # device flow in the browser; or: flowstate token set fs_pat_...
+flowstate issue list --state todo                 # tables at a terminal, JSON when piped or with --json
+claude mcp add flowstate -- flowstate mcp         # MCP over stdio with the CLI's credentials
+# Remote MCP with an agent token (OAuth sign-in also works: omit --header)
+claude mcp add --transport http flowstate http://localhost:5239/mcp --header "Authorization: Bearer fs_agent_..."
+```
+
 ## Repo layout
 
 | Path | What |

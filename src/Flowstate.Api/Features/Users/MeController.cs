@@ -19,6 +19,7 @@ public sealed class MeController(UserService users) : ControllerBase
 
     /// <summary>Update the current user's profile (display name, language, time zone).</summary>
     [HttpPatch(Name = "updateMe")]
+    [NoAgentSurface(AgentSurface.Mcp, "Profile settings (language, time zone) are personal.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<MeResponse>> Update(UpdateMeRequest request, CancellationToken ct) =>

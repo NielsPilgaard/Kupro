@@ -1,4 +1,5 @@
 using System.Reflection;
+using Flowstate.Api.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,7 @@ public sealed class StatusController(IConfiguration configuration) : ControllerB
 
     /// <summary>Get API status.</summary>
     [HttpGet(Name = "getStatus")]
+    [NoAgentSurface(AgentSurface.Mcp, "Connectivity check; MCP clients get server info from initialize.")]
     public ActionResult<StatusResponse> Get() =>
         new StatusResponse("flowstate", Version, configuration["Auth:PublicAuthority"], CliClientId);
 }

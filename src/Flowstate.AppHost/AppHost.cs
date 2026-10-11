@@ -62,6 +62,8 @@ else
     // Advertised to clients (CLI device login) via GET /api/v1/status.
     api.WithEnvironment("Auth__PublicAuthority",
         ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/flowstate"));
+    // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001).
+    api.WithEnvironment("Api__PublicUrl", api.GetEndpoint("http"));
 
     builder.AddViteApp("web", "../../web")
         .WithBun()

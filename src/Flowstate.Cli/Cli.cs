@@ -54,7 +54,8 @@ public sealed class CommandContext(ParseResult parse, ApiSession session, Output
 }
 
 /// <summary>Overrides for in-process runs (tests): config, output and HTTP transport.</summary>
-public sealed record CliRuntime(CliConfig Config, TextWriter Out, TextWriter Error, HttpMessageHandler? Transport, bool Json);
+public sealed record CliRuntime(
+    CliConfig Config, TextWriter Out, TextWriter Error, HttpMessageHandler? Transport, bool Json, TextReader? In = null);
 
 public static class Cli
 {
@@ -88,7 +89,8 @@ public static class Cli
         foreach (var command in AccountCommands.Build()
                      .Concat(WorkspaceCommands.Build())
                      .Concat(ProjectCommands.Build())
-                     .Concat(IssueCommands.Build()))
+                     .Concat(IssueCommands.Build())
+                     .Append(McpCommand.Build()))
         {
             root.Subcommands.Add(command);
         }

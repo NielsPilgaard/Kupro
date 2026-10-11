@@ -79,6 +79,35 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "mcp",
+      "name": "MCP clients (pre-registered fallback)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1/*",
+        "http://localhost/*"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "flowstate-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "flowstate-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -112,5 +141,48 @@
         }
       ]
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
+      {
+        "name": "Trusted Hosts",
+        "providerId": "trusted-hosts",
+        "subType": "anonymous",
+        "config": {
+          "host-sending-registration-request-must-match": [
+            "false"
+          ],
+          "client-uris-must-match": [
+            "true"
+          ],
+          "trusted-hosts": [
+            "localhost",
+            "127.0.0.1"
+          ]
+        }
+      },
+      {
+        "name": "Consent Required",
+        "providerId": "consent-required",
+        "subType": "anonymous",
+        "config": {}
+      },
+      {
+        "name": "Max Clients Limit",
+        "providerId": "max-clients",
+        "subType": "anonymous",
+        "config": {
+          "max-clients": [
+            "200"
+          ]
+        }
+      },
+      {
+        "name": "Full Scope Disabled",
+        "providerId": "scope",
+        "subType": "anonymous",
+        "config": {}
+      }
+    ]
+  }
 }

@@ -24,6 +24,9 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
         return new FlowstateClient(new HttpClientRequestAdapter(auth, httpClient: http) { BaseUrl = Config.EffectiveUrl });
     }
 
+    /// <summary>Plain HTTP client on the same transport (tests swap it), for non-generated calls like the MCP bridge.</summary>
+    public HttpClient CreateHttpClient() => transport is null ? new HttpClient() : new HttpClient(transport, disposeHandler: false);
+
     /// <summary>API token if set, otherwise the login session's access token, refreshed when about to expire.</summary>
     public async Task<string?> GetAccessTokenAsync(CancellationToken ct)
     {

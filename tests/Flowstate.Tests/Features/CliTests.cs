@@ -79,6 +79,23 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         error.ShouldContain("in-progress");
     }
 
+    [Fact]
+    public async Task Mcp_bridge_forwards_stdio_json_rpc_to_the_remote_server()
+    {
+        var stdin = new StringReader(string.Join(Environment.NewLine,
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}""",
+            """{"jsonrpc":"2.0","method":"notifications/initialized"}""",
+            """{"jsonrpc":"2.0","id":2,"method":"tools/list"}"""));
+
+        var (exit, output, error) = await RunAsync(json: true, stdin, "mcp");
+
+        exit.ShouldBe(0, error);
+        var replies = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(l => JsonDocument.Parse(l).RootElement).ToList();
+        replies.Select(r => r.GetProperty("id").GetInt32()).Order().ShouldBe([1, 2]);
+        var tools = replies.Single(r => r.GetProperty("id").GetInt32() == 2).GetProperty("result").GetProperty("tools");
+        tools.EnumerateArray().Select(t => t.GetProperty("name").GetString()).ShouldContain("search_issues");
+    }
+
     private async Task<JsonElement> RunJsonAsync(params string[] args)
     {
         var (exit, output, error) = await RunAsync(json: true, args);
@@ -86,12 +103,14 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         return JsonDocument.Parse(output).RootElement;
     }
 
-    private async Task<(int Exit, string Out, string Error)> RunAsync(bool json, params string[] args)
+    private Task<(int Exit, string Out, string Error)> RunAsync(bool json, params string[] args) => RunAsync(json, null, args);
+
+    private async Task<(int Exit, string Out, string Error)> RunAsync(bool json, TextReader? stdin, params string[] args)
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
         var config = new CliConfig { InMemory = true, Url = "http://localhost", Token = _token, Workspace = _workspace };
-        CliApp.Runtime.Value = new CliRuntime(config, stdout, stderr, Factory.Server.CreateHandler(), json);
+        CliApp.Runtime.Value = new CliRuntime(config, stdout, stderr, Factory.Server.CreateHandler(), json, stdin);
         var parse = CliApp.BuildRoot().Parse(args);
         var exit = await parse.InvokeAsync(new System.CommandLine.InvocationConfiguration { Error = stderr, Output = stdout }, Ct);
         return (exit, stdout.ToString(), stderr.ToString());

@@ -1996,7 +1996,7 @@
               "null",
               "string"
             ],
-            "description": "Parent issue key: a feature or epic (tasks), or an epic (features)."
+            "description": "Parent issue key: a feature or epic (tasks), or an epic (features). In a bulk create, `#i`\r\n    points to the i-th issue (0-based) earlier in the same request, so an epic and its children go in one call."
           },
           "effort": {
             "type": [
