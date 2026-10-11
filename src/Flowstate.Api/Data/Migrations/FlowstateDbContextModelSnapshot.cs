@@ -22,6 +22,349 @@ namespace Flowstate.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Flowstate.Api.Common.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("key");
+
+                    b.Property<byte[]>("RequestHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("request_hash");
+
+                    b.Property<byte[]>("ResponseBody")
+                        .HasColumnType("bytea")
+                        .HasColumnName("response_body");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idempotency_records");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_records_created_at");
+
+                    b.HasIndex("UserId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_idempotency_records_user_id_key");
+
+                    b.ToTable("idempotency_records", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Activity.ActivityEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("data");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Via")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("via");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activity");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_activity_actor_id");
+
+                    b.HasIndex("IssueId")
+                        .HasDatabaseName("ix_activity_issue_id");
+
+                    b.HasIndex("WorkspaceId", "IssueId", "CreatedAt")
+                        .HasDatabaseName("ix_activity_workspace_id_issue_id_created_at");
+
+                    b.ToTable("activity", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AssigneeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignee_id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(100000)
+                        .HasColumnType("character varying(100000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<decimal?>("Effort")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasColumnName("effort");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("key");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.Property<short>("Priority")
+                        .HasColumnType("smallint")
+                        .HasColumnName("priority");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<double>("Rank")
+                        .HasColumnType("double precision")
+                        .HasColumnName("rank");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<short>("State")
+                        .HasColumnType("smallint")
+                        .HasColumnName("state");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issues");
+
+                    b.HasIndex("AssigneeId")
+                        .HasDatabaseName("ix_issues_assignee_id");
+
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_issues_created_by_id");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_issues_parent_id");
+
+                    b.HasIndex("ProjectId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_issues_project_id_number");
+
+                    b.HasIndex("WorkspaceId", "AssigneeId")
+                        .HasDatabaseName("ix_issues_workspace_id_assignee_id");
+
+                    b.HasIndex("WorkspaceId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_issues_workspace_id_key");
+
+                    b.HasIndex("WorkspaceId", "ParentId")
+                        .HasDatabaseName("ix_issues_workspace_id_parent_id");
+
+                    b.HasIndex("WorkspaceId", "Type")
+                        .HasDatabaseName("ix_issues_workspace_id_type");
+
+                    b.HasIndex("WorkspaceId", "UpdatedAt", "Id")
+                        .HasDatabaseName("ix_issues_workspace_id_updated_at_id");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "State", "Rank")
+                        .HasDatabaseName("ix_issues_workspace_id_project_id_state_rank");
+
+                    b.ToTable("issues", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.IssueLabel", b =>
+                {
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<Guid>("LabelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("label_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("IssueId", "LabelId")
+                        .HasName("pk_issue_labels");
+
+                    b.HasIndex("LabelId")
+                        .HasDatabaseName("ix_issue_labels_label_id");
+
+                    b.HasIndex("WorkspaceId", "LabelId")
+                        .HasDatabaseName("ix_issue_labels_workspace_id_label_id");
+
+                    b.ToTable("issue_labels", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.IssueRelation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_issue_relations");
+
+                    b.HasIndex("TargetId")
+                        .HasDatabaseName("ix_issue_relations_target_id");
+
+                    b.HasIndex("WorkspaceId", "TargetId")
+                        .HasDatabaseName("ix_issue_relations_workspace_id_target_id");
+
+                    b.HasIndex("SourceId", "TargetId", "Type")
+                        .IsUnique()
+                        .HasDatabaseName("ix_issue_relations_source_id_target_id_type");
+
+                    b.ToTable("issue_relations", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.Label", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("color");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_labels");
+
+                    b.HasIndex("WorkspaceId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_labels_workspace_id_name");
+
+                    b.ToTable("labels", (string)null);
+                });
+
             modelBuilder.Entity("Flowstate.Api.Features.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -329,6 +672,113 @@ namespace Flowstate.Api.Data.Migrations
                     b.ToTable("workspaces", (string)null);
                 });
 
+            modelBuilder.Entity("Flowstate.Api.Common.IdempotencyRecord", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_records_users_user_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Activity.ActivityEntry", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_members_actor_id");
+
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_issues_issue_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("AssigneeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issues_members_assignee_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issues_members_created_by_id");
+
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issues_issues_parent_id");
+
+                    b.HasOne("Flowstate.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issues_projects_project_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issues_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.IssueLabel", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany("Labels")
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_labels_issues_issue_id");
+
+                    b.HasOne("Flowstate.Api.Features.Issues.Label", null)
+                        .WithMany()
+                        .HasForeignKey("LabelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_labels_labels_label_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.IssueRelation", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_relations_issues_source_id");
+
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("TargetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_relations_issues_target_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.Label", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_labels_workspaces_workspace_id");
+                });
+
             modelBuilder.Entity("Flowstate.Api.Features.Projects.Project", b =>
                 {
                     b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
@@ -369,6 +819,11 @@ namespace Flowstate.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_members_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>
+                {
+                    b.Navigation("Labels");
                 });
 #pragma warning restore 612, 618
         }

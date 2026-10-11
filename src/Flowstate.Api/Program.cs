@@ -3,7 +3,9 @@ using System.Text.Json.Serialization;
 using Flowstate.Api.Auth;
 using Flowstate.Api.Common;
 using Flowstate.Api.Data;
+using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Email;
+using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
@@ -19,6 +21,9 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<ProjectService>();
+builder.Services.AddScoped<LabelService>();
+builder.Services.AddScoped<ActivityLog>();
+builder.Services.AddScoped<IssueService>();
 builder.Services
     .AddControllers(options =>
     {
@@ -45,6 +50,7 @@ app.UseStatusCodePages();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapOpenApi().AllowAnonymous();
 app.MapControllers();

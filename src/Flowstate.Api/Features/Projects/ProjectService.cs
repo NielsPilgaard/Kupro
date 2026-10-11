@@ -128,6 +128,21 @@ public sealed class ProjectService(
             : (ProjectChangeResult.KeyTaken, null);
     }
 
+    /// <summary>
+    /// Reserves <paramref name="count"/> issue numbers atomically and returns the last one. Called by IssueService;
+    /// a failed insert afterwards leaves a gap, which is fine for keys.
+    /// </summary>
+    public static async Task<int> AllocateIssueNumbersAsync(
+        FlowstateDbContext db, Guid projectId, int count, CancellationToken ct)
+    {
+        var last = await db.Database.SqlQuery<int>($"""
+            UPDATE projects SET issue_counter = issue_counter + {count}
+            WHERE id = {projectId}
+            RETURNING issue_counter AS "Value"
+            """).ToListAsync(ct);
+        return last.Single();
+    }
+
     private static async Task<bool> TrySaveAsync(FlowstateDbContext db, CancellationToken ct)
     {
         try
@@ -137,6 +152,11 @@ public sealed class ProjectService(
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
+            return false;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // IssueCounter is a concurrency token: an issue was created while the key was being changed.
             return false;
         }
     }

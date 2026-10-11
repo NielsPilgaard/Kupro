@@ -1,3 +1,4 @@
+using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Workspaces;
 
 namespace Flowstate.Api.Tenancy;
@@ -23,6 +24,9 @@ public sealed class WorkspaceContext
     public Guid UserId { get; private set; }
     public WorkspaceRole Role { get; private set; }
     public string? AgentName { get; private set; }
+
+    /// <summary>Client surface, from the <c>X-Flowstate-Client</c> header; MCP tools set it in-process.</summary>
+    public Surface Surface { get; set; }
 
     public Guid RequireWorkspaceId() =>
         WorkspaceId ?? throw new InvalidOperationException("No workspace resolved for this request.");

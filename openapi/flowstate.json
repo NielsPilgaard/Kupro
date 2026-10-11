@@ -35,6 +35,17 @@
         ],
         "summary": "Create a workspace. You become its Owner.",
         "operationId": "createWorkspace",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -123,6 +134,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -206,6 +226,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -274,6 +303,15 @@
             "in": "path",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
               "type": "string"
             }
           }
@@ -349,6 +387,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -418,6 +465,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -461,6 +517,17 @@
         ],
         "summary": "Update the current user's profile (display name, language, time zone).",
         "operationId": "updateMe",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -524,6 +591,17 @@
         ],
         "summary": "Create an API token. The secret is returned once.",
         "operationId": "createApiToken",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -593,6 +671,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
             }
           }
         ],
@@ -679,6 +766,15 @@
             "in": "path",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
               "type": "string"
             }
           }
@@ -787,6 +883,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -832,10 +937,785 @@
           }
         }
       }
+    },
+    "/api/v1/workspaces/{workspace}/issues": {
+      "get": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "List issues with filters and cursor pagination.",
+        "operationId": "listIssues",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/IssueState"
+              }
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/IssueType"
+              }
+            }
+          },
+          {
+            "name": "assignee",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parent",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/IssueSort"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Create an issue.",
+        "operationId": "createIssue",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssueRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssueRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}": {
+      "get": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Get an issue with its children, relations and labels.",
+        "operationId": "getIssue",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Update an issue. Only fields you send change; list fields in `clear` to empty them.",
+        "operationId": "updateIssue",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssueRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssueRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/bulk": {
+      "post": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Create up to 100 issues at once, all-or-nothing.",
+        "operationId": "createIssues",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssuesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssuesRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssuesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssueSummary"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Update up to 100 issues at once, all-or-nothing.",
+        "operationId": "updateIssues",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssuesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssuesRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssuesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}/move": {
+      "post": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Move an issue on the board: change state and/or position between two neighbours.",
+        "operationId": "moveIssue",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIssueRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIssueRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}/relations": {
+      "post": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Relate an issue to another: blocks, blocked by, relates, duplicates, duplicated by.",
+        "operationId": "addIssueRelation",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddRelationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddRelationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddRelationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueRelationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}/relations/{relationId}": {
+      "delete": {
+        "tags": [
+          "Issues"
+        ],
+        "summary": "Remove a relation.",
+        "operationId": "removeIssueRelation",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "relationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/labels": {
+      "get": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "List labels with usage counts.",
+        "operationId": "listLabels",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LabelResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/labels/{name}": {
+      "patch": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Rename or recolour a label.",
+        "operationId": "updateLabel",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLabelRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLabelRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AddRelationRequest": {
+        "required": [
+          "type",
+          "target"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "How this issue relates to the target.",
+            "$ref": "#/components/schemas/RelationKind"
+          },
+          "target": {
+            "type": "string",
+            "description": "Key of the other issue."
+          }
+        }
+      },
       "ApiTokenKind": {
         "enum": [
           "personal",
@@ -967,6 +1847,105 @@
           }
         }
       },
+      "CreateIssueRequest": {
+        "required": [
+          "project",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Project key, e.g. `FLOW`."
+          },
+          "title": {
+            "type": "string",
+            "description": "One-line title."
+          },
+          "type": {
+            "description": "Epic, feature or task (default).",
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Markdown."
+          },
+          "state": {
+            "description": "Workflow state; default backlog.",
+            "$ref": "#/components/schemas/IssueState"
+          },
+          "priority": {
+            "description": "Default none.",
+            "$ref": "#/components/schemas/IssuePriority"
+          },
+          "assignee": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Member id, or `me`."
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Parent issue key: a feature or epic (tasks), or an epic (features)."
+          },
+          "effort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Estimate in hours.",
+            "format": "double"
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Planned start (drives the delivery plan).",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Planned delivery date.",
+            "format": "date"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Label names; unknown names are created."
+          }
+        }
+      },
+      "CreateIssuesRequest": {
+        "required": [
+          "issues"
+        ],
+        "type": "object",
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateIssueRequest"
+            },
+            "description": "Up to 100 issues, created all-or-nothing."
+          }
+        }
+      },
       "CreateProjectRequest": {
         "required": [
           "key",
@@ -1070,11 +2049,418 @@
           }
         }
       },
+      "IssueDetail": {
+        "required": [
+          "id",
+          "key",
+          "projectKey",
+          "type",
+          "title",
+          "description",
+          "state",
+          "priority",
+          "assignee",
+          "parent",
+          "effort",
+          "childEffort",
+          "startDate",
+          "dueDate",
+          "labels",
+          "children",
+          "relations",
+          "rank",
+          "createdBy",
+          "createdAt",
+          "updatedAt",
+          "completedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/IssueState"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/IssuePriority"
+          },
+          "assignee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          },
+          "parent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IssueRef"
+              }
+            ]
+          },
+          "effort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "childEffort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Sum of the children's effort, shown beside the issue's own estimate.",
+            "format": "double"
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueRef"
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueRelationResponse"
+            }
+          },
+          "rank": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "IssueField": {
+        "enum": [
+          "description",
+          "assignee",
+          "parent",
+          "effort",
+          "startDate",
+          "dueDate"
+        ],
+        "description": "Fields that can be cleared with `clear` in an update."
+      },
+      "IssuePriority": {
+        "enum": [
+          "none",
+          "low",
+          "medium",
+          "high",
+          "urgent"
+        ]
+      },
+      "IssueRef": {
+        "required": [
+          "key",
+          "title",
+          "type",
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Issue key."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title."
+          },
+          "type": {
+            "description": "Type.",
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "state": {
+            "description": "State.",
+            "$ref": "#/components/schemas/IssueState"
+          }
+        }
+      },
+      "IssueRelationResponse": {
+        "required": [
+          "id",
+          "type",
+          "issue"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Relation id, used to remove it.",
+            "format": "uuid"
+          },
+          "type": {
+            "description": "Relation from this issue's point of view.",
+            "$ref": "#/components/schemas/RelationKind"
+          },
+          "issue": {
+            "description": "The other issue.",
+            "$ref": "#/components/schemas/IssueRef"
+          }
+        }
+      },
+      "IssueSort": {
+        "enum": [
+          "updated",
+          "created",
+          "priority",
+          "rank"
+        ]
+      },
+      "IssueState": {
+        "enum": [
+          "backlog",
+          "todo",
+          "inProgress",
+          "inReview",
+          "done",
+          "canceled"
+        ],
+        "description": "Fixed workflow (ADR-008). Stored as its ordinal, so board columns sort naturally."
+      },
+      "IssueSummary": {
+        "required": [
+          "id",
+          "key",
+          "type",
+          "title",
+          "state",
+          "priority",
+          "assignee",
+          "parentKey",
+          "effort",
+          "startDate",
+          "dueDate",
+          "labels",
+          "rank",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/IssueState"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/IssuePriority"
+          },
+          "assignee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          },
+          "parentKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "effort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rank": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "IssueType": {
+        "enum": [
+          "task",
+          "feature",
+          "epic"
+        ],
+        "description": "Strict hierarchy: Epic ← Feature ← Task; a Task may also sit directly under an Epic (ADR-008)."
+      },
+      "IssueUpdate": {
+        "required": [
+          "key",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Issue to update."
+          },
+          "changes": {
+            "description": "Changes for that issue.",
+            "$ref": "#/components/schemas/UpdateIssueRequest"
+          }
+        }
+      },
+      "LabelResponse": {
+        "required": [
+          "id",
+          "name",
+          "color",
+          "issueCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Label name (lowercase)."
+          },
+          "color": {
+            "description": "Display colour.",
+            "$ref": "#/components/schemas/ProjectColor"
+          },
+          "issueCount": {
+            "type": "integer",
+            "description": "Issues carrying the label.",
+            "format": "int32"
+          }
+        }
+      },
       "MemberKind": {
         "enum": [
           "human",
           "agent"
         ]
+      },
+      "MemberRef": {
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Member id.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name, or the agent name."
+          },
+          "kind": {
+            "description": "Human or agent.",
+            "$ref": "#/components/schemas/MemberKind"
+          }
+        }
       },
       "MemberResponse": {
         "required": [
@@ -1182,6 +2568,37 @@
           }
         }
       },
+      "MoveIssueRequest": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Target column; default the current state.",
+                "$ref": "#/components/schemas/IssueState"
+              }
+            ]
+          },
+          "after": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the issue that should end up directly above."
+          },
+          "before": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the issue that should end up directly below."
+          }
+        },
+        "description": "Board move: optional new state and a position between two neighbours in the target column."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -1279,6 +2696,16 @@
           }
         }
       },
+      "RelationKind": {
+        "enum": [
+          "blocks",
+          "blockedBy",
+          "relates",
+          "duplicates",
+          "duplicatedBy"
+        ],
+        "description": "Relation as seen from one issue."
+      },
       "StatusResponse": {
         "required": [
           "service",
@@ -1293,6 +2720,175 @@
           "version": {
             "type": "string",
             "description": "API build version."
+          }
+        }
+      },
+      "UpdateIssueRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New title."
+          },
+          "type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New type; must stay valid for the parent and children.",
+                "$ref": "#/components/schemas/IssueType"
+              }
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New Markdown description."
+          },
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New workflow state.",
+                "$ref": "#/components/schemas/IssueState"
+              }
+            ]
+          },
+          "priority": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New priority.",
+                "$ref": "#/components/schemas/IssuePriority"
+              }
+            ]
+          },
+          "assignee": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Member id, or `me`."
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New parent issue key."
+          },
+          "effort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "New estimate in hours.",
+            "format": "double"
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New start date.",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New due date.",
+            "format": "date"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Replace all labels with these names."
+          },
+          "addLabels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Label names to add."
+          },
+          "removeLabels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Label names to remove."
+          },
+          "clear": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/IssueField"
+            },
+            "description": "Fields to empty."
+          }
+        },
+        "description": "Only the fields you set change. To empty a field, list it in `clear`."
+      },
+      "UpdateIssuesRequest": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueUpdate"
+            },
+            "description": "Up to 100 updates, applied all-or-nothing."
+          }
+        }
+      },
+      "UpdateLabelRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New name."
+          },
+          "color": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New colour.",
+                "$ref": "#/components/schemas/ProjectColor"
+              }
+            ]
           }
         }
       },
@@ -1502,6 +3098,12 @@
     },
     {
       "name": "Projects"
+    },
+    {
+      "name": "Issues"
+    },
+    {
+      "name": "Labels"
     }
   ]
 }

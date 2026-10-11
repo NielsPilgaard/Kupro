@@ -1,5 +1,6 @@
 using Flowstate.Api.Auth;
 using Flowstate.Api.Common;
+using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Workspaces;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -20,6 +21,9 @@ public sealed class WorkspaceAccessFilter(WorkspaceService workspaces, Workspace
     : IAsyncActionFilter
 {
     public const string RouteKey = "workspace";
+
+    /// <summary>Which client sent the request: <c>web</c>, <c>cli</c> or <c>mcp</c>; default <c>api</c>.</summary>
+    public const string ClientHeader = "X-Flowstate-Client";
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
@@ -56,6 +60,11 @@ public sealed class WorkspaceAccessFilter(WorkspaceService workspaces, Workspace
         }
 
         workspaceContext.Set(access, slug, userId, agentName);
+        if (Enum.TryParse<Surface>(http.Request.Headers[ClientHeader], ignoreCase: true, out var surface))
+        {
+            workspaceContext.Surface = surface;
+        }
+
         await next();
     }
 }

@@ -5,7 +5,22 @@ namespace Flowstate.Api.Common;
 public static class OpenApiExtensions
 {
     public static IServiceCollection AddFlowstateOpenApi(this IServiceCollection services) =>
-        services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+        services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
+        {
+            if (context.Description.HttpMethod is not ("GET" or "HEAD"))
+            {
+                operation.Parameters ??= [];
+                operation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = IdempotencyMiddleware.Header,
+                    In = ParameterLocation.Header,
+                    Description = "Retry-safe key: repeating a request with the same key replays the first response.",
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 255 },
+                });
+            }
+
+            return Task.CompletedTask;
+        }).AddDocumentTransformer((document, _, _) =>
         {
             document.Info.Title = "Flowstate API";
             document.Info.Version = "v1";
