@@ -12,7 +12,7 @@ purpose: 'Canonical source for name, logo, brand colours, voice and terminology.
 ## TL;DR
 
 - **Direction: Kobber** (copper). Copenhagen's copper roofs weather into verdigris green: local, durable, calm.
-  Chosen in [task 000](../tasks/000-frontend-ideas.md) from [the directions look book](design/directions.html); runner-up Fjord.
+  Chosen in [task 000](../tasks/completed/000-frontend-ideas.md) from [the directions look book](design/directions.html); runner-up Fjord.
 - **Mark: Stream** — three staggered bars, a delivery plan in miniature. Files in [design/brand/](design/brand/).
 - **Wordmark**: lowercase `flowstate` in Bricolage Grotesque Bold. In running text: "Flowstate".
 - **Voice**: plain, direct, short. Says what happened and what to do next. Same tone in English and Danish.

@@ -15,10 +15,10 @@ purpose: 'Implementation spec for task 000.'
 
 - Look book of visual directions, each rendered as the same working screen (list, board, delivery plan, command
   palette) in light/dark and EN/DA, with tunable component variants and logo marks:
-  [docs/design/directions.html](../docs/design/directions.html).
-- Pick a direction, write [docs/branding.md](../docs/branding.md) (name, mark, palette, voice, glossary) and
-  [docs/design-guide.md](../docs/design-guide.md) (tokens, layout, component specs).
-- Logo files in [docs/design/brand/](../docs/design/brand/).
+  [docs/design/directions.html](../../docs/design/directions.html).
+- Pick a direction, write [docs/branding.md](../../docs/branding.md) (name, mark, palette, voice, glossary) and
+  [docs/design-guide.md](../../docs/design-guide.md) (tokens, layout, component specs).
+- Logo files in [docs/design/brand/](../../docs/design/brand/).
 
 ## Outcome
 
