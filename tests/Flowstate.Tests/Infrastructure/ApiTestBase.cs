@@ -7,9 +7,9 @@ using Flowstate.Api.Features.Workspaces;
 namespace Flowstate.Tests.Infrastructure;
 
 /// <summary>Base for HTTP-level tests: one API instance per test class, migrated database.</summary>
-public abstract class ApiTestBase(PostgresFixture postgres) : IAsyncLifetime
+public abstract class ApiTestBase(PostgresFixture postgres, IReadOnlyDictionary<string, string?>? settings = null) : IAsyncLifetime
 {
-    protected FlowstateApiFactory Factory { get; } = new(postgres);
+    protected FlowstateApiFactory Factory { get; } = new(postgres, settings);
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 

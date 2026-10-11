@@ -22,7 +22,8 @@
     "close": "Luk",
     "edit": "Rediger",
     "cancel": "Annuller",
-    "loading": "Indlæser…"
+    "loading": "Indlæser…",
+    "save": "Gem"
   },
   "nav": {
     "label": "Hovedmenu",
@@ -243,5 +244,32 @@
     "removeStep": "Fjern",
     "addStep": "Tilføj et trin",
     "save": "Gem"
+  },
+  "feed": {
+    "title": "Aktivitet",
+    "comment": "Kommentér",
+    "commentLabel": "Kommentar",
+    "placeholder": "Skriv en kommentar. Markdown; indsæt eller træk billeder ind for at vedhæfte dem.",
+    "created": "{{name}} oprettede opgaven",
+    "description": "{{name}} redigerede beskrivelsen",
+    "changed": "{{name}} ændrede {{field}} fra {{from}} til {{to}}",
+    "relationAdded": "{{name}} markerede den som {{relation}} {{key}}",
+    "relationRemoved": "{{name}} fjernede {{relation}} {{key}}",
+    "none": "ingen",
+    "edited": "(redigeret)",
+    "delete": "Slet",
+    "confirmDelete": "Slet denne kommentar?",
+    "failed": "Det lykkedes ikke. Prøv igen.",
+    "via": "via {{surface}}",
+    "surface": {
+      "web": "web",
+      "cli": "CLI",
+      "mcp": "MCP",
+      "api": "API"
+    }
+  },
+  "upload": {
+    "uploading": "Uploader {{name}}…",
+    "failed": "Kunne ikke uploade {{name}}."
   }
 }

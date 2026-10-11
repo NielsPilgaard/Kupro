@@ -3,11 +3,10 @@ import { useNavigate } from '@tanstack/react-router';
 import { X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useQuery } from '@tanstack/react-query';
-import { addIssueRelationMutation, getIssueQueryKey, listSprintsOptions, removeIssueRelationMutation } from '../../api/gen/@tanstack/react-query.gen';
+import { addIssueRelationMutation, getIssueQueryKey, listIssueActivityQueryKey, listSprintsOptions, removeIssueRelationMutation } from '../../api/gen/@tanstack/react-query.gen';
 import type { IssueDetail, IssueType, RelationKind, UpdateIssueRequest } from '../../api/gen/types.gen';
+import { useMarkdownUpload } from '../../api/attachments';
 import { useIssue, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
 import { Avatar, Button, Kbd, LabelPill, PriorityIcon, StatusRing, TypeTag } from '../../components/ui';
@@ -15,6 +14,8 @@ import { useToast } from '../../components/Toasts';
 import { useHours } from '../../lib/format';
 import { types } from '../../lib/issues';
 import { useShortcuts } from '../../lib/shortcuts';
+import { ActivityFeed } from './ActivityFeed';
+import { RichMarkdown } from './RichMarkdown';
 
 /** Right-hand panel over list/board (min 480 px), full width on narrow screens (design guide). */
 export function IssuePanel({ workspace, issueKey, meName }: { workspace: string; issueKey: string; meName?: string }) {
@@ -69,6 +70,7 @@ function IssueBody({
   const save = (body: UpdateIssueRequest) => update.mutate({ path: { workspace, key: issue.key }, body });
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description ?? '');
+  const upload = useMarkdownUpload(workspace, issue.key, setDescription);
 
   const pick = (page: PalettePage) => () => {
     ui.setActiveKey(issue.key);
@@ -188,11 +190,12 @@ function IssueBody({
               }
             }}
             placeholder={t('issue.descriptionPlaceholder')}
+            {...upload}
             className="min-h-40 rounded-r1 border border-line bg-panel p-2 font-mono text-md"
           />
         ) : issue.description ? (
-          <div className="prose-flowstate text-md" onDoubleClick={() => setEditing(true)}>
-            <Markdown remarkPlugins={[remarkGfm]}>{issue.description}</Markdown>
+          <div onDoubleClick={() => setEditing(true)}>
+            <RichMarkdown workspace={workspace}>{issue.description}</RichMarkdown>
           </div>
         ) : (
           <button type="button" onClick={() => setEditing(true)} className="rounded-r1 border border-dashed border-line p-3 text-left text-mute">
@@ -213,6 +216,8 @@ function IssueBody({
       <Relations workspace={workspace} issue={issue} />
 
       <p className="text-sm text-mute">{t('issue.createdBy', { name: issue.createdBy.name })}</p>
+
+      <ActivityFeed workspace={workspace} issueKey={issue.key} />
     </div>
   );
 }
@@ -311,7 +316,10 @@ function Relations({ workspace, issue }: { workspace: string; issue: IssueDetail
   const toast = useToast();
   const [kind, setKind] = useState<RelationKind>('blocks');
   const [target, setTarget] = useState('');
-  const refresh = () => void qc.invalidateQueries({ queryKey: getIssueQueryKey({ path: { workspace, key: issue.key } }) });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: getIssueQueryKey({ path: { workspace, key: issue.key } }) });
+    void qc.invalidateQueries({ queryKey: listIssueActivityQueryKey({ path: { workspace, key: issue.key } }) });
+  };
   const add = useMutation({
     ...addIssueRelationMutation(),
     onSuccess: () => {

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Workspaces;
@@ -61,7 +62,11 @@ public sealed record FieldChange(object? From, object? To);
 /// </summary>
 public sealed class ActivityLog(WorkspaceContext workspace, TimeProvider clock)
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    // Enums as names (camelCase, like the API), so the feed reads "inProgress" rather than an ordinal.
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 
     public void Record(FlowstateDbContext db, Guid issueId, string kind, object? data = null) =>
         db.Activity.Add(new ActivityEntry

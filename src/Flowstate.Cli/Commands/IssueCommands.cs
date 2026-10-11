@@ -13,7 +13,7 @@ internal static class IssueCommands
 
     public static IEnumerable<Command> Build()
     {
-        var issue = new Command("issue", "Issues: list, search, read, create, update, move, relate.");
+        var issue = new Command("issue", "Issues: list, search, read, create, update, move, relate, comment, attach.");
         issue.Subcommands.Add(List(search: false));
         issue.Subcommands.Add(List(search: true));
         issue.Subcommands.Add(Get());
@@ -25,6 +25,11 @@ internal static class IssueCommands
         issue.Subcommands.Add(Close());
         issue.Subcommands.Add(Relate());
         issue.Subcommands.Add(Unrelate());
+        foreach (var command in CommentCommands.IssueSubcommands())
+        {
+            issue.Subcommands.Add(command);
+        }
+
         yield return issue;
     }
 

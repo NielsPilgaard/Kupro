@@ -48,7 +48,10 @@ export function IssueList({ issues, emptyText }: { issues: IssueSummary[]; empty
   });
 
   const activeRow = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => activeRow.current?.scrollIntoView({ block: 'nearest' }), [ui.activeKey]);
+  // Braces: newer Chromium returns a promise from scrollIntoView, and an effect may only return a cleanup function.
+  useEffect(() => {
+    activeRow.current?.scrollIntoView({ block: 'nearest' });
+  }, [ui.activeKey]);
 
   if (issues.length === 0) {
     return <p className="p-8 text-center text-mute">{emptyText}</p>;

@@ -28,7 +28,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
-| 13 | [008 Comments, attachments, activity feed](008-comments-attachments.md) | P2 | 1 | 004 | Todo |
 | 14 | [012 Realtime updates](012-realtime.md) | P2 | 1 | 007 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P3 | 2 | 004, 006, 010, 012 | Todo |
 
@@ -48,6 +47,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | [010 Sprints](completed/010-sprints.md) | 1 | Done |
 | [011 Delivery plan view v1](completed/011-delivery-plan.md) | 1 | Done |
 | [009 Search](completed/009-search.md) | 1 | Done |
+| [008 Comments, attachments, activity feed](completed/008-comments-attachments.md) | 1 | Done |
 
 ## Rationale
 

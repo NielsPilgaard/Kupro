@@ -22,7 +22,8 @@
     "close": "Close",
     "edit": "Edit",
     "cancel": "Cancel",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "save": "Save"
   },
   "nav": {
     "label": "Main",
@@ -243,5 +244,32 @@
     "removeStep": "Remove",
     "addStep": "Add a step",
     "save": "Save"
+  },
+  "feed": {
+    "title": "Activity",
+    "comment": "Comment",
+    "commentLabel": "Comment",
+    "placeholder": "Leave a comment. Markdown; paste or drop images to attach them.",
+    "created": "{{name}} created the issue",
+    "description": "{{name}} edited the description",
+    "changed": "{{name}} changed {{field}} from {{from}} to {{to}}",
+    "relationAdded": "{{name}} marked this as {{relation}} {{key}}",
+    "relationRemoved": "{{name}} removed {{relation}} {{key}}",
+    "none": "none",
+    "edited": "(edited)",
+    "delete": "Delete",
+    "confirmDelete": "Delete this comment?",
+    "failed": "That didn’t work. Try again.",
+    "via": "via {{surface}}",
+    "surface": {
+      "web": "web",
+      "cli": "CLI",
+      "mcp": "MCP",
+      "api": "API"
+    }
+  },
+  "upload": {
+    "uploading": "Uploading {{name}}…",
+    "failed": "Couldn’t upload {{name}}."
   }
 }

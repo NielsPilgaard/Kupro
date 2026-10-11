@@ -65,6 +65,22 @@ else
     // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001).
     api.WithEnvironment("Api__PublicUrl", api.GetEndpoint("http"));
 
+    // Attachments (task 008): versitygw as the local S3 endpoint; production uses OVHcloud Object Storage (ADR-004).
+    // Fixed port and CORS for the SPA origin: browsers upload straight to it with presigned URLs.
+    var storageSecret = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "storage-secret", special: false);
+    var storage = builder.AddContainer("storage", "versity/versitygw", "v1.8.0")
+        .WithArgs("posix", "/data")
+        .WithVolume("flowstate-storage-data", "/data")
+        .WithEnvironment("ROOT_ACCESS_KEY_ID", "flowstate")
+        .WithEnvironment("ROOT_SECRET_ACCESS_KEY", ReferenceExpression.Create($"{storageSecret}"))
+        .WithEnvironment("VGW_CORS_ALLOW_ORIGIN", "http://localhost:5180")
+        .WithHttpEndpoint(port: 8190, targetPort: 7070);
+    api.WithEnvironment("Storage__ServiceUrl", storage.GetEndpoint("http"))
+        .WithEnvironment("Storage__AccessKey", "flowstate")
+        .WithEnvironment("Storage__SecretKey", ReferenceExpression.Create($"{storageSecret}"))
+        .WithEnvironment("Storage__CreateBucket", "true")
+        .WaitFor(storage);
+
     builder.AddViteApp("web", "../../web")
         .WithBun()
         // Fixed port: the dev realm allows exactly this origin and redirect URI.

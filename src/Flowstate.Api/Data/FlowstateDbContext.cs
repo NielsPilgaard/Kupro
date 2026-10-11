@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using Flowstate.Api.Common;
 using Flowstate.Api.Features.Activity;
+using Flowstate.Api.Features.Attachments;
+using Flowstate.Api.Features.Comments;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
@@ -37,6 +39,8 @@ public sealed class FlowstateDbContext(DbContextOptions<FlowstateDbContext> opti
     public DbSet<IssueLabel> IssueLabels => Set<IssueLabel>();
     public DbSet<IssueRelation> IssueRelations => Set<IssueRelation>();
     public DbSet<ActivityEntry> Activity => Set<ActivityEntry>();
+    public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     /// <summary>

@@ -1,5 +1,8 @@
 using System.ComponentModel;
 using Flowstate.Api.Common;
+using Flowstate.Api.Features.Activity;
+using Flowstate.Api.Features.Attachments;
+using Flowstate.Api.Features.Comments;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
@@ -24,6 +27,9 @@ public sealed class FlowstateTools(
     LabelService labels,
     SprintService sprints,
     PlanService plan,
+    CommentService comments,
+    ActivityFeed feed,
+    AttachmentService attachments,
     UserService users)
 {
     private const string WorkspaceHelp = "Workspace slug. Optional when your token is limited to one workspace or you are in only one.";
@@ -273,6 +279,49 @@ public sealed class FlowstateTools(
             "delete" when id is { } x => await plan.DeleteMilestoneAsync(x, ct) ? "deleted" : throw new McpException("milestone_not_found"),
             _ => throw new McpException("invalid_arguments: create needs name and date; update and delete need id."),
         };
+    }
+
+    [McpServerTool(Name = "get_issue_activity", ReadOnly = true), Description(
+        "An issue's history (created, field changes with from/to, relations) and comments, oldest first, with who did " +
+        "it and via which surface. Comment bodies are markdown; `attachment:ID` links resolve with get_attachment.")]
+    [CoversOperations("listIssueActivity")]
+    public async Task<IReadOnlyList<FeedItem>> GetIssueActivity(
+        [Description("Issue key.")] string key, [Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return await feed.GetAsync(key, ct) ?? throw new McpException(Message(IssueError.NotFound(key)));
+    }
+
+    [McpServerTool(Name = "comment"), Description(
+        "Add a markdown comment to an issue, or edit or delete one of your own comments.")]
+    [CoversOperations("addComment", "updateComment", "deleteComment")]
+    public async Task<object> Comment(
+        [Description("add, edit or delete.")] string action,
+        [Description("Issue key (add).")] string? key = null,
+        [Description("Comment id (edit, delete).")] Guid? id = null,
+        [Description("Markdown body (add, edit).")] string? body = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return action switch
+        {
+            "add" when key is not null && !string.IsNullOrWhiteSpace(body) => Unwrap(await comments.AddAsync(key, new CommentRequest(body), ct)),
+            "edit" when id is { } e && !string.IsNullOrWhiteSpace(body) => Unwrap(await comments.UpdateAsync(e, new CommentRequest(body), ct)),
+            "delete" when id is { } d => await comments.DeleteAsync(d, ct) is { } error ? throw new McpException(Message(error)) : "deleted",
+            _ => throw new McpException("invalid_arguments: add needs key and body; edit needs id and body; delete needs id."),
+        };
+    }
+
+    [McpServerTool(Name = "get_attachment", ReadOnly = true), Description(
+        "An attachment referenced as `attachment:ID` in a description or comment: name, type, size and a download URL " +
+        "valid for 5 minutes.")]
+    [CoversOperations("getAttachment")]
+    public async Task<AttachmentResponse> GetAttachment(
+        [Description("Attachment id.")] Guid id, [Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return Unwrap(await attachments.GetAsync(id, ct));
     }
 
     private static T Unwrap<T>(IssueResult<T> result) =>

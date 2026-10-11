@@ -2640,6 +2640,484 @@
           }
         }
       }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}/activity": {
+      "get": {
+        "tags": [
+          "Comments"
+        ],
+        "summary": "An issue's history and comments, oldest first (the most recent 500 of each).",
+        "operationId": "listIssueActivity",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeedItem"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}/comments": {
+      "post": {
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Comment on an issue. Markdown; guests may comment too.",
+        "operationId": "addComment",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/comments/{id}": {
+      "patch": {
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Edit your own comment.",
+        "operationId": "updateComment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Delete your own comment.",
+        "operationId": "deleteComment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/attachments": {
+      "post": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Start an upload: returns a presigned URL to PUT the file to, valid for 10 minutes.",
+        "operationId": "createAttachment",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttachmentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttachmentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttachmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/attachments/{id}/complete": {
+      "post": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Finish an upload once the file is in storage.",
+        "operationId": "completeAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/attachments/{id}": {
+      "get": {
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Attachment details with a download URL valid for 5 minutes.",
+        "operationId": "getAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2736,6 +3214,86 @@
           }
         }
       },
+      "AttachmentResponse": {
+        "required": [
+          "id",
+          "fileName",
+          "contentType",
+          "size",
+          "issueKey",
+          "ready",
+          "uploadedBy",
+          "createdAt",
+          "markdown",
+          "downloadUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "issueKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "uploadedBy": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Ready-to-paste reference: `![name](attachment:ID)` for images, a link otherwise."
+          },
+          "downloadUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Short-lived URL (5 minutes) for a ready attachment."
+          }
+        }
+      },
+      "AttachmentUpload": {
+        "required": [
+          "attachment",
+          "uploadUrl",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "attachment": {
+            "$ref": "#/components/schemas/AttachmentResponse"
+          },
+          "uploadUrl": {
+            "type": "string",
+            "description": "PUT the file body here with header `Content-Type` equal to the declared type, then call complete."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "The upload URL stops working after this.",
+            "format": "date-time"
+          }
+        }
+      },
       "CapacityEntry": {
         "required": [
           "fromMonth",
@@ -2794,6 +3352,59 @@
           }
         }
       },
+      "CommentRequest": {
+        "required": [
+          "body"
+        ],
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Markdown. Images uploaded as attachments are referenced as `![name](attachment:ID)`."
+          }
+        }
+      },
+      "CommentResponse": {
+        "required": [
+          "id",
+          "issueKey",
+          "author",
+          "via",
+          "body",
+          "createdAt",
+          "editedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "author": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "via": {
+            "$ref": "#/components/schemas/Surface"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "editedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "CreateApiTokenRequest": {
         "required": [
           "name",
@@ -2830,6 +3441,36 @@
               "string"
             ],
             "description": "Workspace slug to limit the token to. Required for agent tokens."
+          }
+        }
+      },
+      "CreateAttachmentRequest": {
+        "required": [
+          "fileName",
+          "contentType",
+          "size"
+        ],
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "description": "Original file name, shown on download."
+          },
+          "contentType": {
+            "type": "string",
+            "description": "MIME type; the upload must send the same `Content-Type`."
+          },
+          "size": {
+            "type": "integer",
+            "description": "Bytes, at most 25 MB.",
+            "format": "int64"
+          },
+          "issue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Issue key it belongs to, if any."
           }
         }
       },
@@ -3068,6 +3709,94 @@
             "description": "URL id: lowercase letters, digits and dashes, e.g. `acme`. Immutable."
           }
         }
+      },
+      "FeedChange": {
+        "required": [
+          "field",
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "One field change. Values are display-ready strings: enum names (`inProgress`), member names, issue keys,\r\nsprint names, ISO dates, comma-separated labels. Description changes carry no values.\r\nFor relations, `Field` is the relation type and `To` (added) or `From` (removed) the other issue."
+      },
+      "FeedItem": {
+        "required": [
+          "id",
+          "kind",
+          "actor",
+          "via",
+          "at",
+          "changes",
+          "body",
+          "editedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FeedItemKind"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "via": {
+            "$ref": "#/components/schemas/Surface"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedChange"
+            }
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Comment markdown; null for other kinds."
+          },
+          "editedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When a comment was last edited.",
+            "format": "date-time"
+          }
+        }
+      },
+      "FeedItemKind": {
+        "enum": [
+          "comment",
+          "created",
+          "updated",
+          "relationAdded",
+          "relationRemoved"
+        ]
       },
       "InviteMemberRequest": {
         "required": [
@@ -4228,6 +4957,15 @@
           }
         }
       },
+      "Surface": {
+        "enum": [
+          "api",
+          "web",
+          "cli",
+          "mcp"
+        ],
+        "description": "Where an action came from; shown as \"via MCP\" in the UI (design guide, toasts)."
+      },
       "UnfinishedDestination": {
         "enum": [
           "next",
@@ -4684,6 +5422,12 @@
     },
     {
       "name": "Labels"
+    },
+    {
+      "name": "Comments"
+    },
+    {
+      "name": "Attachments"
     }
   ]
 }

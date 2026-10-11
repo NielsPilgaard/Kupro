@@ -5,6 +5,7 @@ import {
   createIssueMutation,
   getIssueOptions,
   getIssueQueryKey,
+  listIssueActivityQueryKey,
   listIssuesOptions,
   listMembersOptions,
   moveIssueMutation,
@@ -113,6 +114,7 @@ export function useUpdateIssue(workspace: string, me?: string) {
     onSettled: (_data, _error, vars) => {
       void qc.invalidateQueries({ predicate: isIssueList });
       void qc.invalidateQueries({ queryKey: getIssueQueryKey({ path: { workspace, key: vars.path.key } }) });
+      void qc.invalidateQueries({ queryKey: listIssueActivityQueryKey({ path: { workspace, key: vars.path.key } }) });
     },
   });
 }

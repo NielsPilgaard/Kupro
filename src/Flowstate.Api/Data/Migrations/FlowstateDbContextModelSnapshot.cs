@@ -130,6 +130,118 @@ namespace Flowstate.Api.Data.Migrations
                     b.ToTable("activity", (string)null);
                 });
 
+            modelBuilder.Entity("Flowstate.Api.Features.Attachments.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("file_name");
+
+                    b.Property<Guid?>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<bool>("Ready")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ready");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size");
+
+                    b.Property<Guid>("UploadedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_attachments");
+
+                    b.HasIndex("IssueId")
+                        .HasDatabaseName("ix_attachments_issue_id");
+
+                    b.HasIndex("UploadedById")
+                        .HasDatabaseName("ix_attachments_uploaded_by_id");
+
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_attachments_workspace_id_issue_id");
+
+                    b.ToTable("attachments", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Comments.Comment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("EditedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_at");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<string>("Via")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("via");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_comments");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_comments_author_id");
+
+                    b.HasIndex("IssueId")
+                        .HasDatabaseName("ix_comments_issue_id");
+
+                    b.HasIndex("WorkspaceId", "IssueId", "CreatedAt")
+                        .HasDatabaseName("ix_comments_workspace_id_issue_id_created_at");
+
+                    b.ToTable("comments", (string)null);
+                });
+
             modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -860,6 +972,46 @@ namespace Flowstate.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_activity_issues_issue_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Attachments.Attachment", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attachments_issues_issue_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_members_uploaded_by_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Comments.Comment", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_comments_members_author_id");
+
+                    b.HasOne("Flowstate.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_comments_issues_issue_id");
                 });
 
             modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>

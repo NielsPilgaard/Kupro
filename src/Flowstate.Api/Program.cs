@@ -4,6 +4,8 @@ using Flowstate.Api.Auth;
 using Flowstate.Api.Common;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Activity;
+using Flowstate.Api.Features.Attachments;
+using Flowstate.Api.Features.Comments;
 using Flowstate.Api.Features.Email;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Plan;
@@ -30,6 +32,11 @@ builder.Services.AddScoped<ActivityLog>();
 builder.Services.AddScoped<IssueService>();
 builder.Services.AddScoped<SprintService>();
 builder.Services.AddScoped<PlanService>();
+builder.Services.AddScoped<CommentService>();
+builder.Services.AddScoped<ActivityFeed>();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.Section));
+builder.Services.AddSingleton<ObjectStorage>();
+builder.Services.AddScoped<AttachmentService>();
 builder.Services
     .AddControllers(options =>
     {

@@ -17,7 +17,9 @@ namespace Flowstate.Tests.Infrastructure;
 /// In-process API wired to the shared Testcontainers Postgres. Keycloak is replaced by a local signing key so tests
 /// can mint JWTs that go through the real JwtBearer pipeline (including user provisioning).
 /// </summary>
-public sealed class FlowstateApiFactory(PostgresFixture postgres) : WebApplicationFactory<Program>
+/// <param name="settings">Extra configuration, e.g. <see cref="StorageFixture.Settings"/>.</param>
+public sealed class FlowstateApiFactory(PostgresFixture postgres, IReadOnlyDictionary<string, string?>? settings = null)
+    : WebApplicationFactory<Program>
 {
     private const string Issuer = "https://keycloak.test/realms/flowstate";
     private static readonly SymmetricSecurityKey SigningKey = new("flowstate-tests-signing-key-0123456789abcdef"u8.ToArray());
@@ -27,6 +29,10 @@ public sealed class FlowstateApiFactory(PostgresFixture postgres) : WebApplicati
         builder.UseEnvironment("Testing");
         builder.UseSetting($"ConnectionStrings:{DatabaseExtensions.ConnectionName}", postgres.ConnectionString);
         builder.UseSetting("services:keycloak:http:0", "http://keycloak.test");
+        foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
+        {
+            builder.UseSetting(key, value);
+        }
 
         builder.ConfigureTestServices(services =>
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
