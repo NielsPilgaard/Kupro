@@ -1372,6 +1372,438 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/plan": {
+      "get": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "The delivery plan for a horizon: epics and features per project, per-month demand / supply / gap in hours and\r\npeople, milestones, dependencies and plan-health flags.",
+        "operationId": "getPlan",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First month (any day in it). Default: this month.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last month. Default: December next year.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "description": "Project keys; all when omitted.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/projects/{key}/capacity": {
+      "get": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "A project's headcount steps (\"3 from Jan, 5 from Jul\").",
+        "operationId": "getProjectCapacity",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CapacityEntry"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "Replace a project's headcount steps.",
+        "operationId": "setProjectCapacity",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCapacityRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCapacityRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCapacityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CapacityEntry"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/milestones": {
+      "get": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "List milestones.",
+        "operationId": "listMilestones",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "Add a milestone, workspace-wide or for one project.",
+        "operationId": "createMilestone",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/milestones/{id}": {
+      "patch": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "Rename or move a milestone.",
+        "operationId": "updateMilestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MilestoneResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Plan"
+        ],
+        "summary": "Delete a milestone.",
+        "operationId": "deleteMilestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/issues": {
       "get": {
         "tags": [
@@ -2295,6 +2727,25 @@
           }
         }
       },
+      "CapacityEntry": {
+        "required": [
+          "fromMonth",
+          "people"
+        ],
+        "type": "object",
+        "properties": {
+          "fromMonth": {
+            "type": "string",
+            "description": "First day of the month the headcount applies from.",
+            "format": "date"
+          },
+          "people": {
+            "type": "number",
+            "description": "People working on the project from that month.",
+            "format": "double"
+          }
+        }
+      },
       "CloseSprintRequest": {
         "type": "object",
         "properties": {
@@ -2493,6 +2944,31 @@
               "$ref": "#/components/schemas/CreateIssueRequest"
             },
             "description": "Up to 100 issues, created all-or-nothing."
+          }
+        }
+      },
+      "CreateMilestoneRequest": {
+        "required": [
+          "name",
+          "date"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Milestone name, e.g. \"Launch\"."
+          },
+          "date": {
+            "type": "string",
+            "description": "The date it marks.",
+            "format": "date"
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Project key; workspace-wide when omitted."
           }
         }
       },
@@ -3194,6 +3670,35 @@
           }
         }
       },
+      "MilestoneResponse": {
+        "required": [
+          "id",
+          "name",
+          "date",
+          "projectKey"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "projectKey": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Project key, or null for a workspace-wide milestone."
+          }
+        }
+      },
       "MoveIssueRequest": {
         "type": "object",
         "properties": {
@@ -3224,6 +3729,269 @@
           }
         },
         "description": "Board move: optional new state and a position between two neighbours in the target column."
+      },
+      "PlanCard": {
+        "required": [
+          "key",
+          "title",
+          "type",
+          "state",
+          "projectKey",
+          "parentKey",
+          "startDate",
+          "dueDate",
+          "effort",
+          "countedEffort",
+          "done",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "state": {
+            "$ref": "#/components/schemas/IssueState"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "parentKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "dueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "effort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "The card's own estimate in hours.",
+            "format": "double"
+          },
+          "countedEffort": {
+            "type": "number",
+            "description": "Hours this card adds to demand: an epic's estimate only counts when none of its features\r\n    is estimated; a feature without its own estimate counts its tasks.",
+            "format": "double"
+          },
+          "done": {
+            "type": "integer",
+            "description": "Done children.",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "description": "All children.",
+            "format": "int32"
+          }
+        }
+      },
+      "PlanDependency": {
+        "required": [
+          "blocker",
+          "blocked",
+          "violated"
+        ],
+        "type": "object",
+        "properties": {
+          "blocker": {
+            "type": "string",
+            "description": "Issue that blocks."
+          },
+          "blocked": {
+            "type": "string",
+            "description": "Issue that waits."
+          },
+          "violated": {
+            "type": "boolean",
+            "description": "The blocker is due after the blocked card starts."
+          }
+        }
+      },
+      "PlanHealth": {
+        "required": [
+          "noDatedWork",
+          "cardsWithoutEffort",
+          "cardsWithoutDates"
+        ],
+        "type": "object",
+        "properties": {
+          "noDatedWork": {
+            "type": "boolean",
+            "description": "No epic or feature with dates in the horizon."
+          },
+          "cardsWithoutEffort": {
+            "type": "integer",
+            "description": "Epics/features with no hours counted.",
+            "format": "int32"
+          },
+          "cardsWithoutDates": {
+            "type": "integer",
+            "description": "Epics/features missing a start or due date.",
+            "format": "int32"
+          }
+        }
+      },
+      "PlanMonth": {
+        "required": [
+          "month",
+          "demandHours",
+          "supplyHours",
+          "demandPeople",
+          "supplyPeople"
+        ],
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "description": "First day of the month.",
+            "format": "date"
+          },
+          "demandHours": {
+            "type": "number",
+            "description": "Effort scheduled in the month (each card spread evenly over its days).",
+            "format": "double"
+          },
+          "supplyHours": {
+            "type": "number",
+            "description": "People × hours per week × weeks in the month.",
+            "format": "double"
+          },
+          "demandPeople": {
+            "type": "number",
+            "description": "Demand expressed as people for the month.",
+            "format": "double"
+          },
+          "supplyPeople": {
+            "type": "number",
+            "description": "People available.",
+            "format": "double"
+          },
+          "gapPeople": {
+            "type": "number",
+            "description": "People short (positive) or spare (negative).",
+            "format": "double"
+          }
+        }
+      },
+      "PlanProject": {
+        "required": [
+          "key",
+          "name",
+          "color",
+          "capacity",
+          "months",
+          "cards",
+          "health"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/ProjectColor"
+          },
+          "capacity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapacityEntry"
+            }
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanMonth"
+            }
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanCard"
+            }
+          },
+          "health": {
+            "$ref": "#/components/schemas/PlanHealth"
+          }
+        }
+      },
+      "PlanResponse": {
+        "required": [
+          "from",
+          "to",
+          "hoursPerWeek",
+          "projects",
+          "totals",
+          "milestones",
+          "dependencies"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "First month in the horizon.",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "description": "Last month in the horizon.",
+            "format": "date"
+          },
+          "hoursPerWeek": {
+            "type": "number",
+            "description": "Workspace hours per person per week used for supply.",
+            "format": "double"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanProject"
+            }
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanMonth"
+            },
+            "description": "Per month across the listed projects."
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneResponse"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanDependency"
+            }
+          }
+        }
       },
       "ProblemDetails": {
         "type": "object",
@@ -3331,6 +4099,21 @@
           "duplicatedBy"
         ],
         "description": "Relation as seen from one issue."
+      },
+      "SetCapacityRequest": {
+        "required": [
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapacityEntry"
+            },
+            "description": "The full step function; replaces what was there. Empty clears it."
+          }
+        }
       },
       "SprintResponse": {
         "required": [
@@ -3656,6 +4439,26 @@
           }
         }
       },
+      "UpdateMilestoneRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New name."
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New date.",
+            "format": "date"
+          }
+        }
+      },
       "UpdateProjectRequest": {
         "type": "object",
         "properties": {
@@ -3862,6 +4665,9 @@
     },
     {
       "name": "Projects"
+    },
+    {
+      "name": "Plan"
     },
     {
       "name": "Issues"

@@ -6,6 +6,7 @@ using Flowstate.Api.Data;
 using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Email;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Workspaces;
@@ -28,6 +29,7 @@ builder.Services.AddScoped<LabelService>();
 builder.Services.AddScoped<ActivityLog>();
 builder.Services.AddScoped<IssueService>();
 builder.Services.AddScoped<SprintService>();
+builder.Services.AddScoped<PlanService>();
 builder.Services
     .AddControllers(options =>
     {

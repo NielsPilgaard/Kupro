@@ -85,6 +85,21 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Capacity_and_plan_with_only_the_cli()
+    {
+        var steps = await RunJsonAsync("capacity", "set", "CLI", "3@2027-01", "5@2027-07");
+        steps.GetArrayLength().ShouldBe(2);
+        await RunJsonAsync("milestone", "create", "--name", "GA", "--date", "2027-06-30");
+        await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Feature A", "--type", "feature", "--effort", "100", "--start", "2027-01-04", "--due", "2027-02-26");
+
+        var plan = await RunJsonAsync("plan", "--from", "2027-01", "--to", "2027-08");
+
+        plan.GetProperty("totals").GetArrayLength().ShouldBe(8);
+        plan.GetProperty("totals")[6].GetProperty("supplyPeople").GetDecimal().ShouldBe(5m);
+        plan.GetProperty("milestones")[0].GetProperty("name").GetString().ShouldBe("GA");
+    }
+
+    [Fact]
     public async Task Table_output_lists_issues_for_people()
     {
         await RunAsync(json: true, "issue", "create", "-p", "CLI", "-t", "Readable row");

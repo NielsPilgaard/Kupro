@@ -375,6 +375,84 @@ namespace Flowstate.Api.Data.Migrations
                     b.ToTable("labels", (string)null);
                 });
 
+            modelBuilder.Entity("Flowstate.Api.Features.Plan.Milestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_milestones");
+
+                    b.HasIndex("ProjectId")
+                        .HasDatabaseName("ix_milestones_project_id");
+
+                    b.HasIndex("WorkspaceId", "Date")
+                        .HasDatabaseName("ix_milestones_workspace_id_date");
+
+                    b.ToTable("milestones", (string)null);
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Plan.ProjectCapacity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("FromMonth")
+                        .HasColumnType("date")
+                        .HasColumnName("from_month");
+
+                    b.Property<decimal>("People")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("people");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_capacity");
+
+                    b.HasIndex("ProjectId", "FromMonth")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_capacity_project_id_from_month");
+
+                    b.HasIndex("WorkspaceId", "ProjectId")
+                        .HasDatabaseName("ix_project_capacity_workspace_id_project_id");
+
+                    b.ToTable("project_capacity", (string)null);
+                });
+
             modelBuilder.Entity("Flowstate.Api.Features.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -855,6 +933,39 @@ namespace Flowstate.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_labels_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Plan.Milestone", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_milestones_projects_project_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_milestones_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Plan.ProjectCapacity", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_capacity_projects_project_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_capacity_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("Flowstate.Api.Features.Projects.Project", b =>

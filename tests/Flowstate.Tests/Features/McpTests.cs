@@ -90,6 +90,27 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Agent_answers_do_we_need_to_hire_with_get_plan()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "set_capacity", new()
+        {
+            ["project"] = "MCP",
+            ["entries"] = new object[] { new { fromMonth = "2027-04-01", people = 1 } },
+        });
+        await CallAsync(mcp, "create_issues", new()
+        {
+            ["issues"] = new object[] { new { project = "MCP", title = "Q2 push", type = "feature", effort = 600, startDate = "2027-04-01", dueDate = "2027-06-30" } },
+        });
+
+        var plan = await CallAsync(mcp, "get_plan", new() { ["from"] = "2027-04-01", ["to"] = "2027-06-01", ["project"] = new[] { "MCP" } });
+
+        var april = plan.GetProperty("totals")[0];
+        april.GetProperty("gapPeople").GetDecimal().ShouldBeGreaterThan(0m); // 600 h over Q2 is more than one person
+        april.GetProperty("supplyPeople").GetDecimal().ShouldBe(1m);
+    }
+
+    [Fact]
     public async Task Service_errors_come_back_as_tool_errors_with_the_stable_code()
     {
         await using var mcp = await ConnectAsync();

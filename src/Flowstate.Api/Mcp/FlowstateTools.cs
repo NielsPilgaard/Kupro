@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Flowstate.Api.Common;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Sprints;
 using Flowstate.Api.Features.Users;
@@ -22,6 +23,7 @@ public sealed class FlowstateTools(
     IssueService issueService,
     LabelService labels,
     SprintService sprints,
+    PlanService plan,
     UserService users)
 {
     private const string WorkspaceHelp = "Workspace slug. Optional when your token is limited to one workspace or you are in only one.";
@@ -211,6 +213,59 @@ public sealed class FlowstateTools(
             "close" when id is { } closeId => Unwrap(await sprints.CloseAsync(closeId,
                 new CloseSprintRequest(moveUnfinishedTo ?? UnfinishedDestination.Next), ct)),
             _ => throw new McpException("invalid_arguments: create needs project, name, startDate, endDate; start and close need id."),
+        };
+    }
+
+    [McpServerTool(Name = "get_plan", ReadOnly = true), Description(
+        "The delivery plan: per project and in total, per month, demand (hours of dated epic/feature effort spread " +
+        "evenly over each card's days) vs supply (people x hours per week), as hours and people; gapPeople > 0 means " +
+        "short of people. Also cards, milestones, cross-project dependencies (violated = blocker due after the blocked " +
+        "card starts) and plan-health flags. Use it to answer 'do we need to hire for Q2 2027?'.")]
+    [CoversOperations("getPlan", "listMilestones", "getProjectCapacity")]
+    public async Task<PlanResponse> GetPlan(
+        [Description("First month, YYYY-MM-DD (any day). Default: this month.")] DateOnly? from = null,
+        [Description("Last month. Default: December next year.")] DateOnly? to = null,
+        [Description("Project keys; all when omitted.")] string[]? project = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return Unwrap(await plan.GetPlanAsync(from, to, project, ct));
+    }
+
+    [McpServerTool(Name = "set_capacity"), Description(
+        "Set how many people work on a project from which month: the full step function, e.g. " +
+        "[{fromMonth: 2027-01-01, people: 3}, {fromMonth: 2027-07-01, people: 5}]. Replaces existing steps.")]
+    [CoversOperations("setProjectCapacity")]
+    public async Task<IReadOnlyList<CapacityEntry>> SetCapacity(
+        [Description("Project key.")] string project,
+        [Description("Steps: fromMonth (first of month) and people.")] CapacityEntry[] entries,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
+        return Unwrap(await plan.SetCapacityAsync(project, new SetCapacityRequest(entries), ct));
+    }
+
+    [McpServerTool(Name = "manage_milestone"), Description(
+        "Create, update or delete a milestone (a dated marker on the plan; workspace-wide unless `project` is set).")]
+    [CoversOperations("createMilestone", "updateMilestone", "deleteMilestone")]
+    public async Task<object> ManageMilestone(
+        [Description("create, update or delete.")] string action,
+        [Description("Milestone id (update, delete).")] Guid? id = null,
+        [Description("Name (create, update).")] string? name = null,
+        [Description("Date, YYYY-MM-DD (create, update).")] DateOnly? date = null,
+        [Description("Project key (create).")] string? project = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
+        return action switch
+        {
+            "create" when name is not null && date is { } d => Unwrap(await plan.CreateMilestoneAsync(new CreateMilestoneRequest(name, d, project), ct)),
+            "update" when id is { } u => Unwrap(await plan.UpdateMilestoneAsync(u, new UpdateMilestoneRequest(name, date), ct)),
+            "delete" when id is { } x => await plan.DeleteMilestoneAsync(x, ct) ? "deleted" : throw new McpException("milestone_not_found"),
+            _ => throw new McpException("invalid_arguments: create needs name and date; update and delete need id."),
         };
     }
 
