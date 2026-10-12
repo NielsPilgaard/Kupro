@@ -51,4 +51,6 @@ tasks/                      # numbered task specs
 
 - Never commit secrets; local secrets in `.env` (gitignored), production in Dokploy env.
 - New production parameter, domain or manual step → update [docs/runbooks/deploy.md](docs/runbooks/deploy.md).
+- Work that waits on a person (account, key, DNS, console click, recording, legal) → add a row to
+  [docs/manual-steps.md](docs/manual-steps.md); remove it once the user confirms it is done.
 - Validate input at system boundaries. SignalR hubs require `[Authorize]`.
