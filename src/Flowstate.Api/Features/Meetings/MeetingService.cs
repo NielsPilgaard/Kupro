@@ -39,6 +39,9 @@ public sealed partial class MeetingService(
     private const int MaxCandidates = 3;
     private const int IssueHintLimit = 60;
 
+    /// <summary>How far back an open proposal counts as the same one heard again, e.g. by a second microphone.</summary>
+    private static readonly TimeSpan DuplicateWindow = TimeSpan.FromMinutes(2);
+
     private static readonly ProposalOperation[] DefaultFullAutoOperations = [ProposalOperation.State, ProposalOperation.Sprint];
 
     // ---------------------------------------------------------------- meetings
@@ -213,21 +216,40 @@ public sealed partial class MeetingService(
             Text = text,
             CreatedAt = clock.GetUtcNow(),
         };
-        db.TranscriptSegments.Add(segment);
 
         var context = await ContextAsync(db, meeting, recent, text, ct);
         var extracted = await extractor.ExtractAsync(context, ct);
-        var proposals = new List<MeetingProposal>();
+        var heard = new List<MeetingProposal>();
         foreach (var action in extracted)
         {
             if (await ProposeAsync(db, meeting, segment, projectKey, action, ct) is { } proposal)
             {
-                proposals.Add(proposal);
-                db.MeetingProposals.Add(proposal);
+                heard.Add(proposal);
             }
         }
 
-        await db.SaveChangesAsync(ct);
+        var proposals = new List<MeetingProposal>();
+        // Retrying execution strategy: the transaction must run inside it as one retriable unit.
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            proposals.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            // Several microphones in one room hear the same sentence at once. Serialise per meeting, so the first
+            // proposal wins and the copies from the other microphones are dropped.
+            await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({id.ToString()}, 0))", ct);
+            var since = segment.CreatedAt - DuplicateWindow;
+            var open = await db.MeetingProposals.AsNoTracking()
+                .Where(p => p.SessionId == id && p.CreatedAt >= since
+                    && (p.Status == ProposalStatus.Pending || p.Status == ProposalStatus.Applied))
+                .ToListAsync(ct);
+            proposals.AddRange(heard.Where(h => !open.Any(o => SameAction(o, h))));
+
+            db.TranscriptSegments.Add(segment);
+            db.MeetingProposals.AddRange(proposals);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        });
 
         var settings = await SettingsAsync(db, ct);
         foreach (var proposal in proposals.Where(p => AutoApplies(meeting, settings, p)))
@@ -601,6 +623,39 @@ public sealed partial class MeetingService(
         && p.Confidence >= AutoApplyConfidence
         && !(p.Operation == ProposalOperation.State && p.Value == Camel(IssueState.Canceled));
 
+    /// <summary>
+    /// The same change heard twice. Field changes match exactly. The model words comments and new issue titles anew each
+    /// time, so for those most of the words matching is enough.
+    /// </summary>
+    private static bool SameAction(MeetingProposal a, MeetingProposal b)
+    {
+        if (a.Operation != b.Operation)
+        {
+            return false;
+        }
+
+        // An applied new issue has its id; the copy of it doesn't, so only the title tells.
+        var sameTarget = a.Operation == ProposalOperation.CreateIssue
+            || (a.IssueId == b.IssueId && (a.IssueId is not null || a.Candidates.Order().SequenceEqual(b.Candidates.Order())));
+        return sameTarget && a.Operation switch
+        {
+            ProposalOperation.Comment or ProposalOperation.CreateIssue => SimilarWords(a.Value, b.Value),
+            _ => a.Value == b.Value,
+        };
+    }
+
+    /// <summary>At least half the distinct words in common (Jaccard), ignoring case.</summary>
+    private static bool SimilarWords(string? a, string? b)
+    {
+        static HashSet<string> Words(string? s) =>
+            Word().Matches(s ?? "").Select(m => m.Value.ToLowerInvariant()).ToHashSet();
+
+        var x = Words(a);
+        var y = Words(b);
+        var union = x.Union(y).Count();
+        return union > 0 && x.Intersect(y).Count() * 2 >= union;
+    }
+
     /// <summary>Turns an extracted action into a proposal, or null when its value can't be used.</summary>
     private async Task<MeetingProposal?> ProposeAsync(FlowstateDbContext db, MeetingSession meeting, TranscriptSegment segment,
         string projectKey, ExtractedAction action, CancellationToken ct)
@@ -886,6 +941,9 @@ public sealed partial class MeetingService(
 
     [GeneratedRegex(@"^(?:the|den|det)\s+|\s+(?:issue|ticket|task|opgave|sag)$", RegexOptions.IgnoreCase)]
     private static partial Regex Article();
+
+    [GeneratedRegex(@"\w+")]
+    private static partial Regex Word();
 }
 
 /// <summary>Member display names: the agent name for agents, the user's display name for people.</summary>

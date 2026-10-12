@@ -186,6 +186,29 @@ public sealed class MeetingTests(PostgresFixture postgres) : ApiTestBase(postgre
     }
 
     [Fact]
+    public async Task Two_microphones_hearing_the_same_sentence_make_one_proposal()
+    {
+        var meeting = await StartAsync();
+        const string sentence = "Move FLOW-1 to the next sprint. Create a task for flaky search test.";
+
+        var heard = await Task.WhenAll(SayAsync(meeting, sentence), SayAsync(meeting, sentence));
+
+        heard.Sum(h => h.Proposals.Count).ShouldBe(2);
+        (await SayAsync(meeting, "Create a new task for the flaky search test.")).Proposals.ShouldBeEmpty("similar wording");
+        (await SayAsync(meeting, "Move FLOW-1 to review.")).Proposals.ShouldHaveSingleItem("a different change");
+    }
+
+    [Fact]
+    public async Task A_rejected_proposal_can_be_proposed_again()
+    {
+        var meeting = await StartAsync();
+        var first = (await SayAsync(meeting, "FLOW-1 is done.")).Proposals.ShouldHaveSingleItem();
+        await ReviewAsync(meeting, new ProposalReview(first.Id, ReviewDecision.Reject));
+
+        (await SayAsync(meeting, "FLOW-1 is done.")).Proposals.ShouldHaveSingleItem();
+    }
+
+    [Fact]
     public async Task Danish_meetings_work()
     {
         var meeting = await StartAsync(language: "da");
