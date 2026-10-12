@@ -34,6 +34,7 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `API_PORT` | | `8080` | `api`, `web` | Port Kestrel listens on inside the network. |
 | `POSTGRES_PASSWORD` | yes | long random | `postgres`, `api`, `migrations`, `alloy` | Applied **only on first start** (empty volume). Rotate with `ALTER USER`, then update the variable. |
 | `KEYCLOAK_PASSWORD` | yes | long random | `keycloak` | Bootstrap admin, **first start only**. Replace with a permanent admin (below). |
+| `KEYCLOAK_DB_PASSWORD` | yes | long random | `postgres`, `keycloak` | Keycloak's own Postgres role and database, created by `infrastructure/postgres/init` **only on first start** (empty volume). Rotate with `ALTER ROLE keycloak`, then update the variable. |
 | `KEYCLOAK_PUBLIC_URL` | | `https://auth.<domain>` | `keycloak`, `api` | No trailing slash. It is also baked into the web image at build time, so a change needs a web rebuild. |
 | `GRAFANA_PUBLIC_URL` | | `https://grafana.<domain>` | `grafana` | Links in alert emails. |
 | `GRAFANA_ADMIN_PASSWORD` | yes | long random | `grafana` | Applied **only on first start** (empty volume). Afterwards change it in the UI. |

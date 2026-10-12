@@ -67,6 +67,20 @@ if (builder.ExecutionContext.IsPublishMode)
         // Tokens carry the public issuer, but the API fetches keys over the internal network.
         .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true");
 
+    // Keycloak's data in the shared Postgres cluster instead of its embedded H2 file, so one backup covers both.
+    // infrastructure/postgres/init creates its role and database when the Postgres volume is first created.
+    var keycloakDbPassword = builder.AddParameter("keycloak-db-password", secret: true);
+    postgres
+        .WithBindMount("../../infrastructure/postgres/init", "/docker-entrypoint-initdb.d", isReadOnly: true)
+        .WithEnvironment("KEYCLOAK_DB_PASSWORD", keycloakDbPassword);
+    keycloak
+        .WithEnvironment("KC_DB", "postgres")
+        .WithEnvironment("KC_DB_URL", ReferenceExpression.Create(
+            $"jdbc:postgresql://{postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.HostAndPort)}/keycloak"))
+        .WithEnvironment("KC_DB_USERNAME", "keycloak")
+        .WithEnvironment("KC_DB_PASSWORD", keycloakDbPassword)
+        .WaitFor(postgres);
+
     // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001), e.g. https://flowstate.dk.
     var apiPublicUrl = builder.AddParameter("api-public-url");
     api.WithEnvironment("Api__PublicUrl", apiPublicUrl);
