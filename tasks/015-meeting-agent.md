@@ -78,15 +78,18 @@ See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-a
 
 ## Acceptance criteria
 
-- [ ] In suggest mode, saying "move FLOW-12 to next sprint" in a meeting produces a proposal grouped under FLOW-12 that
+- [x] In suggest mode, saying "move FLOW-12 to next sprint" in a meeting produces a proposal grouped under FLOW-12 that
       shows the snippet and the diff, and changes nothing until approved.
-- [ ] Approve, edit and reject work per proposal; "approve all" works per ticket.
+- [x] Approve, edit and reject work per proposal; "approve all" works per ticket.
 - [ ] In full auto, the same sentence moves FLOW-12 within 5 s of speech, and undo reverts it.
-- [ ] In full auto, an ambiguous or low-confidence proposal waits for approval.
-- [ ] Only admins can enable full auto; the toggle shows approval stats from suggest-mode history.
-- [ ] Every agent change appears in the activity feed with actor, session and transcript snippet.
-- [ ] Proposals can be listed, approved and rejected via REST, CLI and MCP; parity test passes.
+- [x] In full auto, an ambiguous or low-confidence proposal waits for approval.
+- [x] Only admins can enable full auto; the toggle shows approval stats from suggest-mode history.
+- [x] Every agent change appears in the activity feed with actor, session and transcript snippet.
+- [x] Proposals can be listed, approved and rejected via REST, CLI and MCP; parity test passes.
 - [ ] Danish and English meetings both work.
+
+Checked with typed transcript (API tests, `tests/e2e/tests/meeting.spec.ts`, keyword extractor). The 5 s speech
+budget and Danish/English speech need the Scaleway key (ADR-015 IMP-001).
 
 ## Progress
 

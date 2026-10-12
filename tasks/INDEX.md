@@ -28,7 +28,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
-| 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P3 | 2 | 004, 006, 010, 012 | Todo |
+| 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P3 | 2 | 004, 006, 010, 012 | In progress |
 
 ## Completed
 
