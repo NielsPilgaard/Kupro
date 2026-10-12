@@ -80,7 +80,7 @@
           },
           "annotations": {
             "summary": "Flowstate API has not answered a health probe for 5 minutes.",
-            "description": "No /alive (or local /health) requests recorded. The container is down or crash-looping, a migration failed (the API waits for it), or telemetry stopped reaching Prometheus (otel-collector). Check Dokploy and 'Startups, shutdowns and migrations'.",
+            "description": "No /alive (or local /health) requests recorded. The container is down or crash-looping, a migration failed (the API waits for it), or telemetry stopped reaching Prometheus (alloy). Check Dokploy and 'Startups, shutdowns and migrations'.",
             "__dashboardUid__": "flowstate-health",
             "__panelId__": "2"
           }
@@ -355,6 +355,240 @@
             "description": "ADR-010: every endpoint < 500 ms p99. Warm requests only (reused connections), so a deploy's cold-start burst can't trigger it; needs 100+ requests in the hour. Open 'Endpoints' and 'Requests over budget' on the Service health dashboard for the route and the trace.",
             "__dashboardUid__": "flowstate-health",
             "__panelId__": "17"
+          }
+        },
+        {
+          "uid": "flowstate-disk-full",
+          "title": "Flowstate disk almost full",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "max(1 - node_filesystem_avail_bytes{job=\"integrations/unix\", mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"integrations/unix\", mountpoint=\"/\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0.85
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "10m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Docker's data disk on the VPS is {{ humanizePercentage $values.B.Value }} full.",
+            "description": "Postgres stops accepting writes when the disk fills. Prune old images (`docker image prune -a`), check the telemetry volumes, or grow the disk.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "27"
+          }
+        },
+        {
+          "uid": "flowstate-postgres-down",
+          "title": "Flowstate Postgres down",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 300,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "max(pg_up{job=\"integrations/postgres\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        1
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "2m",
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Postgres is not answering.",
+            "description": "Alloy's Postgres exporter can't connect. The API fails every request that touches the database. Check the postgres container in Dokploy. No data = Alloy itself is down; 'Flowstate API down' fires too then.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "28"
+          }
+        },
+        {
+          "uid": "flowstate-keycloak-down",
+          "title": "Flowstate Keycloak down",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 300,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "max(up{job=\"keycloak\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "lt",
+                      "params": [
+                        1
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "5m",
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "Keycloak has not answered a metrics scrape for 5 minutes.",
+            "description": "Nobody can sign in, and the API can't fetch signing keys after a restart. Check the keycloak container in Dokploy and its logs.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "29"
           }
         }
       ]

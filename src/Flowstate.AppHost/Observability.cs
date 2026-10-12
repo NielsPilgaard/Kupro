@@ -1,13 +1,15 @@
 using Aspire.Hosting.Docker.Resources.ServiceNodes.Swarm;
 
-// Self-hosted observability (ADR-014): apps → otel-collector → Loki (logs), Tempo (traces), Prometheus (metrics),
+// Self-hosted observability (ADR-014): apps → Alloy → Loki (logs), Tempo (traces), Prometheus (metrics),
 // with Grafana on top. The same containers run under `aspire run` and in the published compose; their config lives
 // in infrastructure/observability/. Only Grafana is reachable from outside.
 internal static class Observability
 {
     private const string ConfigDir = "../../infrastructure/observability";
 
-    public static IResourceBuilder<ContainerResource> AddObservability(this IDistributedApplicationBuilder builder)
+    /// <returns>The collector (apps send telemetry to it) and Grafana.</returns>
+    public static (IResourceBuilder<ContainerResource> Collector, IResourceBuilder<ContainerResource> Grafana) AddObservability(
+        this IDistributedApplicationBuilder builder)
     {
         var loki = builder.AddContainer("loki", "grafana/loki", "3.7.8")
             .WithBindMount($"{ConfigDir}/loki.yaml", "/etc/loki/flowstate.yaml", isReadOnly: true)
@@ -32,22 +34,38 @@ internal static class Observability
                 "--config.file=/etc/prometheus/flowstate.yaml",
                 "--storage.tsdb.path=/prometheus",
                 "--storage.tsdb.retention.time=30d",
-                "--web.enable-otlp-receiver")
+                "--web.enable-otlp-receiver",
+                // Alloy remote-writes the scraped host, Postgres and Keycloak metrics.
+                "--web.enable-remote-write-receiver")
             .WithVolume("flowstate-prometheus-data", "/prometheus")
             .WithHttpEndpoint(targetPort: 9090, name: "http")
             .WithHttpHealthCheck("/-/ready")
             .WithMemoryLimit("512m");
 
-        var collector = builder.AddContainer("otel-collector", "otel/opentelemetry-collector-contrib", "0.162.0")
-            .WithBindMount($"{ConfigDir}/otel-collector.yaml", "/etc/otelcol/flowstate.yaml", isReadOnly: true)
-            .WithArgs("--config=/etc/otelcol/flowstate.yaml")
+        // Locally the collector also forwards a copy to the Aspire dashboard, so both views keep working.
+        var dashboardUrl = builder.ExecutionContext.IsPublishMode ? null : builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"];
+        var collector = builder.AddContainer("alloy", "grafana/alloy", "v1.20.1")
+            .WithBindMount($"{ConfigDir}/alloy/flowstate.alloy", "/etc/alloy/flowstate/flowstate.alloy", isReadOnly: true)
+            .WithBindMount($"{ConfigDir}/alloy/{(dashboardUrl is null ? "export.alloy" : "export.dev.alloy")}",
+                "/etc/alloy/flowstate/export.alloy", isReadOnly: true)
+            // --disable-reporting: no usage stats to Grafana Labs (ADR-006).
+            .WithArgs("run", "/etc/alloy/flowstate", "--server.http.listen-addr=0.0.0.0:12345",
+                "--storage.path=/var/lib/alloy/data", "--disable-reporting")
             .WithEnvironment("LOKI_URL", loki.GetEndpoint("http"))
             .WithEnvironment("PROMETHEUS_URL", prometheus.GetEndpoint("http"))
             .WithEnvironment("TEMPO_OTLP_URL", tempo.GetEndpoint("otlp"))
             .WithHttpEndpoint(targetPort: 4318, name: "otlp")
-            .WithHttpEndpoint(targetPort: 13133, name: "health")
-            .WithHttpHealthCheck("/", endpointName: "health")
-            .WithMemoryLimit("256m");
+            // Alloy's UI: the live pipeline graph and each component's health.
+            .WithHttpEndpoint(targetPort: 12345, name: "http")
+            .WithHttpHealthCheck("/-/ready", endpointName: "http")
+            .WithMemoryLimit("384m");
+
+        if (dashboardUrl is not null)
+        {
+            collector
+                .WithEnvironment("ASPIRE_DASHBOARD_OTLP_URL", new HostUrl(dashboardUrl))
+                .WithEnvironment("ASPIRE_DASHBOARD_OTLP_API_KEY", builder.Configuration["AppHost:OtlpApiKey"] ?? "");
+        }
 
         var grafana = builder.AddContainer("grafana", "grafana/grafana", "13.2.3")
             .WithBindMount($"{ConfigDir}/grafana/provisioning", "/etc/grafana/provisioning", isReadOnly: true)
@@ -72,42 +90,41 @@ internal static class Observability
 
         if (builder.ExecutionContext.IsPublishMode)
         {
+            var smtp = builder.AddSmtpCredentials();
             grafana
                 // e.g. https://grafana.flowstate.dk
                 .WithEnvironment("GF_SERVER_ROOT_URL", builder.AddParameter("grafana-public-url"))
                 .WithEnvironment("GF_SECURITY_ADMIN_PASSWORD", builder.AddParameter("grafana-admin-password", secret: true))
                 .WithEnvironment("GF_SECURITY_COOKIE_SECURE", "true")
-                // Alert emails go out through Scaleway Transactional Email (ADR-006): user = project id, password = API key.
+                // Alert emails go out through Scaleway Transactional Email (ADR-006), same credentials as Keycloak's.
                 .WithEnvironment("GF_SMTP_ENABLED", "true")
-                .WithEnvironment("GF_SMTP_HOST", "smtp.tem.scaleway.com:587")
-                .WithEnvironment("GF_SMTP_USER", builder.AddParameter("grafana-smtp-user"))
-                .WithEnvironment("GF_SMTP_PASSWORD", builder.AddParameter("grafana-smtp-password", secret: true))
+                .WithEnvironment("GF_SMTP_HOST", $"{Smtp.Host}:{Smtp.Port}")
+                .WithEnvironment("GF_SMTP_USER", smtp.User)
+                .WithEnvironment("GF_SMTP_PASSWORD", smtp.Password)
                 .WithEnvironment("GF_SMTP_FROM_ADDRESS", builder.AddParameter("grafana-smtp-from"))
                 .WithEnvironment("ALERT_EMAIL", builder.AddParameter("alert-email"));
         }
         else
         {
-            // Local: no login. Alerts evaluate but no email is sent.
+            // Local: no login. Alert emails go to Mailpit (WithAlertMailTo).
             grafana
                 .WithEnvironment("GF_AUTH_ANONYMOUS_ENABLED", "true")
                 .WithEnvironment("GF_AUTH_ANONYMOUS_ORG_ROLE", "Admin")
                 .WithEnvironment("GF_AUTH_DISABLE_LOGIN_FORM", "true")
                 .WithEnvironment("ALERT_EMAIL", "alerts@localhost");
-
-            // Telemetry also still reaches the Aspire dashboard: the collector forwards a copy to it.
-            var dashboardUrl = builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"];
-            if (dashboardUrl is not null)
-            {
-                collector
-                    .WithBindMount($"{ConfigDir}/otel-collector.dev.yaml", "/etc/otelcol/dev.yaml", isReadOnly: true)
-                    .WithArgs("--config=/etc/otelcol/dev.yaml", "--feature-gates=confmap.enableMergeAppendOption")
-                    .WithEnvironment("ASPIRE_DASHBOARD_OTLP_URL", new HostUrl(dashboardUrl))
-                    .WithEnvironment("ASPIRE_DASHBOARD_OTLP_API_KEY", builder.Configuration["AppHost:OtlpApiKey"] ?? "");
-            }
         }
 
-        return collector;
+        return (collector, grafana);
     }
+
+    /// <summary>`aspire run`: Grafana's alert emails land in the local Mailpit instead of Scaleway.</summary>
+    public static IResourceBuilder<ContainerResource> WithAlertMailTo(
+        this IResourceBuilder<ContainerResource> grafana, IResourceBuilder<ContainerResource> mailpit) =>
+        grafana
+            .WithEnvironment("GF_SMTP_ENABLED", "true")
+            // An endpoint reference, not the name: Grafana and the persistent Mailpit sit on different networks.
+            .WithEnvironment("GF_SMTP_HOST", mailpit.GetEndpoint("smtp").Property(EndpointProperty.HostAndPort))
+            .WithEnvironment("GF_SMTP_FROM_ADDRESS", "alerts@flowstate.local");
 
     /// <summary>Sends the service's OpenTelemetry to the collector, locally and in production.</summary>
     public static IResourceBuilder<ProjectResource> WithTelemetryTo(
@@ -120,6 +137,28 @@ internal static class Observability
             .WithEnvironment("OTEL_SERVICE_NAME", service.Resource.Name)
             // So a one-shot run (migrations) doesn't export into a collector that isn't listening yet.
             .WaitFor(collector);
+
+    /// <summary>
+    /// Lets the collector scrape what doesn't send OTLP: Postgres (through Alloy's built-in exporter, as the
+    /// superuser) and Keycloak's metrics on its management port. Host metrics need nothing from the AppHost.
+    /// </summary>
+    public static IResourceBuilder<ContainerResource> WithScrapeTargets(
+        this IResourceBuilder<ContainerResource> collector,
+        IResourceBuilder<PostgresServerResource> postgres,
+        IResourceBuilder<KeycloakResource> keycloak)
+    {
+        keycloak.WithEnvironment("KC_METRICS_ENABLED", "true");
+        var management = keycloak.GetEndpoint("management");
+        var server = postgres.Resource;
+
+        return collector
+            // Alloy builds the connection URL from these (it URL-encodes the password).
+            .WithEnvironment("POSTGRES_USER", server.UserNameReference)
+            .WithEnvironment("POSTGRES_PASSWORD", server.PasswordParameter)
+            .WithEnvironment("POSTGRES_ADDRESS", server.PrimaryEndpoint.Property(EndpointProperty.HostAndPort))
+            .WithEnvironment("KEYCLOAK_MANAGEMENT_ADDRESS", management.Property(EndpointProperty.HostAndPort))
+            .WithEnvironment("KEYCLOAK_MANAGEMENT_SCHEME", management.Property(EndpointProperty.Scheme));
+    }
 
     private static IResourceBuilder<ContainerResource> WithMemoryLimit(
         this IResourceBuilder<ContainerResource> container, string limit) =>

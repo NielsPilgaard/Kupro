@@ -52,6 +52,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=30d"
       - "--web.enable-otlp-receiver"
+      - "--web.enable-remote-write-receiver"
     expose:
       - "9090"
     volumes:
@@ -70,21 +71,34 @@ services:
       resources:
         limits:
           memory: "512m"
-  otel-collector:
-    image: "otel/opentelemetry-collector-contrib:0.162.0"
+  alloy:
+    image: "grafana/alloy:v1.20.1"
     command:
-      - "--config=/etc/otelcol/flowstate.yaml"
+      - "run"
+      - "/etc/alloy/flowstate"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "--storage.path=/var/lib/alloy/data"
+      - "--disable-reporting"
     environment:
       LOKI_URL: "http://loki:3100"
       PROMETHEUS_URL: "http://prometheus:9090"
       TEMPO_OTLP_URL: "http://tempo:4318"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_ADDRESS: "postgres:5432"
+      KEYCLOAK_MANAGEMENT_ADDRESS: "keycloak:9000"
+      KEYCLOAK_MANAGEMENT_SCHEME: "http"
     expose:
       - "4318"
-      - "13133"
+      - "12345"
     volumes:
       - type: "bind"
-        target: "/etc/otelcol/flowstate.yaml"
-        source: "../infrastructure/observability/otel-collector.yaml"
+        target: "/etc/alloy/flowstate/flowstate.alloy"
+        source: "../infrastructure/observability/alloy/flowstate.alloy"
+        read_only: true
+      - type: "bind"
+        target: "/etc/alloy/flowstate/export.alloy"
+        source: "../infrastructure/observability/alloy/export.alloy"
         read_only: true
     networks:
       - "aspire"
@@ -92,7 +106,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: "256m"
+          memory: "384m"
   grafana:
     image: "grafana/grafana:13.2.3"
     environment:
@@ -108,8 +122,8 @@ services:
       GF_SECURITY_COOKIE_SECURE: "true"
       GF_SMTP_ENABLED: "true"
       GF_SMTP_HOST: "smtp.tem.scaleway.com:587"
-      GF_SMTP_USER: "${GRAFANA_SMTP_USER}"
-      GF_SMTP_PASSWORD: "${GRAFANA_SMTP_PASSWORD}"
+      GF_SMTP_USER: "${SMTP_USER}"
+      GF_SMTP_PASSWORD: "${SMTP_PASSWORD}"
       GF_SMTP_FROM_ADDRESS: "${GRAFANA_SMTP_FROM}"
       ALERT_EMAIL: "${ALERT_EMAIL}"
     expose:
@@ -159,7 +173,7 @@ services:
       - "aspire"
     restart: "unless-stopped"
   keycloak:
-    image: "quay.io/keycloak/keycloak:26.6"
+    image: "${KEYCLOAK_IMAGE}"
     command:
       - "start"
       - "--import-realm"
@@ -168,10 +182,19 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_PASSWORD}"
       KC_HEALTH_ENABLED: "true"
       KC_FEATURES: "resource-indicators,cimd"
+      KC_METRICS_ENABLED: "true"
       KC_HOSTNAME: "${KEYCLOAK_PUBLIC_URL}"
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: "xforwarded"
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      REALM_APP_URL: "${API_PUBLIC_URL}"
+      REALM_SMTP_HOST: "smtp.tem.scaleway.com"
+      REALM_SMTP_PORT: "587"
+      REALM_SMTP_STARTTLS: "true"
+      REALM_SMTP_AUTH: "true"
+      REALM_SMTP_USER: "${SMTP_USER}"
+      REALM_SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      REALM_SMTP_FROM: "${KEYCLOAK_SMTP_FROM}"
     expose:
       - "8080"
       - "9000"
@@ -180,10 +203,6 @@ services:
         target: "/opt/keycloak/data"
         source: "flowstate-keycloak-data"
         read_only: false
-      - type: "bind"
-        target: "/opt/keycloak/data/import"
-        source: "../src/Flowstate.AppHost/Realms"
-        read_only: true
     networks:
       - "aspire"
     restart: "unless-stopped"
@@ -201,13 +220,13 @@ services:
       FLOWSTATE_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/flowstate"
       FLOWSTATE_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/flowstate"
       FLOWSTATE_DATABASENAME: "flowstate"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_SERVICE_NAME: "migrations"
     depends_on:
       postgres:
         condition: "service_started"
-      otel-collector:
+      alloy:
         condition: "service_started"
     networks:
       - "aspire"
@@ -227,7 +246,7 @@ services:
       FLOWSTATE_DATABASENAME: "flowstate"
       KEYCLOAK_HTTP: "http://keycloak:8080"
       services__keycloak__http__0: "http://keycloak:8080"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_SERVICE_NAME: "api"
       Auth__PublicAuthority: "${KEYCLOAK_PUBLIC_URL}/realms/flowstate"
@@ -242,7 +261,7 @@ services:
         condition: "service_completed_successfully"
       keycloak:
         condition: "service_started"
-      otel-collector:
+      alloy:
         condition: "service_started"
     networks:
       - "aspire"

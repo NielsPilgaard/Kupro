@@ -15,7 +15,7 @@ builder.AddDockerComposeEnvironment("compose")
         }
     });
 
-var otelCollector = builder.AddObservability();
+var (otelCollector, grafana) = builder.AddObservability();
 
 var postgres = builder.AddPostgres("postgres")
     .WithImageTag("18")
@@ -33,6 +33,8 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8180)
     // MCP authorization needs these preview features (ADR-005 IMP-001).
     .WithEnvironment("KC_FEATURES", "resource-indicators,cimd")
     .WithLifetime(ContainerLifetime.Persistent);
+
+otelCollector.WithScrapeTargets(postgres, keycloak);
 
 // Same API image in `migrate` mode: applies EF migrations, then exits (ADR-012 IMP-003).
 // No launch profile, so it does not claim the API's port.
@@ -126,10 +128,11 @@ else
     api.WithEnvironment("Api__PublicUrl", api.GetEndpoint("http"));
 
     // Keycloak's emails land in Mailpit (UI on :8125; 8025 is often taken). Persistent like Keycloak, so both share a network.
-    builder.AddContainer("mailpit", "axllent/mailpit", "v1.31.5")
+    var mailpit = builder.AddContainer("mailpit", "axllent/mailpit", "v1.31.5")
         .WithHttpEndpoint(port: 8125, targetPort: 8025)
         .WithEndpoint(targetPort: 1025, name: "smtp")
         .WithLifetime(ContainerLifetime.Persistent);
+    grafana.WithAlertMailTo(mailpit);
     keycloak
         // Realm plus dev users (flowstate-users-0.json); the image has the realm only.
         .WithRealmImport("./Realms")

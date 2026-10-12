@@ -437,6 +437,51 @@ P += [
 ]
 y += 8
 
+# Scraped by Alloy and remote-written to Prometheus (alloy/flowstate.alloy). "Host" is read from inside the Alloy
+# container: CPU, memory and load are the host's; disk is the filesystem Docker's volumes live on.
+DISK_USED = 'max(1 - node_filesystem_avail_bytes{job="integrations/unix", mountpoint="/"} / node_filesystem_size_bytes{job="integrations/unix", mountpoint="/"})'
+MEM_USED = 'max(1 - node_memory_MemAvailable_bytes{job="integrations/unix"} / node_memory_MemTotal_bytes{job="integrations/unix"})'
+CPU_USED = 'avg(1 - rate(node_cpu_seconds_total{job="integrations/unix", mode="idle"}[$__rate_interval]))'
+UP_MAP = [{"type": "value", "options": {"1": {"text": "UP", "color": "green"}, "0": {"text": "DOWN", "color": "red"}}}]
+UP_THRESHOLDS = [{"color": "red", "value": None}, {"color": "green", "value": 1}]
+PCT_THRESHOLDS = [{"color": "green", "value": None}, {"color": "orange", "value": 0.75}, {"color": "red", "value": 0.85}]
+
+P.append(row("Host and dependencies", y)); y += 1
+disk = stat("Disk used", [prom(DISK_USED, instant=True)], 0, y, w=4, unit="percentunit", decimals=0,
+            thresholds=PCT_THRESHOLDS, no_value="–",
+            desc="Docker's data disk: Postgres, Keycloak and telemetry volumes, images, logs. Alert at 85 %.")
+pg_up = stat("Postgres", [prom('max(pg_up{job="integrations/postgres"})', instant=True)], 8, y, w=4,
+             mappings=UP_MAP, thresholds=UP_THRESHOLDS, no_value="DOWN", color_mode="background",
+             desc="Alloy's Postgres exporter can connect and query.")
+kc_up = stat("Keycloak", [prom('max(up{job="keycloak"})', instant=True)], 12, y, w=4,
+             mappings=UP_MAP, thresholds=UP_THRESHOLDS, no_value="DOWN", color_mode="background",
+             desc="Keycloak's metrics endpoint answers. Down = nobody can sign in, and new API tokens can't be validated.")
+P += [
+    disk,
+    stat("Memory used", [prom(MEM_USED, instant=True)], 4, y, w=4, unit="percentunit", decimals=0,
+         thresholds=PCT_THRESHOLDS, no_value="–", desc="Host memory in use (excluding reclaimable cache)."),
+    pg_up,
+    kc_up,
+    stat("Database size", [prom('sum(pg_database_size_bytes{job="integrations/postgres", datname="flowstate"})', instant=True)],
+         16, y, w=4, unit="bytes", no_value="–"),
+    stat("DB connections", [prom('sum(pg_stat_database_numbackends{job="integrations/postgres"}) / max(pg_settings_max_connections{job="integrations/postgres"})', instant=True)],
+         20, y, w=4, unit="percentunit", decimals=0, thresholds=PCT_THRESHOLDS, no_value="–",
+         desc="Server connections in use, all databases, of max_connections."),
+]
+y += 4
+P += [
+    ts("Host CPU, memory and disk", [
+        prom(CPU_USED, "CPU", "A"),
+        prom(MEM_USED, "memory", "B"),
+        prom(DISK_USED, "disk", "C"),
+    ], 0, y, unit="percentunit", fill=0, threshold_lines=[(0.85, "red")],
+        desc="Whole VPS, all containers. CPU near 100 % with slow requests = the host is the bottleneck."),
+    ts("Postgres connections by state", [
+        prom('sum by (state) (pg_stat_activity_count{job="integrations/postgres"})', "{{state}}", "A"),
+    ], 12, y, fill=0, desc="'idle in transaction' that stays up = a request holding a transaction open."),
+]
+y += 8
+
 P.append(row("Recent errors and warnings", y)); y += 1
 P.append(logs_panel("Errors and warnings", ALL + f' | severity_number >= 13 | {NOT_REQLOG}', 0, y))
 
@@ -598,7 +643,7 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "fol
     ], "5m", "critical",
         "Flowstate API has not answered a health probe for 5 minutes.",
         "No /alive (or local /health) requests recorded. The container is down or crash-looping, a migration failed (the API waits for "
-        "it), or telemetry stopped reaching Prometheus (otel-collector). Check Dokploy and 'Startups, shutdowns and migrations'.",
+        "it), or telemetry stopped reaching Prometheus (alloy). Check Dokploy and 'Startups, shutdowns and migrations'.",
         health, alive, no_data="Alerting", exec_err="Alerting"),
     rule("flowstate-errors-logged", "Flowstate errors logged", "C", [
         q_loki("A", f"sum(count_over_time({ALL} | {ERRLVL} [10m]))", 600),
@@ -630,6 +675,33 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "fol
         "cold-start burst can't trigger it; needs 100+ requests in the hour. Open 'Endpoints' and 'Requests over "
         "budget' on the Service health dashboard for the route and the trace.",
         health, latency),
+    rule("flowstate-disk-full", "Flowstate disk almost full", "C", [
+        q_prom("A", DISK_USED, 600),
+        q_reduce("B", "A", zero_if_empty=False),
+        q_threshold("C", "B", "gt", 0.85),
+    ], "10m", "critical",
+        "Docker's data disk on the VPS is {{ humanizePercentage $values.B.Value }} full.",
+        "Postgres stops accepting writes when the disk fills. Prune old images (`docker image prune -a`), check the "
+        "telemetry volumes, or grow the disk.",
+        health, disk),
+    rule("flowstate-postgres-down", "Flowstate Postgres down", "C", [
+        q_prom("A", 'max(pg_up{job="integrations/postgres"})', 300),
+        q_reduce("B", "A", zero_if_empty=False),
+        q_threshold("C", "B", "lt", 1),
+    ], "2m", "critical",
+        "Postgres is not answering.",
+        "Alloy's Postgres exporter can't connect. The API fails every request that touches the database. Check the "
+        "postgres container in Dokploy. No data = Alloy itself is down; 'Flowstate API down' fires too then.",
+        health, pg_up, no_data="Alerting", exec_err="Alerting"),
+    rule("flowstate-keycloak-down", "Flowstate Keycloak down", "C", [
+        q_prom("A", 'max(up{job="keycloak"})', 300),
+        q_reduce("B", "A", zero_if_empty=False),
+        q_threshold("C", "B", "lt", 1),
+    ], "5m", "critical",
+        "Keycloak has not answered a metrics scrape for 5 minutes.",
+        "Nobody can sign in, and the API can't fetch signing keys after a restart. Check the keycloak container in "
+        "Dokploy and its logs.",
+        health, kc_up, no_data="Alerting", exec_err="Alerting"),
 ]}]}
 
 for name, d in [("health", health), ("usage", usage), ("errors", errors)]:

@@ -1,0 +1,8 @@
+// Where the apps' OTLP goes after batching. `aspire run` mounts export.dev.alloy in its place.
+otelcol.processor.batch "apps" {
+	output {
+		logs    = [otelcol.exporter.otlphttp.loki.input]
+		metrics = [otelcol.exporter.otlphttp.prometheus.input]
+		traces  = [otelcol.exporter.otlphttp.tempo.input]
+	}
+}

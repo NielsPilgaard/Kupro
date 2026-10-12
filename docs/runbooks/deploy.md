@@ -32,13 +32,11 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `WEB_IMAGE` | | `ghcr.io/<owner>/flowstate-web:sha-<commit>` | `web` | Set by CD. Built with the `KEYCLOAK_PUBLIC_URL` GitHub variable. |
 | `KEYCLOAK_IMAGE` | | `ghcr.io/<owner>/flowstate-keycloak:sha-<commit>` | `keycloak` | Set by CD. Keycloak with the Flowstate theme and the realm. |
 | `API_PORT` | | `8080` | `api`, `web` | Port Kestrel listens on inside the network. |
-| `POSTGRES_PASSWORD` | yes | long random | `postgres`, `api`, `migrations` | Applied **only on first start** (empty volume). Rotate with `ALTER USER`, then update the variable. |
+| `POSTGRES_PASSWORD` | yes | long random | `postgres`, `api`, `migrations`, `alloy` | Applied **only on first start** (empty volume). Rotate with `ALTER USER`, then update the variable. |
 | `KEYCLOAK_PASSWORD` | yes | long random | `keycloak` | Bootstrap admin, **first start only**. Replace with a permanent admin (below). |
 | `KEYCLOAK_PUBLIC_URL` | | `https://auth.<domain>` | `keycloak`, `api` | No trailing slash. It is also baked into the web image at build time, so a change needs a web rebuild. |
 | `GRAFANA_PUBLIC_URL` | | `https://grafana.<domain>` | `grafana` | Links in alert emails. |
 | `GRAFANA_ADMIN_PASSWORD` | yes | long random | `grafana` | Applied **only on first start** (empty volume). Afterwards change it in the UI. |
-| `GRAFANA_SMTP_USER` | | Scaleway project id | `grafana` | Scaleway TEM SMTP relay, `smtp.tem.scaleway.com:587`. |
-| `GRAFANA_SMTP_PASSWORD` | yes | Scaleway API secret key | `grafana` | Key needs TEM permissions only. |
 | `GRAFANA_SMTP_FROM` | | `alerts@<domain>` | `grafana` | Domain must be verified in Scaleway TEM (SPF/DKIM). |
 | `ALERT_EMAIL` | | `ops@<domain>` | `grafana` | Comma-separated for several recipients. |
 | `API_PUBLIC_URL` | | `https://<domain>` | `api`, `keycloak` | No trailing slash. Audience of MCP tokens issued with a resource indicator, and the web client's redirect URI and origin in the realm. |
@@ -64,7 +62,7 @@ In Dokploy → the compose app → **Domains**, with HTTPS (Let's Encrypt):
 | `auth.<domain>` | `keycloak` | 8080 | Must equal `KEYCLOAK_PUBLIC_URL`. |
 | `grafana.<domain>` | `grafana` | 3000 | Must equal `GRAFANA_PUBLIC_URL`. |
 
-Nothing else is routed: Postgres, the API, Loki, Tempo, Prometheus and the Collector are internal only, and the
+Nothing else is routed: Postgres, the API, Loki, Tempo, Prometheus and Alloy are internal only, and the
 compose publishes no host ports. Still allow only 22, 80 and 443 in the VPS firewall.
 
 ## GitHub configuration

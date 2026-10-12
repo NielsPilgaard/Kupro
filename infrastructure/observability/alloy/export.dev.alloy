@@ -1,0 +1,22 @@
+// `aspire run` only, mounted as export.alloy: the backends plus a copy to the Aspire dashboard.
+otelcol.processor.batch "apps" {
+	output {
+		logs    = [otelcol.exporter.otlphttp.loki.input, otelcol.exporter.otlp.aspire.input]
+		metrics = [otelcol.exporter.otlphttp.prometheus.input, otelcol.exporter.otlp.aspire.input]
+		traces  = [otelcol.exporter.otlphttp.tempo.input, otelcol.exporter.otlp.aspire.input]
+	}
+}
+
+otelcol.exporter.otlp "aspire" {
+	client {
+		endpoint = sys.env("ASPIRE_DASHBOARD_OTLP_URL")
+		headers  = {
+			"x-otlp-api-key" = sys.env("ASPIRE_DASHBOARD_OTLP_API_KEY"),
+		}
+
+		tls {
+			// The dashboard uses the local ASP.NET dev certificate.
+			insecure_skip_verify = true
+		}
+	}
+}

@@ -1,14 +1,14 @@
 # Observability stack
 
-Flowstate's logs, traces and metrics stay on our own host: the apps export OTLP to an OpenTelemetry Collector, which
+Flowstate's logs, traces and metrics stay on our own host: the apps export OTLP to Grafana Alloy, which
 fans out to Loki, Tempo and Prometheus, with Grafana on top ([ADR-014](../../docs/adr/ADR-014-observability.md)).
 The AppHost (`src/Flowstate.AppHost/Observability.cs`) starts the same containers under `aspire run` and in the
 compose from `aspire publish`. Everything here is mounted read-only; Grafana provisions itself from these files.
 
 | File | What |
 |---|---|
-| `otel-collector.yaml` | OTLP in (4317/4318), out to Loki, Tempo and Prometheus |
-| `otel-collector.dev.yaml` | `aspire run` only: also forwards everything to the Aspire dashboard |
+| `alloy/flowstate.alloy` | Alloy: OTLP in (4317/4318) out to Loki, Tempo and Prometheus; scrapes host, Postgres and Keycloak metrics and remote-writes them to Prometheus |
+| `alloy/export.alloy` | Where OTLP goes after batching. `aspire run` mounts `export.dev.alloy` instead, which also forwards everything to the Aspire dashboard |
 | `loki.yaml`, `tempo.yaml`, `prometheus.yaml` | Single-node storage, 30-day retention, usage reporting off |
 | `grafana/provisioning/datasources/` | Prometheus, Loki, Tempo with fixed uids `prometheus`, `loki`, `tempo`, trace ↔ log links |
 | `grafana/provisioning/alerting/notifications.yaml` | Email contact point and default notification policy |
@@ -23,7 +23,10 @@ Dashboards live in the **Flowstate** folder. All selectors use `service_namespac
 ## Local
 
 `aspire run` starts the stack. Grafana is on <http://localhost:3180>, signed in as admin without a login; the Aspire
-dashboard keeps working because the Collector forwards to it too. Alerts evaluate, but no mail server is configured.
+dashboard keeps working because Alloy forwards to it too. Alert emails land in Mailpit (<http://localhost:8125>).
+Alloy's UI (the `alloy` resource's URL in the Aspire dashboard) shows the pipeline graph and each component's health:
+the first place to look when a signal is missing. Check a config change with `docker run --rm -v
+"$PWD/infrastructure/observability/alloy:/cfg" grafana/alloy fmt /cfg/flowstate.alloy`.
 
 Data lives in Docker volumes (`flowstate-loki-data`, `-tempo-data`, `-prometheus-data`, `-grafana-data`) and survives
 restarts. If Grafana shows two **Flowstate** folders (left over from an earlier provisioning layout), delete the empty
@@ -59,6 +62,10 @@ field and panels go blank.
   whose casing differs between Loki versions.
 - **Metrics** arrive through Prometheus' OTLP receiver: `job="flowstate/api"`, with `deployment_environment_name` and
   `service_version` promoted to labels.
+- **Infrastructure metrics** are scraped by Alloy and remote-written: `job="integrations/unix"` (`node_*`, read from inside the
+  Alloy container: CPU, memory and load are the host's, disk is the filesystem Docker's volumes live on),
+  `job="integrations/postgres"` (`pg_*`) and `job="keycloak"` (`up`, `jvm_*`, Keycloak's own). They feed the "Host and
+  dependencies" row and the disk-full, Postgres-down and Keycloak-down alerts.
 
 The "API alive" panel and the "API down" alert use the Prometheus metric for the health probe: `/alive`, which the
 compose healthcheck hits every 10 s (`/health` under `aspire run`). Health probes are not request-logged.
