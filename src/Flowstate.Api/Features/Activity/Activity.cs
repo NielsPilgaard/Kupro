@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Meetings;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,9 @@ public enum Surface
     Web,
     Cli,
     Mcp,
+
+    /// <summary>The meeting agent applying a proposal (task 015).</summary>
+    Meeting,
 }
 
 /// <summary>
@@ -36,6 +40,9 @@ public sealed class ActivityEntry : ITenantOwned
     /// <summary>JSON: for <c>updated</c>, <c>{ "field": { "from": ..., "to": ... } }</c>.</summary>
     public string? Data { get; set; }
 
+    /// <summary>Meeting proposal this change applied or undid (task 015); links the entry to its transcript snippet.</summary>
+    public Guid? ProposalId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -49,6 +56,7 @@ internal sealed class ActivityEntryConfiguration : IEntityTypeConfiguration<Acti
         builder.Property(a => a.Via).HasConversion<string>().HasMaxLength(8);
         builder.Property(a => a.Kind).HasMaxLength(32);
         builder.Property(a => a.Data).HasColumnType("jsonb");
+        builder.HasOne<MeetingProposal>().WithMany().HasForeignKey(a => a.ProposalId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(a => new { a.WorkspaceId, a.IssueId, a.CreatedAt });
     }
 }
@@ -78,6 +86,7 @@ public sealed class ActivityLog(WorkspaceContext workspace, TimeProvider clock)
             Via = workspace.Surface,
             Kind = kind,
             Data = data is null ? null : JsonSerializer.Serialize(data, Json),
+            ProposalId = workspace.ProposalId,
             CreatedAt = clock.GetUtcNow(),
         });
 }

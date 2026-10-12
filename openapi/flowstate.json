@@ -1804,6 +1804,882 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/meetings": {
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Start a meeting the agent listens to. Proposals target the given project.",
+        "operationId": "startMeeting",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartMeetingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartMeetingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartMeetingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Recent meetings, newest first.",
+        "operationId": "listMeetings",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MeetingState"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeetingResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}": {
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "One meeting with its proposal counts (the end-of-meeting summary).",
+        "operationId": "getMeeting",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Pause, resume or end a meeting, or switch between suggest and full auto.",
+        "operationId": "updateMeeting",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}/transcript": {
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "The meeting's transcript, oldest first (kept for the workspace's retention period).",
+        "operationId": "getMeetingTranscript",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TranscriptSegmentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Add what was said, as text: from a meeting tool, an agent or a person typing. Returns the proposals it produced;\r\nin full auto some may already be applied.",
+        "operationId": "addMeetingTranscript",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}/audio": {
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "One spoken utterance as WAV (16 kHz mono, under 30 s), transcribed and handled like text.",
+        "operationId": "addMeetingAudio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}/proposals": {
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "The meeting's proposals, oldest first.",
+        "operationId": "listMeetingProposals",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProposalStatus"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}/proposals/review": {
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Approve, edit or reject proposals, in order. Approving applies the change as the meeting agent. Each result\r\ncarries its own error; one failure doesn't stop the rest.",
+        "operationId": "reviewMeetingProposals",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewProposalsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewProposalsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewProposalsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalReviewResult"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}/proposals/{proposalId}/undo": {
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Revert an applied proposal. Refused when the field was changed again since.",
+        "operationId": "undoMeetingProposal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meetings/{id}/undo": {
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Revert everything the meeting applied, newest first. Proposals changed since are reported, not reverted.",
+        "operationId": "undoMeeting",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalReviewResult"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/meeting-settings": {
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Default mode, full-auto permissions, transcript retention, and suggest-mode approval stats.",
+        "operationId": "getMeetingSettings",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Change meeting settings. Owners only, since it decides what the agent may change without approval.",
+        "operationId": "updateMeetingSettings",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/issues": {
       "get": {
         "tags": [
@@ -3786,6 +4662,17 @@
             ],
             "description": "When a comment was last edited.",
             "format": "date-time"
+          },
+          "meeting": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Set when the meeting agent made this change.",
+                "$ref": "#/components/schemas/FeedMeeting"
+              }
+            ]
           }
         }
       },
@@ -3797,6 +4684,44 @@
           "relationAdded",
           "relationRemoved"
         ]
+      },
+      "FeedMeeting": {
+        "required": [
+          "meetingId",
+          "proposalId",
+          "snippet",
+          "approvedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "meetingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proposalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "snippet": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Transcript words that triggered it; null after the workspace's transcript retention."
+          },
+          "approvedBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Who approved it; null when full auto applied it.",
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          }
+        },
+        "description": "The meeting a change came from (task 015)."
       },
       "InviteMemberRequest": {
         "required": [
@@ -4002,6 +4927,22 @@
             "format": "date-time"
           }
         }
+      },
+      "IssueError": {
+        "required": [
+          "code",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "description": "A failed issue operation: a stable code (Problem Details `code`) and a human-readable detail."
       },
       "IssueField": {
         "enum": [
@@ -4274,6 +5215,149 @@
           }
         }
       },
+      "MeetingCounts": {
+        "required": [
+          "pending",
+          "applied",
+          "rejected",
+          "undone"
+        ],
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "description": "Proposals still waiting for a decision, including ones that need an issue picked.",
+            "format": "int32"
+          },
+          "applied": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rejected": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "undone": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "MeetingMode": {
+        "enum": [
+          "suggest",
+          "fullAuto"
+        ],
+        "description": "Suggest: every proposal waits for approval. Full auto: safe proposals apply at once, with undo (task 015)."
+      },
+      "MeetingResponse": {
+        "required": [
+          "id",
+          "project",
+          "type",
+          "mode",
+          "language",
+          "state",
+          "startedBy",
+          "agent",
+          "startedAt",
+          "endedAt",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MeetingType"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/MeetingMode"
+          },
+          "language": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MeetingState"
+          },
+          "startedBy": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/MeetingCounts"
+          }
+        }
+      },
+      "MeetingSettingsResponse": {
+        "required": [
+          "defaultMode",
+          "fullAutoEnabled",
+          "fullAutoOperations",
+          "transcriptRetentionDays",
+          "stats"
+        ],
+        "type": "object",
+        "properties": {
+          "defaultMode": {
+            "$ref": "#/components/schemas/MeetingMode"
+          },
+          "fullAutoEnabled": {
+            "type": "boolean"
+          },
+          "fullAutoOperations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProposalOperation"
+            },
+            "description": "Operations full auto applies without approval."
+          },
+          "transcriptRetentionDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OperationStats"
+            },
+            "description": "Suggest-mode history per operation."
+          }
+        }
+      },
+      "MeetingState": {
+        "enum": [
+          "live",
+          "paused",
+          "ended"
+        ]
+      },
+      "MeetingType": {
+        "enum": [
+          "standup",
+          "planning",
+          "refinement",
+          "other"
+        ]
+      },
       "MemberKind": {
         "enum": [
           "human",
@@ -4468,6 +5552,38 @@
           }
         },
         "description": "Board move: optional new state and a position between two neighbours in the target column."
+      },
+      "OperationStats": {
+        "required": [
+          "operation",
+          "decided",
+          "approvedUnchanged",
+          "edited",
+          "rejected"
+        ],
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/ProposalOperation"
+          },
+          "decided": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "approvedUnchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "edited": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rejected": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "How suggest-mode proposals of one operation fared: the trust signal next to the full-auto toggle."
       },
       "PlanCard": {
         "required": [
@@ -4829,6 +5945,208 @@
           }
         }
       },
+      "ProposalOperation": {
+        "enum": [
+          "state",
+          "sprint",
+          "assignee",
+          "estimate",
+          "comment",
+          "createIssue"
+        ],
+        "description": "What a proposal does; the same operations the MCP tools offer."
+      },
+      "ProposalResponse": {
+        "required": [
+          "id",
+          "meetingId",
+          "issue",
+          "candidates",
+          "operation",
+          "value",
+          "valueDisplay",
+          "before",
+          "beforeDisplay",
+          "snippet",
+          "confidence",
+          "status",
+          "needsIssue",
+          "edited",
+          "autoApplied",
+          "reviewedBy",
+          "createdAt",
+          "appliedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "meetingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Target issue; null when the reference was ambiguous (see `Candidates`) or for a new issue.",
+                "$ref": "#/components/schemas/IssueRef"
+              }
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueRef"
+            },
+            "description": "Issues a vague reference matched; approving needs one picked."
+          },
+          "operation": {
+            "$ref": "#/components/schemas/ProposalOperation"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Canonical new value: state name, sprint id, member id, hours, comment text or new issue title."
+          },
+          "valueDisplay": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The new value as people read it (sprint and member names)."
+          },
+          "before": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "beforeDisplay": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The current value as people read it."
+          },
+          "snippet": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Transcript words that triggered the proposal."
+          },
+          "confidence": {
+            "type": "number",
+            "description": "0–1. Full auto applies only confident proposals.",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProposalStatus"
+          },
+          "needsIssue": {
+            "type": "boolean",
+            "description": "True while no single issue is chosen."
+          },
+          "edited": {
+            "type": "boolean"
+          },
+          "autoApplied": {
+            "type": "boolean"
+          },
+          "reviewedBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "appliedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "A proposed ticket action and its diff."
+      },
+      "ProposalReview": {
+        "required": [
+          "id",
+          "decision"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Proposal id.",
+            "format": "uuid"
+          },
+          "decision": {
+            "description": "Approve applies the proposal (with any edit), reject discards it.",
+            "$ref": "#/components/schemas/ReviewDecision"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Changed value, e.g. another state, sprint id, member id or hours."
+          },
+          "issue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Issue key; picks one of the candidates or retargets the proposal."
+          }
+        }
+      },
+      "ProposalReviewResult": {
+        "required": [
+          "proposal",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalResponse"
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Why this decision failed; the proposal is unchanged.",
+                "$ref": "#/components/schemas/IssueError"
+              }
+            ]
+          }
+        }
+      },
+      "ProposalStatus": {
+        "enum": [
+          "pending",
+          "applied",
+          "rejected",
+          "undone"
+        ]
+      },
       "RelationKind": {
         "enum": [
           "blocks",
@@ -4838,6 +6156,28 @@
           "duplicatedBy"
         ],
         "description": "Relation as seen from one issue."
+      },
+      "ReviewDecision": {
+        "enum": [
+          "approve",
+          "reject",
+          "edit"
+        ]
+      },
+      "ReviewProposalsRequest": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProposalReview"
+            },
+            "description": "Decisions, applied in order. To approve all of a ticket's proposals, list them all."
+          }
+        }
       },
       "SetCapacityRequest": {
         "required": [
@@ -4927,6 +6267,38 @@
           "closed"
         ]
       },
+      "StartMeetingRequest": {
+        "required": [
+          "project"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Project key; proposals target this project's issues."
+          },
+          "type": {
+            "description": "Kind of meeting; helps the agent read intent.",
+            "$ref": "#/components/schemas/MeetingType"
+          },
+          "mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Default: the workspace's default mode. Full auto needs an admin to enable it first.",
+                "$ref": "#/components/schemas/MeetingMode"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "description": "Spoken language: `en` or `da`.",
+            "default": "en"
+          }
+        }
+      },
       "StatusResponse": {
         "required": [
           "service",
@@ -4962,9 +6334,67 @@
           "api",
           "web",
           "cli",
-          "mcp"
+          "mcp",
+          "meeting"
         ],
         "description": "Where an action came from; shown as \"via MCP\" in the UI (design guide, toasts)."
+      },
+      "TranscriptRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "What was said, one utterance or a few sentences."
+          }
+        }
+      },
+      "TranscriptResult": {
+        "required": [
+          "text",
+          "proposals"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The text added to the transcript (the transcription, for audio)."
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProposalResponse"
+            }
+          }
+        },
+        "description": "What a transcript chunk produced."
+      },
+      "TranscriptSegmentResponse": {
+        "required": [
+          "id",
+          "speaker",
+          "text",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "speaker": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "text": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "UnfinishedDestination": {
         "enum": [
@@ -5146,6 +6576,73 @@
                 "$ref": "#/components/schemas/ProjectColor"
               }
             ]
+          }
+        }
+      },
+      "UpdateMeetingRequest": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Pause, resume (`live`) or end the meeting. Ended is final.",
+                "$ref": "#/components/schemas/MeetingState"
+              }
+            ]
+          },
+          "mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Switch between suggest and full auto.",
+                "$ref": "#/components/schemas/MeetingMode"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateMeetingSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "defaultMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MeetingMode"
+              }
+            ]
+          },
+          "fullAutoEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Allow full auto in this workspace."
+          },
+          "fullAutoOperations": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProposalOperation"
+            },
+            "description": "Operations full auto may apply. Creating issues always waits for approval."
+          },
+          "transcriptRetentionDays": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Days to keep transcripts and snippets.",
+            "format": "int32"
           }
         }
       },
@@ -5416,6 +6913,9 @@
     },
     {
       "name": "Plan"
+    },
+    {
+      "name": "Meetings"
     },
     {
       "name": "Issues"

@@ -36,7 +36,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.ShouldContain("search_issues");
         tools.ShouldContain("create_issues");
         tools.ShouldContain("update_issues");
-        tools.Count.ShouldBeLessThanOrEqualTo(20);
+        tools.Count.ShouldBeLessThanOrEqualTo(22, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
     }
 
     [Fact]
@@ -134,6 +134,24 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         var metadata = JsonDocument.Parse(await client.GetStringAsync("/.well-known/oauth-protected-resource", Ct)).RootElement;
         metadata.GetProperty("resource").GetString().ShouldEndWith("/mcp");
+    }
+
+    [Fact]
+    public async Task Agent_runs_a_meeting_and_reviews_its_proposals_through_mcp()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new() { ["issues"] = new[] { new { project = "MCP", title = "Standup item" } } });
+
+        await CallAsync(mcp, "meeting", new() { ["action"] = "start", ["project"] = "MCP" });
+        var said = await CallAsync(mcp, "meeting", new() { ["action"] = "say", ["text"] = "MCP-1 is done." });
+        var id = said.GetProperty("proposals")[0].GetProperty("id").GetGuid();
+
+        var reviewed = await CallAsync(mcp, "review_proposals", new() { ["items"] = new[] { new { id, decision = "approve" } } });
+        reviewed[0].GetProperty("proposal").GetProperty("status").GetString().ShouldBe("applied");
+
+        var undone = await CallAsync(mcp, "review_proposals", new() { ["items"] = new[] { new { id, decision = "undo" } } });
+        undone[0].GetProperty("proposal").GetProperty("status").GetString().ShouldBe("undone");
+        (await CallAsync(mcp, "get_issue", new() { ["key"] = "MCP-1" })).GetProperty("state").GetString().ShouldBe("backlog");
     }
 
     private async Task<McpClient> ConnectAsync()

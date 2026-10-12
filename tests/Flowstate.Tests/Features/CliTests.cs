@@ -146,6 +146,25 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.EnumerateArray().Select(t => t.GetProperty("name").GetString()).ShouldContain("search_issues");
     }
 
+    [Fact]
+    public async Task Meeting_commands_start_listen_and_approve()
+    {
+        await RunJsonAsync("issue", "create", "--project", "cli", "--title", "Meeting item");
+        await RunJsonAsync("meeting", "start", "--project", "cli", "--language", "da");
+
+        var proposals = await RunJsonAsync("meeting", "say", "CLI-1", "er", "færdig");
+        var id = proposals[0].GetProperty("id").GetString()!;
+        proposals[0].GetProperty("issue").GetProperty("key").GetString().ShouldBe("CLI-1");
+
+        var approved = await RunJsonAsync("meeting", "approve", id);
+        approved[0].GetProperty("proposal").GetProperty("status").GetString().ShouldBe("applied");
+        (await RunJsonAsync("issue", "get", "CLI-1")).GetProperty("state").GetString().ShouldBe("done");
+
+        var (exit, _, error) = await RunAsync(false, "meeting", "undo");
+        exit.ShouldBe(1);
+        error.ShouldContain("--all");
+    }
+
     private async Task<JsonElement> RunJsonAsync(params string[] args)
     {
         var (exit, output, error) = await RunAsync(json: true, args);

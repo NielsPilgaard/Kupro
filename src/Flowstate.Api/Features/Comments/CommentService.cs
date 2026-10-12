@@ -29,6 +29,7 @@ public sealed class CommentService(
             AuthorId = workspace.MemberId,
             Via = workspace.Surface,
             Body = request.Body.Trim(),
+            ProposalId = workspace.ProposalId,
             CreatedAt = clock.GetUtcNow(),
         };
         db.Comments.Add(comment);

@@ -17,6 +17,9 @@ public enum ChangeTopic
     Issue,
     Sprints,
     Plan,
+
+    /// <summary>Meetings and their proposals (task 015).</summary>
+    Meetings,
 }
 
 /// <summary>Something clients should refetch; <c>IssueKey</c> is set for <see cref="ChangeTopic.Issue"/>.</summary>

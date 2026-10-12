@@ -23,8 +23,14 @@ public enum FeedItemKind
 /// </summary>
 public sealed record FeedChange(string Field, string? From, string? To);
 
+/// <summary>The meeting a change came from (task 015).</summary>
+/// <param name="Snippet">Transcript words that triggered it; null after the workspace's transcript retention.</param>
+/// <param name="ApprovedBy">Who approved it; null when full auto applied it.</param>
+public sealed record FeedMeeting(Guid MeetingId, Guid ProposalId, string? Snippet, MemberRef? ApprovedBy);
+
 /// <param name="Body">Comment markdown; null for other kinds.</param>
 /// <param name="EditedAt">When a comment was last edited.</param>
+/// <param name="Meeting">Set when the meeting agent made this change.</param>
 public sealed record FeedItem(
     Guid Id,
     FeedItemKind Kind,
@@ -33,7 +39,8 @@ public sealed record FeedItem(
     DateTimeOffset At,
     IReadOnlyList<FeedChange> Changes,
     string? Body,
-    DateTimeOffset? EditedAt);
+    DateTimeOffset? EditedAt,
+    FeedMeeting? Meeting = null);
 
 /// <summary>An issue's history and comments merged in time order (task 008).</summary>
 public sealed class ActivityFeed(IDbContextFactory<FlowstateDbContext> dbFactory)
@@ -53,16 +60,21 @@ public sealed class ActivityFeed(IDbContextFactory<FlowstateDbContext> dbFactory
 
         var entries = await db.Activity.AsNoTracking().Where(a => a.IssueId == issueId)
             .OrderByDescending(a => a.CreatedAt).Take(Limit)
-            .Select(a => new { a.Id, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt })
+            .Select(a => new { a.Id, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId })
             .ToListAsync(ct);
         var comments = await db.Comments.AsNoTracking().Where(c => c.IssueId == issueId)
             .OrderByDescending(c => c.CreatedAt).Take(Limit)
-            .Select(c => new { c.Id, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt })
+            .Select(c => new { c.Id, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt, c.ProposalId })
             .ToListAsync(ct);
 
         var parsed = entries.Select(e => (Entry: e, Data: Parse(e.Data))).ToList();
+        var proposalIds = entries.Select(e => e.ProposalId).Concat(comments.Select(c => c.ProposalId))
+            .Where(p => p is not null).Select(p => p!.Value).Distinct().ToList();
+        var proposals = await db.MeetingProposals.AsNoTracking().Where(p => proposalIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.SessionId, p.Snippet, p.ReviewedById }).ToDictionaryAsync(p => p.Id, ct);
         var memberIds = parsed.SelectMany(p => Ids(p.Data, "assignee")).Concat(entries.Select(e => e.ActorId))
-            .Concat(comments.Select(c => c.AuthorId)).ToHashSet();
+            .Concat(comments.Select(c => c.AuthorId))
+            .Concat(proposals.Values.Where(p => p.ReviewedById is not null).Select(p => p.ReviewedById!.Value)).ToHashSet();
         var members = await db.Members.Where(m => memberIds.Contains(m.Id))
             .Select(m => new MemberRef(
                 m.Id,
@@ -98,6 +110,11 @@ public sealed class ActivityFeed(IDbContextFactory<FlowstateDbContext> dbFactory
             _ => value.ToString(),
         };
 
+        FeedMeeting? Meeting(Guid? proposalId) =>
+            proposalId is { } id && proposals.TryGetValue(id, out var p)
+                ? new FeedMeeting(p.SessionId, p.Id, p.Snippet, p.ReviewedById is { } r ? members.GetValueOrDefault(r) : null)
+                : null;
+
         var items = new List<FeedItem>(parsed.Count + comments.Count);
         foreach (var (e, data) in parsed)
         {
@@ -126,14 +143,14 @@ public sealed class ActivityFeed(IDbContextFactory<FlowstateDbContext> dbFactory
                 changes.Add(kind == FeedItemKind.RelationAdded ? new(typeName, null, other) : new(typeName, other, null));
             }
 
-            items.Add(new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null));
+            items.Add(new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId)));
         }
 
         foreach (var c in comments)
         {
             if (members.TryGetValue(c.AuthorId, out var author))
             {
-                items.Add(new FeedItem(c.Id, FeedItemKind.Comment, author, c.Via, c.CreatedAt, [], c.Body, c.EditedAt));
+                items.Add(new FeedItem(c.Id, FeedItemKind.Comment, author, c.Via, c.CreatedAt, [], c.Body, c.EditedAt, Meeting(c.ProposalId)));
             }
         }
 

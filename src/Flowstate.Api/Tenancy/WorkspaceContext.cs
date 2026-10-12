@@ -28,6 +28,9 @@ public sealed class WorkspaceContext
     /// <summary>Client surface, from the <c>X-Flowstate-Client</c> header; MCP tools set it in-process.</summary>
     public Surface Surface { get; set; }
 
+    /// <summary>Meeting proposal being applied while <see cref="ActAs"/> is in effect (task 015).</summary>
+    public Guid? ProposalId { get; private set; }
+
     public Guid RequireWorkspaceId() =>
         WorkspaceId ?? throw new InvalidOperationException("No workspace resolved for this request.");
 
@@ -44,6 +47,22 @@ public sealed class WorkspaceContext
         UserId = userId;
         Role = access.Role;
         AgentName = agentName;
+    }
+
+    /// <summary>
+    /// Acts as another member of the same workspace until disposed: the meeting agent applying a proposal (task 015),
+    /// so activity, realtime events and comments name the agent and link the proposal.
+    /// </summary>
+    public IDisposable ActAs(Guid memberId, Surface surface, Guid proposalId)
+    {
+        var (member, via, proposal) = (MemberId, Surface, ProposalId);
+        (MemberId, Surface, ProposalId) = (memberId, surface, proposalId);
+        return new Restore(() => (MemberId, Surface, ProposalId) = (member, via, proposal));
+    }
+
+    private sealed class Restore(Action restore) : IDisposable
+    {
+        public void Dispose() => restore();
     }
 
     /// <summary>For background work and tests that act inside one workspace without an HTTP request.</summary>

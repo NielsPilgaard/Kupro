@@ -72,6 +72,8 @@ without a check. Agents also need things humans don't: machine-readable output, 
 
 - **IMP-001**: Parity test reads OpenAPI doc + MCP tool registry + CLI command tree; an `[NoAgentSurface("reason")]` attribute opts out.
 - **IMP-002**: CLI output: table for TTY, JSON when `--json` or stdout is not a TTY.
+- **IMP-003**: Tool budget: 22 tools after the meeting agent (task 015) added `meeting` and `review_proposals`, enforced
+  by the MCP test. A new feature extends an existing tool's actions or consolidates before the budget grows.
 
 ## Related Decisions
 

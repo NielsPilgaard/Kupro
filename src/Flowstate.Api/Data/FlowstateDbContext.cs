@@ -4,6 +4,7 @@ using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Attachments;
 using Flowstate.Api.Features.Comments;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Meetings;
 using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Sprints;
@@ -42,6 +43,10 @@ public sealed class FlowstateDbContext(DbContextOptions<FlowstateDbContext> opti
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<MeetingSession> Meetings => Set<MeetingSession>();
+    public DbSet<TranscriptSegment> TranscriptSegments => Set<TranscriptSegment>();
+    public DbSet<MeetingProposal> MeetingProposals => Set<MeetingProposal>();
+    public DbSet<MeetingSettings> MeetingSettings => Set<MeetingSettings>();
 
     /// <summary>
     /// Workspace of the current request; null outside a workspace route, which makes every tenant-owned query empty

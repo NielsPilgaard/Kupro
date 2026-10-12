@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Meetings;
 using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,9 @@ public sealed class Comment : ITenantOwned
 
     /// <summary>Set on edit; null for a comment never edited.</summary>
     public DateTimeOffset? EditedAt { get; set; }
+
+    /// <summary>Meeting proposal that wrote this comment (task 015).</summary>
+    public Guid? ProposalId { get; set; }
 }
 
 internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
@@ -30,6 +34,7 @@ internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.HasOne<Issue>().WithMany().HasForeignKey(c => c.IssueId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Member>().WithMany().HasForeignKey(c => c.AuthorId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(c => c.Via).HasConversion<string>().HasMaxLength(8);
+        builder.HasOne<MeetingProposal>().WithMany().HasForeignKey(c => c.ProposalId).OnDelete(DeleteBehavior.SetNull);
         builder.Property(c => c.Body).HasMaxLength(CommentRequest.MaxBody);
         builder.HasIndex(c => new { c.WorkspaceId, c.IssueId, c.CreatedAt });
     }

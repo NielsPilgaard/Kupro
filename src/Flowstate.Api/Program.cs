@@ -8,6 +8,7 @@ using Flowstate.Api.Features.Attachments;
 using Flowstate.Api.Features.Comments;
 using Flowstate.Api.Features.Email;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Meetings;
 using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Realtime;
@@ -39,6 +40,20 @@ builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(Stor
 builder.Services.AddSingleton<ObjectStorage>();
 builder.Services.AddScoped<AttachmentService>();
 builder.Services.AddScoped<RealtimeEvents>();
+builder.Services.AddScoped<MeetingService>();
+builder.Services.AddHostedService<MeetingRetentionJob>();
+// Meeting agent vendors (ADR-015): OpenAI-compatible endpoints routed per language; without an extraction model the
+// offline keyword extractor proposes clear commands.
+builder.Services.Configure<MeetingAgentOptions>(builder.Configuration.GetSection(MeetingAgentOptions.Section));
+builder.Services.AddHttpClient<ISpeechToText, OpenAiSpeechToText>();
+if (builder.Configuration.GetSection(MeetingAgentOptions.Section).Get<MeetingAgentOptions>()?.Extraction.IsConfigured == true)
+{
+    builder.Services.AddHttpClient<IProposalExtractor, OpenAiProposalExtractor>();
+}
+else
+{
+    builder.Services.AddSingleton<IProposalExtractor, KeywordProposalExtractor>();
+}
 builder.Services.AddSignalR().AddJsonProtocol(options =>
     options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services

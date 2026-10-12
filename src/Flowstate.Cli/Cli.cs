@@ -98,6 +98,7 @@ public static class Cli
                      .Concat(SprintCommands.Build())
                      .Concat(PlanCommands.Build())
                      .Concat(CommentCommands.Build())
+                     .Concat(MeetingCommands.Build())
                      .Append(McpCommand.Build()))
         {
             root.Subcommands.Add(command);

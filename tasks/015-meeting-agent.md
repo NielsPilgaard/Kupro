@@ -3,7 +3,7 @@ title: 'Task 015: Meeting agent — AI in the room'
 description: >-
   Agent listens during standup, planning and other meetings, turns speech into proposed ticket actions, and applies them
   either after per-ticket approval (suggest mode, default) or immediately with undo (full auto, opt-in).
-status: 'Todo'
+status: 'In progress'
 phase: 2
 depends_on: [004, 006, 010, 012]
 purpose: 'Implementation spec for task 015.'
@@ -87,3 +87,14 @@ See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-a
 - [ ] Every agent change appears in the activity feed with actor, session and transcript snippet.
 - [ ] Proposals can be listed, approved and rejected via REST, CLI and MCP; parity test passes.
 - [ ] Danish and English meetings both work.
+
+## Progress
+
+- [x] Vendors: [ADR-015](../docs/adr/ADR-015-meeting-agent-vendors.md) (Scaleway, routed per language).
+- [x] API: meetings, text transcript, proposals (issue matching, candidates, diff, snippet, confidence), suggest and
+      full auto, review (approve, edit, reject), undo per proposal and per meeting, settings with suggest-mode stats,
+      transcript retention job, activity feed link to meeting and snippet. Offline keyword extractor when no LLM is set.
+- [x] CLI `meeting …` and MCP `meeting` + `review_proposals`; parity test passes.
+- [ ] Web: start from board or sprint view, listening indicator, browser audio, proposals panel, full-auto feed with
+      undo, settings toggle with stats, end-of-meeting summary.
+- [ ] Production wiring: Scaleway parameters in the AppHost and the deploy runbook.

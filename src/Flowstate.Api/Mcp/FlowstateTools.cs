@@ -4,6 +4,7 @@ using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Attachments;
 using Flowstate.Api.Features.Comments;
 using Flowstate.Api.Features.Issues;
+using Flowstate.Api.Features.Meetings;
 using Flowstate.Api.Features.Plan;
 using Flowstate.Api.Features.Projects;
 using Flowstate.Api.Features.Sprints;
@@ -19,7 +20,7 @@ namespace Flowstate.Api.Mcp;
 /// the same feature service the REST controller uses.
 /// </summary>
 [McpServerToolType]
-public sealed class FlowstateTools(
+public sealed partial class FlowstateTools(
     McpWorkspace scope,
     WorkspaceService workspaces,
     ProjectService projects,
@@ -30,7 +31,8 @@ public sealed class FlowstateTools(
     CommentService comments,
     ActivityFeed feed,
     AttachmentService attachments,
-    UserService users)
+    UserService users,
+    MeetingService meetings)
 {
     private const string WorkspaceHelp = "Workspace slug. Optional when your token is limited to one workspace or you are in only one.";
 
