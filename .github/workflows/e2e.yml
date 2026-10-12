@@ -1,0 +1,137 @@
+name: E2E
+
+# Playwright against the production compose file (deploy/docker-compose.yaml + tests/e2e/compose.yaml) on the runner.
+# Called from CI on pull requests (API image built here from the PR's code) and from Staging on main (the API image
+# CI published for that commit). The web image is always built here: the published one has the production Keycloak
+# URL baked in.
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Tag of the published API image (e.g. sha-<commit>). Empty: build it from the checked-out code."
+        type: string
+        default: ""
+      ref:
+        description: "Commit to check out. Empty: the triggering commit."
+        type: string
+        default: ""
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  COMPOSE_PROJECT_NAME: flowstate-e2e
+  COMPOSE_FILE: deploy/docker-compose.yaml:tests/e2e/compose.yaml
+  COMPOSE_ENV_FILES: tests/e2e/e2e.env
+
+jobs:
+  e2e:
+    name: E2E against the compose stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Published API image
+        if: inputs.image_tag != ''
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate-api:${{ inputs.image_tag }}"
+          echo "API_IMAGE=$image" >> "$GITHUB_ENV"
+          echo "MIGRATIONS_IMAGE=$image" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        if: inputs.image_tag != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-dotnet@v4
+        if: inputs.image_tag == ''
+        with:
+          global-json-file: global.json
+
+      - name: Build API image
+        if: inputs.image_tag == ''
+        run: >-
+          dotnet publish src/Flowstate.Api -c Release -t:PublishContainer --os linux --arch x64
+          -p:ContainerRepository=flowstate-api '-p:ContainerImageTags="e2e"'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build web image with local Keycloak URL
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/Dockerfile
+          load: true
+          tags: flowstate-web:e2e
+          build-args: VITE_KEYCLOAK_URL=http://localhost:8180
+          cache-from: type=gha,scope=e2e-web
+          cache-to: type=gha,scope=e2e-web,mode=max
+
+      - name: Start stack
+        run: docker compose up -d web
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: tests/e2e/package.json
+
+      - name: Install Playwright
+        working-directory: tests/e2e
+        run: |
+          bun install --frozen-lockfile
+          bunx playwright install --with-deps chromium
+
+      - name: Wait for API and Keycloak
+        timeout-minutes: 5
+        run: |
+          until curl -sf -o /dev/null http://localhost:5180/api/v1/status && curl -sf -o /dev/null http://localhost:8180/realms/flowstate; do
+            sleep 3
+          done
+          curl -s http://localhost:5180/api/v1/status
+
+      - name: Run Playwright
+        working-directory: tests/e2e
+        env:
+          FLOWSTATE_WEB_URL: http://localhost:5180
+        run: bunx playwright test --reporter=line,html
+
+      # The stack only lives on this runner: print the API tail into the job log and keep the full logs.
+      - name: Dump stack logs
+        if: failure()
+        run: |
+          mkdir -p stack-logs
+          for service in migrations api keycloak web; do
+            docker compose logs --no-color --timestamps "$service" > "stack-logs/$service.log" 2>&1 || true
+          done
+          echo "::group::API log (last 200 lines)"
+          tail -n 200 stack-logs/api.log
+          echo "::endgroup::"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: stack-logs
+          path: stack-logs/
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            tests/e2e/playwright-report/
+            tests/e2e/test-results/
+          retention-days: 7
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

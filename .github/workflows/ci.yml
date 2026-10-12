@@ -109,9 +109,77 @@ jobs:
           name: flowstate-${{ matrix.rid }}
           path: out/flowstate*
 
-  web-image:
-    name: Web image builds
+  # Playwright against the production compose file, with images built from the PR's code. Pushes to main get the
+  # same suite in Staging, against the published images, before deploy.
+  e2e:
+    name: E2E
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/e2e.yml
+
+  # Images are tagged sha-<commit>; Staging tests and deploys exactly that tag (cd.yml).
+  publish-api:
+    name: Publish API image
     runs-on: ubuntu-latest
+    needs: [dotnet]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f web/Dockerfile .
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Both flags stamp the commit into service.version and /api/v1/status (ADR-014 IMP-005); cd.yml checks it.
+      - name: Build and push
+        run: >-
+          dotnet publish src/Flowstate.Api -c Release -t:PublishContainer --os linux --arch x64
+          -p:ContainerRegistry=ghcr.io "-p:ContainerRepository=${GITHUB_REPOSITORY_OWNER,,}/flowstate-api"
+          '-p:ContainerImageTags="sha-${{ github.sha }};latest"'
+          -p:SourceRevisionId=${{ github.sha }} -p:IncludeSourceRevisionInInformationalVersion=true
+
+  # VITE_KEYCLOAK_URL is baked in at build time, so this waits for the repository variable (deploy runbook).
+  publish-web:
+    name: Publish web image
+    runs-on: ubuntu-latest
+    needs: [web]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.KEYCLOAK_PUBLIC_URL != ''
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate-web" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          build-args: VITE_KEYCLOAK_URL=${{ vars.KEYCLOAK_PUBLIC_URL }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max

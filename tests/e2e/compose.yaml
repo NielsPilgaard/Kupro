@@ -1,0 +1,14 @@
+# E2E stack: the production compose file plus host ports, on a CI runner or locally (e2e.yml).
+# Only `web` and its dependencies start; the Grafana stack is left out.
+#
+#   docker compose -p flowstate-e2e -f deploy/docker-compose.yaml -f tests/e2e/compose.yaml \
+#     --env-file tests/e2e/e2e.env up -d web
+#
+# Ports match the dev realm: it allows the SPA only on :5180, and the web image is built with Keycloak on :8180.
+services:
+  keycloak:
+    ports:
+      - "8180:8080"
+  web:
+    ports:
+      - "5180:80"

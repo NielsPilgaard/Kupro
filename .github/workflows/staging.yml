@@ -1,0 +1,36 @@
+name: Staging
+run-name: "Staging: ${{ github.event.workflow_run.head_commit.message && format('{0} ({1})', github.event.workflow_run.head_commit.message, github.event.workflow_run.head_sha) || github.event.workflow_run.head_sha }}"
+
+# After CI passes on main: E2E against the images CI published for that commit, then deploy them.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  e2e:
+    name: E2E
+    if: github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/e2e.yml
+    with:
+      image_tag: sha-${{ github.event.workflow_run.head_sha }}
+      ref: ${{ github.event.workflow_run.head_sha }}
+
+  # Deploy from here rather than a workflow_run-triggered CD: workflow_run.head_sha is the commit CI built images for.
+  # Off until the production variables exist (deploy runbook, GitHub configuration).
+  deploy:
+    name: Deploy
+    needs: [e2e]
+    if: vars.APP_URL != ''
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/cd.yml
+    with:
+      image_tag: sha-${{ github.event.workflow_run.head_sha }}
+    secrets: inherit

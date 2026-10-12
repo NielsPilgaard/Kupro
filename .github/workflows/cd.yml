@@ -1,0 +1,88 @@
+name: CD
+run-name: "CD: ${{ inputs.image_tag }}"
+
+# Called by Staging after E2E passes, with the image tag CI published. workflow_dispatch is for manual deploys and
+# rollbacks: pass an earlier sha-<commit> tag.
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. sha-abc1234…)"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. sha-abc1234…)"
+        required: true
+        type: string
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.APP_URL }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image prefix
+        run: echo "IMAGE_PREFIX=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Fail here, with a readable error, instead of deep inside Dokploy's docker pull.
+      - name: Check images exist
+        run: |
+          missing=0
+          for name in api web; do
+            image="$IMAGE_PREFIX-$name:$IMAGE_TAG"
+            if docker buildx imagetools inspect "$image" > /dev/null 2>&1; then
+              echo "Found $image"
+            else
+              echo "::error title=Image not found::$image does not exist in GHCR. Did CI publish it for this commit?"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Deploy with Dokploy
+        env:
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+        run: node scripts/deploy.mjs
+
+      # Dokploy reports "done" once Compose ran; this checks the new API actually serves traffic (ADR-014 IMP-005).
+      - name: Wait for the new version
+        timeout-minutes: 5
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          sha="${IMAGE_TAG#sha-}"
+          until version=$(curl -sf "$APP_URL/api/v1/status" | jq -r .version) && [[ "$version" == *"+$sha" ]]; do
+            echo "Live version: ${version:-unreachable}, waiting for +$sha"
+            sleep 5
+          done
+          echo "Live: $version"
+          echo "## ✅ Deployed \`$IMAGE_TAG\` to production ($APP_URL)" >> "$GITHUB_STEP_SUMMARY"
