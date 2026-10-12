@@ -85,6 +85,11 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 - **IMP-004**: Voice activity detection runs in the browser instead of the API (decision 1): the browser cuts
   utterances and posts each as 16 kHz WAV to `POST …/meetings/{id}/audio`. Simpler than binary streaming over
   SignalR, smaller uploads, and the same privacy: the API still keeps audio in memory only.
+- **IMP-005**: Online calls (Teams, Meet, Zoom): the browser can mix a shared tab's or screen's audio into the
+  microphone stream (`getDisplayMedia`, Chromium only), so one person captures the whole call. No call-platform bot or
+  integration, so no US vendor in the register. Several microphones in one room hear the same sentence; the API drops
+  a proposal that repeats an open one from the last two minutes (field changes match exactly, comments and new issues by
+  similar words).
 
 ## Related Decisions
 

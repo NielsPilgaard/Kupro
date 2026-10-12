@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Check, Mic, MicOff, Pause, Play, Square, Undo2, X } from 'lucide-react';
+import { Check, Mic, MicOff, Pause, Play, ScreenShare, ScreenShareOff, Square, Undo2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ import {
 } from '../../api/meetings';
 import { Button, StatusRing } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
-import { startMicrophone, type Microphone } from '../../lib/microphone';
+import { canCaptureCallAudio, startMicrophone, type Microphone } from '../../lib/microphone';
 
 const states: IssueState[] = ['backlog', 'todo', 'inProgress', 'inReview', 'done', 'canceled'];
 
@@ -196,6 +196,7 @@ function Listen({ workspace, meeting }: { workspace: string; meeting: MeetingRes
   const [text, setText] = useState('');
   const [speaking, setSpeaking] = useState(false);
   const [mic, setMic] = useState<Microphone | null>(null);
+  const [callAudio, setCallAudio] = useState(false);
   const micRef = useRef<Microphone | null>(null);
 
   // Turning the panel or the meeting off releases the microphone.
@@ -207,6 +208,7 @@ function Listen({ workspace, meeting }: { workspace: string; meeting: MeetingRes
       micRef.current = null;
       setMic(null);
       setSpeaking(false);
+      setCallAudio(false);
       return;
     }
     try {
@@ -218,6 +220,21 @@ function Listen({ workspace, meeting }: { workspace: string; meeting: MeetingRes
       setMic(started);
     } catch {
       toast.error(t('meeting.micDenied'));
+    }
+  };
+
+  const toggleCallAudio = async () => {
+    if (!mic) return;
+    if (callAudio) {
+      mic.removeCallAudio();
+      setCallAudio(false);
+      return;
+    }
+    try {
+      if (await mic.addCallAudio(() => setCallAudio(false))) setCallAudio(true);
+      else toast.error(t('meeting.callNoAudio'));
+    } catch {
+      // Cancelled in the browser's share picker.
     }
   };
 
@@ -235,6 +252,19 @@ function Listen({ workspace, meeting }: { workspace: string; meeting: MeetingRes
           {mic ? t('meeting.micOff') : t('meeting.micOn')}
           {mic && <span className="text-xs opacity-80">{speaking ? t('meeting.hearing') : t('meeting.listening')}</span>}
         </Button>
+      )}
+      {mic && canCaptureCallAudio() && (
+        <>
+          <Button variant={callAudio ? 'primary' : 'secondary'} onClick={() => void toggleCallAudio()} aria-pressed={callAudio}>
+            {callAudio ? (
+              <ScreenShareOff size={14} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <ScreenShare size={14} strokeWidth={1.5} aria-hidden="true" />
+            )}
+            {callAudio ? t('meeting.callOff') : t('meeting.callOn')}
+          </Button>
+          {!callAudio && <p className="text-xs text-mute">{t('meeting.callHelp')}</p>}
+        </>
       )}
       <form onSubmit={submit} className="flex gap-2">
         <input

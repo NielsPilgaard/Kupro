@@ -101,5 +101,7 @@ budget and Danish/English speech need the Scaleway key (ADR-015 IMP-001).
 - [x] Web: start from board or sprint view, listening indicator, browser audio (energy VAD → 16 kHz WAV per
       utterance), proposals panel, full-auto feed with undo, settings toggle with stats, end-of-meeting summary.
       Microphone shows only when a transcription model serves the meeting language.
+- [x] In-person, online and mixed meetings: call audio from a shared tab or screen mixed into the microphone, and
+      repeated proposals from several microphones dropped (ADR-015 IMP-005).
 - [x] Production wiring: `scaleway-ai-key` and the model ids in the AppHost, deploy runbook row.
 - [ ] Accuracy check with recorded standups (ADR-015 IMP-001) once a key is set.

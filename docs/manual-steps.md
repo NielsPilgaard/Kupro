@@ -27,7 +27,7 @@ Tick a box when it is done. Tell an agent when you have done one, so it can do t
 | N1 | [ ] Create a Scaleway account and project. Create an API key with **Generative APIs** permissions only. | console.scaleway.com | 015 |
 | N2 | [ ] Set the key locally: `dotnet user-secrets set Parameters:scaleway-ai-key <key>` in `src/Flowstate.AppHost`, then `aspire run`. The microphone button appears in the meeting panel. | your machine | 015: the 5-second test, and Danish/English with real speech |
 | N3 | [ ] Record 10 short standups (5 Danish, 5 English) that mention issue keys and people's names. Ask the people in them for permission. Give an agent the files. It runs the Whisper vs Hviske comparison ([ADR-015](adr/ADR-015-meeting-agent-vendors.md) IMP-001). | your meetings | 015 done |
-| N4 | [ ] Try the meeting agent in one real in-person meeting and one Teams meeting, and note what it missed. | your meetings | Feedback for 015 |
+| N4 | [ ] Try the meeting agent in one real in-person meeting and one Teams meeting, and note what it missed. In Teams, use **Add call audio** in Chrome or Edge: share the Teams tab (Teams on the web) or the entire screen with system audio (Teams desktop app), and wear headphones. | your meetings | Feedback for 015; call audio is only unit-tested so far |
 
 ## Go-live — task 013
 

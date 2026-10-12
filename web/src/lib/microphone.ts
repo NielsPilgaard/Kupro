@@ -1,7 +1,7 @@
 /**
- * Browser audio for the meeting agent (task 015, ADR-015): the microphone is cut into utterances by a simple energy
- * voice-activity detector, and each utterance is sent as 16 kHz mono WAV. Audio never leaves the browser except as
- * those utterances, and the server drops them after transcription.
+ * Browser audio for the meeting agent (task 015, ADR-015): the microphone, optionally mixed with a shared call's audio,
+ * is cut into utterances by a simple energy voice-activity detector, and each utterance is sent as 16 kHz mono WAV.
+ * Audio never leaves the browser except as those utterances, and the server drops them after transcription.
  */
 
 const TARGET_RATE = 16_000;
@@ -24,6 +24,13 @@ registerProcessor('flowstate-tap', Tap);
 `;
 
 export interface Microphone {
+  /**
+   * Mixes in the audio of a shared tab or screen, so the people on a Teams, Meet or Zoom call are heard too. Resolves
+   * false when the user shared something without audio; rejects when they cancel. `onEnded` runs when they stop
+   * sharing from the browser's own controls.
+   */
+  addCallAudio(onEnded: () => void): Promise<boolean>;
+  removeCallAudio(): void;
   stop(): void;
 }
 
@@ -31,6 +38,13 @@ export interface MicrophoneEvents {
   onUtterance(wav: Blob): void;
   onSpeaking?(speaking: boolean): void;
 }
+
+/** Tab and screen sharing with audio; Chromium-based browsers only, so the UI checks for it. */
+export const canCaptureCallAudio = () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
+
+// Chromium options lib.dom doesn't type yet: offer "share system audio" for whole screens (desktop Teams), and keep
+// Flowstate's own tab out of the picker.
+type CallAudioOptions = DisplayMediaStreamOptions & { systemAudio: 'include'; selfBrowserSurface: 'exclude' };
 
 export async function startMicrophone(events: MicrophoneEvents): Promise<Microphone> {
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -48,8 +62,40 @@ export async function startMicrophone(events: MicrophoneEvents): Promise<Microph
   const detector = new UtteranceDetector(context.sampleRate, events);
   tap.port.onmessage = (e: MessageEvent<Float32Array>) => detector.push(e.data);
 
+  // Both sources feed the one tap, where Web Audio sums them: one stream, so a sentence is never sent twice.
+  let call: { stream: MediaStream; source: MediaStreamAudioSourceNode } | null = null;
+  const removeCallAudio = () => {
+    if (!call) return;
+    call.source.disconnect();
+    for (const track of call.stream.getTracks()) track.stop();
+    call = null;
+  };
+
   return {
+    async addCallAudio(onEnded) {
+      // Browsers share audio only along with a picture; the picture isn't needed.
+      const options: CallAudioOptions = { video: true, audio: true, systemAudio: 'include', selfBrowserSurface: 'exclude' };
+      const shared = await navigator.mediaDevices.getDisplayMedia(options);
+      for (const track of shared.getVideoTracks()) track.stop();
+      const [audio] = shared.getAudioTracks();
+      if (!audio) {
+        for (const track of shared.getTracks()) track.stop();
+        return false;
+      }
+      removeCallAudio();
+      const source = context.createMediaStreamSource(new MediaStream([audio]));
+      source.connect(tap);
+      call = { stream: shared, source };
+      audio.addEventListener('ended', () => {
+        if (call?.stream !== shared) return;
+        removeCallAudio();
+        onEnded();
+      });
+      return true;
+    },
+    removeCallAudio,
     stop() {
+      removeCallAudio();
       detector.flush();
       tap.port.onmessage = null;
       source.disconnect();
