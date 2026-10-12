@@ -5262,7 +5262,8 @@
           "agent",
           "startedAt",
           "endedAt",
-          "counts"
+          "counts",
+          "canTranscribe"
         ],
         "type": "object",
         "properties": {
@@ -5304,6 +5305,10 @@
           },
           "counts": {
             "$ref": "#/components/schemas/MeetingCounts"
+          },
+          "canTranscribe": {
+            "type": "boolean",
+            "description": "A speech-to-text model is set up for the meeting's language, so browsers can send audio."
           }
         }
       },

@@ -23,6 +23,7 @@ public sealed record TranscriptRequest([Required, StringLength(4000, MinimumLeng
 /// <param name="Pending">Proposals still waiting for a decision, including ones that need an issue picked.</param>
 public sealed record MeetingCounts(int Pending, int Applied, int Rejected, int Undone);
 
+/// <param name="CanTranscribe">A speech-to-text model is set up for the meeting's language, so browsers can send audio.</param>
 public sealed record MeetingResponse(
     Guid Id,
     string Project,
@@ -34,7 +35,8 @@ public sealed record MeetingResponse(
     MemberRef Agent,
     DateTimeOffset StartedAt,
     DateTimeOffset? EndedAt,
-    MeetingCounts Counts);
+    MeetingCounts Counts,
+    bool CanTranscribe);
 
 public sealed record TranscriptSegmentResponse(Guid Id, MemberRef Speaker, string Text, DateTimeOffset At);
 

@@ -796,7 +796,7 @@ public sealed partial class MeetingService(
         TranscriptRetentionDays = 30,
     };
 
-    private static async Task<List<MeetingResponse>> MeetingsAsync(FlowstateDbContext db, IQueryable<MeetingSession> query, CancellationToken ct)
+    private async Task<List<MeetingResponse>> MeetingsAsync(FlowstateDbContext db, IQueryable<MeetingSession> query, CancellationToken ct)
     {
         var rows = await query.Select(m => new
         {
@@ -812,7 +812,8 @@ public sealed partial class MeetingService(
         var members = await MemberRefs.ByIdAsync(db, rows.SelectMany(r => new[] { r.Meeting.StartedById, r.Meeting.AgentId }), ct);
         return rows.Select(r => new MeetingResponse(
                 r.Meeting.Id, r.Project, r.Meeting.Type, r.Meeting.Mode, r.Meeting.Language, r.Meeting.State,
-                members[r.Meeting.StartedById], members[r.Meeting.AgentId], r.Meeting.StartedAt, r.Meeting.EndedAt, r.Counts))
+                members[r.Meeting.StartedById], members[r.Meeting.AgentId], r.Meeting.StartedAt, r.Meeting.EndedAt, r.Counts,
+                speech.Supports(r.Meeting.Language)))
             .ToList();
     }
 

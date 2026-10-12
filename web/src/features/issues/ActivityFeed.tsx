@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMarkdownUpload } from '../../api/attachments';
@@ -10,7 +11,7 @@ import {
   listIssueActivityQueryKey,
   updateCommentMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
-import type { FeedChange, FeedItem, IssuePriority, IssueState, IssueType, RelationKind, Surface } from '../../api/gen/types.gen';
+import type { FeedChange, FeedItem, FeedMeeting, IssuePriority, IssueState, IssueType, RelationKind, Surface } from '../../api/gen/types.gen';
 import { useMembers } from '../../api/issues';
 import { Avatar, Button, Kbd } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
@@ -104,6 +105,7 @@ function EventItem({ item }: { item: FeedItem }) {
             {l}
           </span>
         ))}
+        {item.meeting && <MeetingNote meeting={item.meeting} />}
       </span>
       <Meta at={item.at} via={item.via} ago={ago} />
     </li>
@@ -167,7 +169,28 @@ function CommentItem({
       ) : (
         <RichMarkdown workspace={workspace}>{item.body ?? ''}</RichMarkdown>
       )}
+      {item.meeting && (
+        <span className="text-sm text-mute">
+          <MeetingNote meeting={item.meeting} />
+        </span>
+      )}
     </li>
+  );
+}
+
+/** Where a meeting-agent change came from: the words that triggered it, who approved it, and a link to the meeting. */
+function MeetingNote({ meeting }: { meeting: FeedMeeting }) {
+  const { t } = useTranslation();
+  return (
+    <Link
+      to="."
+      search={(prev: Record<string, unknown>) => ({ ...prev, meeting: meeting.meetingId })}
+      className="block hover:underline"
+    >
+      {meeting.snippet && <q className="italic">{meeting.snippet}</q>}
+      {meeting.snippet && ' · '}
+      {meeting.approvedBy ? t('meeting.approvedBy', { name: meeting.approvedBy.name }) : t('meeting.autoApplied')}
+    </Link>
   );
 }
 

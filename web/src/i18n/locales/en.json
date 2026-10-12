@@ -265,7 +265,8 @@
       "web": "web",
       "cli": "CLI",
       "mcp": "MCP",
-      "api": "API"
+      "api": "API",
+      "meeting": "meeting"
     }
   },
   "upload": {
@@ -274,5 +275,78 @@
   },
   "realtime": {
     "changed": "{{key}} was just changed by {{name}} via {{via}}."
+  },
+  "meeting": {
+    "panel": "Meeting",
+    "notFound": "This meeting doesn’t exist or was deleted.",
+    "start": "Start meeting",
+    "failed": "That didn’t work. Try again.",
+    "type": {
+      "standup": "Standup",
+      "planning": "Planning",
+      "refinement": "Refinement",
+      "other": "Meeting"
+    },
+    "state": {
+      "live": "Listening",
+      "paused": "Paused",
+      "ended": "Ended"
+    },
+    "pause": "Pause",
+    "resume": "Resume",
+    "end": "End meeting",
+    "privacy": "Audio is turned into text and not stored. Transcripts are deleted after the workspace’s retention period.",
+    "pending": "Waiting for you",
+    "pendingCount_one": "{{count}} proposal waiting",
+    "pendingCount_other": "{{count}} proposals waiting",
+    "nothingPending": "Nothing to review. Proposals show up here as people talk.",
+    "mode": "Mode",
+    "modes": {
+      "suggest": "Suggest",
+      "fullAuto": "Full auto"
+    },
+    "modeHelp": {
+      "suggest": "Nothing changes until you approve it.",
+      "fullAuto": "Clear changes apply at once and can be undone. New issues, unclear matches and cancelling still wait for you."
+    },
+    "allowFullAuto": "Allow full auto in this workspace ({{ops}})",
+    "noHistory": "No decisions yet. Approve proposals in suggest mode to see how the agent does.",
+    "stat": "You approved {{approved}} of {{decided}} {{op}} changes unchanged",
+    "op": {
+      "state": "State",
+      "sprint": "Sprint",
+      "assignee": "Assignee",
+      "estimate": "Estimate",
+      "comment": "Comment",
+      "createIssue": "New issue"
+    },
+    "micOn": "Listen with microphone",
+    "micOff": "Stop microphone",
+    "micDenied": "Couldn’t use the microphone. Allow it in the browser and try again.",
+    "listening": "listening",
+    "hearing": "hearing you",
+    "typeLabel": "What was said",
+    "typePlaceholder": "Or type what was said, e.g. “move FLOW-12 to next sprint”",
+    "send": "Send",
+    "approveAll": "Approve all",
+    "unsure": "unsure",
+    "whichIssue": "Which issue?",
+    "noMatch": "No issue matched. Reject it, or add the key in the meeting.",
+    "approve": "Approve",
+    "applyEdit": "Apply edit",
+    "edit": "Edit",
+    "reject": "Reject",
+    "newValue": "New value",
+    "applied": "Applied",
+    "undoAll": "Undo meeting",
+    "confirmUndoAll": "Undo every change this meeting made?",
+    "undoOne": "Undo change to {{key}}",
+    "auto": "full auto",
+    "summaryTitle": "Meeting ended",
+    "summary": "{{applied}} applied, {{rejected}} rejected, {{undone}} undone, {{pending}} still waiting. Waiting proposals can still be reviewed.",
+    "newIssues": "New issues",
+    "whichIssueGroup": "Which issue?",
+    "approvedBy": "approved by {{name}}",
+    "autoApplied": "applied by full auto"
   }
 }

@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Mic } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, getProjectOptions } from '../../api/gen/@tanstack/react-query.gen';
 import { useIssues } from '../../api/issues';
+import { useStartMeeting } from '../../api/meetings';
 import { Topbar } from '../../app/AppShell';
+import { Button } from '../../components/ui';
 import { Board } from './Board';
 import { IssueList } from './IssueList';
 
@@ -36,7 +39,7 @@ export function ProjectIssuesPage() {
 
   return (
     <>
-      <Topbar crumbs={[info?.name ?? project, t('views.issues')]} tabs={tabs} />
+      <Topbar crumbs={[info?.name ?? project, t('views.issues')]} tabs={tabs} actions={<StartMeetingButton workspace={workspace} project={project} />} />
       <main className="min-h-0 flex-1 overflow-auto">
         {isPending && <p className="p-8 text-center text-mute">{t('common.loading')}</p>}
         {isError && <p className="p-8 text-center text-bad">{t('errors.loadFailed')}</p>}
@@ -48,6 +51,28 @@ export function ProjectIssuesPage() {
           ))}
       </main>
     </>
+  );
+}
+
+/** Starts a standup in the UI language and opens the meeting panel (task 015). */
+function StartMeetingButton({ workspace, project }: { workspace: string; project: string }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const start = useStartMeeting();
+  const open = (id: string) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, meeting: id }) });
+  return (
+    <Button
+      disabled={start.isPending}
+      onClick={() =>
+        start.mutate(
+          { path: { workspace }, body: { project, type: 'standup', language: i18n.language === 'da' ? 'da' : 'en' } },
+          { onSuccess: (m) => open(m.id) },
+        )
+      }
+    >
+      <Mic size={16} strokeWidth={1.5} aria-hidden="true" />
+      {t('meeting.start')}
+    </Button>
   );
 }
 

@@ -95,6 +95,7 @@ See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-a
       full auto, review (approve, edit, reject), undo per proposal and per meeting, settings with suggest-mode stats,
       transcript retention job, activity feed link to meeting and snippet. Offline keyword extractor when no LLM is set.
 - [x] CLI `meeting …` and MCP `meeting` + `review_proposals`; parity test passes.
-- [ ] Web: start from board or sprint view, listening indicator, browser audio, proposals panel, full-auto feed with
-      undo, settings toggle with stats, end-of-meeting summary.
+- [x] Web: start from board or sprint view, listening indicator, browser audio (energy VAD → 16 kHz WAV per
+      utterance), proposals panel, full-auto feed with undo, settings toggle with stats, end-of-meeting summary.
+      Microphone shows only when a transcription model serves the meeting language.
 - [ ] Production wiring: Scaleway parameters in the AppHost and the deploy runbook.

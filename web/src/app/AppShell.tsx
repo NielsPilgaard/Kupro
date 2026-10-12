@@ -10,6 +10,7 @@ import { Kbd } from '../components/ui';
 import { CommandPalette } from '../features/palette/CommandPalette';
 import { CreateIssueDialog } from '../features/issues/CreateIssueDialog';
 import { IssuePanel } from '../features/issues/IssuePanel';
+import { MeetingPanel } from '../features/meetings/MeetingPanel';
 import { useShortcuts } from '../lib/shortcuts';
 import { projectColorClass } from '../lib/issues';
 import { useUi } from './UiContext';
@@ -19,7 +20,7 @@ export function AppShell() {
   const { i18n } = useTranslation();
   const ui = useUi();
   const { workspace } = useParams({ strict: false }) as { workspace: string };
-  const search = useSearch({ strict: false }) as { issue?: string };
+  const search = useSearch({ strict: false }) as { issue?: string; meeting?: string };
   const navigate = useNavigate();
   const { data: me } = useQuery(getMeOptions());
   useRealtime(workspace, search.issue);
@@ -49,6 +50,7 @@ export function AppShell() {
         <Outlet />
       </div>
       {search.issue && <IssuePanel workspace={workspace} issueKey={search.issue} meName={me?.displayName} />}
+      {search.meeting && <MeetingPanel workspace={workspace} meetingId={search.meeting} />}
       <CommandPalette workspace={workspace} />
       <CreateIssueDialog workspace={workspace} />
     </div>
@@ -163,7 +165,7 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
 }
 
 /** Topbar: breadcrumb, segmented view tabs, one primary button (design guide). */
-export function Topbar({ crumbs, tabs }: { crumbs: string[]; tabs?: React.ReactNode }) {
+export function Topbar({ crumbs, tabs, actions }: { crumbs: string[]; tabs?: React.ReactNode; actions?: React.ReactNode }) {
   const { t } = useTranslation();
   const ui = useUi();
   return (
@@ -177,10 +179,11 @@ export function Topbar({ crumbs, tabs }: { crumbs: string[]; tabs?: React.ReactN
         ))}
       </h1>
       {tabs}
+      <div className="ml-auto flex items-center gap-2">{actions}</div>
       <button
         type="button"
         onClick={() => ui.setCreateOpen(true)}
-        className="ml-auto inline-flex h-[var(--control)] items-center gap-2 rounded-r1 bg-acc px-3 font-semibold whitespace-nowrap text-on-acc hover:brightness-110"
+        className="inline-flex h-[var(--control)] items-center gap-2 rounded-r1 bg-acc px-3 font-semibold whitespace-nowrap text-on-acc hover:brightness-110"
       >
         <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
         {t('issue.new')}

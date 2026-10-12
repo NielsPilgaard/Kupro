@@ -265,7 +265,8 @@
       "web": "web",
       "cli": "CLI",
       "mcp": "MCP",
-      "api": "API"
+      "api": "API",
+      "meeting": "møde"
     }
   },
   "upload": {
@@ -274,5 +275,78 @@
   },
   "realtime": {
     "changed": "{{key}} blev lige ændret af {{name}} via {{via}}."
+  },
+  "meeting": {
+    "panel": "Møde",
+    "notFound": "Mødet findes ikke eller er slettet.",
+    "start": "Start møde",
+    "failed": "Det virkede ikke. Prøv igen.",
+    "type": {
+      "standup": "Standup",
+      "planning": "Planlægning",
+      "refinement": "Refinement",
+      "other": "Møde"
+    },
+    "state": {
+      "live": "Lytter",
+      "paused": "På pause",
+      "ended": "Afsluttet"
+    },
+    "pause": "Pause",
+    "resume": "Fortsæt",
+    "end": "Afslut møde",
+    "privacy": "Lyden bliver til tekst og gemmes ikke. Transskriptioner slettes efter workspacets opbevaringsperiode.",
+    "pending": "Venter på dig",
+    "pendingCount_one": "{{count}} forslag venter",
+    "pendingCount_other": "{{count}} forslag venter",
+    "nothingPending": "Intet at gennemgå. Forslag dukker op her, mens I taler.",
+    "mode": "Tilstand",
+    "modes": {
+      "suggest": "Foreslå",
+      "fullAuto": "Fuld auto"
+    },
+    "modeHelp": {
+      "suggest": "Intet ændres, før du godkender det.",
+      "fullAuto": "Klare ændringer sker med det samme og kan fortrydes. Nye opgaver, uklare match og annulleringer venter stadig på dig."
+    },
+    "allowFullAuto": "Tillad fuld auto i dette workspace ({{ops}})",
+    "noHistory": "Ingen beslutninger endnu. Godkend forslag i foreslå-tilstand for at se, hvordan agenten klarer sig.",
+    "stat": "Du godkendte {{approved}} af {{decided}} ændringer af {{op}} uændret",
+    "op": {
+      "state": "Status",
+      "sprint": "Sprint",
+      "assignee": "Ansvarlig",
+      "estimate": "Estimat",
+      "comment": "Kommentar",
+      "createIssue": "Ny opgave"
+    },
+    "micOn": "Lyt med mikrofonen",
+    "micOff": "Stop mikrofonen",
+    "micDenied": "Kunne ikke bruge mikrofonen. Tillad den i browseren, og prøv igen.",
+    "listening": "lytter",
+    "hearing": "hører dig",
+    "typeLabel": "Det, der blev sagt",
+    "typePlaceholder": "Eller skriv det, der blev sagt, fx “flyt FLOW-12 til næste sprint”",
+    "send": "Send",
+    "approveAll": "Godkend alle",
+    "unsure": "usikker",
+    "whichIssue": "Hvilken opgave?",
+    "noMatch": "Ingen opgave passede. Afvis forslaget, eller sig nøglen på mødet.",
+    "approve": "Godkend",
+    "applyEdit": "Gem ændring",
+    "edit": "Ret",
+    "reject": "Afvis",
+    "newValue": "Ny værdi",
+    "applied": "Gennemført",
+    "undoAll": "Fortryd møde",
+    "confirmUndoAll": "Fortryd alle ændringer fra dette møde?",
+    "undoOne": "Fortryd ændring af {{key}}",
+    "auto": "fuld auto",
+    "summaryTitle": "Mødet er slut",
+    "summary": "{{applied}} gennemført, {{rejected}} afvist, {{undone}} fortrudt, {{pending}} venter stadig. Ventende forslag kan stadig gennemgås.",
+    "newIssues": "Nye opgaver",
+    "whichIssueGroup": "Hvilken opgave?",
+    "approvedBy": "godkendt af {{name}}",
+    "autoApplied": "gennemført af fuld auto"
   }
 }

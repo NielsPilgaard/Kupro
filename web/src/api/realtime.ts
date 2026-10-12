@@ -7,6 +7,7 @@ import { useToast } from '../components/Toasts';
 import { getIssueQueryKey, getMeOptions, listIssueActivityQueryKey } from './gen/@tanstack/react-query.gen';
 import type { IssuePage, IssueSummary, Surface } from './gen/types.gen';
 import { isIssueList, useMembers } from './issues';
+import { isMeetingQuery } from './meetings';
 
 /** Server pushes from the workspace hub (task 012); shapes mirror WorkspaceHub.cs. */
 interface IssuesEvent {
@@ -17,7 +18,7 @@ interface IssuesEvent {
 }
 
 interface ChangedEvent {
-  topic: 'issue' | 'sprints' | 'plan';
+  topic: 'issue' | 'sprints' | 'plan' | 'meetings';
   issueKey: string | null;
   actorId: string;
   via: Surface;
@@ -80,6 +81,7 @@ export function useRealtime(workspace: string, openIssue: string | undefined) {
       if (e.topic === 'issue' && e.issueKey) touched(e.issueKey, e.actorId, e.via);
       if (e.topic === 'sprints') void qc.invalidateQueries(byOperation('listSprints', 'getSprint', 'getPlan'));
       if (e.topic === 'plan') void qc.invalidateQueries(byOperation('getPlan', 'listMilestones', 'getProjectCapacity'));
+      if (e.topic === 'meetings') void qc.invalidateQueries({ predicate: isMeetingQuery });
     });
 
     // Events missed while disconnected are gone; refetch everything that is on screen.

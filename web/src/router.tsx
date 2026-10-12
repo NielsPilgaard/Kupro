@@ -15,9 +15,14 @@ export interface RouterContext {
   queryClient: QueryClient;
 }
 
-/** `?issue=FLOW-12` opens the detail panel over whatever view is showing, so every issue view is linkable. */
-const withIssue = (search: Record<string, unknown>): { issue?: string } =>
-  typeof search.issue === 'string' ? { issue: search.issue } : {};
+/**
+ * `?issue=FLOW-12` opens the detail panel over whatever view is showing, so every issue view is linkable;
+ * `?meeting=<id>` opens the meeting agent's panel (task 015) the same way.
+ */
+const withIssue = (search: Record<string, unknown>): { issue?: string; meeting?: string } => ({
+  ...(typeof search.issue === 'string' ? { issue: search.issue } : {}),
+  ...(typeof search.meeting === 'string' ? { meeting: search.meeting } : {}),
+});
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
@@ -61,7 +66,7 @@ const sprintsRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/sprints',
   component: SprintsPage,
-  validateSearch: (search: Record<string, unknown>): { project?: string; issue?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { project?: string; issue?: string; meeting?: string } => ({
     ...(typeof search.project === 'string' ? { project: search.project } : {}),
     ...withIssue(search),
   }),
@@ -71,7 +76,7 @@ const planRoute = createRoute({
   path: '/plan',
   component: PlanPage,
   // Horizon, zoom and projects live in the URL (docs/delivery-plan.md: no plan entity).
-  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string; zoom?: Zoom; project?: string; issue?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string; zoom?: Zoom; project?: string; issue?: string; meeting?: string } => ({
     ...(typeof search.from === 'string' ? { from: search.from } : {}),
     ...(typeof search.to === 'string' ? { to: search.to } : {}),
     ...(search.zoom === 'month' || search.zoom === 'quarter' || search.zoom === 'year' ? { zoom: search.zoom } : {}),
