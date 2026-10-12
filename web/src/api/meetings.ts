@@ -1,11 +1,6 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type Query,
-} from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { useToast } from "../components/Toasts";
+import { useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { useToast } from '../components/Toasts';
 import {
   addMeetingAudioMutation,
   addMeetingTranscriptMutation,
@@ -18,19 +13,12 @@ import {
   undoMeetingProposalMutation,
   updateMeetingMutation,
   updateMeetingSettingsMutation,
-} from "./gen/@tanstack/react-query.gen";
-import type { ProposalReview } from "./gen/types.gen";
-import { isIssueList } from "./issues";
+} from './gen/@tanstack/react-query.gen';
+import type { ProposalReview } from './gen/types.gen';
+import { isIssueList } from './issues';
 
-const meetingOps = [
-  "listMeetings",
-  "getMeeting",
-  "getMeetingTranscript",
-  "listMeetingProposals",
-  "getMeetingSettings",
-];
-const opOf = (q: Query) =>
-  (q.queryKey[0] as { _id?: string } | undefined)?._id ?? "";
+const meetingOps = ['listMeetings', 'getMeeting', 'getMeetingTranscript', 'listMeetingProposals', 'getMeetingSettings'];
+const opOf = (q: Query) => (q.queryKey[0] as { _id?: string } | undefined)?._id ?? '';
 
 /** Meetings, proposals and settings; also what realtime `meetings` events refetch. */
 export const isMeetingQuery = (q: Query) => meetingOps.includes(opOf(q));
@@ -40,10 +28,7 @@ function useRefresh() {
   const qc = useQueryClient();
   return () => {
     void qc.invalidateQueries({
-      predicate: (q) =>
-        isMeetingQuery(q) ||
-        isIssueList(q) ||
-        ["getIssue", "listIssueActivity"].includes(opOf(q)),
+      predicate: (q) => isMeetingQuery(q) || isIssueList(q) || ['getIssue', 'listIssueActivity'].includes(opOf(q)),
     });
   };
 }
@@ -51,20 +36,14 @@ function useRefresh() {
 function useFailed() {
   const toast = useToast();
   const { t } = useTranslation();
-  return (error: unknown) =>
-    toast.error(
-      (error as { detail?: string } | null)?.detail ?? t("meeting.failed"),
-    );
+  return (error: unknown) => toast.error((error as { detail?: string } | null)?.detail ?? t('meeting.failed'));
 }
 
-export const useMeeting = (workspace: string, id: string) =>
-  useQuery(getMeetingOptions({ path: { workspace, id } }));
+export const useMeeting = (workspace: string, id: string) => useQuery(getMeetingOptions({ path: { workspace, id } }));
 
-export const useProposals = (workspace: string, id: string) =>
-  useQuery(listMeetingProposalsOptions({ path: { workspace, id } }));
+export const useProposals = (workspace: string, id: string) => useQuery(listMeetingProposalsOptions({ path: { workspace, id } }));
 
-export const useMeetingSettings = (workspace: string) =>
-  useQuery(getMeetingSettingsOptions({ path: { workspace } }));
+export const useMeetingSettings = (workspace: string) => useQuery(getMeetingSettingsOptions({ path: { workspace } }));
 
 export function useStartMeeting() {
   return useMutation({ ...startMeetingMutation(), onError: useFailed() });
@@ -77,8 +56,7 @@ export function useUpdateMeeting(workspace: string, id: string) {
     onSuccess: refresh,
     onError: useFailed(),
   });
-  return (body: Parameters<typeof m.mutate>[0]["body"]) =>
-    m.mutate({ path: { workspace, id }, body });
+  return (body: Parameters<typeof m.mutate>[0]['body']) => m.mutate({ path: { workspace, id }, body });
 }
 
 export function useSay() {
@@ -103,7 +81,7 @@ export function useSendAudio(workspace: string, id: string) {
     m.mutate({
       path: { workspace, id },
       body: wav,
-      headers: { "Content-Type": "audio/wav" },
+      headers: { 'Content-Type': 'audio/wav' },
       bodySerializer: null,
     } as unknown as Parameters<typeof m.mutate>[0]);
 }
@@ -121,8 +99,7 @@ export function useReview(workspace: string, id: string) {
     onError: failed,
   });
   return {
-    review: (items: ProposalReview[]) =>
-      m.mutate({ path: { workspace, id }, body: { items } }),
+    review: (items: ProposalReview[]) => m.mutate({ path: { workspace, id }, body: { items } }),
     pending: m.isPending,
   };
 }
@@ -141,8 +118,7 @@ export function useUndo(workspace: string, id: string) {
     onError: failed,
   });
   return {
-    undo: (proposalId: string) =>
-      one.mutate({ path: { workspace, id, proposalId } }),
+    undo: (proposalId: string) => one.mutate({ path: { workspace, id, proposalId } }),
     undoAll: () => all.mutate({ path: { workspace, id } }),
   };
 }
@@ -154,6 +130,5 @@ export function useUpdateMeetingSettings(workspace: string) {
     onSuccess: refresh,
     onError: useFailed(),
   });
-  return (body: Parameters<typeof m.mutate>[0]["body"]) =>
-    m.mutate({ path: { workspace }, body });
+  return (body: Parameters<typeof m.mutate>[0]['body']) => m.mutate({ path: { workspace }, body });
 }

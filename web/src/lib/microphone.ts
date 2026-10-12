@@ -32,21 +32,17 @@ export interface MicrophoneEvents {
   onSpeaking?(speaking: boolean): void;
 }
 
-export async function startMicrophone(
-  events: MicrophoneEvents,
-): Promise<Microphone> {
+export async function startMicrophone(events: MicrophoneEvents): Promise<Microphone> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
   });
   const context = new AudioContext();
-  const url = URL.createObjectURL(
-    new Blob([WORKLET], { type: "application/javascript" }),
-  );
+  const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
   await context.audioWorklet.addModule(url);
   URL.revokeObjectURL(url);
 
   const source = context.createMediaStreamSource(stream);
-  const tap = new AudioWorkletNode(context, "flowstate-tap");
+  const tap = new AudioWorkletNode(context, 'flowstate-tap');
   source.connect(tap);
 
   const detector = new UtteranceDetector(context.sampleRate, events);
@@ -111,8 +107,7 @@ export class UtteranceDetector {
       // Slowly follow the room's background level while nobody talks.
       this.noiseFloor = this.noiseFloor * 0.95 + rms * 0.05;
       this.preRoll.push(...frames);
-      while (this.preRoll.length * 128 > (this.rate * PRE_ROLL_MS) / 1000)
-        this.preRoll.shift();
+      while (this.preRoll.length * 128 > (this.rate * PRE_ROLL_MS) / 1000) this.preRoll.shift();
       if (rms > threshold) {
         this.speaking = true;
         this.speech = [...this.preRoll];
@@ -127,8 +122,7 @@ export class UtteranceDetector {
     this.speech.push(...frames);
     this.speechMs += WINDOW_MS;
     this.silenceMs = rms > threshold ? 0 : this.silenceMs + WINDOW_MS;
-    if (this.silenceMs >= END_SILENCE_MS || this.speechMs >= MAX_UTTERANCE_MS)
-      this.finish();
+    if (this.silenceMs >= END_SILENCE_MS || this.speechMs >= MAX_UTTERANCE_MS) this.finish();
   }
 
   private finish() {
@@ -137,13 +131,7 @@ export class UtteranceDetector {
     this.speaking = false;
     this.speech = [];
     this.events.onSpeaking?.(false);
-    if (voiced >= MIN_SPEECH_MS)
-      this.events.onUtterance(
-        encodeWav(
-          resample(concat(frames), this.rate, TARGET_RATE),
-          TARGET_RATE,
-        ),
-      );
+    if (voiced >= MIN_SPEECH_MS) this.events.onUtterance(encodeWav(resample(concat(frames), this.rate, TARGET_RATE), TARGET_RATE));
   }
 }
 
@@ -175,12 +163,11 @@ export function resample(input: Float32Array, from: number, to: number) {
 export function encodeWav(samples: Float32Array, rate: number) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
-  const text = (offset: number, s: string) =>
-    [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
-  text(0, "RIFF");
+  const text = (offset: number, s: string) => [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  text(0, 'RIFF');
   view.setUint32(4, 36 + samples.length * 2, true);
-  text(8, "WAVE");
-  text(12, "fmt ");
+  text(8, 'WAVE');
+  text(12, 'fmt ');
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
   view.setUint16(22, 1, true);
@@ -188,10 +175,8 @@ export function encodeWav(samples: Float32Array, rate: number) {
   view.setUint32(28, rate * 2, true);
   view.setUint16(32, 2, true);
   view.setUint16(34, 16, true);
-  text(36, "data");
+  text(36, 'data');
   view.setUint32(40, samples.length * 2, true);
-  samples.forEach((s, i) =>
-    view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true),
-  );
-  return new Blob([buffer], { type: "audio/wav" });
+  samples.forEach((s, i) => view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true));
+  return new Blob([buffer], { type: 'audio/wav' });
 }
