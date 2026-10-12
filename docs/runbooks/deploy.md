@@ -16,7 +16,8 @@ purpose: 'Checklist for setting up and operating a Flowstate production environm
 - Three domains: the app (`web`, port 80), auth (`keycloak`, port 8080) and Grafana (`grafana`, port 3000).
 - Push to `main` → CI publishes images → Staging runs E2E on them → CD deploys them through the Dokploy API and waits
   until `/api/v1/status` reports the commit. CD stays off until the [GitHub configuration](#github-configuration) exists.
-- First deploy needs manual Keycloak setup: production redirect URIs, deleting the dev users, and SMTP. The realm file is imported only once.
+- Keycloak runs our image (`infrastructure/keycloak`): the Flowstate theme plus the realm, whose web client URLs and
+  email settings come from the environment on first start. Afterwards only the permanent admin is manual.
 - Several items in [Open gaps](#open-gaps) block the first external user.
 
 ## Environment variables
@@ -29,6 +30,7 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `API_IMAGE` | | `ghcr.io/<owner>/flowstate-api:sha-<commit>` | `api` | Set by CD (`scripts/deploy.mjs`) on every deploy. |
 | `MIGRATIONS_IMAGE` | | same as `API_IMAGE` | `migrations` | Set by CD. Same image, run with `migrate`. |
 | `WEB_IMAGE` | | `ghcr.io/<owner>/flowstate-web:sha-<commit>` | `web` | Set by CD. Built with the `KEYCLOAK_PUBLIC_URL` GitHub variable. |
+| `KEYCLOAK_IMAGE` | | `ghcr.io/<owner>/flowstate-keycloak:sha-<commit>` | `keycloak` | Set by CD. Keycloak with the Flowstate theme and the realm. |
 | `API_PORT` | | `8080` | `api`, `web` | Port Kestrel listens on inside the network. |
 | `POSTGRES_PASSWORD` | yes | long random | `postgres`, `api`, `migrations` | Applied **only on first start** (empty volume). Rotate with `ALTER USER`, then update the variable. |
 | `KEYCLOAK_PASSWORD` | yes | long random | `keycloak` | Bootstrap admin, **first start only**. Replace with a permanent admin (below). |
@@ -39,7 +41,10 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `GRAFANA_SMTP_PASSWORD` | yes | Scaleway API secret key | `grafana` | Key needs TEM permissions only. |
 | `GRAFANA_SMTP_FROM` | | `alerts@<domain>` | `grafana` | Domain must be verified in Scaleway TEM (SPF/DKIM). |
 | `ALERT_EMAIL` | | `ops@<domain>` | `grafana` | Comma-separated for several recipients. |
-| `API_PUBLIC_URL` | | `https://<domain>` | `api` | No trailing slash. Audience of MCP tokens issued with a resource indicator. |
+| `API_PUBLIC_URL` | | `https://<domain>` | `api`, `keycloak` | No trailing slash. Audience of MCP tokens issued with a resource indicator, and the web client's redirect URI and origin in the realm. |
+| `SMTP_USER` | | Scaleway project id | `keycloak`, `grafana` | Scaleway TEM SMTP relay, `smtp.tem.scaleway.com:587`. |
+| `SMTP_PASSWORD` | yes | Scaleway API secret key | `keycloak`, `grafana` | Key needs TEM permissions only. |
+| `KEYCLOAK_SMTP_FROM` | | `no-reply@<domain>` | `keycloak` | Sender of password reset and verification mails. Must not be empty, or the realm import fails. |
 | `STORAGE_URL` | | `https://s3.gra.io.cloud.ovh.net` | `api` | OVHcloud Object Storage S3 endpoint for the bucket's region. Browsers upload to it directly. |
 | `STORAGE_REGION` | | `gra` | `api` | Must match the endpoint. |
 | `STORAGE_BUCKET` | | `flowstate-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
@@ -90,36 +95,29 @@ either make both public, or add a GHCR registry in Dokploy (a GitHub token with 
    ```
 
 3. **Dokploy compose app**: source = this GitHub repository, branch `main`, compose path `./deploy/docker-compose.yaml`
-   (its bind mounts point into the checkout, e.g. the Keycloak realm and the observability config). Turn
+   (its bind mounts point into the checkout, e.g. the observability config). Turn
    **Autodeploy** off: CD deploys, after E2E. Set the variables and domains above, and the
    [GitHub configuration](#github-configuration). The first deploy is a push to `main`, or `cd.yml` run by hand.
 4. **Keycloak: admin.** Sign in at `https://auth.<domain>/admin` with `admin` / `KEYCLOAK_PASSWORD`. Create a
    permanent admin user in the `master` realm with 2FA, then delete the temporary `admin`.
-5. **Keycloak: production clients.** The realm comes from `src/Flowstate.AppHost/Realms/flowstate-realm.json`.
-   Keycloak imports it only when the realm doesn't exist yet, so later edits to that file don't reach production. In
-   realm `flowstate` → Clients:
-   - `web`: Valid redirect URIs `https://<domain>/*`, Web origins `https://<domain>`, Valid post-logout redirect URIs
-     `https://<domain>/*`. Remove the `localhost` entries.
-   - `mcp`: keep the loopback redirect URIs, because MCP clients run on the user's machine.
-   - Dynamic client registration for MCP: Trusted Hosts policy as in [ADR-005](../adr/ADR-005-auth-keycloak.md) IMP-001.
-6. **Keycloak: delete the dev users.** The realm file seeds `dev@flowstate.local` and `other@flowstate.local`, both
-   with password `dev`. Delete both from realm `flowstate` → Users before the domain is public.
-7. **Keycloak: email.** Realm `flowstate` → Realm settings → Email: same Scaleway TEM host and credentials as Grafana,
-   sender `no-reply@<domain>`. Password reset is enabled in the realm and needs this to work. Send a test mail.
-8. **Grafana**: sign in at `https://grafana.<domain>` as `admin`. Go to Alerting → Contact points → `flowstate-email`
+5. **Keycloak: check the realm.** On first start Keycloak imports `src/Flowstate.AppHost/Realms/flowstate-realm.json`
+   from the image, with `REALM_*` placeholders filled from the variables above. No dev users are in the image. In realm
+   `flowstate`, check that client `web` has `https://<domain>/*` as redirect URI, then go to Realm settings → Email →
+   **Test connection** and confirm the mail arrives in Flowstate's look.
+6. **Grafana**: sign in at `https://grafana.<domain>` as `admin`. Go to Alerting → Contact points → `flowstate-email`
    → **Test** and confirm the mail arrives. For agent access, create a service account with role **Viewer**
    ([observability README](../../infrastructure/observability/README.md#querying-from-an-agent)).
-9. **PingPuffin** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): add an HTTP check on
+7. **PingPuffin** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): add an HTTP check on
    `https://<domain>/api/v1/status`, expect 200, alert by email and SMS. Grafana runs on the same VPS and can't report
    the VPS itself being down; this check catches that, plus DNS, TLS and Traefik failures.
-10. **Smoke test**: register a user, then create a workspace and an issue, and paste an image into a comment. Run `flowstate login` against the domain.
+8. **Smoke test**: register a user, reset its password (Flowstate-styled pages and mail), then create a workspace and an issue, and paste an image into a comment. Run `flowstate login` against the domain.
    Connect an MCP client to `https://<domain>/mcp`. Check that requests show up on Grafana's **Service health**
    dashboard.
 
 ## Every deploy
 
 CI publishes the images, stamped with the commit ([ADR-014](../adr/ADR-014-observability.md) IMP-005). Staging runs
-E2E against them, then `cd.yml` checks both images exist, sets `API_IMAGE`/`MIGRATIONS_IMAGE`/`WEB_IMAGE` in Dokploy,
+E2E against them, then `cd.yml` checks the images exist, sets `API_IMAGE`/`MIGRATIONS_IMAGE`/`WEB_IMAGE`/`KEYCLOAK_IMAGE` in Dokploy,
 redeploys, streams the Dokploy log, and waits until `/api/v1/status` reports `+<commit>`. Compose runs `migrations`
 and starts `api` only if migrations succeeded. If a deploy fails:
 
@@ -137,5 +135,4 @@ These are not wired yet. Each one blocks or degrades production:
 | Gap | Effect | Fix |
 |---|---|---|
 | Backups | No backups yet ([ADR-004](../adr/ADR-004-hosting.md)); losing the VPS loses all data. | Adopt Skoleoverblikket's Postgres backup agent once it is proven there ([task 013](../../tasks/013-deploy.md)), with a restore drill in `docs/runbooks/`. |
-| Keycloak branding | Sign-in pages and Keycloak emails use Keycloak's default theme. | Flowstate theme for login and email ([task 013](../../tasks/013-deploy.md)). |
-| Realm drift | Production realm settings live only in Keycloak (step 5). | Export the realm after setup, or move the client URLs into a parameterized production realm file. |
+| Realm drift | Keycloak imports the realm file only once, so later edits to it don't reach an existing realm. | Apply the same change in the admin console or with `kcadm.sh`; theme changes ship with the image. |

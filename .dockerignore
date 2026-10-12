@@ -1,0 +1,6 @@
+# Image builds use the repo root as context (web/Dockerfile, infrastructure/keycloak/Dockerfile).
+**/node_modules
+**/bin
+**/obj
+.git
+tests/e2e/test-results

@@ -56,6 +56,10 @@ As above. Authorization (workspace membership, roles Owner/Member/Guest) lives i
 - **IMP-002**: API tokens prefixed (`fs_pat_`, `fs_agent_`) for secret scanning; SHA-256 hashed at rest.
 - **IMP-003**: Agent tokens carry an agent name shown in the activity log ([ADR-001](ADR-001-agent-parity.md)).
 - **IMP-004**: The API (MCP resource server) serves Protected Resource Metadata (RFC 9728) itself — Keycloak doesn't.
+- **IMP-005**: Our own image (`infrastructure/keycloak`, published by CI): stock Keycloak plus a `flowstate` theme and
+  the realm. The login theme restyles `keycloak.v2` with the web app's tokens, CSS only, so every Keycloak page keeps
+  working; the email theme replaces the layout and the main mails (EN/DA). The realm reads `${REALM_*}` from the
+  environment on first import (client URLs, SMTP); dev users live in a separate file that only dev and E2E mount.
 
 ## Related Decisions
 

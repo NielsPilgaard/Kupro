@@ -1,15 +1,15 @@
 name: E2E
 
 # Playwright against the production compose file (deploy/docker-compose.yaml + tests/e2e/compose.yaml) on the runner.
-# Called from CI on pull requests (API image built here from the PR's code) and from Staging on main (the API image
-# CI published for that commit). The web image is always built here: the published one has the production Keycloak
-# URL baked in.
+# Called from CI on pull requests (API and Keycloak images built here from the PR's code) and from Staging on main (the
+# images CI published for that commit). The web image is always built here: the published one has the production
+# Keycloak URL baked in.
 
 on:
   workflow_call:
     inputs:
       image_tag:
-        description: "Tag of the published API image (e.g. sha-<commit>). Empty: build it from the checked-out code."
+        description: "Tag of the published API and Keycloak images (e.g. sha-<commit>). Empty: build them from the checked-out code."
         type: string
         default: ""
       ref:
@@ -38,12 +38,15 @@ jobs:
           ref: ${{ inputs.ref }}
           persist-credentials: false
 
-      - name: Published API image
+      - name: Published API and Keycloak images
         if: inputs.image_tag != ''
         run: |
-          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate-api:${{ inputs.image_tag }}"
-          echo "API_IMAGE=$image" >> "$GITHUB_ENV"
-          echo "MIGRATIONS_IMAGE=$image" >> "$GITHUB_ENV"
+          prefix="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate"
+          {
+            echo "API_IMAGE=$prefix-api:${{ inputs.image_tag }}"
+            echo "MIGRATIONS_IMAGE=$prefix-api:${{ inputs.image_tag }}"
+            echo "KEYCLOAK_IMAGE=$prefix-keycloak:${{ inputs.image_tag }}"
+          } >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         if: inputs.image_tag != ''
@@ -65,6 +68,17 @@ jobs:
           -p:ContainerRepository=flowstate-api '-p:ContainerImageTags="e2e"'
 
       - uses: docker/setup-buildx-action@v3
+
+      - name: Build Keycloak image
+        if: inputs.image_tag == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/keycloak/Dockerfile
+          load: true
+          tags: flowstate-keycloak:e2e
+          cache-from: type=gha,scope=e2e-keycloak
+          cache-to: type=gha,scope=e2e-keycloak,mode=max
 
       - name: Build web image with local Keycloak URL
         uses: docker/build-push-action@v6

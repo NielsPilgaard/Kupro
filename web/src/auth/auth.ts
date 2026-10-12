@@ -1,4 +1,5 @@
 import { UserManager, type User } from 'oidc-client-ts';
+import i18n from '../i18n';
 
 // Keycloak OIDC, authorization code + PKCE (ADR-005). VITE_KEYCLOAK_URL is set by Aspire in dev and baked into the
 // image at build time in prod (ADR-012 IMP-005).
@@ -28,7 +29,8 @@ export async function getAccessToken(): Promise<string | undefined> {
 
 /** Sends the browser to Keycloak; resolves never, since the page unloads. */
 export async function signIn(returnTo: string = currentPath()): Promise<never> {
-  await userManager.signinRedirect({ state: { returnTo } });
+  // Keycloak's pages show no language picker; they follow the app's language.
+  await userManager.signinRedirect({ state: { returnTo }, ui_locales: i18n.language });
   return new Promise<never>(() => {});
 }
 

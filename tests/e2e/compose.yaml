@@ -9,6 +9,9 @@ services:
   keycloak:
     ports:
       - "8180:8080"
+    # The image holds the realm only; E2E signs in as the dev user.
+    volumes:
+      - ../src/Flowstate.AppHost/Realms/flowstate-users-0.json:/opt/keycloak/data/import/flowstate-users-0.json:ro
   web:
     ports:
       - "5180:80"

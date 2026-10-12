@@ -51,7 +51,7 @@ jobs:
       - name: Check images exist
         run: |
           missing=0
-          for name in api web; do
+          for name in api web keycloak; do
             image="$IMAGE_PREFIX-$name:$IMAGE_TAG"
             if docker buildx imagetools inspect "$image" > /dev/null 2>&1; then
               echo "Found $image"

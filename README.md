@@ -14,7 +14,11 @@ Prerequisites: [.NET 10 SDK](https://dot.net), [Bun](https://bun.sh) 1.4, Docker
 
 1. `dotnet tool restore` — installs the pinned Aspire CLI (and `dotnet-ef`).
 2. `dotnet aspire run` — starts Postgres, Keycloak, API, SPA and the Aspire dashboard (URL printed in the terminal).
-3. Open the `web` URL from the dashboard. Dev login: `dev@flowstate.local` / `dev`.
+3. Open the `web` URL from the dashboard. Dev login: `dev@flowstate.local` / `dev`. Keycloak's mails (password reset)
+   land in Mailpit at http://localhost:8125.
+
+Keycloak imports the realm only into an empty `flowstate-keycloak-data` volume. To pick up realm file changes, remove
+that volume; the dev users keep their ids, so existing dev data stays linked.
 
 Production-style stack: `dotnet aspire deploy` builds the images and runs the generated
 [deploy/docker-compose.yaml](deploy/docker-compose.yaml) locally.

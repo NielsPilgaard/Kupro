@@ -26,9 +26,10 @@ var postgres = builder.AddPostgres("postgres")
 var database = postgres.AddDatabase("flowstate");
 
 // Fixed host port so dev tokens keep a stable issuer; 8180 avoids the common 8080 clash.
+// Image = Keycloak + the flowstate theme + the realm (infrastructure/keycloak); the realm reads REALM_* at first import.
 var keycloak = builder.AddKeycloak("keycloak", port: 8180)
+    .WithDockerfile("../..", "infrastructure/keycloak/Dockerfile")
     .WithDataVolume("flowstate-keycloak-data")
-    .WithRealmImport("./Realms")
     // MCP authorization needs these preview features (ADR-005 IMP-001).
     .WithEnvironment("KC_FEATURES", "resource-indicators,cimd")
     .WithLifetime(ContainerLifetime.Persistent);
@@ -65,7 +66,20 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true");
 
     // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001), e.g. https://flowstate.dk.
-    api.WithEnvironment("Api__PublicUrl", builder.AddParameter("api-public-url"));
+    var apiPublicUrl = builder.AddParameter("api-public-url");
+    api.WithEnvironment("Api__PublicUrl", apiPublicUrl);
+
+    // Realm import: the web client's URLs and Keycloak's email. Applied on first import only.
+    var smtp = builder.AddSmtpCredentials();
+    keycloak
+        .WithEnvironment("REALM_APP_URL", apiPublicUrl)
+        .WithEnvironment("REALM_SMTP_HOST", Smtp.Host)
+        .WithEnvironment("REALM_SMTP_PORT", Smtp.Port)
+        .WithEnvironment("REALM_SMTP_STARTTLS", "true")
+        .WithEnvironment("REALM_SMTP_AUTH", "true")
+        .WithEnvironment("REALM_SMTP_USER", smtp.User)
+        .WithEnvironment("REALM_SMTP_PASSWORD", smtp.Password)
+        .WithEnvironment("REALM_SMTP_FROM", builder.AddParameter("keycloak-smtp-from"));
 
     // Attachments in OVHcloud Object Storage (ADR-004). Bucket and CORS rule are set up once by hand (deploy runbook).
     api.WithEnvironment("Storage__ServiceUrl", builder.AddParameter("storage-url"))
@@ -110,6 +124,23 @@ else
         ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/flowstate"));
     // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001).
     api.WithEnvironment("Api__PublicUrl", api.GetEndpoint("http"));
+
+    // Keycloak's emails land in Mailpit (UI on :8125; 8025 is often taken). Persistent like Keycloak, so both share a network.
+    builder.AddContainer("mailpit", "axllent/mailpit", "v1.31.5")
+        .WithHttpEndpoint(port: 8125, targetPort: 8025)
+        .WithEndpoint(targetPort: 1025, name: "smtp")
+        .WithLifetime(ContainerLifetime.Persistent);
+    keycloak
+        // Realm plus dev users (flowstate-users-0.json); the image has the realm only.
+        .WithRealmImport("./Realms")
+        .WithEnvironment("REALM_APP_URL", "http://localhost:5180")
+        .WithEnvironment("REALM_SMTP_HOST", "mailpit")
+        .WithEnvironment("REALM_SMTP_PORT", "1025")
+        .WithEnvironment("REALM_SMTP_STARTTLS", "false")
+        .WithEnvironment("REALM_SMTP_AUTH", "false")
+        .WithEnvironment("REALM_SMTP_USER", "")
+        .WithEnvironment("REALM_SMTP_PASSWORD", "")
+        .WithEnvironment("REALM_SMTP_FROM", "no-reply@flowstate.local");
 
     // Attachments (task 008): Silo (maintained MinIO fork) as the local S3 endpoint; production uses OVHcloud Object Storage (ADR-004).
     // Fixed port and CORS for the SPA origin: browsers upload straight to it with presigned URLs.

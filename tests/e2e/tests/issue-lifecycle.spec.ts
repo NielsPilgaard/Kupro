@@ -38,20 +38,24 @@ test('create, move and close an issue, keyboard first', async ({ page }) => {
   await expect(panel.getByLabel('Title')).toHaveValue(title);
   const key = (await panel.locator('header span.font-mono').textContent())!.trim();
 
-  // Move: drag the card on the board from Todo to In Review.
+  // Move: drag the card on the board from Todo to In Progress. A column near the board's edge would start dnd-kit's
+  // auto-scroll mid-drag and miss the drop.
   await page.keyboard.press('Escape');
   await page.getByRole('tab', { name: 'Board' }).click();
   const card = page.locator(`article[data-key="${key}"]`);
-  const review = page.locator('section[data-state="inReview"]');
+  const target = page.locator('section[data-state="inProgress"]');
   await expect(card).toBeVisible();
   const from = (await card.boundingBox())!;
-  const to = (await review.boundingBox())!;
+  const to = (await target.boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2 + 10, from.y + from.height / 2 + 10, { steps: 4 });
   await page.mouse.move(to.x + to.width / 2, to.y + 60, { steps: 12 });
+  // dnd-kit swallows clicks for 50 ms after a drop; waiting for the save also outlasts that.
+  const moved = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith(`/issues/${key}/move`));
   await page.mouse.up();
-  await expect(review.locator(`article[data-key="${key}"]`)).toBeVisible();
+  await expect(target.locator(`article[data-key="${key}"]`)).toBeVisible();
+  expect((await moved).ok()).toBe(true);
 
   // Close: open the issue, S opens the state picker in the palette, pick Done.
   await card.click();

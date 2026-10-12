@@ -6,7 +6,7 @@
 //   DOKPLOY_URL         — e.g. https://dokploy.yourvps.com
 //   DOKPLOY_COMPOSE_ID  — compose ID visible in the Dokploy dashboard URL
 //   IMAGE_TAG           — e.g. sha-abc1234
-//   IMAGE_PREFIX        — e.g. ghcr.io/owner/flowstate (images are <prefix>-api and <prefix>-web)
+//   IMAGE_PREFIX        — e.g. ghcr.io/owner/flowstate (images are <prefix>-api, -web and -keycloak)
 //
 // The Dokploy deployment log (docker pull/compose output) is streamed into this
 // process's output. On failure its error lines become GitHub annotations and the
@@ -52,6 +52,7 @@ async function saveEnvironment(compose) {
         API_IMAGE: `${IMAGE_PREFIX}-api:${IMAGE_TAG}`,
         MIGRATIONS_IMAGE: `${IMAGE_PREFIX}-api:${IMAGE_TAG}`,
         WEB_IMAGE: `${IMAGE_PREFIX}-web:${IMAGE_TAG}`,
+        KEYCLOAK_IMAGE: `${IMAGE_PREFIX}-keycloak:${IMAGE_TAG}`,
     };
 
     // Replace matching lines in-place to preserve blank lines and ordering.
