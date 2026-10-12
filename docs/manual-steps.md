@@ -55,9 +55,9 @@ Do these in order. Each step links to the runbook section with the exact values.
 | # | Step | Notes |
 |---|---|---|
 | E1 | [ ] Backups + a restore drill you have run yourself. | Waiting on Skoleoverblikket's backup agent ([open gaps](runbooks/deploy.md#open-gaps)). Until then, losing the VPS loses all data. |
-| E2 | [ ] Privacy policy and terms of service, published on the domain. | Keycloak's MCP consent page links to them, and so will sign-up. |
+| E2 | [ ] Fill the placeholders in the draft privacy policy, terms, cookie policy and DPA ([docs/design/public-pages/](design/public-pages/index.html)), have a lawyer review them, and publish them on the domain. | Keycloak's MCP consent page links to them, and so will sign-up. Open items are listed in the drafts' Legal tab. |
 | E3 | [ ] Data processing agreements with the sub-processors in the [ADR-006 register](adr/ADR-006-eu-vendor-policy.md#vendor-register): OVHcloud, Scaleway, PingPuffin. Publish the sub-processor list. | Usually accepted in each vendor's console or terms. Check with your advisor whether anything more is needed. |
-| E4 | [ ] Decide the transcript retention default (now 30 days) and mention audio processing in the privacy policy. | Task 015 privacy section. |
+| E4 | [ ] Approve the code change for no transcript retention: delete transcripts when a meeting ends (decided 2026-10-12; code still keeps them 30 days). Decide whether proposal snippets stay. | Task 015 privacy section. The draft privacy policy already says transcripts end with the meeting. |
 
 ## Before charging
 

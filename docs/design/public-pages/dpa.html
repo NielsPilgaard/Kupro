@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flowstate Data Processing Agreement</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;600;700&family=Fragment+Mono&display=swap">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="lockup" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6.5" width="17" height="5" rx="2.5" fill="currentColor"/><rect x="9" y="13.5" width="20" height="5" rx="2.5" fill="var(--acc)"/><rect x="5" y="20.5" width="12" height="5" rx="2.5" fill="currentColor" opacity=".5"/></svg>flowstate</a>
+  <nav aria-label="Legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="dpa.html" aria-current="page">Data processing</a><a href="subprocessors.html">Sub-processors</a><a href="cookies.html">Cookies</a></nav>
+</div></header>
+
+<div class="page">
+  <aside class="toc"><b>Contents</b><ol>
+    <li><a href="#how">How this agreement works</a></li><li><a href="#choices">Choices in the clauses</a></li>
+    <li><a href="#a">A. The processing</a></li><li><a href="#b">B. Sub-processors</a></li>
+    <li><a href="#c">C. Instructions and security</a></li><li><a href="#d">D. Other terms</a></li><li><a href="#sign">Accepting</a></li></ol></aside>
+
+  <article>
+    <span class="eyebrow">Legal · Databehandleraftale</span>
+    <h1>Data processing agreement</h1>
+    <p class="meta">Version <span class="ph">[1.0]</span>, <span class="ph">[1 December 2026]</span> · <a href="#">Dansk version</a></p>
+    <p class="draft"><b>Draft for legal review.</b> The body is Datatilsynet's standard contractual clauses, unchanged. Only the
+      choices and appendices below are Flowstate's own text.</p>
+
+    <section class="short" aria-labelledby="short-h">
+      <h2 id="short-h">The short version</h2>
+      <ul>
+        <li>You (the customer) are the data controller for everything in your workspace. We are your processor.</li>
+        <li>We process it only to run Flowstate for you, only in the EU, and only with the sub-processors listed here.</li>
+        <li>We give you 30 days' notice before adding a sub-processor, and you can object.</li>
+        <li>We tell you about a personal data breach within 48 hours of finding it.</li>
+        <li>When you leave, you can export everything; then we delete it. <span class="ph">[export not built yet]</span></li>
+      </ul>
+    </section>
+
+    <h2 id="how">How this agreement works</h2>
+    <p>This agreement uses the <b>standard contractual clauses for data processing</b> adopted by the Danish Data Protection Agency
+      (Datatilsynet) under GDPR Article 28(8), in the version published at <span class="ph">[datatilsynet.dk link]</span>. Those clauses
+      (sections 1 to 15) apply word for word between you and <span class="ph">[Company ApS]</span>, CVR <span class="ph">[12345678]</span>.
+      Appendices A to D below complete them.</p>
+    <p>If anything in our <a href="terms.html">terms of service</a> conflicts with this agreement on the protection of personal data,
+      this agreement wins.</p>
+
+    <h2 id="choices">Choices in the clauses</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Clause</th><th>Our choice</th></tr></thead>
+      <tbody>
+        <tr><td>7.3 Sub-processors</td><td>General written authorisation. We notify you of changes at least <b>30 days</b> ahead.</td></tr>
+        <tr><td>10.1 Breach notification</td><td>Without undue delay, and no later than <b>48 hours</b> after we become aware of a breach.</td></tr>
+        <tr><td>11.1 End of processing</td><td>Delete the data after the 30-day export window, unless EU or Danish law requires us to keep it.</td></tr>
+        <tr><td>12 Audit</td><td>A yearly written statement on our security measures, on request. On-site audits as in appendix C.7.</td></tr>
+        <tr><td>15 Contacts</td><td>Our contact: <span class="ph">[name, privacy@domain]</span>. Yours: the workspace owner's email unless you tell us otherwise.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="a">Appendix A · The processing</h2>
+    <h3>A.1 Purpose</h3>
+    <p>To provide the Flowstate service to the data controller: issue tracking, sprints, the delivery plan, the API, CLI and MCP
+      access, GitHub integration, email notifications, and, when the controller uses it, the meeting agent.</p>
+    <h3>A.2 Nature of the processing</h3>
+    <p>Storage, hosting, backup, search, display and transmission of workspace content; sending emails; transcription of meeting audio
+      and generation of suggested issue changes from the transcript.</p>
+    <h3>A.3 Types of personal data</h3>
+    <ul>
+      <li>Names, email addresses, roles and capacity (hours per week) of members and guests.</li>
+      <li>Any personal data the controller's users put into issues, comments, attachments and descriptions.</li>
+      <li>Meeting audio (in memory only, seconds), transcripts (until the meeting ends), and suggestion snippets of at most 1,000 characters.</li>
+      <li>Activity history: who changed what, when, and through which surface (web, CLI, MCP, meeting agent).</li>
+      <li>Technical data: IP addresses and request logs.</li>
+    </ul>
+    <p>Flowstate is not designed for special categories of data (Article 9) or data about criminal convictions. The controller should not put such data in a workspace.</p>
+    <h3>A.4 Data subjects</h3>
+    <p>The controller's employees, contractors and guests who use Flowstate; people mentioned in workspace content; people who speak in a meeting where the meeting agent runs.</p>
+    <h3>A.5 Duration</h3>
+    <p>As long as the controller has a Flowstate workspace, plus the export and deletion periods in C.4.</p>
+
+    <h2 id="b">Appendix B · Sub-processors</h2>
+    <p>The controller authorises these sub-processors. The current list is also published on the <a href="subprocessors.html">sub-processors page</a>.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Sub-processor</th><th>Address</th><th>Processing</th><th>Location</th></tr></thead>
+      <tbody>
+        <tr><td>OVH SAS (OVHcloud)</td><td><span class="ph">[2 rue Kellermann, 59100 Roubaix, France]</span></td><td>Servers, database, file storage, backups</td><td><span class="ph">[Gravelines / Limburg]</span>, EU</td></tr>
+        <tr><td>Scaleway SAS</td><td><span class="ph">[8 rue de la Ville l'Évêque, 75008 Paris, France]</span></td><td>Transactional email. Meeting agent transcription and suggestions (only when used)</td><td>Paris, France</td></tr>
+      </tbody>
+    </table></div>
+    <p>Billing vendors (Alunta, card acquirer) process data we control about the paying company, not workspace content, so they are not sub-processors under this agreement.</p>
+
+    <h2 id="c">Appendix C · Instructions and security</h2>
+    <h3>C.1 Instructions</h3>
+    <p>The processor processes personal data only to provide Flowstate as described in A.1, as the controller configures it in the
+      product (for example: which members have access, whether the meeting agent runs, suggest or full auto mode), and as the controller
+      instructs in writing.</p>
+    <h3>C.2 Security measures</h3>
+    <ul>
+      <li><b>Encryption</b>: TLS for all traffic. Disks and backups encrypted at rest <span class="ph">[confirm OVHcloud settings]</span>.</li>
+      <li><b>Tenant separation</b>: every workspace-owned record carries the workspace id; a database query filter limits every request to the signed-in workspace, and automated tests check it.</li>
+      <li><b>Access</b>: production access limited to <span class="ph">[named people]</span>, with SSH keys and two-factor authentication. Admin consoles behind separate accounts with 2FA.</li>
+      <li><b>Authentication</b>: self-hosted Keycloak; hashed passwords; brute-force protection; revocable API and agent tokens.</li>
+      <li><b>Meeting audio</b>: held in memory only, never written to disk or logs; transcripts deleted when the meeting ends.</li>
+      <li><b>Backups</b>: nightly database backups and continuous WAL archiving to EU object storage, kept <span class="ph">[35]</span> days; restore tested monthly.</li>
+      <li><b>Monitoring</b>: self-hosted logs, traces and metrics kept 30 days; alerts on errors and downtime.</li>
+      <li><b>Development</b>: code review, automated tests and dependency updates; secrets kept out of the source code.</li>
+    </ul>
+    <h3>C.3 Assistance to the controller</h3>
+    <p>Most data-subject requests can be handled in the product (edit, export, delete). For the rest, we help within 14 days of a
+      written request. We also help with impact assessments and prior consultations with information about the processing.</p>
+    <h3>C.4 Storage period and deletion</h3>
+    <ul>
+      <li>Meeting audio: seconds, in memory. Transcripts: until the meeting ends.</li>
+      <li>Workspace content: until the controller deletes it. After the subscription ends, read-only and exportable for 30 days, then deleted.</li>
+      <li>Backups: overwritten within <span class="ph">[35]</span> days after deletion.</li>
+    </ul>
+    <h3>C.5 Location</h3>
+    <p>Processing takes place in the processor's and sub-processors' facilities in the EU listed in appendix B, and by the processor's staff working from the EU.</p>
+    <h3>C.6 Transfers to third countries</h3>
+    <p>No transfers outside the EU/EEA. Any future transfer requires the controller's prior written instruction and a valid transfer basis under GDPR chapter V.</p>
+    <h3>C.7 Audits of the processor</h3>
+    <p>Once a year, on request, we send a written statement describing our security measures and any incidents. The controller may
+      carry out or commission an on-site or remote audit with 30 days' notice, at its own cost, no more than once a year unless a
+      breach or a supervisory authority gives reason.</p>
+    <h3>C.8 Audits of sub-processors</h3>
+    <p>We review each sub-processor's certifications and data processing terms before use and yearly after that (for example ISO 27001 for OVHcloud and Scaleway).</p>
+
+    <h2 id="d">Appendix D · Other terms</h2>
+    <ul>
+      <li>Liability under this agreement follows section 11 of the <a href="terms.html#t11">terms of service</a>, without limiting either party's liability towards data subjects or authorities under GDPR.</li>
+      <li>Assistance that goes beyond what the product does on its own and takes more than <span class="ph">[2]</span> hours a year may be charged at our usual hourly rate, agreed in advance.</li>
+      <li>This agreement ends when the main agreement ends and all personal data is deleted or returned.</li>
+    </ul>
+
+    <h2 id="sign">Accepting</h2>
+    <p>This agreement is accepted when a workspace owner accepts the terms of service. If you need a signed copy for your records,
+      write to <span class="ph">[privacy@domain]</span> and we send one for e-signature.</p>
+  </article>
+</div>
+
+<footer class="foot"><div class="foot-in"><span><span class="ph">[Company ApS]</span> · CVR <span class="ph">[12345678]</span></span>
+  <a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="subprocessors.html">Sub-processors</a><a href="cookies.html">Cookies</a></div></footer>
+</body>
+</html>

@@ -1,0 +1,67 @@
+/* Legal pages: one reading column (~68ch) with a contents rail on wide screens. Kobber tokens from docs/design-guide.md.
+   Google Fonts are linked from each page for review only; the real site self-hosts them (ADR-006). */
+:root{
+  --bg:#F2F4F3; --panel:#FFFFFF; --sunk:#E7ECEA; --line:#D3DBD8;
+  --ink:#16201D; --mute:#56655F; --acc:#2C7A6A; --acc-ink:#246859; --warn:#A9801A;
+  --f-display:"Bricolage Grotesque", system-ui, sans-serif;
+  --f-ui:"Hanken Grotesk", system-ui, sans-serif;
+  --f-mono:"Fragment Mono", ui-monospace, Consolas, monospace;
+  --r1:5px; --r2:7px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1514; --panel:#161F1D; --sunk:#0B100F; --line:#25322E;
+  --ink:#E2ECE8; --mute:#8FA29B; --acc:#5BB8A3; --acc-ink:#6CC4AF; --warn:#E3BC55; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F1514; --panel:#161F1D; --sunk:#0B100F; --line:#25322E;
+  --ink:#E2ECE8; --mute:#8FA29B; --acc:#5BB8A3; --acc-ink:#6CC4AF; --warn:#E3BC55; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{scroll-padding-top:20px}
+body{margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.65 var(--f-ui)}
+a{color:var(--acc-ink); text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--acc-ink); outline-offset:1px}
+h1,h2,h3{text-wrap:balance; line-height:1.2; margin:0}
+p,ul,ol{margin:0}
+
+.top{border-bottom:1px solid var(--line); background:var(--bg)}
+.top-in{max-width:1120px; margin:0 auto; padding-inline:clamp(16px,3vw,32px); padding-block:14px; display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+.lockup{display:flex; align-items:center; gap:9px; font:700 19px var(--f-display); letter-spacing:-.01em; color:var(--ink); text-decoration:none}
+.lockup svg{width:26px; height:26px}
+.top nav{display:flex; flex-wrap:wrap; gap:4px 16px; font-size:14px; margin-left:auto}
+.top nav a{color:var(--mute); text-decoration:none}
+.top nav a[aria-current="page"]{color:var(--ink); font-weight:600}
+
+.page{max-width:1120px; margin:0 auto; padding-inline:clamp(16px,3vw,32px); padding-block:40px 80px;
+  display:grid; grid-template-columns:220px minmax(0,1fr); gap:56px; align-items:start}
+@media (max-width:860px){ .page{grid-template-columns:1fr; gap:24px} .toc{position:static!important} }
+.toc{position:sticky; top:20px; font-size:13.5px; display:flex; flex-direction:column; gap:8px}
+.toc b{font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); font-weight:600; font-family:var(--f-mono)}
+.toc ol{list-style:none; padding:0; display:flex; flex-direction:column; gap:6px; border-left:1px solid var(--line)}
+.toc a{color:var(--mute); text-decoration:none; padding-left:12px; display:block}
+.toc a:hover{color:var(--ink)}
+
+article{max-width:68ch; display:flex; flex-direction:column; gap:18px; min-width:0}
+.eyebrow{font:11.5px var(--f-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--mute)}
+article h1{font:700 clamp(30px,4.4vw,42px)/1.1 var(--f-display); letter-spacing:-.02em}
+.meta{font-size:14px; color:var(--mute)}
+.short{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:18px 20px; display:flex; flex-direction:column; gap:10px}
+.short h2{font:600 15px var(--f-ui); margin:0}
+.short ul{padding-left:18px; display:flex; flex-direction:column; gap:6px; font-size:15px}
+article h2{font:700 22px var(--f-display); letter-spacing:-.01em; margin-top:22px; padding-top:22px; border-top:1px solid var(--line)}
+article h3{font:600 16px var(--f-ui); margin-top:6px}
+article ul, article ol{padding-left:20px; display:flex; flex-direction:column; gap:6px}
+.tbl{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r2); background:var(--panel)}
+table{border-collapse:collapse; width:100%; font-size:14px}
+th,td{text-align:left; vertical-align:top; padding:9px 12px; border-bottom:1px solid var(--line)}
+th{background:var(--sunk); font-size:12.5px; color:var(--mute); font-weight:600; white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.mono{font-family:var(--f-mono); font-size:.92em}
+.ph{background:color-mix(in srgb, var(--warn) 24%, transparent); border-radius:3px; padding:0 3px; font-family:var(--f-mono); font-size:.88em}
+.draft{border:1px dashed var(--warn); border-radius:var(--r2); padding:10px 14px; font-size:13.5px; color:var(--mute)}
+.draft b{color:var(--ink)}
+.callout{border-left:2px solid var(--acc-ink); padding:2px 0 2px 14px; color:var(--ink)}
+
+.foot{border-top:1px solid var(--line)}
+.foot-in{max-width:1120px; margin:0 auto; padding-inline:clamp(16px,3vw,32px); padding-block:22px 30px; display:flex; flex-wrap:wrap; gap:8px 22px; font-size:13px; color:var(--mute)}
+.foot-in a{color:var(--mute)}

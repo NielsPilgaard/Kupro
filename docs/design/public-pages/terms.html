@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flowstate Terms of Service</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;600;700&family=Fragment+Mono&display=swap">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="lockup" href="index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6.5" width="17" height="5" rx="2.5" fill="currentColor"/><rect x="9" y="13.5" width="20" height="5" rx="2.5" fill="var(--acc)"/><rect x="5" y="20.5" width="12" height="5" rx="2.5" fill="currentColor" opacity=".5"/></svg>flowstate</a>
+  <nav aria-label="Legal"><a href="privacy.html">Privacy</a><a href="terms.html" aria-current="page">Terms</a><a href="dpa.html">Data processing</a><a href="subprocessors.html">Sub-processors</a><a href="cookies.html">Cookies</a></nav>
+</div></header>
+
+<div class="page">
+  <aside class="toc"><b>Contents</b><ol>
+    <li><a href="#t1">1. Agreement</a></li><li><a href="#t2">2. Accounts and workspaces</a></li><li><a href="#t3">3. Agents and tokens</a></li>
+    <li><a href="#t4">4. Meeting agent</a></li><li><a href="#t5">5. Your data</a></li><li><a href="#t6">6. Acceptable use</a></li>
+    <li><a href="#t7">7. Plans and payment</a></li><li><a href="#t8">8. Availability and changes</a></li><li><a href="#t9">9. Ending</a></li>
+    <li><a href="#t10">10. Open source</a></li><li><a href="#t11">11. Liability</a></li><li><a href="#t12">12. Changes to terms</a></li>
+    <li><a href="#t13">13. Law and disputes</a></li></ol></aside>
+
+  <article>
+    <span class="eyebrow">Legal</span>
+    <h1>Terms of service</h1>
+    <p class="meta">Last updated <span class="ph">[1 December 2026]</span> · <a href="#">Dansk version</a></p>
+    <p class="draft"><b>Draft for legal review.</b> Written for business customers only. Placeholders are highlighted.</p>
+
+    <section class="short" aria-labelledby="short-h">
+      <h2 id="short-h">The short version</h2>
+      <ul>
+        <li>Flowstate is for businesses. You own your data; we host it in the EU and give it back when you leave.</li>
+        <li>You are responsible for what your people and your agents do with their access.</li>
+        <li>The meeting agent suggests changes. Tell people in the meeting it is listening.</li>
+        <li>Pay monthly or yearly, cancel any time. No refunds for part periods.</li>
+        <li>Danish law, Copenhagen courts.</li>
+      </ul>
+    </section>
+
+    <h2 id="t1">1. Agreement</h2>
+    <p>These terms are an agreement between <span class="ph">[Company ApS]</span>, CVR <span class="ph">[12345678]</span> ("we") and the company or
+      organisation that creates or pays for a Flowstate workspace ("you"). The person who accepts them confirms they may bind that
+      organisation. Flowstate is offered to businesses only; consumer protection rules for private buyers don't apply.</p>
+    <p>Our <a href="dpa.html">data processing agreement</a> is part of these terms. Our <a href="privacy.html">privacy policy</a> explains how we handle
+      the personal data we control.</p>
+
+    <h2 id="t2">2. Accounts and workspaces</h2>
+    <ul>
+      <li>A <b>workspace</b> belongs to you. Its owners invite members and guests, set roles and can delete it.</li>
+      <li>Each person needs their own account. Keep sign-in details private and turn on two-factor authentication where we offer it.</li>
+      <li>Tell us at <span class="ph">[security@domain]</span> straight away if you think an account or token has been misused.</li>
+    </ul>
+
+    <h2 id="t3">3. Agents and tokens</h2>
+    <p>You can let software agents use Flowstate through the API, the CLI or MCP with tokens you create. An agent acts with the
+      permissions of the person or workspace that created its token. You are responsible for what your agents do, the same as for
+      your members. Revoke a token to stop an agent at once. We may rate-limit or pause a token that harms the service for others,
+      and we tell you when we do.</p>
+
+    <h2 id="t4">4. Meeting agent</h2>
+    <ul>
+      <li>The meeting agent listens only during a session someone in your workspace starts. It suggests issue changes; in suggest mode
+        nothing changes until a person approves it.</li>
+      <li>If an admin turns on full auto, changes are applied without approval and can be undone. You decide which kinds of change are allowed.</li>
+      <li><b>You must tell everyone in a meeting that it is being processed</b>, and get consent where the law where you are requires it.
+        Don't use it in meetings where recording would be unlawful or where participants have objected.</li>
+      <li>Transcription and suggestions can be wrong, especially with names, accents and mixed languages. Check what you approve.</li>
+      <li>Audio is not stored. Transcripts are deleted when the meeting ends. Details are in the <a href="privacy.html#meetings">privacy policy</a>.</li>
+    </ul>
+
+    <h2 id="t5">5. Your data</h2>
+    <p>Everything you and your agents put into a workspace is yours. You give us the right to host, copy, process and show it only
+      as needed to run Flowstate for you. We don't use it for anything else, and we don't use it to train AI models.</p>
+    <p>Owners can export a workspace at any time, in JSON and CSV, through the app, the API or the CLI. <span class="ph">[export not built yet]</span></p>
+
+    <h2 id="t6">6. Acceptable use</h2>
+    <p>Don't use Flowstate to:</p>
+    <ul>
+      <li>break the law, or store content you have no right to store;</li>
+      <li>upload malware, or try to reach other customers' data or our systems beyond your access;</li>
+      <li>overload the service on purpose, or get around rate limits, seat counts or plan limits;</li>
+      <li>resell the hosted service without a written agreement with us.</li>
+    </ul>
+    <p>Security research is welcome within our <span class="ph">[security policy]</span>. We may suspend access that puts the service or other
+      customers at risk. Where we can, we warn you first and give you time to fix it.</p>
+
+    <h2 id="t7">7. Plans and payment</h2>
+    <ul>
+      <li>Prices are on our pricing page and are in <span class="ph">[EUR/DKK]</span> excluding VAT. We add VAT where it applies.</li>
+      <li>Paid plans are billed per seat. A seat is an active member with the Owner or Member role. Guests and agents don't need a seat,
+        within the limits on the pricing page.</li>
+      <li>You pay in advance for each month or year. Adding seats mid-period is charged pro rata; removing seats takes effect at the next renewal.</li>
+      <li>Subscriptions renew automatically until cancelled. You can cancel in the app; it ends at the close of the period you paid for.
+        We don't refund part periods.</li>
+      <li>Payments are handled by Alunta and <span class="ph">[OnPay / QuickPay]</span>. If a payment fails we email you; after
+        <span class="ph">[14]</span> days unpaid we may make the workspace read-only until it is paid.</li>
+      <li>We announce price changes at least 60 days ahead. They apply from your next renewal after that.</li>
+      <li>The free plan may be changed or limited with 60 days' notice.</li>
+    </ul>
+
+    <h2 id="t8">8. Availability and changes to the service</h2>
+    <p>We aim to keep Flowstate fast and available and post incidents on our <span class="ph">[status page]</span>. We don't promise a
+      specific uptime on standard plans. We announce planned maintenance that may interrupt the service at least 48 hours ahead.</p>
+    <p>Flowstate changes as we build it. We won't remove a core feature you rely on (issues, sprints, delivery plan, export, the API)
+      without 90 days' notice.</p>
+
+    <h2 id="t9">9. Ending</h2>
+    <ul>
+      <li>You can stop at any time by cancelling and deleting your workspace.</li>
+      <li>We can end the agreement with 90 days' notice, or at once if you seriously breach these terms and don't fix it within 14 days of our notice.</li>
+      <li>After a subscription ends, the workspace stays read-only and exportable for 30 days. Then we delete it. Backups roll off within
+        <span class="ph">[35]</span> days after that.</li>
+    </ul>
+
+    <h2 id="t10">10. Open source</h2>
+    <p>Flowstate's source code is published under the GNU Affero General Public License v3. These terms cover our hosted service, not
+      the code. You can run the code yourself under the AGPL; if you do, these terms don't apply to that installation.
+      The Flowstate name and logo are ours; don't use them for your own hosted service without permission.</p>
+
+    <h2 id="t11">11. Liability</h2>
+    <p>Each party's total liability under this agreement is limited to the fees you paid us in the 12 months before the claim.
+      Neither party is liable for indirect loss, such as lost profit, lost revenue or lost goodwill. These limits don't apply to
+      breaches of confidentiality, your payment obligations, or damage caused by gross negligence or intent.</p>
+    <p>On the free plan, Flowstate is provided as is, and our liability is limited to <span class="ph">[EUR 100]</span>.</p>
+    <p>Neither party is responsible for delays caused by events outside its reasonable control, such as major internet or power
+      failures, war, or actions by authorities.</p>
+
+    <h2 id="t12">12. Changes to these terms</h2>
+    <p>We email workspace owners at least 30 days before changes that affect you take effect. If you don't agree, you can cancel before
+      then and we refund any prepaid fees for the remaining period. Small corrections and clarifications take effect when published.</p>
+
+    <h2 id="t13">13. Law and disputes</h2>
+    <p>Danish law governs this agreement, excluding its conflict-of-laws rules. We'll try to settle disagreements by talking first. If
+      that fails, disputes go to the Copenhagen City Court (Københavns Byret) as the first instance.</p>
+    <p>Questions about these terms: <span class="ph">[hello@domain]</span>.</p>
+  </article>
+</div>
+
+<footer class="foot"><div class="foot-in"><span><span class="ph">[Company ApS]</span> · CVR <span class="ph">[12345678]</span></span>
+  <a href="privacy.html">Privacy</a><a href="dpa.html">Data processing</a><a href="subprocessors.html">Sub-processors</a><a href="cookies.html">Cookies</a></div></footer>
+</body>
+</html>

@@ -1,0 +1,788 @@
+<title>Flowstate Public Pages</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Hanken+Grotesk:wght@400;500;600;700&family=Fragment+Mono&display=swap">
+<style>
+/* Look book: picker chrome (tabs + notes) around full-width page mocks. Kobber tokens from docs/design-guide.md.
+   Fonts load from Google here for review only; the real site self-hosts them (ADR-006). */
+:root{
+  --bg:#F2F4F3; --panel:#FFFFFF; --sunk:#E7ECEA; --line:#D3DBD8;
+  --ink:#16201D; --mute:#56655F; --acc:#2C7A6A; --acc-ink:#246859; --on-acc:#FFFFFF;
+  --side:#1C2A26; --side-ink:#CFE0DA; --prog:#B5651F; --rev:#6553A8; --ok:#3F8A3C; --warn:#A9801A; --bad:#B3393B;
+  --sel:color-mix(in srgb, var(--acc) 13%, transparent);
+  --float:0 24px 60px -12px rgb(0 0 0 / .35);
+  --f-display:"Bricolage Grotesque", system-ui, sans-serif;
+  --f-ui:"Hanken Grotesk", system-ui, sans-serif;
+  --f-mono:"Fragment Mono", ui-monospace, Consolas, monospace;
+  --r1:5px; --r2:7px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1514; --panel:#161F1D; --sunk:#0B100F; --line:#25322E;
+  --ink:#E2ECE8; --mute:#8FA29B; --acc:#5BB8A3; --acc-ink:#6CC4AF; --on-acc:#08130F;
+  --side:#0B100F; --side-ink:#B7CAC3; --prog:#E08E52; --rev:#A194E6; --ok:#78C36F; --warn:#E3BC55; --bad:#EE6E6E;
+  --float:0 24px 60px -12px rgb(0 0 0 / .6); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F1514; --panel:#161F1D; --sunk:#0B100F; --line:#25322E;
+  --ink:#E2ECE8; --mute:#8FA29B; --acc:#5BB8A3; --acc-ink:#6CC4AF; --on-acc:#08130F;
+  --side:#0B100F; --side-ink:#B7CAC3; --prog:#E08E52; --rev:#A194E6; --ok:#78C36F; --warn:#E3BC55; --bad:#EE6E6E;
+  --float:0 24px 60px -12px rgb(0 0 0 / .6); color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg); color:var(--ink); font-family:var(--f-ui); font-size:15px; line-height:1.55; margin:0}
+a{color:var(--acc-ink)}
+:focus-visible{outline:2px solid var(--acc-ink); outline-offset:1px}
+h1,h2,h3,h4{text-wrap:balance; margin:0; line-height:1.15}
+p{margin:0}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px; margin:0 auto; padding-inline:clamp(16px,3vw,36px); padding-block:28px 72px; display:flex; flex-direction:column; gap:28px}
+
+/* ---------- picker chrome ---------- */
+.lb-head{display:flex; flex-direction:column; gap:12px}
+.lockup{display:flex; align-items:center; gap:10px; font-family:var(--f-display); font-weight:700; font-size:20px; letter-spacing:-.01em}
+.lockup svg{width:28px; height:28px; flex:none}
+.eyebrow{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute)}
+.lb-head h1{font-family:var(--f-display); font-size:clamp(28px,4vw,40px); font-weight:700; letter-spacing:-.02em}
+.lede{max-width:72ch; color:var(--mute)}
+.picks{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; margin-top:6px}
+.pick{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:12px 14px; display:flex; flex-direction:column; gap:4px; min-width:0}
+.pick b{font-size:13px}
+.pick span{font-size:13px; color:var(--mute)}
+.tabs{display:flex; flex-wrap:wrap; gap:4px; background:var(--sunk); border-radius:var(--r2); padding:4px; position:sticky; top:env(safe-area-inset-top,0px); z-index:5}
+.tabs button{font:600 13px/1 var(--f-ui); color:var(--mute); background:none; border:0; border-radius:var(--r1); padding:9px 12px; cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--panel); color:var(--ink); box-shadow:0 1px 0 var(--line)}
+.panel{display:flex; flex-direction:column; gap:18px}
+.note{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 28px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:16px 18px}
+.note h2{font-family:var(--f-display); font-size:22px; font-weight:700; grid-column:1/-1}
+.note p, .note li{font-size:14px; color:var(--mute)}
+.note ul{margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px}
+.note strong{color:var(--ink)}
+@media (max-width:760px){ .note{grid-template-columns:1fr} }
+.frame{border:1px solid var(--line); border-radius:10px; overflow:hidden; box-shadow:var(--float)}
+.frame-bar{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--sunk); border-bottom:1px solid var(--line); font:12px var(--f-mono); color:var(--mute)}
+.frame-bar i{width:9px; height:9px; border-radius:50%; background:var(--line); display:inline-block}
+.frame-bar span{margin-left:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+/* ---------- shared site parts (inside frames) ---------- */
+.site{background:var(--bg); color:var(--ink); container-type:inline-size}
+.s-in{max-width:1080px; margin:0 auto; padding-inline:clamp(16px,4cqi,40px)}
+.s-nav{display:flex; align-items:center; gap:20px; padding-block:16px; border-bottom:1px solid var(--line)}
+.s-nav .lockup{font-size:19px}
+.s-nav nav{display:flex; gap:18px; font-size:14px; color:var(--mute); margin-left:8px}
+.s-nav .sp{flex:1}
+@container (max-width:720px){ .s-nav nav{display:none} }
+.btn{display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--r1); font:600 14px var(--f-ui); text-decoration:none; border:1px solid transparent; white-space:nowrap; cursor:pointer}
+.btn.pri{background:var(--acc); color:var(--on-acc)}
+.btn.sec{background:var(--panel); color:var(--ink); border-color:var(--line)}
+.btn.ghost{color:var(--mute); padding:0 6px}
+.btn.sm{height:30px; padding:0 12px; font-size:13px}
+kbd{font:11px var(--f-mono); border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:1px 5px; color:var(--mute); background:var(--panel)}
+.hero{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,6fr); gap:clamp(24px,5cqi,56px); align-items:center; padding-block:clamp(36px,7cqi,76px)}
+@container (max-width:860px){ .hero{grid-template-columns:1fr} }
+.hero h1{font-family:var(--f-display); font-weight:700; font-size:clamp(36px,6.2cqi,64px); letter-spacing:-.025em; line-height:1.02}
+.hero .sub{font-size:17px; color:var(--mute); margin-top:18px; max-width:46ch}
+.hero .ctas{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px; align-items:center}
+.hero .fine{font-size:13px; color:var(--mute); margin-top:14px}
+.sec{padding-block:clamp(36px,6cqi,64px); border-top:1px solid var(--line)}
+.sec-h{display:flex; flex-direction:column; gap:8px; max-width:60ch; margin-bottom:26px}
+.sec-h h2{font-family:var(--f-display); font-weight:700; font-size:clamp(26px,3.6cqi,36px); letter-spacing:-.02em}
+.sec-h p{color:var(--mute)}
+.grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+@container (max-width:760px){ .grid3{grid-template-columns:1fr} }
+.feat{display:flex; flex-direction:column; gap:8px}
+.feat h3{font-size:16px; font-weight:600}
+.feat p{font-size:14px; color:var(--mute)}
+.feat .ico{width:34px; height:34px; border-radius:var(--r1); background:var(--sel); color:var(--acc-ink); display:grid; place-items:center}
+.feat .ico svg{width:18px; height:18px}
+.eu{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:28px; align-items:start}
+@container (max-width:760px){ .eu{grid-template-columns:1fr} }
+.eu ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px}
+.eu li{display:flex; gap:10px; font-size:14px}
+.eu li svg{flex:none; width:16px; height:16px; color:var(--acc-ink); margin-top:3px}
+table.vendors{width:100%; border-collapse:collapse; font-size:13.5px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); overflow:hidden}
+table.vendors th, table.vendors td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+table.vendors th{font-size:12px; color:var(--mute); font-weight:600; background:var(--sunk)}
+table.vendors tr:last-child td{border-bottom:0}
+.price-strip{display:flex; flex-wrap:wrap; gap:14px 28px; align-items:baseline; justify-content:space-between; background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:22px 24px}
+.price-strip .big{font-family:var(--f-display); font-size:30px; font-weight:700; letter-spacing:-.02em}
+.price-strip p{color:var(--mute); font-size:14px}
+.s-foot{border-top:1px solid var(--line); padding-block:28px 34px; display:grid; grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr)); gap:20px; font-size:13px; color:var(--mute)}
+.s-foot h4{font-size:12px; color:var(--ink); font-weight:600; margin-bottom:8px}
+.s-foot ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.s-foot a{color:var(--mute); text-decoration:none}
+.s-foot a:hover{color:var(--ink)}
+@container (max-width:720px){ .s-foot{grid-template-columns:1fr 1fr} .s-foot > :first-child{grid-column:1/-1} }
+.ph{background:color-mix(in srgb, var(--warn) 22%, transparent); color:var(--ink); border-radius:3px; padding:0 3px; font-family:var(--f-mono); font-size:.9em}
+
+/* status ring */
+.ring{width:14px; height:14px; flex:none}
+
+/* ---------- variant A: delivery plan mock ---------- */
+.plan{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); overflow:hidden; font-size:12px; box-shadow:var(--float)}
+.plan-top{display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line)}
+.plan-top b{font-size:13px}
+.seg{display:flex; background:var(--sunk); border-radius:var(--r1); padding:2px; margin-left:auto}
+.seg span{padding:3px 9px; border-radius:4px; color:var(--mute)}
+.seg span.on{background:var(--panel); color:var(--ink); font-weight:600}
+.pgrid{display:grid; grid-template-columns:96px repeat(6,minmax(0,1fr)); position:relative}
+.pgrid .mh{font:11px var(--f-mono); color:var(--mute); padding:6px 6px; border-bottom:1px solid var(--line); border-left:1px solid color-mix(in srgb, var(--line) 70%, transparent)}
+.pgrid .rh{grid-column:1; padding:8px 8px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:2px; background:var(--panel)}
+.pgrid .rh b{display:flex; align-items:center; gap:6px; font-size:12px}
+.pgrid .rh small{color:var(--mute); font-size:11px}
+.sq{width:9px; height:9px; border-radius:2px; flex:none}
+.track{grid-column:2/-1; display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:5px 0; padding:8px 0; border-bottom:1px solid var(--line);
+  background-image:linear-gradient(to right, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 1px); background-size:calc(100%/6) 100%}
+.card{height:21px; margin:0 3px; border:1.5px solid var(--pc); border-radius:var(--r1); background:var(--panel); padding:0 6px; display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; position:relative; font-size:11.5px}
+.card::after{content:""; position:absolute; left:0; bottom:0; height:2.5px; width:var(--done,0%); background:var(--pc)}
+.card.epic{font-weight:600}
+.card.bad{border-color:var(--bad); outline:1.5px dashed var(--bad); outline-offset:2px}
+.card .bang{margin-left:auto; color:var(--bad); font-weight:700}
+.ms{position:absolute; top:0; bottom:0; border-left:1.5px dashed var(--acc-ink); pointer-events:none}
+.ms span{position:absolute; top:4px; left:4px; font:700 10.5px var(--f-ui); color:var(--acc-ink); background:var(--panel); padding:0 3px; white-space:nowrap}
+.cap{grid-column:2/-1; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); align-items:end; height:58px; padding:6px 0 8px}
+.cap div{display:flex; justify-content:center; align-items:end; gap:3px; height:100%}
+.cap i{width:9px; display:block; border-radius:2px 2px 0 0}
+.cap i.d{background:var(--ok)}
+.cap i.d.over{background:var(--bad)}
+.cap i.s{border:1.5px solid var(--mute); border-bottom:0}
+.caplab{grid-column:1; padding:8px; color:var(--mute); font-size:11px; display:flex; align-items:end}
+
+/* ---------- variant B: dark, agents ---------- */
+.site.b{
+  --bg:#0F1514; --panel:#161F1D; --sunk:#0B100F; --line:#25322E; --ink:#E2ECE8; --mute:#8FA29B;
+  --acc:#5BB8A3; --acc-ink:#6CC4AF; --on-acc:#08130F; --prog:#E08E52; --rev:#A194E6; --ok:#78C36F; --bad:#EE6E6E; --warn:#E3BC55;
+  --sel:color-mix(in srgb, #5BB8A3 13%, transparent); color-scheme:dark}
+.term{background:var(--sunk); border:1px solid var(--line); border-radius:var(--r2); font:12.5px/1.65 var(--f-mono); overflow:hidden; box-shadow:var(--float); min-width:0}
+.term-bar{display:flex; gap:6px; padding:9px 12px; border-bottom:1px solid var(--line); color:var(--mute); font-size:11px}
+.term pre{margin:0; padding:14px 16px; overflow-x:auto; color:var(--ink)}
+.term .p{color:var(--acc-ink)} .term .c{color:var(--mute)} .term .k{color:var(--prog)} .term .r{color:var(--rev)} .term .g{color:var(--ok)}
+.toast{display:flex; align-items:center; gap:10px; background:var(--ink); color:var(--bg); border-radius:var(--r2); padding:10px 12px; font-size:13px; max-width:440px; box-shadow:var(--float)}
+.av-agent{width:22px; height:22px; border-radius:6px; background:var(--bg); color:var(--ink); font:10px var(--f-mono); display:grid; place-items:center; flex:none}
+.parity{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+@container (max-width:860px){ .parity{grid-template-columns:1fr} }
+.par{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:14px; display:flex; flex-direction:column; gap:10px; min-width:0}
+.par .eyebrow{font-size:10.5px}
+.par code{font:12.5px/1.6 var(--f-mono); display:block; white-space:pre-wrap; word-break:break-word; color:var(--ink)}
+.palette{border:1px solid var(--line); border-radius:var(--r2); overflow:hidden; font-size:13px}
+.palette .q{padding:8px 10px; border-bottom:1px solid var(--line); color:var(--ink)}
+.palette .it{padding:7px 10px; display:flex; justify-content:space-between; gap:8px; color:var(--mute)}
+.palette .it.on{background:var(--sel); color:var(--ink)}
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+@container (max-width:640px){ .stats{grid-template-columns:1fr} }
+.stat{border-top:2px solid var(--acc-ink); padding-top:12px; display:flex; flex-direction:column; gap:4px}
+.stat b{font-family:var(--f-display); font-size:30px; font-weight:700; letter-spacing:-.02em}
+.stat span{font-size:14px; color:var(--mute)}
+
+/* ---------- variant C: meeting room ---------- */
+.room{display:flex; flex-direction:column; gap:12px; min-width:0}
+.listen{display:flex; align-items:center; gap:10px; font-size:13px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:10px 12px}
+.dot{width:8px; height:8px; border-radius:50%; background:var(--bad); flex:none; animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){ .dot{animation:none} }
+.listen .sp{flex:1}
+.utt{font-size:14px; padding:10px 12px; border-left:2px solid var(--line); color:var(--mute)}
+.utt b{color:var(--ink); font-weight:600}
+.utt mark{background:color-mix(in srgb, var(--acc) 20%, transparent); color:var(--ink); border-radius:3px; padding:0 2px}
+.prop{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:12px 14px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--float)}
+.prop-h{display:flex; align-items:center; gap:8px; font-size:13px; flex-wrap:wrap}
+.prop-h .key{font:12px var(--f-mono); color:var(--mute)}
+.prop-h .conf{margin-left:auto; font:11px var(--f-mono); color:var(--mute)}
+.diff{display:flex; align-items:center; gap:8px; font-size:13px; flex-wrap:wrap}
+.chip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:999px; padding:2px 9px; font-size:12px}
+.prop .acts{display:flex; gap:8px; flex-wrap:wrap}
+.privacy-band{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; border:1px solid var(--line); border-radius:var(--r2); background:var(--panel); overflow:hidden}
+.privacy-band > div{padding:18px 20px; display:flex; flex-direction:column; gap:6px; border-right:1px solid var(--line)}
+.privacy-band > div:last-child{border-right:0}
+.privacy-band b{font-size:15px}
+.privacy-band span{font-size:13.5px; color:var(--mute)}
+@container (max-width:760px){ .privacy-band{grid-template-columns:1fr} .privacy-band > div{border-right:0; border-bottom:1px solid var(--line)} }
+.big-quote{font-family:var(--f-display); font-size:clamp(22px,3cqi,30px); font-weight:600; letter-spacing:-.015em; max-width:30ch}
+
+/* ---------- pricing tab ---------- */
+.models{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px}
+@media (max-width:900px){ .models{grid-template-columns:1fr} }
+.model{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:18px 20px; display:flex; flex-direction:column; gap:14px; min-width:0}
+.model.rec{border-color:var(--acc-ink); box-shadow:0 0 0 1px var(--acc-ink)}
+.model-h{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.model-h h3{font-family:var(--f-display); font-size:21px; font-weight:700; letter-spacing:-.01em}
+.tag{font:600 11px var(--f-ui); padding:2px 7px; border-radius:var(--r1); background:var(--sel); color:var(--acc-ink)}
+.tag.warn{background:color-mix(in srgb, var(--warn) 18%, transparent); color:var(--ink)}
+.model > p{font-size:14px; color:var(--mute)}
+.tiers{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px}
+.tier{border:1px solid var(--line); border-radius:var(--r1); padding:10px 12px; display:flex; flex-direction:column; gap:4px; background:var(--bg)}
+.tier b{font-size:13px}
+.tier .amt{font-family:var(--f-display); font-size:24px; font-weight:700; letter-spacing:-.02em; line-height:1.1}
+.tier .amt small{font:400 12px var(--f-ui); color:var(--mute); letter-spacing:0}
+.tier ul{margin:4px 0 0; padding-left:16px; font-size:12.5px; color:var(--mute); display:flex; flex-direction:column; gap:2px}
+.pc{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; font-size:13px}
+.pc h4{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); margin-bottom:4px}
+.pc ul{margin:0; padding-left:16px; display:flex; flex-direction:column; gap:3px}
+@media (max-width:560px){ .pc{grid-template-columns:1fr} }
+.costs{overflow-x:auto}
+table.calc{border-collapse:collapse; width:100%; font-size:13.5px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r2)}
+table.calc th, table.calc td{padding:9px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top}
+table.calc th{background:var(--sunk); font-size:12px; color:var(--mute); font-weight:600}
+table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+
+/* ---------- cookie tab ---------- */
+.ck-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+@media (max-width:980px){ .ck-grid{grid-template-columns:1fr} }
+.ck{display:flex; flex-direction:column; gap:12px; min-width:0}
+.ck-h{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.ck-h h3{font-family:var(--f-display); font-size:19px; font-weight:700}
+.ck > p{font-size:13.5px; color:var(--mute)}
+.mini{position:relative; height:300px; background:var(--bg); border:1px solid var(--line); border-radius:var(--r2); overflow:hidden}
+.mini .ghost-page{position:absolute; inset:0; padding:18px; display:flex; flex-direction:column; gap:10px}
+.mini .ghost-page i{display:block; height:10px; border-radius:3px; background:var(--sunk)}
+.mini .ghost-page i.t{height:22px; width:70%; background:var(--line)}
+.mini .footnote{position:absolute; left:0; right:0; bottom:0; border-top:1px solid var(--line); background:var(--panel); padding:10px 14px; font-size:12px; color:var(--mute); display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.mini .footnote svg{width:14px; height:14px; color:var(--acc-ink)}
+.mini .bar{position:absolute; left:12px; right:12px; bottom:12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); box-shadow:var(--float); padding:12px 14px; display:flex; flex-direction:column; gap:10px; font-size:12.5px}
+.mini .bar .row{display:flex; gap:8px; flex-wrap:wrap}
+.mini .scrim{position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 35%, transparent)}
+.mini .dlg{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(330px, calc(100% - 24px)); background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); box-shadow:var(--float); padding:14px; display:flex; flex-direction:column; gap:10px; font-size:12.5px}
+.mini .dlg b{font-size:14px}
+.tog{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--line)}
+.tog small{display:block; color:var(--mute); font-size:11.5px}
+.sw{width:30px; height:17px; border-radius:999px; background:var(--line); position:relative; flex:none}
+.sw::after{content:""; position:absolute; width:13px; height:13px; border-radius:50%; background:var(--panel); top:2px; left:2px}
+.sw.on{background:var(--acc)} .sw.on::after{left:15px}
+.sw.lock{opacity:.6}
+.mini .btn{height:28px; font-size:12px; padding:0 10px}
+.btn.eq{flex:1; justify-content:center}
+
+/* ---------- legal tab ---------- */
+.docs{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px}
+.doc{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); padding:16px 18px; display:flex; flex-direction:column; gap:8px; text-decoration:none; color:var(--ink)}
+.doc:hover{border-color:var(--acc-ink)}
+.doc h3{font-size:16px; font-weight:600; display:flex; justify-content:space-between; gap:8px}
+.doc h3 span{font:11px var(--f-mono); color:var(--mute); font-weight:400}
+.doc p{font-size:13.5px; color:var(--mute)}
+.todo{background:var(--panel); border:1px solid var(--line); border-radius:var(--r2); overflow-x:auto}
+.todo table{border-collapse:collapse; width:100%; font-size:13.5px}
+.todo th, .todo td{padding:9px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top}
+.todo th{background:var(--sunk); font-size:12px; color:var(--mute); font-weight:600}
+.todo tr:last-child td{border-bottom:0}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 32 32"><rect x="3" y="6.5" width="17" height="5" rx="2.5" fill="currentColor"/><rect x="9" y="13.5" width="20" height="5" rx="2.5" fill="var(--acc)"/><rect x="5" y="20.5" width="12" height="5" rx="2.5" fill="currentColor" opacity=".5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 6h10M8 12h12M6 18h7"/></g></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l4 4-4 4M12 17h7"/></g></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></g></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/></g></symbol>
+  <symbol id="i-shield" viewBox="0 0 16 16"><path d="M8 1.8l5 2v4c0 3-2.2 5.3-5 6.4C5.2 13.1 3 10.8 3 7.8v-4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="r-prog" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--prog)" stroke-width="1.6"/><path d="M7 1.5a5.5 5.5 0 0 1 0 11z" fill="var(--prog)"/></symbol>
+  <symbol id="r-rev" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--rev)" stroke-width="1.6"/><path d="M7 1.5a5.5 5.5 0 1 1-5.5 5.5H7z" fill="var(--rev)"/></symbol>
+  <symbol id="r-done" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6.2" fill="var(--ok)"/><path d="M4.3 7.2l1.8 1.8 3.6-3.7" fill="none" stroke="var(--panel)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header class="lb-head">
+    <div class="lockup"><svg aria-hidden="true"><use href="#mark"/></svg>flowstate</div>
+    <span class="eyebrow">Public pages · drafts to pick from · 12 Oct 2026</span>
+    <h1>Landing, pricing, cookies and legal</h1>
+    <p class="lede">Three landing directions, four pricing models, three cookie options and draft legal pages. All use the Kobber
+      tokens and the copy follows the voice rules in branding.md. Highlighted text like <span class="ph">[CVR]</span> is a placeholder
+      you need to fill. The legal pages are drafts written for a lawyer to review, not finished contracts.</p>
+    <div class="picks">
+      <div class="pick"><b>1 · Landing direction</b><span>A Plan, B Agents or C Meeting. Mixing hero from one and sections from another is fine.</span></div>
+      <div class="pick"><b>2 · Pricing model</b><span>Recommended: Simple seats with the founding-team offer on top.</span></div>
+      <div class="pick"><b>3 · Cookie banner</b><span>Recommended: no banner. The site only sets cookies sign-in needs.</span></div>
+      <div class="pick"><b>4 · Legal placeholders</b><span>Company, CVR, address, contact email, and two retention choices.</span></div>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Page group">
+    <button type="button" role="tab" id="t-landing-a" aria-controls="landing-a" aria-selected="true">A · Plan the year</button>
+    <button type="button" role="tab" id="t-landing-b" aria-controls="landing-b" aria-selected="false">B · Agents too</button>
+    <button type="button" role="tab" id="t-landing-c" aria-controls="landing-c" aria-selected="false">C · In the room</button>
+    <button type="button" role="tab" id="t-pricing" aria-controls="pricing" aria-selected="false">Pricing ideas</button>
+    <button type="button" role="tab" id="t-cookies" aria-controls="cookies" aria-selected="false">Cookie banner</button>
+    <button type="button" role="tab" id="t-legal" aria-controls="legal" aria-selected="false">Legal pages</button>
+  </div>
+
+  <!-- ================= A ================= -->
+  <section class="panel" id="landing-a" role="tabpanel" aria-labelledby="t-landing-a">
+    <div class="note">
+      <h2>A · Plan the year</h2>
+      <p><strong>Leads with the delivery plan</strong>, the feature no competitor has in this form. Calm, light, product-first.
+        Speaks to the team lead who has to answer "can we deliver this by Q2?"</p>
+      <ul><li><strong>For:</strong> uses the primary tagline; shows the differentiator in the first screen.</li>
+        <li><strong>Against:</strong> agents and the meeting agent come second, so the agent-first angle is less loud.</li></ul>
+    </div>
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span><span class="ph">[domain]</span></span></div>
+      <div class="site">
+        <div class="s-in">
+          <div class="s-nav">
+            <div class="lockup"><svg aria-hidden="true"><use href="#mark"/></svg>flowstate</div>
+            <nav><span>Product</span><span>Meeting agent</span><span>Pricing</span><span>Docs</span></nav>
+            <span class="sp"></span>
+            <span class="btn ghost sm">EN · DA</span>
+            <a class="btn sec sm" href="#landing-a">Sign in</a>
+            <a class="btn pri sm" href="#landing-a">Start free</a>
+          </div>
+
+          <div class="hero">
+            <div>
+              <span class="eyebrow">Issue tracker and planner · made in Denmark</span>
+              <h1 style="margin-top:14px">Plan the year.<br>Ship the week.</h1>
+              <p class="sub">Flowstate puts every project's epics on one delivery plan and tells you whether the team you have can
+                deliver them. Then you run the sprints in the same place.</p>
+              <div class="ctas"><a class="btn pri" href="#landing-a">Start free</a><a class="btn sec" href="#landing-a">See a sample plan</a></div>
+              <p class="fine">Free for up to 3 people. Hosted in the EU. No card needed.</p>
+            </div>
+            <div class="plan" role="img" aria-label="Delivery plan: three projects from January to June, a milestone in April and a capacity band showing May over capacity">
+              <div class="plan-top"><b>Delivery plan · 2027</b><div class="seg"><span>List</span><span>Board</span><span class="on">Plan</span></div></div>
+              <div class="pgrid">
+                <div class="mh" style="border-left:0"></div><div class="mh">Jan</div><div class="mh">Feb</div><div class="mh">Mar</div><div class="mh">Apr</div><div class="mh">May</div><div class="mh">Jun</div>
+                <div class="rh"><b><i class="sq" style="background:var(--acc)"></i>Checkout</b><small>3 people</small></div>
+                <div class="track" style="--pc:var(--acc)">
+                  <div class="card epic" style="grid-column:1/8; --done:62%">Payments v2</div>
+                  <div class="card" style="grid-column:2/6; --done:80%">MobilePay</div>
+                  <div class="card" style="grid-column:6/10; --done:10%">Invoices</div>
+                </div>
+                <div class="rh"><b><i class="sq" style="background:var(--rev)"></i>Mobile</b><small>2 people</small></div>
+                <div class="track" style="--pc:var(--rev)">
+                  <div class="card epic" style="grid-column:3/12; --done:20%">iOS app</div>
+                  <div class="card bad" style="grid-column:5/9">Offline sync<span class="bang">!</span></div>
+                </div>
+                <div class="rh"><b><i class="sq" style="background:var(--prog)"></i>Platform</b><small>2 people</small></div>
+                <div class="track" style="--pc:var(--prog)">
+                  <div class="card" style="grid-column:1/5; --done:100%">EU region move</div>
+                  <div class="card" style="grid-column:7/13; --done:0%">Audit log</div>
+                </div>
+                <div class="caplab">Capacity</div>
+                <div class="cap" aria-hidden="true">
+                  <div><i class="d" style="height:60%"></i><i class="s" style="height:80%"></i></div>
+                  <div><i class="d" style="height:72%"></i><i class="s" style="height:80%"></i></div>
+                  <div><i class="d" style="height:78%"></i><i class="s" style="height:80%"></i></div>
+                  <div><i class="d" style="height:70%"></i><i class="s" style="height:80%"></i></div>
+                  <div><i class="d over" style="height:96%"></i><i class="s" style="height:68%"></i></div>
+                  <div><i class="d" style="height:52%"></i><i class="s" style="height:80%"></i></div>
+                </div>
+                <div class="ms" style="left:calc(96px + (100% - 96px) * 3.5 / 6)"><span>Launch · 15 Apr</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span class="eyebrow">What you get</span><h2>The plan, the sprint and the issue are the same thing</h2>
+              <p>Draw an epic on the plan and it is in the backlog. Close the last task and the plan moves. No second tool, no spreadsheet.</p></div>
+            <div class="grid3">
+              <div class="feat"><span class="ico"><svg><use href="#i-plan"/></svg></span><h3>Delivery plan</h3><p>Every project's epics and features over the year, with dependencies and milestones. A capacity band shows each month as "needs 4.5, has 3".</p></div>
+              <div class="feat"><span class="ico"><svg><use href="#i-board"/></svg></span><h3>List, board and sprints</h3><p>Keyboard-first. <kbd>C</kbd> creates an issue, <kbd>Ctrl K</kbd> does everything else. Every action lands in under half a second.</p></div>
+              <div class="feat"><span class="ico"><svg><use href="#i-term"/></svg></span><h3>Agents can use it too</h3><p>Everything you can click, an agent can do through the CLI or MCP. Agent changes show who made them and how.</p></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span class="eyebrow">Meeting agent</span><h2>Say it in standup. It's in the tracker.</h2>
+              <p>Turn on the meeting agent and it suggests the changes people talk about: "FLOW-212 is done", "move the login bug to next sprint".
+                You approve each one. Audio is never stored, and the transcript is deleted when the meeting ends.</p></div>
+          </div>
+
+          <div class="sec">
+            <div class="eu">
+              <div class="sec-h" style="margin:0"><span class="eyebrow">European by default</span><h2>Your work stays in the EU</h2>
+                <p>Built in Copenhagen. Hosted in France. Every company that touches your data is in the EU, and the list is short.</p></div>
+              <div style="display:flex; flex-direction:column; gap:14px; min-width:0">
+                <table class="vendors"><thead><tr><th>Who</th><th>What for</th><th>Where</th></tr></thead><tbody>
+                  <tr><td>OVHcloud</td><td>Servers, database, file storage</td><td>France</td></tr>
+                  <tr><td>Scaleway</td><td>Email, meeting transcription</td><td>France</td></tr>
+                  <tr><td>Alunta</td><td>Subscriptions and invoices</td><td>Denmark</td></tr>
+                </tbody></table>
+                <ul>
+                  <li><svg><use href="#i-check"/></svg>No tracking or advertising cookies, and no cookie banner.</li>
+                  <li><svg><use href="#i-check"/></svg>Your issues are never used to train models.</li>
+                  <li><svg><use href="#i-check"/></svg>Open source under AGPL. Read the code, or host it yourself.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="price-strip">
+              <div><div class="big">€9 per person a month</div><p>Free for up to 3 people. Agents and guests don't need a seat.</p></div>
+              <a class="btn sec" href="#pricing">See pricing</a>
+            </div>
+          </div>
+
+          <footer class="s-foot">
+            <div style="display:flex; flex-direction:column; gap:8px"><div class="lockup" style="font-size:16px; color:var(--ink)"><svg aria-hidden="true" style="width:22px;height:22px"><use href="#mark"/></svg>flowstate</div>
+              <span><span class="ph">[Company ApS]</span> · CVR <span class="ph">[12345678]</span><br><span class="ph">[Street 1, 2100 København Ø]</span></span></div>
+            <div><h4>Product</h4><ul><li><a href="#landing-a">Delivery plan</a></li><li><a href="#landing-a">Meeting agent</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#landing-a">Status</a></li></ul></div>
+            <div><h4>Developers</h4><ul><li><a href="#landing-a">CLI</a></li><li><a href="#landing-a">MCP server</a></li><li><a href="#landing-a">REST API</a></li><li><a href="#landing-a">Source code</a></li></ul></div>
+            <div><h4>Legal</h4><ul><li><a href="privacy.html">Privacy</a></li><li><a href="terms.html">Terms</a></li><li><a href="dpa.html">Data processing</a></li><li><a href="subprocessors.html">Sub-processors</a></li><li><a href="cookies.html">Cookies</a></li></ul></div>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= B ================= -->
+  <section class="panel" id="landing-b" role="tabpanel" aria-labelledby="t-landing-b" hidden>
+    <div class="note">
+      <h2>B · Agents too</h2>
+      <p><strong>Leads with parity</strong>: the same action in the UI, the CLI and MCP. Dark in both themes, terminal-forward.
+        Speaks to the developer who already runs coding agents and wants them to update the tracker.</p>
+      <ul><li><strong>For:</strong> the sharpest difference from Jira and Linear today; fits the startup dev audience.</li>
+        <li><strong>Against:</strong> narrower; a product owner or team lead may not see themselves in it. The plan comes later on the page.</li></ul>
+    </div>
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span><span class="ph">[domain]</span></span></div>
+      <div class="site b">
+        <div class="s-in">
+          <div class="s-nav">
+            <div class="lockup"><svg aria-hidden="true"><use href="#mark"/></svg>flowstate</div>
+            <nav><span>Product</span><span>CLI &amp; MCP</span><span>Pricing</span><span>Docs</span></nav>
+            <span class="sp"></span>
+            <a class="btn sec sm" href="#landing-b">Sign in</a>
+            <a class="btn pri sm" href="#landing-b">Start free</a>
+          </div>
+
+          <div class="hero">
+            <div>
+              <span class="eyebrow">Issue tracker · CLI · MCP</span>
+              <h1 style="margin-top:14px">The issue tracker your agents can use too.</h1>
+              <p class="sub">Everything you can do in Flowstate, an agent can do through the CLI or the MCP server. Same rules, same
+                permissions, and every change says who made it and how.</p>
+              <div class="ctas"><a class="btn pri" href="#landing-b">Start free</a>
+                <span class="btn sec mono" style="font-weight:400; font-size:13px">flowstate login</span></div>
+              <p class="fine">Hosted in the EU. Open source under AGPL.</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:14px; min-width:0">
+              <div class="term" aria-label="Terminal session using the flowstate CLI">
+                <div class="term-bar">zsh · ~/checkout</div>
+<pre><span class="p">$</span> flowstate issue list --sprint active
+<span class="c">KEY       STATE        EST  TITLE</span>
+<span class="k">FLOW-212</span>  In Progress  3h   Retry failed MobilePay captures
+<span class="k">FLOW-218</span>  Todo         2h   Show VAT on invoice PDF
+<span class="p">$</span> flowstate issue move FLOW-212 --state in-review
+<span class="g">Moved FLOW-212 to In Review</span> <span class="c">· 84 ms</span>
+<span class="p">$</span> claude mcp add flowstate -- flowstate mcp
+<span class="c">Added stdio MCP server flowstate</span></pre>
+              </div>
+              <div class="toast"><span class="av-agent">&gt;_</span><span><b>triage-agent</b> moved FLOW-139 to In Review via MCP · 2s ago</span></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span class="eyebrow">Parity</span><h2>One action, three ways in</h2>
+              <p>The web app, the CLI and the MCP server call the same API. If a person can do it, so can an agent you give a token to.</p></div>
+            <div class="parity">
+              <div class="par"><span class="eyebrow">Web · Ctrl K</span>
+                <div class="palette"><div class="q">FLOW-12 sprint</div><div class="it on"><span>Move to Sprint 25 (active)</span><kbd>S</kbd></div><div class="it"><span>Remove from sprint</span></div></div></div>
+              <div class="par"><span class="eyebrow">CLI</span><code>flowstate issue update FLOW-12 \
+  --sprint active</code></div>
+              <div class="par"><span class="eyebrow">MCP</span><code>update_issues({ items: [{
+  key: "FLOW-12",
+  changes: { sprint: "active" }
+}] })</code></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="stats">
+              <div class="stat"><b class="mono">&lt; 500 ms</b><span>for every action, measured at p99. The UI updates before the server answers.</span></div>
+              <div class="stat"><b>Free</b><span>agents. Give each agent its own name and token; they don't take a seat.</span></div>
+              <div class="stat"><b>0</b><span>US companies that see your issues. Hosting, email and transcription are French.</span></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="grid3">
+              <div class="feat"><span class="ico"><svg><use href="#i-plan"/></svg></span><h3>Plan the year</h3><p>A delivery plan with capacity per month. Agents can read it too: "which epics are late in Q2?"</p></div>
+              <div class="feat"><span class="ico"><svg><use href="#i-mic"/></svg></span><h3>Meeting agent</h3><p>Listens in standup and suggests the changes people mention. Audio is not stored; transcripts go when the meeting ends.</p></div>
+              <div class="feat"><span class="ico"><svg><use href="#i-bolt"/></svg></span><h3>GitHub</h3><p>Put <span class="mono">FLOW-12</span> in a branch or PR and the issue links and moves on its own.</p></div>
+            </div>
+          </div>
+
+          <footer class="s-foot">
+            <div style="display:flex; flex-direction:column; gap:8px"><div class="lockup" style="font-size:16px; color:var(--ink)"><svg aria-hidden="true" style="width:22px;height:22px"><use href="#mark"/></svg>flowstate</div>
+              <span><span class="ph">[Company ApS]</span> · CVR <span class="ph">[12345678]</span></span></div>
+            <div><h4>Product</h4><ul><li><a href="#landing-b">Delivery plan</a></li><li><a href="#landing-b">Meeting agent</a></li><li><a href="#pricing">Pricing</a></li></ul></div>
+            <div><h4>Developers</h4><ul><li><a href="#landing-b">CLI</a></li><li><a href="#landing-b">MCP server</a></li><li><a href="#landing-b">REST API</a></li></ul></div>
+            <div><h4>Legal</h4><ul><li><a href="privacy.html">Privacy</a></li><li><a href="terms.html">Terms</a></li><li><a href="dpa.html">Data processing</a></li><li><a href="subprocessors.html">Sub-processors</a></li></ul></div>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= C ================= -->
+  <section class="panel" id="landing-c" role="tabpanel" aria-labelledby="t-landing-c" hidden>
+    <div class="note">
+      <h2>C · In the room</h2>
+      <p><strong>Leads with the meeting agent</strong> and makes privacy the headline feature: what is not kept is stated before
+        what it does. Speaks to the whole team, not just developers.</p>
+      <ul><li><strong>For:</strong> the most demo-able thing; the privacy promise is unusual and easy to remember.</li>
+        <li><strong>Against:</strong> the meeting agent is the newest and least proven part. Risky as the first impression until it is solid in Danish.</li></ul>
+    </div>
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span><span class="ph">[domain]</span></span></div>
+      <div class="site">
+        <div class="s-in">
+          <div class="s-nav">
+            <div class="lockup"><svg aria-hidden="true"><use href="#mark"/></svg>flowstate</div>
+            <nav><span>Meeting agent</span><span>Delivery plan</span><span>Pricing</span><span>Privacy</span></nav>
+            <span class="sp"></span>
+            <a class="btn sec sm" href="#landing-c">Sign in</a>
+            <a class="btn pri sm" href="#landing-c">Start free</a>
+          </div>
+
+          <div class="hero">
+            <div>
+              <span class="eyebrow">Meeting agent · suggest mode</span>
+              <h1 style="margin-top:14px">Say it in standup. It's in the tracker.</h1>
+              <p class="sub">Flowstate listens while your team talks and suggests the issue changes people mention. Nothing changes
+                until someone approves it. Nothing you say is kept after the meeting.</p>
+              <div class="ctas"><a class="btn pri" href="#landing-c">Start free</a><a class="btn sec" href="#landing-c">Watch a 2-minute standup</a></div>
+              <p class="fine">Danish and English. Works in the room and on Teams, Meet or Zoom from the browser.</p>
+            </div>
+            <div class="room">
+              <div class="listen"><span class="dot" aria-hidden="true"></span><span><b>Listening</b> · Standup · Danish</span><span class="sp"></span><span class="btn sec sm">Pause</span></div>
+              <p class="utt"><b>Mette</b> · Login-fixet er i review nu, <mark>FLOW-212</mark>. Og <mark>VAT-feltet</mark> tager jeg i morgen.</p>
+              <div class="prop">
+                <div class="prop-h"><svg class="ring"><use href="#r-rev"/></svg><span class="key">FLOW-212</span><span>Fix login redirect loop</span><span class="conf">0.94</span></div>
+                <div class="diff"><span class="chip"><svg class="ring"><use href="#r-prog"/></svg>In Progress</span><span aria-hidden="true">→</span><span class="chip"><svg class="ring"><use href="#r-rev"/></svg>In Review</span></div>
+                <div class="acts"><span class="btn pri sm">Approve</span><span class="btn sec sm">Edit</span><span class="btn ghost sm">Reject</span></div>
+              </div>
+              <div class="prop" style="box-shadow:none">
+                <div class="prop-h"><span class="key">FLOW-218</span><span>Show VAT on invoice PDF</span><span class="conf">0.81</span></div>
+                <div class="diff"><span class="chip">Unassigned</span><span aria-hidden="true">→</span><span class="chip">Mette</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec" style="border-top:0; padding-top:0">
+            <div class="privacy-band">
+              <div><b>Audio is never stored</b><span>Sound is held in memory for a few seconds, turned into text, then dropped.</span></div>
+              <div><b>Transcripts end with the meeting</b><span>When the meeting ends, the transcript is deleted. What's left is the changes you approved.</span></div>
+              <div><b>Processed in Paris</b><span>Transcription runs at Scaleway in France. It is not used to train any model.</span></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span class="eyebrow">How it works</span><h2>You stay in charge of every change</h2></div>
+            <div class="grid3">
+              <div class="feat"><h3>Suggest mode first</h3><p>Every proposal waits for approval. After a few weeks you can see how often you approved them unchanged, per kind of change.</p></div>
+              <div class="feat"><h3>Full auto when you trust it</h3><p>Admins can let status and sprint changes apply on their own, with undo per change. Deleting and new issues always wait.</p></div>
+              <div class="feat"><h3>Everyone can see it</h3><p>A clear "Listening" indicator for everyone in the session. One click pauses it.</p></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="eu">
+              <div class="sec-h" style="margin:0"><span class="eyebrow">And the rest of the tracker</span><h2>Plan the year. Ship the week.</h2>
+                <p>A delivery plan with capacity per month, sprints, a fast board and list. Agents can use all of it through the CLI and MCP.</p></div>
+              <p class="big-quote">"Every action available in the UI is available to an agent. That's the rule we build by."</p>
+            </div>
+          </div>
+
+          <footer class="s-foot">
+            <div style="display:flex; flex-direction:column; gap:8px"><div class="lockup" style="font-size:16px; color:var(--ink)"><svg aria-hidden="true" style="width:22px;height:22px"><use href="#mark"/></svg>flowstate</div>
+              <span><span class="ph">[Company ApS]</span> · CVR <span class="ph">[12345678]</span></span></div>
+            <div><h4>Product</h4><ul><li><a href="#landing-c">Meeting agent</a></li><li><a href="#landing-c">Delivery plan</a></li><li><a href="#pricing">Pricing</a></li></ul></div>
+            <div><h4>Developers</h4><ul><li><a href="#landing-c">CLI</a></li><li><a href="#landing-c">MCP server</a></li></ul></div>
+            <div><h4>Legal</h4><ul><li><a href="privacy.html">Privacy</a></li><li><a href="terms.html">Terms</a></li><li><a href="dpa.html">Data processing</a></li><li><a href="subprocessors.html">Sub-processors</a></li></ul></div>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Pricing ================= -->
+  <section class="panel" id="pricing" role="tabpanel" aria-labelledby="t-pricing" hidden>
+    <div class="note">
+      <h2>Pricing ideas</h2>
+      <p>All four fit ADR-013 (workspace is the billing unit, a seat is an active human Owner or Member) except D's bands,
+        which still count seats but bill a band. Prices are excluding Danish VAT (moms). EUR shown, with DKK at roughly 7.46.</p>
+      <ul><li><strong>Market:</strong> Linear Basic $10, Business $16 per user a month (annual). Jira Standard $8.15, Premium $17.</li>
+        <li><strong>Agents</strong> are free in every model (ADR-013 OQ-2 leaning). <strong>Self-hosted</strong> stays free under AGPL.</li></ul>
+    </div>
+
+    <div class="models">
+      <article class="model rec">
+        <div class="model-h"><h3>A · Simple seats</h3><span class="tag">Recommended</span></div>
+        <p>One paid plan. Everything is in it, including the meeting agent. Easiest to explain, easiest to build in Alunta.</p>
+        <div class="tiers">
+          <div class="tier"><b>Free</b><span class="amt">€0</span><ul><li>Up to 3 people</li><li>All features</li><li>Meeting agent 5 h/month</li></ul></div>
+          <div class="tier"><b>Team</b><span class="amt">€9 <small>/ 69 kr per seat/mo, yearly</small></span><ul><li>€11 / 79 kr monthly</li><li>Meeting agent 10 h per seat/mo, pooled</li><li>Guests: 5 per paid seat</li></ul></div>
+        </div>
+        <div class="pc"><div><h4>For</h4><ul><li>Undercuts Linear by a little, not so much it looks cheap.</li><li>One plan matches the "simple" principle.</li></ul></div>
+          <div><h4>Against</h4><ul><li>No upsell for bigger customers until an Enterprise plan exists.</li><li>Free tier hosts teams of 3 forever.</li></ul></div></div>
+      </article>
+
+      <article class="model">
+        <div class="model-h"><h3>B · Free core, paid depth</h3><span class="tag warn">Open-core fit</span></div>
+        <p>Generous free plan to win small teams. Pay for the meeting agent and for admin features that live in <span class="mono">ee/</span>.</p>
+        <div class="tiers">
+          <div class="tier"><b>Free</b><span class="amt">€0</span><ul><li>Up to 10 people</li><li>Plan, sprints, CLI, MCP</li><li>No meeting agent</li></ul></div>
+          <div class="tier"><b>Team</b><span class="amt">€8 <small>/ 59 kr per seat/mo</small></span><ul><li>Meeting agent</li><li>GitHub automation</li><li>Unlimited history</li></ul></div>
+          <div class="tier"><b>Business</b><span class="amt">€14 <small>/ 105 kr per seat/mo</small></span><ul><li>SSO (SAML/OIDC), SCIM</li><li>Audit log export</li><li>Full-auto policies</li></ul></div>
+        </div>
+        <div class="pc"><div><h4>For</h4><ul><li>Matches ADR-007: enterprise features pay for the product.</li><li>Free tier is a real wedge against Jira.</li></ul></div>
+          <div><h4>Against</h4><ul><li>Three plans to explain and build.</li><li>Many free 10-person teams on one VPS.</li></ul></div></div>
+      </article>
+
+      <article class="model">
+        <div class="model-h"><h3>C · Pay for who showed up</h3><span class="tag">Fair billing</span></div>
+        <p>Same prices as A, but you only pay for people who used Flowstate that month. Invite the whole company; pay for the ones who work in it.</p>
+        <div class="tiers">
+          <div class="tier"><b>Team</b><span class="amt">€10 <small>/ 75 kr per active person/mo</small></span><ul><li>Active = signed in or changed something that month</li><li>Billed monthly in arrears</li><li>Free if 3 or fewer were active</li></ul></div>
+        </div>
+        <div class="pc"><div><h4>For</h4><ul><li>Removes the "should we add the PO?" debate.</li><li>Good story next to Jira's seat creep.</li></ul></div>
+          <div><h4>Against</h4><ul><li>Revenue varies month to month.</li><li>Needs an activity count per member; small change to ADR-013.</li></ul></div></div>
+      </article>
+
+      <article class="model">
+        <div class="model-h"><h3>D · Team bands</h3><span class="tag warn">Changes ADR-013</span></div>
+        <p>A flat price per size band. No per-seat maths, an easy line in a startup budget. ADR-013 rejected one flat price; bands keep it scaling.</p>
+        <div class="tiers">
+          <div class="tier"><b>Small</b><span class="amt">€39 <small>/ 290 kr/mo</small></span><ul><li>Up to 5 people</li></ul></div>
+          <div class="tier"><b>Team</b><span class="amt">€99 <small>/ 740 kr/mo</small></span><ul><li>6 to 15 people</li></ul></div>
+          <div class="tier"><b>Scale</b><span class="amt">€199 <small>/ 1.490 kr/mo</small></span><ul><li>16 to 30 people</li></ul></div>
+        </div>
+        <div class="pc"><div><h4>For</h4><ul><li>Predictable for buyers and for you.</li><li>Agents and guests can be unlimited.</li></ul></div>
+          <div><h4>Against</h4><ul><li>Price jumps at band edges (6th person costs €60).</li><li>Small bands are cheap per head.</li></ul></div></div>
+      </article>
+    </div>
+
+    <div class="note">
+      <h2>On top of any model: founding teams</h2>
+      <p>The first 25 paying workspaces get 50% off for as long as they stay, in return for a 30-minute feedback call each
+        quarter. Cheap to run, gives you the user research you need, and a reason to sign up now.</p>
+      <ul><li><strong>Annual discount:</strong> two months free (about 17%), the market norm.</li>
+        <li><strong>Non-profits and education:</strong> Team plan free on request.</li></ul>
+    </div>
+
+    <div class="costs">
+      <table class="calc">
+        <thead><tr><th>Meeting agent cost basis (Scaleway, Oct 2026)</th><th>Rate</th><th style="text-align:right">Per meeting hour</th></tr></thead>
+        <tbody>
+          <tr><td>Transcription, whisper-large-v3, one microphone or shared tab</td><td>€0.003 per audio minute</td><td class="n">€0.18</td></tr>
+          <tr><td>Proposals, mistral-small-3.2: ~400 calls/h, ~2,000 tokens in and ~150 out each (estimate)</td><td>€0.15 / €0.35 per M tokens</td><td class="n">€0.14</td></tr>
+          <tr><td><b>Total, one microphone</b></td><td></td><td class="n"><b>≈ €0.32</b></td></tr>
+          <tr><td>A 6-person team, 15-min standup every workday (≈ 5.5 h/month)</td><td></td><td class="n">≈ €1.80/mo</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13.5px; color:var(--mute); max-width:80ch">The meeting agent is cheap enough to include in every paid plan. Hour caps exist to stop abuse
+      (someone leaving it on all day), not to make money. 10 hours per seat a month costs at most €3.20 per €9 seat, and real use is far lower.</p>
+  </section>
+
+  <!-- ================= Cookies ================= -->
+  <section class="panel" id="cookies" role="tabpanel" aria-labelledby="t-cookies" hidden>
+    <div class="note">
+      <h2>Cookie banner</h2>
+      <p>Danish rules (cookiebekendtgørelsen, under ePrivacy) require consent only for storage that isn't strictly necessary.
+        Flowstate today sets only Keycloak's sign-in cookies, and the web app keeps the sign-in token in session storage.
+        Both are strictly necessary, so <strong>no banner is required</strong>.</p>
+      <ul><li><strong>Recommended: option 1.</strong> No banner, a short line in the footer and a cookie page. It is also a selling point.</li>
+        <li>If you ever add analytics, use a cookieless EU tool and stay on option 1, or switch to option 3. Datatilsynet expects "Reject" to be as easy as "Accept".</li></ul>
+    </div>
+    <div class="ck-grid">
+      <div class="ck">
+        <div class="ck-h"><h3>1 · No banner</h3><span class="tag">Recommended</span></div>
+        <div class="mini" aria-label="Page with a one-line cookie note in the footer">
+          <div class="ghost-page"><i class="t"></i><i style="width:90%"></i><i style="width:75%"></i><i style="width:82%"></i></div>
+          <div class="footnote"><svg><use href="#i-shield"/></svg><span>No tracking. We only use the cookies sign-in needs.</span><a href="cookies.html">Cookies</a></div>
+        </div>
+        <p>Nothing pops up. The footer says what's true and links to the cookie page.</p>
+      </div>
+      <div class="ck">
+        <div class="ck-h"><h3>2 · Notice, no choice</h3></div>
+        <div class="mini" aria-label="Page with a small dismissible notice">
+          <div class="ghost-page"><i class="t"></i><i style="width:90%"></i><i style="width:75%"></i><i style="width:82%"></i></div>
+          <div class="bar"><span><b>We don't track you.</b> Flowstate only sets the cookies you need to sign in. <a href="cookies.html">Read more</a></span>
+            <div class="row"><span class="btn sec">Close</span></div></div>
+        </div>
+        <p>Informs once and remembers the dismissal (also strictly necessary). Legal, but adds a click for nothing.</p>
+      </div>
+      <div class="ck">
+        <div class="ck-h"><h3>3 · Consent</h3><span class="tag warn">Only with analytics</span></div>
+        <div class="mini" aria-label="Consent dialog with equal Reject and Accept buttons">
+          <div class="ghost-page"><i class="t"></i><i style="width:90%"></i><i style="width:75%"></i></div>
+          <div class="scrim"></div>
+          <div class="dlg"><b>Cookies on flowstate</b><span style="color:var(--mute)">Sign-in cookies are always on. Can we count visits to improve the site?</span>
+            <div class="tog"><span>Necessary<small>Sign-in and security</small></span><span class="sw on lock" aria-label="Always on"></span></div>
+            <div class="tog"><span>Statistics<small>Anonymous page counts, EU-hosted</small></span><span class="sw" aria-label="Off"></span></div>
+            <div class="row" style="display:flex; gap:8px"><span class="btn sec eq">Reject all</span><span class="btn sec eq">Accept all</span></div></div>
+        </div>
+        <p>Equal-weight buttons, nothing pre-ticked, choices saved for 12 months and changeable from the footer.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Legal ================= -->
+  <section class="panel" id="legal" role="tabpanel" aria-labelledby="t-legal" hidden>
+    <div class="note">
+      <h2>Legal pages</h2>
+      <p>English drafts in plain language, one version each. They describe how Flowstate works today, with one change you asked
+        for: <strong>no transcript retention</strong>. Danish versions follow once the English text is settled.</p>
+      <ul><li>Have a Danish lawyer or your accountant's legal partner review before the first external user (manual step E2/E3).</li>
+        <li>The DPA uses Datatilsynet's standard clauses with Flowstate's appendices. Lawyers in Denmark know them, which keeps review short.</li></ul>
+    </div>
+    <div class="docs">
+      <a class="doc" href="privacy.html"><h3>Privacy policy <span>privacy.html</span></h3><p>What we collect, why, for how long, who processes it, and your rights. Covers meeting audio and transcripts.</p></a>
+      <a class="doc" href="terms.html"><h3>Terms of service <span>terms.html</span></h3><p>Business customers only. Accounts, agents and tokens, the meeting agent, payment, termination and export, liability, Danish law.</p></a>
+      <a class="doc" href="dpa.html"><h3>Data processing agreement <span>dpa.html</span></h3><p>Datatilsynet's standard clauses plus appendices A–D: processing, sub-processors, security measures, instructions.</p></a>
+      <a class="doc" href="subprocessors.html"><h3>Sub-processors <span>subprocessors.html</span></h3><p>The public list: OVHcloud, Scaleway, and payment vendors once billing starts. How changes are announced.</p></a>
+      <a class="doc" href="cookies.html"><h3>Cookie policy <span>cookies.html</span></h3><p>The exact cookies and browser storage the site and app use, and why none need consent.</p></a>
+    </div>
+    <div class="todo">
+      <table>
+        <thead><tr><th>Open item</th><th>Where it shows</th><th>Draft assumes</th></tr></thead>
+        <tbody>
+          <tr><td>Company name, CVR, address, contact email</td><td>All pages</td><td>Placeholders</td></tr>
+          <tr><td>Transcript retention: delete when the meeting ends</td><td>Privacy, DPA appendix A</td><td>Decided by you. <b>The code still keeps transcripts 30 days</b> (task 015); needs a small change before launch.</td></tr>
+          <tr><td>Proposal snippet (the words that triggered a change, max 1,000 characters) kept with the proposal</td><td>Privacy, DPA appendix A</td><td>Kept for audit until the issue or workspace is deleted. Alternative: drop snippets at meeting end too.</td></tr>
+          <tr><td>Scaleway does not store or train on Generative API inputs</td><td>Privacy, landing pages</td><td>Verify in Scaleway's terms/DPA before publishing the claim.</td></tr>
+          <tr><td>Notice period for new sub-processors</td><td>DPA, sub-processors</td><td>30 days by email to workspace owners</td></tr>
+          <tr><td>Workspace export (JSON/CSV, app + API + CLI)</td><td>Terms, privacy, DPA</td><td>Promised but <b>not built</b>. Needs a task before launch; GDPR portability leans on it.</td></tr>
+          <tr><td>Liability cap</td><td>Terms</td><td>Fees paid in the last 12 months</td></tr>
+          <tr><td>Account data kept after a workspace is deleted</td><td>Privacy</td><td>30 days, then deleted; backups roll off after 35 days</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const show = (id, focus) => {
+    const tab = tabs.find(t => t.getAttribute('aria-controls') === id);
+    if (!tab) return;
+    tabs.forEach(t => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', on);
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    if (focus) tab.focus();
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => { show(t.getAttribute('aria-controls')); try { history.replaceState(null, '', '#' + t.getAttribute('aria-controls')); } catch {} });
+    t.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) show(tabs[(i + d + tabs.length) % tabs.length].getAttribute('aria-controls'), true);
+    });
+  });
+  // In-page links like #pricing switch tabs instead of jumping.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = a.getAttribute('href').slice(1);
+    if (tabs.some(t => t.getAttribute('aria-controls') === id)) { e.preventDefault(); show(id); window.scrollTo({ top: 0 }); }
+  });
+  const start = location.hash.slice(1);
+  show(tabs.some(t => t.getAttribute('aria-controls') === start) ? start : 'landing-a');
+})();
+</script>
