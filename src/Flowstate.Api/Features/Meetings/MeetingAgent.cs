@@ -72,7 +72,9 @@ public sealed class ModelRoute
             ? new ModelRoute { Endpoint = route.Endpoint ?? Endpoint, Model = route.Model ?? Model, ApiKey = route.ApiKey ?? ApiKey }
             : this;
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(Endpoint) && !string.IsNullOrWhiteSpace(Model);
+    /// <summary>All three set. Production always passes the key variable, so an empty key means "not set up yet".</summary>
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(Endpoint) && !string.IsNullOrWhiteSpace(Model) && !string.IsNullOrWhiteSpace(ApiKey);
 }
 
 /// <summary>Whisper-style <c>/audio/transcriptions</c> (Scaleway, ADR-015).</summary>

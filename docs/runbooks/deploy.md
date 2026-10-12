@@ -49,6 +49,7 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `STORAGE_BUCKET` | | `flowstate-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
 | `STORAGE_ACCESS_KEY` | | S3 user access key | `api` | User with read/write on the bucket only. |
 | `STORAGE_SECRET_KEY` | yes | S3 user secret key | `api` | |
+| `SCALEWAY_AI_KEY` | yes | Scaleway API secret key | `api` | Meeting agent transcription and proposals ([ADR-015](../adr/ADR-015-meeting-agent-vendors.md)). Key needs Generative APIs permissions only. Empty: no microphone, proposals from the keyword fallback. |
 
 `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
 (`builder.AddParameter`) adds a row here.

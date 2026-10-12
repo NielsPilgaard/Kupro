@@ -53,6 +53,13 @@ var api = builder.AddProject<Projects.Flowstate_Api>("api")
     .WithExternalHttpEndpoints()
     .WithTelemetryTo(otelCollector);
 
+// Meeting agent AI (task 015). Locally opt-in, else the API falls back to its keyword extractor and hides the mic:
+// `dotnet user-secrets set Parameters:scaleway-ai-key <key>` in this project.
+if (builder.ExecutionContext.IsPublishMode || !string.IsNullOrEmpty(builder.Configuration["Parameters:scaleway-ai-key"]))
+{
+    api.WithMeetingAgent();
+}
+
 if (builder.ExecutionContext.IsPublishMode)
 {
     // Public URL users' browsers reach Keycloak on (e.g. https://auth.flowstate.dk); also baked into the SPA.

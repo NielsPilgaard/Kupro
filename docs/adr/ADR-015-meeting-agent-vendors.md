@@ -80,7 +80,11 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
   compare WER and proposal precision for Whisper vs Hviske. If Danish proposal precision is below ~90 %, route Danish
   transcription to Hviske (decision 4).
 - **IMP-002**: Scaleway Generative APIs is Chosen in the ADR-006 register; syv.ai stays Candidate.
-- **IMP-003**: Parameters `scaleway-ai-key` (secret) and the model ids in the AppHost; nothing in the repo.
+- **IMP-003**: Parameter `scaleway-ai-key` (secret) and the model ids in the AppHost (`MeetingAgent.cs`); the key is
+  not in the repo. A route without a key counts as not configured: no microphone, keyword fallback for proposals.
+- **IMP-004**: Voice activity detection runs in the browser instead of the API (decision 1): the browser cuts
+  utterances and posts each as 16 kHz WAV to `POST …/meetings/{id}/audio`. Simpler than binary streaming over
+  SignalR, smaller uploads, and the same privacy: the API still keeps audio in memory only.
 
 ## Related Decisions
 

@@ -98,4 +98,5 @@ See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-a
 - [x] Web: start from board or sprint view, listening indicator, browser audio (energy VAD → 16 kHz WAV per
       utterance), proposals panel, full-auto feed with undo, settings toggle with stats, end-of-meeting summary.
       Microphone shows only when a transcription model serves the meeting language.
-- [ ] Production wiring: Scaleway parameters in the AppHost and the deploy runbook.
+- [x] Production wiring: `scaleway-ai-key` and the model ids in the AppHost, deploy runbook row.
+- [ ] Accuracy check with recorded standups (ADR-015 IMP-001) once a key is set.
