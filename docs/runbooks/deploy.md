@@ -111,6 +111,6 @@ These are not wired yet. Each one blocks or degrades production:
 
 | Gap | Effect | Fix |
 |---|---|---|
-| Deploy pipeline | No image push, version stamping or webhook yet ([task 013](../../tasks/013-deploy.md)). | CI job: build with `-p:SourceRevisionId=<sha>` ([ADR-014](../adr/ADR-014-observability.md) IMP-005), build web with `VITE_KEYCLOAK_URL`, push, call the Dokploy webhook. |
+| Deploy pipeline | No image push, version stamping or webhook yet ([task 013](../../tasks/013-deploy.md)). | CI job: build with `-p:SourceRevisionId=<sha> -p:IncludeSourceRevisionInInformationalVersion=true` ([ADR-014](../adr/ADR-014-observability.md) IMP-005), build web with `VITE_KEYCLOAK_URL`, push, call the Dokploy webhook. |
 | Backups | No `pg_dump` or WAL archiving yet ([ADR-004](../adr/ADR-004-hosting.md)); losing the VPS loses all data. | Task 013, with a restore drill in `docs/runbooks/`. |
 | Realm drift | Production realm settings live only in Keycloak (step 5). | Export the realm after setup, or move the client URLs into a parameterized production realm file. |

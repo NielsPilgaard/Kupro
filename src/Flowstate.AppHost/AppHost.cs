@@ -5,7 +5,15 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.AddDockerComposeEnvironment("compose")
     // Production telemetry goes to the self-hosted Grafana stack (ADR-014), not to an Aspire dashboard container.
     .WithDashboard(false)
-    .WithRepoRelativeBindMounts();
+    .WithRepoRelativeBindMounts()
+    // Come back after a VPS reboot or crash; `migrations` is one-shot and must stay exited.
+    .ConfigureComposeFile(file =>
+    {
+        foreach (var service in file.Services.Where(s => s.Key != "migrations").Select(s => s.Value))
+        {
+            service.Restart = "unless-stopped";
+        }
+    });
 
 var otelCollector = builder.AddObservability();
 

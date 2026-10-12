@@ -97,7 +97,7 @@ has no alerting.
 - **IMP-002**: Production variables, Grafana domain and PingPuffin setup: [deploy runbook](../runbooks/deploy.md).
 - **IMP-003**: The compose healthcheck probes `/alive` (`/health` under `aspire run`); the "API down" alert relies on it.
 - **IMP-004**: One-shot runs (`migrate`) must call `FlushTelemetry()` before exiting, or their logs are lost.
-- **IMP-005**: CI stamps `service.version` with the commit (`-p:SourceRevisionId=<sha>`) when images are built ([task 013](../../tasks/013-deploy.md)).
+- **IMP-005**: CI stamps `service.version` with the commit (`-p:SourceRevisionId=<sha> -p:IncludeSourceRevisionInInformationalVersion=true`; the second is off in `Directory.Build.props`) when images are built ([task 013](../../tasks/013-deploy.md)).
 - **IMP-006**: Agents query Grafana through `mcp-grafana` (`.mcp.json`, read-only); Tempo's MCP server is enabled so trace tools work.
 - **IMP-007**: Not yet covered: browser errors/web vitals (Grafana Faro), Keycloak and Postgres server metrics.
 

@@ -56,7 +56,8 @@ public static class Extensions
             [
                 new("service.namespace", ServiceNamespace),
                 new("deployment.environment.name", builder.Environment.EnvironmentName.ToLowerInvariant()),
-                // Deploy markers and traces name the build. CI stamps the commit: -p:SourceRevisionId=<sha> → 1.0.0+<sha>.
+                // Deploy markers and traces name the build. CI stamps the commit: -p:SourceRevisionId=<sha>
+                // -p:IncludeSourceRevisionInInformationalVersion=true → 1.0.0+<sha> (Directory.Build.props turns it off locally).
                 new("service.version", Assembly.GetEntryAssembly()
                     ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown"),
             ]))

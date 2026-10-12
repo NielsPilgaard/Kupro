@@ -16,6 +16,7 @@ services:
         read_only: false
     networks:
       - "aspire"
+    restart: "unless-stopped"
     deploy:
       resources:
         limits:
@@ -39,6 +40,7 @@ services:
         read_only: false
     networks:
       - "aspire"
+    restart: "unless-stopped"
     deploy:
       resources:
         limits:
@@ -63,6 +65,7 @@ services:
         read_only: false
     networks:
       - "aspire"
+    restart: "unless-stopped"
     deploy:
       resources:
         limits:
@@ -85,6 +88,7 @@ services:
         read_only: true
     networks:
       - "aspire"
+    restart: "unless-stopped"
     deploy:
       resources:
         limits:
@@ -132,6 +136,7 @@ services:
         condition: "service_started"
     networks:
       - "aspire"
+    restart: "unless-stopped"
     deploy:
       resources:
         limits:
@@ -152,6 +157,7 @@ services:
         read_only: false
     networks:
       - "aspire"
+    restart: "unless-stopped"
   keycloak:
     image: "quay.io/keycloak/keycloak:26.6"
     command:
@@ -180,6 +186,7 @@ services:
         read_only: true
     networks:
       - "aspire"
+    restart: "unless-stopped"
   migrations:
     image: "${MIGRATIONS_IMAGE}"
     command:
@@ -239,6 +246,7 @@ services:
         condition: "service_started"
     networks:
       - "aspire"
+    restart: "unless-stopped"
     healthcheck:
       test:
         - "CMD"
@@ -258,6 +266,7 @@ services:
         condition: "service_started"
     networks:
       - "aspire"
+    restart: "unless-stopped"
 networks:
   aspire:
     driver: "bridge"
