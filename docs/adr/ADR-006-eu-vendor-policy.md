@@ -36,8 +36,8 @@ Sovereignty is a core selling point. Customers will ask for a sub-processor list
 | Identity | Keycloak (self-hosted OSS) | — | Chosen |
 | Subscription billing | Alunta | DK | Chosen — card acquiring via OnPay or QuickPay (DK), **not** Alunta's Stripe option |
 | Transactional email | Scaleway Transactional Email | FR | Chosen |
-| Speech-to-text (post-v1) | syv.ai (Hviske) or Scaleway | DK / FR | Candidate — verify Hviske realtime/streaming API |
-| LLM (post-v1) | Mistral, Scaleway-hosted models, or syv.ai | FR / DK | Candidate |
+| Speech-to-text, LLM (meeting agent) | Scaleway Generative APIs | FR | Chosen, see [ADR-015](ADR-015-meeting-agent-vendors.md) |
+| Speech-to-text, Danish (alternative) | syv.ai (Hviske) | DK | Candidate — no public streaming API; per-language routing in [ADR-015](ADR-015-meeting-agent-vendors.md) |
 | Source + CI | GitHub | US | Exception (no customer data) |
 | Logs, traces, metrics | Grafana, Loki, Tempo, Prometheus (self-hosted OSS) | — | Chosen, see [ADR-014](ADR-014-observability.md) |
 | External uptime monitoring | PingPuffin | DK | Chosen — probes a public health endpoint only, see [ADR-014](ADR-014-observability.md) |

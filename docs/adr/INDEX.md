@@ -23,3 +23,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Local orchestration (Aspire), prod compose generation (`aspire publish`) | [ADR-012](ADR-012-aspire.md) | Accepted |
 | Seats, billing unit, member status | [ADR-013](ADR-013-seats-billing.md) | Proposed |
 | Observability: self-hosted Grafana stack, request log, dashboards, alerts, uptime check | [ADR-014](ADR-014-observability.md) | Accepted |
+| Meeting agent: speech-to-text and LLM vendors | [ADR-015](ADR-015-meeting-agent-vendors.md) | Accepted |
