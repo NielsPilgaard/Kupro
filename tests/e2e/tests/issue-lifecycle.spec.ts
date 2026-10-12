@@ -1,42 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
-
-/** Signs in through Keycloak and lands in a workspace with a project (creating both on a fresh account). */
-async function signInToProject(page: Page) {
-  await page.goto('/');
-  await page.getByRole('textbox', { name: 'Email' }).fill(process.env.FLOWSTATE_USER ?? 'dev@flowstate.local');
-  await page.getByRole('textbox', { name: 'Password' }).fill(process.env.FLOWSTATE_PASSWORD ?? 'dev');
-  await page.getByRole('button', { name: /sign in/i }).click();
-
-  const onboarding = page.getByRole('heading', { name: 'Create your workspace' });
-  const shell = page.getByRole('navigation', { name: 'Main' });
-  await expect(onboarding.or(shell)).toBeVisible();
-  if (await onboarding.isVisible()) {
-    await page.getByLabel('Workspace name').fill(`E2E ${Date.now()}`);
-    await page.getByRole('button', { name: 'Create workspace' }).click();
-  }
-
-  const newProject = page.getByRole('main').getByRole('heading', { name: 'New project' });
-  const list = page.getByRole('tablist', { name: 'View' });
-  await expect(newProject.or(list)).toBeVisible();
-  if (await newProject.isVisible()) {
-    await page.getByLabel('Project name').fill('Flowstate');
-    await page.getByRole('button', { name: 'Create project' }).click();
-  }
-
-  await expect(list).toBeVisible();
-}
+import { expect, test } from '@playwright/test';
+import { createIssue, signInToProject } from './helpers';
 
 test('create, move and close an issue, keyboard first', async ({ page }) => {
   await signInToProject(page);
   const title = `E2E lifecycle ${Date.now()}`;
 
   // Create: C opens the dialog, Ctrl+Enter creates, the panel opens on the new issue.
-  await page.keyboard.press('c');
-  await page.getByLabel('Title').fill(title);
-  await page.keyboard.press('Control+Enter');
+  const key = await createIssue(page, title);
   const panel = page.getByRole('complementary');
-  await expect(panel.getByLabel('Title')).toHaveValue(title);
-  const key = (await panel.locator('header span.font-mono').textContent())!.trim();
 
   // Move: drag the card on the board from Todo to In Progress. A column near the board's edge would start dnd-kit's
   // auto-scroll mid-drag and miss the drop.
@@ -45,6 +16,8 @@ test('create, move and close an issue, keyboard first', async ({ page }) => {
   const card = page.locator(`article[data-key="${key}"]`);
   const target = page.locator('section[data-state="inProgress"]');
   await expect(card).toBeVisible();
+  // Earlier runs' issues can push the new card below the fold.
+  await card.scrollIntoViewIfNeeded();
   const from = (await card.boundingBox())!;
   const to = (await target.boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);

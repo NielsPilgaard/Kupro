@@ -93,7 +93,7 @@ function Column({ state, items }: { state: IssueState; items: IssueSummary[] }) 
       ref={setNodeRef}
       aria-label={t(`state.${state}`)}
       data-state={state}
-      className={`flex w-72 shrink-0 flex-col gap-2 rounded-r2 p-2 ${isOver ? 'bg-sel' : 'bg-sunk'}`}
+      className={`flex min-h-0 w-72 shrink-0 flex-col gap-2 rounded-r2 p-2 ${isOver ? 'bg-sel' : 'bg-sunk'}`}
     >
       <h2 className="flex items-center gap-2 px-1 py-1 font-semibold">
         <StatusRing state={state} />
@@ -101,7 +101,8 @@ function Column({ state, items }: { state: IssueState; items: IssueSummary[] }) 
         <span className="font-normal text-mute">{items.length}</span>
       </h2>
       <SortableContext items={items.map((i) => i.key)} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-12 flex-col gap-2">
+        {/* Each column scrolls on its own; the padding keeps the active card's outline inside the scroll box. */}
+        <div className="-m-1 flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto p-1">
           {items.map((issue) => (
             <SortableCard key={issue.key} issue={issue} />
           ))}

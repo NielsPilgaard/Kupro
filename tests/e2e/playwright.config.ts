@@ -13,5 +13,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], locale: 'en-US' } }],
+  projects: [
+    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { locale: 'en-US' } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], locale: 'en-US', storageState: '.auth/user.json' }, dependencies: ['setup'] },
+  ],
 });
