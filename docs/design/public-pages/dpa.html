@@ -68,7 +68,7 @@
     <ul>
       <li>Names, email addresses, roles and capacity (hours per week) of members and guests.</li>
       <li>Any personal data the controller's users put into issues, comments, attachments and descriptions.</li>
-      <li>Meeting audio (in memory only, seconds), transcripts (until the meeting ends), and suggestion snippets of at most 1,000 characters.</li>
+      <li>Meeting audio (in memory only, seconds), and transcripts with the words behind each suggestion (until the meeting ends, or as long as the controller sets, at most 365 days).</li>
       <li>Activity history: who changed what, when, and through which surface (web, CLI, MCP, meeting agent).</li>
       <li>Technical data: IP addresses and request logs.</li>
     </ul>
@@ -100,7 +100,7 @@
       <li><b>Tenant separation</b>: every workspace-owned record carries the workspace id; a database query filter limits every request to the signed-in workspace, and automated tests check it.</li>
       <li><b>Access</b>: production access limited to <span class="ph">[named people]</span>, with SSH keys and two-factor authentication. Admin consoles behind separate accounts with 2FA.</li>
       <li><b>Authentication</b>: self-hosted Keycloak; hashed passwords; brute-force protection; revocable API and agent tokens.</li>
-      <li><b>Meeting audio</b>: held in memory only, never written to disk or logs; transcripts deleted when the meeting ends.</li>
+      <li><b>Meeting audio</b>: held in memory only, never written to disk or logs; transcripts deleted when the meeting ends unless the controller sets a retention period.</li>
       <li><b>Backups</b>: nightly database backups and continuous WAL archiving to EU object storage, kept <span class="ph">[35]</span> days; restore tested monthly.</li>
       <li><b>Monitoring</b>: self-hosted logs, traces and metrics kept 30 days; alerts on errors and downtime.</li>
       <li><b>Development</b>: code review, automated tests and dependency updates; secrets kept out of the source code.</li>
@@ -110,7 +110,7 @@
       written request. We also help with impact assessments and prior consultations with information about the processing.</p>
     <h3>C.4 Storage period and deletion</h3>
     <ul>
-      <li>Meeting audio: seconds, in memory. Transcripts: until the meeting ends.</li>
+      <li>Meeting audio: seconds, in memory. Transcripts and suggestion snippets: until the meeting ends, or after a day if it is never ended. The controller can set up to 365 days in the workspace settings.</li>
       <li>Workspace content: until the controller deletes it. After the subscription ends, read-only and exportable for 30 days, then deleted.</li>
       <li>Backups: overwritten within <span class="ph">[35]</span> days after deletion.</li>
     </ul>

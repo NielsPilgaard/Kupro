@@ -741,11 +741,11 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
         <thead><tr><th>Open item</th><th>Where it shows</th><th>Draft assumes</th></tr></thead>
         <tbody>
           <tr><td>Company name, CVR, address, contact email</td><td>All pages</td><td>Placeholders</td></tr>
-          <tr><td>Transcript retention: delete when the meeting ends</td><td>Privacy, DPA appendix A</td><td>Decided by you. <b>The code still keeps transcripts 30 days</b> (task 015); needs a small change before launch.</td></tr>
-          <tr><td>Proposal snippet (the words that triggered a change, max 1,000 characters) kept with the proposal</td><td>Privacy, DPA appendix A</td><td>Kept for audit until the issue or workspace is deleted. Alternative: drop snippets at meeting end too.</td></tr>
-          <tr><td>Scaleway does not store or train on Generative API inputs</td><td>Privacy, landing pages</td><td>Verify in Scaleway's terms/DPA before publishing the claim.</td></tr>
+          <tr><td>Transcript retention: delete when the meeting ends</td><td>Privacy, DPA appendix A</td><td>Done (default 0 days; owners can set up to 365).</td></tr>
+          <tr><td>Proposal snippets (the words that triggered a change)</td><td>Privacy, DPA appendix A</td><td>Done: deleted with the transcript.</td></tr>
+          <tr><td>Scaleway does not store or train on Generative API inputs</td><td>Privacy, landing pages</td><td>Checked against Scaleway's data privacy page (validated 2025-10-03): no storage or training; abuse exception up to 2 weeks; anonymous metadata 6 months. Check their DPA too.</td></tr>
           <tr><td>Notice period for new sub-processors</td><td>DPA, sub-processors</td><td>30 days by email to workspace owners</td></tr>
-          <tr><td>Workspace export (JSON/CSV, app + API + CLI)</td><td>Terms, privacy, DPA</td><td>Promised but <b>not built</b>. Needs a task before launch; GDPR portability leans on it.</td></tr>
+          <tr><td>Workspace export (JSON/CSV, app + API + CLI)</td><td>Terms, privacy, DPA</td><td>Promised but <b>not built</b>. Specified in task 016.</td></tr>
           <tr><td>Liability cap</td><td>Terms</td><td>Fees paid in the last 12 months</td></tr>
           <tr><td>Account data kept after a workspace is deleted</td><td>Privacy</td><td>30 days, then deleted; backups roll off after 35 days</td></tr>
         </tbody>

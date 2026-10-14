@@ -32,7 +32,7 @@
       <ul>
         <li>We collect what we need to run your account and your workspace. Nothing for advertising.</li>
         <li>Everything is stored and processed in the EU, by EU companies.</li>
-        <li>Meeting audio is never stored. Transcripts are deleted when the meeting ends.</li>
+        <li>Meeting audio is never stored. Transcripts are deleted when the meeting ends, unless your workspace chooses to keep them.</li>
         <li>We don't use your data to train AI models, and neither do our vendors.</li>
         <li>We use no tracking cookies. You can see, export and delete your data.</li>
       </ul>
@@ -74,10 +74,11 @@
       <li>We send each piece to Scaleway in Paris for transcription, then drop the audio. <b>Audio is held in memory only and
         never written to disk.</b></li>
       <li>We send the text, with the titles of issues that might be relevant, to a language model at Scaleway to suggest issue changes.</li>
-      <li>The transcript is kept only while the meeting runs, so the agent can follow the conversation. <b>When the meeting ends, the
-        transcript is deleted.</b></li>
-      <li>Each suggestion keeps the few words that triggered it (at most 1,000 characters), so your team can see why a change was
-        proposed. They stay with the suggestion and are deleted with the issue or the workspace.</li>
+      <li>The transcript is kept while the meeting runs, so the agent can follow the conversation. Each suggestion shows the few
+        words that triggered it, so you can see why it was proposed. <b>When the meeting ends, the transcript and those words are
+        deleted.</b> If nobody ends the meeting, they are deleted after a day.</li>
+      <li>A workspace owner can choose to keep transcripts for up to 365 days instead, for example to look back at a planning
+        meeting. Everyone in a session then sees how long the transcript is kept.</li>
     </ul>
     <p class="callout">Everyone in a session sees that it is listening. If people who are not Flowstate users are in the meeting, the
       workspace owner is responsible for telling them and, where needed, asking for their consent. The person who starts the
@@ -101,8 +102,7 @@
       <thead><tr><th>Data</th><th>Kept for</th></tr></thead>
       <tbody>
         <tr><td>Meeting audio</td><td>A few seconds, in memory only</td></tr>
-        <tr><td>Meeting transcript</td><td>Until the meeting ends</td></tr>
-        <tr><td>Suggestion snippets</td><td>As long as the issue they belong to</td></tr>
+        <tr><td>Meeting transcript and the words behind each suggestion</td><td>Until the meeting ends, or up to 365 days if the workspace owner chooses</td></tr>
         <tr><td>Workspace content</td><td>Until the workspace owner deletes it, or 30 days after the subscription ends</td></tr>
         <tr><td>Account</td><td>Until you delete it. Your name stays on changes you made in a workspace's history; ask the owner or us to replace it with "Former member"</td></tr>
         <tr><td>Security and operations logs</td><td>30 days</td></tr>
@@ -127,8 +127,10 @@
     <ul>
       <li>No advertising, no selling or renting data, no data brokers.</li>
       <li>No tracking cookies or third-party analytics. See the <a href="cookies.html">cookie policy</a>.</li>
-      <li>No training of AI models on your data. Scaleway processes meeting audio and text to return a result and
-        <span class="ph">[does not store it or use it for training — verify against Scaleway's terms]</span>.</li>
+      <li>No training of AI models on your data. Scaleway processes meeting audio and text to return a result. It doesn't keep
+        what we send or use it to train or improve models. The one exception: if traffic harms their service, Scaleway may keep
+        the affected requests for up to two weeks to investigate. It keeps anonymous usage statistics (such as request counts)
+        for up to 6 months.</li>
       <li>No automated decisions with legal or similar effect on you. Meeting suggestions are applied only when your workspace allows it, and can always be undone.</li>
     </ul>
 
