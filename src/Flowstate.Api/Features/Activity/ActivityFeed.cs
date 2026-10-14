@@ -24,7 +24,7 @@ public enum FeedItemKind
 public sealed record FeedChange(string Field, string? From, string? To);
 
 /// <summary>The meeting a change came from (task 015).</summary>
-/// <param name="Snippet">Transcript words that triggered it; null after the workspace's transcript retention.</param>
+/// <param name="Snippet">Transcript words that triggered it; null once the transcript is deleted.</param>
 /// <param name="ApprovedBy">Who approved it; null when full auto applied it.</param>
 public sealed record FeedMeeting(Guid MeetingId, Guid ProposalId, string? Snippet, MemberRef? ApprovedBy);
 

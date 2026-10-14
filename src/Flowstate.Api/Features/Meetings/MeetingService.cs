@@ -127,6 +127,7 @@ public sealed partial class MeetingService(
         }
 
         meeting.Mode = request.Mode ?? meeting.Mode;
+        var ending = request.State == MeetingState.Ended && meeting.State != MeetingState.Ended;
         if (request.State is { } state && state != meeting.State)
         {
             meeting.State = state;
@@ -134,6 +135,14 @@ public sealed partial class MeetingService(
         }
 
         await db.SaveChangesAsync(ct);
+        if (ending && (await SettingsAsync(db, ct)).TranscriptRetentionDays == 0)
+        {
+            // No retention: the transcript goes with the meeting (privacy policy). The hourly job catches failures here.
+            await db.TranscriptSegments.Where(t => t.SessionId == id).ExecuteDeleteAsync(ct);
+            await db.MeetingProposals.Where(p => p.SessionId == id && p.Snippet != null)
+                .ExecuteUpdateAsync(p => p.SetProperty(x => x.Snippet, (string?)null), ct);
+        }
+
         await realtime.ChangedAsync(ChangeTopic.Meetings);
         return (await MeetingsAsync(db, db.Meetings.Where(m => m.Id == id), ct))[0];
     }
@@ -433,8 +442,8 @@ public sealed partial class MeetingService(
     }
 
     /// <summary>
-    /// Deletes transcripts and proposal snippets past each workspace's retention (default 30 days). Background job, so
-    /// it reads across workspaces.
+    /// Deletes transcripts and proposal snippets past each workspace's retention. Background job, so it reads across
+    /// workspaces. With retention 0 (the default) they go when the meeting ends, or after a day if nobody ends it.
     /// </summary>
     public static async Task<int> PurgeExpiredTranscriptsAsync(FlowstateDbContext db, DateTimeOffset now, CancellationToken ct)
     {
@@ -442,15 +451,19 @@ public sealed partial class MeetingService(
         var segments = db.TranscriptSegments.IgnoreQueryFilters([FlowstateDbContext.TenantFilter]);
         var settings = db.MeetingSettings.IgnoreQueryFilters([FlowstateDbContext.TenantFilter]);
         var proposals = db.MeetingProposals.IgnoreQueryFilters([FlowstateDbContext.TenantFilter]);
-        var defaultCutoff = now.AddDays(-NewSettings(Guid.Empty).TranscriptRetentionDays);
+        var meetings = db.Meetings.IgnoreQueryFilters([FlowstateDbContext.TenantFilter]);
+        var abandoned = now.AddDays(-1);
 
         var deleted = await segments
-            .Where(t => t.CreatedAt < (settings.Where(s => s.WorkspaceId == t.WorkspaceId)
-                .Select(s => (DateTimeOffset?)now.AddDays(-s.TranscriptRetentionDays)).FirstOrDefault() ?? defaultCutoff))
+            .Where(t => settings.Any(s => s.WorkspaceId == t.WorkspaceId && s.TranscriptRetentionDays > 0)
+                ? settings.Any(s => s.WorkspaceId == t.WorkspaceId && t.CreatedAt < now.AddDays(-s.TranscriptRetentionDays))
+                : t.CreatedAt < abandoned || meetings.Any(m => m.Id == t.SessionId && m.State == MeetingState.Ended))
             .ExecuteDeleteAsync(ct);
         await proposals
-            .Where(p => p.Snippet != null && p.CreatedAt < (settings.Where(s => s.WorkspaceId == p.WorkspaceId)
-                .Select(s => (DateTimeOffset?)now.AddDays(-s.TranscriptRetentionDays)).FirstOrDefault() ?? defaultCutoff))
+            .Where(p => p.Snippet != null)
+            .Where(p => settings.Any(s => s.WorkspaceId == p.WorkspaceId && s.TranscriptRetentionDays > 0)
+                ? settings.Any(s => s.WorkspaceId == p.WorkspaceId && p.CreatedAt < now.AddDays(-s.TranscriptRetentionDays))
+                : p.CreatedAt < abandoned || meetings.Any(m => m.Id == p.SessionId && m.State == MeetingState.Ended))
             .ExecuteUpdateAsync(p => p.SetProperty(x => x.Snippet, (string?)null), ct);
         return deleted;
     }
@@ -848,7 +861,6 @@ public sealed partial class MeetingService(
         WorkspaceId = workspaceId,
         DefaultMode = MeetingMode.Suggest,
         FullAutoOperations = [.. DefaultFullAutoOperations],
-        TranscriptRetentionDays = 30,
     };
 
     private async Task<List<MeetingResponse>> MeetingsAsync(FlowstateDbContext db, IQueryable<MeetingSession> query, CancellationToken ct)

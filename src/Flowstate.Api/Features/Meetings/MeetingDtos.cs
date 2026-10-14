@@ -102,6 +102,7 @@ public sealed record ProposalReviewResult(ProposalResponse Proposal, IssueError?
 public sealed record OperationStats(ProposalOperation Operation, int Decided, int ApprovedUnchanged, int Edited, int Rejected);
 
 /// <param name="FullAutoOperations">Operations full auto applies without approval.</param>
+/// <param name="TranscriptRetentionDays">Days transcripts and snippets are kept; 0 means until the meeting ends.</param>
 /// <param name="Stats">Suggest-mode history per operation.</param>
 public sealed record MeetingSettingsResponse(
     MeetingMode DefaultMode,
@@ -112,9 +113,9 @@ public sealed record MeetingSettingsResponse(
 
 /// <param name="FullAutoEnabled">Allow full auto in this workspace.</param>
 /// <param name="FullAutoOperations">Operations full auto may apply. Creating issues always waits for approval.</param>
-/// <param name="TranscriptRetentionDays">Days to keep transcripts and snippets.</param>
+/// <param name="TranscriptRetentionDays">Days to keep transcripts and snippets; 0 deletes them when the meeting ends.</param>
 public sealed record UpdateMeetingSettingsRequest(
     MeetingMode? DefaultMode = null,
     bool? FullAutoEnabled = null,
     [MaxLength(6)] IReadOnlyList<ProposalOperation>? FullAutoOperations = null,
-    [Range(1, 365)] int? TranscriptRetentionDays = null);
+    [Range(0, 365)] int? TranscriptRetentionDays = null);

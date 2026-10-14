@@ -4707,7 +4707,7 @@
               "null",
               "string"
             ],
-            "description": "Transcript words that triggered it; null after the workspace's transcript retention."
+            "description": "Transcript words that triggered it; null once the transcript is deleted."
           },
           "approvedBy": {
             "oneOf": [
@@ -5337,6 +5337,7 @@
           },
           "transcriptRetentionDays": {
             "type": "integer",
+            "description": "Days transcripts and snippets are kept; 0 means until the meeting ends.",
             "format": "int32"
           },
           "stats": {
@@ -6646,7 +6647,7 @@
               "null",
               "integer"
             ],
-            "description": "Days to keep transcripts and snippets.",
+            "description": "Days to keep transcripts and snippets; 0 deletes them when the meeting ends.",
             "format": "int32"
           }
         }

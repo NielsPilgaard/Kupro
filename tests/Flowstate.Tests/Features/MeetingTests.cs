@@ -245,19 +245,55 @@ public sealed class MeetingTests(PostgresFixture postgres) : ApiTestBase(postgre
     }
 
     [Fact]
-    public async Task Transcripts_are_deleted_after_the_retention_period()
+    public async Task Transcripts_are_deleted_when_the_meeting_ends()
+    {
+        var meeting = await StartAsync();
+        var proposal = (await SayAsync(meeting, "FLOW-1 is done.")).Proposals.ShouldHaveSingleItem();
+        (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldNotBeEmpty();
+
+        await ReadAsync<MeetingResponse>(await _client.PatchAsJsonAsync($"{Ws}/meetings/{meeting.Id}", new UpdateMeetingRequest(State: MeetingState.Ended), Json.Options, Ct));
+
+        (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldBeEmpty();
+        (await GetAsync<List<ProposalResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/proposals")).Single(p => p.Id == proposal.Id).Snippet.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Transcripts_of_a_meeting_nobody_ends_are_deleted_after_a_day()
     {
         var meeting = await StartAsync();
         var proposal = (await SayAsync(meeting, "FLOW-1 is done.")).Proposals.ShouldHaveSingleItem();
 
-        await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FlowstateDbContext>>().CreateDbContextAsync(Ct);
-            await MeetingService.PurgeExpiredTranscriptsAsync(db, DateTimeOffset.UtcNow.AddDays(31), Ct);
-        }
+        await PurgeAsync(DateTimeOffset.UtcNow.AddHours(23));
+        (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldNotBeEmpty();
 
+        await PurgeAsync(DateTimeOffset.UtcNow.AddDays(2));
         (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldBeEmpty();
         (await GetAsync<List<ProposalResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/proposals")).Single(p => p.Id == proposal.Id).Snippet.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Transcripts_are_kept_for_the_configured_days()
+    {
+        (await GetAsync<MeetingSettingsResponse>(_client, $"{Ws}/meeting-settings")).TranscriptRetentionDays.ShouldBe(0);
+        await ReadAsync<MeetingSettingsResponse>(await _client.PatchAsJsonAsync($"{Ws}/meeting-settings",
+            new UpdateMeetingSettingsRequest(TranscriptRetentionDays: 30), Json.Options, Ct));
+        var meeting = await StartAsync();
+        var proposal = (await SayAsync(meeting, "FLOW-1 is done.")).Proposals.ShouldHaveSingleItem();
+        await ReadAsync<MeetingResponse>(await _client.PatchAsJsonAsync($"{Ws}/meetings/{meeting.Id}", new UpdateMeetingRequest(State: MeetingState.Ended), Json.Options, Ct));
+
+        await PurgeAsync(DateTimeOffset.UtcNow.AddDays(29));
+        (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldNotBeEmpty();
+
+        await PurgeAsync(DateTimeOffset.UtcNow.AddDays(31));
+        (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldBeEmpty();
+        (await GetAsync<List<ProposalResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/proposals")).Single(p => p.Id == proposal.Id).Snippet.ShouldBeNull();
+    }
+
+    private async Task PurgeAsync(DateTimeOffset now)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<FlowstateDbContext>>().CreateDbContextAsync(Ct);
+        await MeetingService.PurgeExpiredTranscriptsAsync(db, now, Ct);
     }
 
     private async Task<MeetingResponse> StartAsync(MeetingMode? mode = null, string language = "en") =>

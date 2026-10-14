@@ -188,7 +188,7 @@ internal static class MeetingCommands
         var defaultMode = Cli.EnumOption<MeetingMode>("--default-mode", "Mode new meetings start in");
         var fullAuto = new Option<bool?>("--full-auto") { Description = "Allow full auto in this workspace (owners only)." };
         var operations = Cli.EnumListOption<ProposalOperation>("--full-auto-op", "Operation full auto may apply");
-        var retention = new Option<int?>("--retention-days") { Description = "Days to keep transcripts." };
+        var retention = new Option<int?>("--retention-days") { Description = "Days to keep transcripts; 0 deletes them when the meeting ends." };
         return new ApiCommand("settings", "Show meeting settings and approval stats; options change them (owners).",
                 "getMeetingSettings", "updateMeetingSettings") { defaultMode, fullAuto, operations, retention }
             .Handle(async (c, ct) =>
@@ -206,7 +206,7 @@ internal static class MeetingCommands
                     }, cancellationToken: ct);
                 await c.Out.ItemAsync(s!, ("Default mode", Cli.Dashed(s!.DefaultMode.ToString()!)),
                     ("Full auto", s.FullAutoEnabled == true ? $"on for {string.Join(", ", (s.FullAutoOperations ?? []).Select(x => Cli.Dashed(x.ToString()!)))}" : "off"),
-                    ("Transcripts kept", $"{s.TranscriptRetentionDays} days"),
+                    ("Transcripts kept", s.TranscriptRetentionDays is 0 or null ? "until the meeting ends" : $"{s.TranscriptRetentionDays} days"),
                     ("Approved unchanged", string.Join(", ", (s.Stats ?? []).Where(x => x.Decided > 0)
                         .Select(x => $"{Cli.Dashed(x.Operation.ToString()!)} {x.ApprovedUnchanged}/{x.Decided}"))));
             });

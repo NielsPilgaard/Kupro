@@ -81,6 +81,7 @@ function MeetingBody({ workspace, meeting }: { workspace: string; meeting: Meeti
   const { t } = useTranslation();
   const { data: proposals = [] } = useProposals(workspace, meeting.id);
   const update = useUpdateMeeting(workspace, meeting.id);
+  const { data: settings } = useMeetingSettings(workspace);
   const pending = proposals.filter((p) => p.status === 'pending');
   const applied = proposals.filter((p) => p.status === 'applied' || p.status === 'undone');
 
@@ -109,7 +110,13 @@ function MeetingBody({ workspace, meeting }: { workspace: string; meeting: Meeti
 
       {meeting.state === 'ended' ? <Summary meeting={meeting} /> : <ModeBar workspace={workspace} meeting={meeting} />}
       {meeting.state === 'live' && <Listen workspace={workspace} meeting={meeting} />}
-      {meeting.state !== 'ended' && <p className="text-xs text-mute">{t('meeting.privacy')}</p>}
+      {meeting.state !== 'ended' && settings && (
+        <p className="text-xs text-mute">
+          {settings.transcriptRetentionDays > 0
+            ? t('meeting.privacyDays', { count: settings.transcriptRetentionDays })
+            : t('meeting.privacy')}
+        </p>
+      )}
 
       <section aria-label={t('meeting.pending')} className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold text-mute">{t('meeting.pendingCount', { count: pending.length })}</h3>

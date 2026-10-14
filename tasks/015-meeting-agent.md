@@ -73,7 +73,8 @@ See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-a
 ### Privacy
 
 - Session start notes that audio is being processed; audio is not stored after transcription.
-- Transcript retention is a workspace setting (default: 30 days).
+- Transcript retention is a workspace setting (0 to 365 days). Default 0: transcripts and proposal snippets are deleted
+  when the meeting ends, or after a day if nobody ends it.
 - All processing stays with EU vendors from the ADR-006 register.
 
 ## Acceptance criteria

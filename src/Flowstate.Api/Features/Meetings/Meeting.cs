@@ -109,7 +109,7 @@ public sealed class MeetingProposal : ITenantOwned
 
     public double Confidence { get; set; }
 
-    /// <summary>Transcript words that triggered the proposal; cleared with the transcript after retention.</summary>
+    /// <summary>Transcript words that triggered the proposal; cleared with the transcript.</summary>
     public string? Snippet { get; set; }
 
     public ProposalStatus Status { get; set; }
@@ -135,7 +135,8 @@ public sealed class MeetingSettings : ITenantOwned
     /// <summary>Operations full auto may apply without approval; others wait even in full auto.</summary>
     public List<ProposalOperation> FullAutoOperations { get; set; } = [];
 
-    public int TranscriptRetentionDays { get; set; } = 30;
+    /// <summary>Days to keep transcripts and snippets. 0 (the default): delete them when the meeting ends.</summary>
+    public int TranscriptRetentionDays { get; set; }
 }
 
 internal sealed class MeetingConfiguration :
