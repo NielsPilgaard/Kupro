@@ -19,8 +19,9 @@ description: >-
 - Billing unit = workspace. One subscription per workspace, billed by Alunta ([ADR-006](ADR-006-eu-vendor-policy.md)).
 - Seat = member with kind `human`, role Owner or Member, status `active`. Counted from the Member table, with no separate seat entity.
 - Members have a status (`invited` / `active` / `deactivated`) from task 003, so seat counting needs no migration later.
-- Meeting agent: in every plan, free included. Monthly AI budget per workspace (5 h per paid seat pooled, 2 h free); when
-  spent, the microphone stops and typed text uses keyword matching. No customer API keys on hosted.
+- No free plan: a 30-day trial of everything, then paid seats. The workspace is read-only (exportable) until it subscribes.
+- Meeting agent: in the trial and the paid plan. Monthly AI budget per workspace (5 h per paid seat pooled, 10 h for the
+  whole trial); when spent, the microphone stops and typed text uses keyword matching. No customer API keys on hosted.
 - Open: are guests and agents free (OQ-1, OQ-2), and does billing code live in core or `ee/` (OQ-3)?
 - Billing implementation stays after v1 ([product.md](../product.md)); only the data model is decided now.
 
@@ -47,6 +48,9 @@ running a fleet of agents.
   - `invited`: no seat until the invite is accepted.
   - `active`: counts as a seat.
   - `deactivated`: no access and no seat, but history and attribution are kept. Members are deactivated, never deleted.
+- **Trial, no free plan** (decided 2026-10-15): a new workspace gets 30 days of the full product, meeting agent
+  included, with no card. Then it needs paid seats. Unpaid, it turns read-only (export still works, task 016) and is
+  deleted 30 days later, with emails before each step.
 - **Self-hosted**: no seat limit. Entitlement checks resolve to "unlimited" when no billing module is present.
 
 ### Meeting agent usage (decided 2026-10-15)
@@ -54,12 +58,13 @@ running a fleet of agents.
 Speech-to-text and LLM calls cost money per use ([ADR-015](ADR-015-meeting-agent-vendors.md)); seats don't. One
 workspace leaving the agent on all day must not cost more than it pays.
 
-- **In every plan.** The meeting agent is a core feature, so the free plan has it too, with a lower allowance.
+- **In the trial and the paid plan.** The meeting agent is a core feature, so the trial includes it.
 - **One budget, two meters.** Each workspace has a monthly AI budget, kept in euro-cents at configured rates. Speech
   seconds (per microphone stream) and LLM input and output tokens (from the API's `usage`) both draw from it, so the
   margin holds whatever the mix of speech and typed text, and whichever model is configured.
-- **Allowance**, shown to people as meeting hours: 5 hours per paid seat a month, pooled across the workspace; 2 hours a
-  month per free workspace. Both are configuration. Owners are warned at 80 %.
+- **Allowance**, shown to people as meeting hours: 5 hours per paid seat a month, pooled across the workspace; 10 hours
+  in total for a trial, whatever its size, so inviting extra people doesn't buy hours. Both are configuration. Owners are
+  warned at 80 %.
 - **When it runs out**: the microphone stops. Text sent through the API, CLI or MCP still produces proposals with the
   offline keyword extractor, which uses no LLM. The feature gets less clever; it never disappears. Resets each month.
 - **Guards on every call and meeting**: a `max_tokens` limit on LLM output, a pause after 10 minutes without speech, a

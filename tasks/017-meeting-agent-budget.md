@@ -33,8 +33,9 @@ This task builds them:
   - Updated with an atomic increment, so concurrent microphones don't lose counts.
 - **Rates and allowances** in configuration (`MeetingAgent:Budget`):
   - euro per audio minute, and per million input and output tokens, for each route;
-  - hours per paid seat (5) and hours per free workspace (2);
+  - hours per paid seat a month (5) and hours for a whole trial (10);
   - the euro value of one "hour", used to turn hours into cents.
+  - The budget period is the calendar month for paid workspaces and the whole 30 days for a trial.
   - Until billing exists, every workspace counts as paid with its current seat count.
   - Self-hosted with no `Budget` section means no limit.
 - **Before each call**: check the budget is not spent.
