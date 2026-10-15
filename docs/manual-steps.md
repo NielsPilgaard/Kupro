@@ -25,7 +25,7 @@ Tick a box when it is done. Tell an agent when you have done one, so it can do t
 | # | Step | Where | Unblocks |
 |---|---|---|---|
 | N1 | [ ] Create a Scaleway account and project. Create an API key with **Generative APIs** permissions only. | console.scaleway.com | 015 |
-| N2 | [ ] Set the key locally: `dotnet user-secrets set Parameters:scaleway-ai-key <key>` in `src/Flowstate.AppHost`, then `aspire run`. The microphone button appears in the meeting panel. | your machine | 015: the 5-second test, and Danish/English with real speech |
+| N2 | [ ] Set the key locally: `dotnet user-secrets set Parameters:scaleway-ai-key <key>` in `src/Flowstate.AppHost`, then `aspire run`. The microphone button appears in the meeting panel. | your machine | 015: the 5-second test, Danish/English with real speech, and the extraction model spike ([ADR-015](adr/ADR-015-meeting-agent-vendors.md) IMP-006) |
 | N3 | [ ] Record 10 short standups (5 Danish, 5 English) that mention issue keys and people's names. Ask the people in them for permission. Give an agent the files. It runs the Whisper vs Hviske comparison ([ADR-015](adr/ADR-015-meeting-agent-vendors.md) IMP-001). | your meetings | 015 done |
 | N4 | [ ] Try the meeting agent in one real in-person meeting and one Teams meeting, and note what it missed. In Teams, use **Add call audio** in Chrome or Edge: share the Teams tab (Teams on the web) or the entire screen with system audio (Teams desktop app), and wear headphones. | your meetings | Feedback for 015; call audio is only unit-tested so far |
 
@@ -57,7 +57,7 @@ Do these in order. Each step links to the runbook section with the exact values.
 | E1 | [ ] Backups + a restore drill you have run yourself. | Waiting on Skoleoverblikket's backup agent ([open gaps](runbooks/deploy.md#open-gaps)). Until then, losing the VPS loses all data. |
 | E2 | [ ] Fill the placeholders in the draft privacy policy, terms, cookie policy and DPA ([docs/design/public-pages/](design/public-pages/index.html)), have a lawyer review them, and publish them on the domain. | Keycloak's MCP consent page links to them, and so will sign-up. Open items are listed in the drafts' Legal tab. |
 | E3 | [ ] Data processing agreements with the sub-processors in the [ADR-006 register](adr/ADR-006-eu-vendor-policy.md#vendor-register): OVHcloud, Scaleway, PingPuffin. Publish the sub-processor list. | Usually accepted in each vendor's console or terms. Check with your advisor whether anything more is needed. |
-| E4 | [ ] Scaleway console: set a billing alert on the project that holds the Generative APIs key, at a monthly amount you would notice (for example EUR 50). | Flowstate has no usage cap per workspace yet, so this is the only brake on meeting agent cost. |
+| E4 | [ ] Scaleway console: set a billing alert on the project that holds the Generative APIs key, at a monthly amount you would notice (for example EUR 50). | Until [task 017](../tasks/017-meeting-agent-budget.md) ships there is no AI budget per workspace, so this is the only brake on meeting agent cost. |
 
 ## Before charging
 

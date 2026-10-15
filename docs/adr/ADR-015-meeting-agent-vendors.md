@@ -79,6 +79,11 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 - **IMP-001**: Accuracy check once the feature runs: 10 recorded standups (5 DA, 5 EN, with issue keys and names),
   compare WER and proposal precision for Whisper vs Hviske. If Danish proposal precision is below ~90 %, route Danish
   transcription to Hviske (decision 4).
+- **IMP-006**: Extraction model spike, once a real key exists: Mistral Small 3.2 may be too weak to pick the right
+  operation, issue reference and value from loose speech. Run the IMP-001 recordings (and typed samples) through it and
+  through larger models Scaleway hosts, checking the catalogue at the time. Compare proposal precision, latency against the
+  5 s budget, and cost per meeting hour. Switching is configuration (decision 4); cost is absorbed by the AI budget in
+  [ADR-013](ADR-013-seats-billing.md), but a model costing much more per hour lowers the hours an allowance buys.
 - **IMP-002**: Scaleway Generative APIs is Chosen in the ADR-006 register; syv.ai stays Candidate.
 - **IMP-003**: Parameter `scaleway-ai-key` (secret) and the model ids in the AppHost (`MeetingAgent.cs`); the key is
   not in the repo. A route without a key counts as not configured: no microphone, keyword fallback for proposals.
@@ -95,6 +100,7 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 
 - [ADR-001](ADR-001-agent-parity.md): proposals are API resources with CLI and MCP parity.
 - [ADR-006](ADR-006-eu-vendor-policy.md): vendor register.
+- [ADR-013](ADR-013-seats-billing.md): the monthly AI budget that limits what these vendors cost per workspace.
 
 ## References
 

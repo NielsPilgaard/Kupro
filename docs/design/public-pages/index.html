@@ -612,11 +612,11 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
         <div class="model-h"><h3>A · Simple seats</h3><span class="tag">Recommended</span></div>
         <p>One paid plan. Everything is in it, including the meeting agent. Easiest to explain, easiest to build in Alunta.</p>
         <div class="tiers">
-          <div class="tier"><b>Free</b><span class="amt">€0</span><ul><li>Up to 3 people</li><li>All features</li><li>Meeting agent 5 h/month</li></ul></div>
-          <div class="tier"><b>Team</b><span class="amt">€9 <small>/ 69 kr per seat/mo, yearly</small></span><ul><li>€11 / 79 kr monthly</li><li>Meeting agent 10 h per seat/mo, pooled</li><li>Guests: 5 per paid seat</li></ul></div>
+          <div class="tier"><b>Free</b><span class="amt">€0</span><ul><li>Up to 3 people</li><li>All features</li><li>Meeting agent 2 h/month</li></ul></div>
+          <div class="tier"><b>Team</b><span class="amt">€9 <small>/ 69 kr per seat/mo, yearly</small></span><ul><li>€11 / 79 kr monthly</li><li>Meeting agent 5 h per seat/mo, pooled</li><li>Guests: 5 per paid seat</li></ul></div>
         </div>
         <div class="pc"><div><h4>For</h4><ul><li>Undercuts Linear by a little, not so much it looks cheap.</li><li>One plan matches the "simple" principle.</li></ul></div>
-          <div><h4>Against</h4><ul><li>No upsell for bigger customers until an Enterprise plan exists.</li><li>Free tier hosts teams of 3 forever.</li></ul></div></div>
+          <div><h4>Against</h4><ul><li>No upsell for bigger customers until an Enterprise plan exists.</li><li>Free tier hosts teams of 3 forever.</li><li>A higher seat tier with more meeting hours can come later.</li></ul></div></div>
       </article>
 
       <article class="model">
@@ -667,14 +667,16 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
         <thead><tr><th>Meeting agent cost basis (Scaleway, Oct 2026)</th><th>Rate</th><th style="text-align:right">Per meeting hour</th></tr></thead>
         <tbody>
           <tr><td>Transcription, whisper-large-v3, one microphone or shared tab</td><td>€0.003 per audio minute</td><td class="n">€0.18</td></tr>
-          <tr><td>Proposals, mistral-small-3.2: ~400 calls/h, ~2,000 tokens in and ~150 out each (estimate)</td><td>€0.15 / €0.35 per M tokens</td><td class="n">€0.14</td></tr>
+          <tr><td>Proposals, mistral-small-3.2: ~400 calls/h, ~2,000 tokens in and ~150 out each (estimate; a larger model may replace it after the model spike)</td><td>€0.15 / €0.35 per M tokens</td><td class="n">€0.14</td></tr>
           <tr><td><b>Total, one microphone</b></td><td></td><td class="n"><b>≈ €0.32</b></td></tr>
           <tr><td>A 6-person team, 15-min standup every workday (≈ 5.5 h/month)</td><td></td><td class="n">≈ €1.80/mo</td></tr>
         </tbody>
       </table>
     </div>
-    <p style="font-size:13.5px; color:var(--mute); max-width:80ch">The meeting agent is cheap enough to include in every paid plan. Hour caps exist to stop abuse
-      (someone leaving it on all day), not to make money. 10 hours per seat a month costs at most €3.20 per €9 seat, and real use is far lower.</p>
+    <p style="font-size:13.5px; color:var(--mute); max-width:80ch">The meeting agent is in every plan, the free one too. The allowance is a budget per workspace
+      that speech and LLM tokens both draw from (ADR-013, task 017). It exists to stop abuse (someone leaving it on all day), not to make
+      money: 5 hours per seat a month costs at most about €1.60 per €9 seat, and real use is far lower. When it runs out, the microphone
+      stops and typed text falls back to keyword matching until next month.</p>
   </section>
 
   <!-- ================= Cookies ================= -->
