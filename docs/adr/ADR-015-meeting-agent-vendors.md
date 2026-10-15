@@ -80,8 +80,9 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 
 - **ALT-001**: **Description**: Mistral's own API with `voxtral-mini-transcribe-realtime-2602` over WebSocket, for live
   captions with sub-second delay. Re-checked 2026-10-15.
-- **ALT-002**: **Rejection Reason**: no Danish (13 languages); $0.006 per audio minute, double Scaleway's Whisper; a
-  monthly subscription on top; a new streaming adapter for about 1 s less time to proposal. Scaleway stays.
+- **ALT-002**: **Rejection Reason**: no Danish (13 languages); $0.006 per audio minute, double Scaleway's Whisper; a new
+  streaming adapter for about 1 s less time to proposal. Scaleway stays. Mistral offers pay-as-you-go API access, so it
+  remains a viable fallback vendor (for English, or if Danish support arrives).
 
 ## Implementation Notes
 
