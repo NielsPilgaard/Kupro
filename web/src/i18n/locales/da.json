@@ -174,7 +174,13 @@
     "createToken": "Opret token",
     "lastUsed": "Brugt {{date}}",
     "neverUsed": "Aldrig brugt",
-    "revoke": "Tilbagekald"
+    "revoke": "Tilbagekald",
+    "exports": "Eksport",
+    "exportsHint": "Hent alt i et workspace som en ZIP-fil: JSON, CSV til regneark og vedhæftede filer. Eksporter slettes efter 7 dage.",
+    "exportStart": "Eksportér workspace",
+    "exportBuilding": "Bygger…",
+    "exportFailed": "Eksporten mislykkedes. Prøv igen.",
+    "exportDownload": "Hent ({{size}})"
   },
   "sprint": {
     "title": "Sprints",

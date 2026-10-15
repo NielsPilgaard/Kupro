@@ -3,6 +3,7 @@ using Flowstate.Api.Common;
 using Flowstate.Api.Features.Activity;
 using Flowstate.Api.Features.Attachments;
 using Flowstate.Api.Features.Comments;
+using Flowstate.Api.Features.Exports;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Meetings;
 using Flowstate.Api.Features.Plan;
@@ -47,6 +48,7 @@ public sealed class FlowstateDbContext(DbContextOptions<FlowstateDbContext> opti
     public DbSet<TranscriptSegment> TranscriptSegments => Set<TranscriptSegment>();
     public DbSet<MeetingProposal> MeetingProposals => Set<MeetingProposal>();
     public DbSet<MeetingSettings> MeetingSettings => Set<MeetingSettings>();
+    public DbSet<WorkspaceExport> WorkspaceExports => Set<WorkspaceExport>();
 
     /// <summary>
     /// Workspace of the current request; null outside a workspace route, which makes every tenant-owned query empty

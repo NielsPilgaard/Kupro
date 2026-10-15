@@ -2,12 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ExportResponse, WorkspaceSummary } from '../../api/gen/types.gen';
 import {
   createApiTokenMutation,
+  createExportMutation,
   getMeOptions,
   getMeQueryKey,
   listApiTokensOptions,
   listApiTokensQueryKey,
+  listExportsOptions,
+  listExportsQueryKey,
   listWorkspacesOptions,
   revokeApiTokenMutation,
   updateMeMutation,
@@ -15,7 +19,7 @@ import {
 import { Button } from '../../components/ui';
 import { useDate } from '../../lib/format';
 
-/** Profile (language) and API tokens for the CLI, CI and agents. */
+/** Profile (language), API tokens for the CLI, CI and agents, and workspace exports for owners. */
 export function SettingsPage() {
   const { t } = useTranslation();
   const { data: workspaces } = useQuery(listWorkspacesOptions());
@@ -31,6 +35,17 @@ export function SettingsPage() {
       </div>
       <Profile />
       <Tokens />
+      {workspaces?.some((w) => w.role === 'owner') && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">{t('settings.exports')}</h2>
+          <p className="text-sm text-mute">{t('settings.exportsHint')}</p>
+          {workspaces
+            .filter((w) => w.role === 'owner')
+            .map((w) => (
+              <WorkspaceExports key={w.slug} workspace={w} />
+            ))}
+        </section>
+      )}
     </main>
   );
 }
@@ -133,4 +148,59 @@ function Tokens() {
       </ul>
     </section>
   );
+}
+
+/** One owned workspace: start an export, and download recent ones while their link works (task 016). */
+function WorkspaceExports({ workspace }: { workspace: WorkspaceSummary }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const date = useDate();
+  const path = { workspace: workspace.slug };
+  const { data: exports } = useQuery({
+    ...listExportsOptions({ path }),
+    // Poll while one builds; download links last 15 minutes, so refresh them now and then too.
+    refetchInterval: (query) => (query.state.data?.some((e) => e.state === 'building') ? 2000 : 10 * 60 * 1000),
+  });
+  const start = useMutation({
+    ...createExportMutation(),
+    onSettled: () => void qc.invalidateQueries({ queryKey: listExportsQueryKey({ path }) }),
+  });
+  const building = exports?.some((e) => e.state === 'building') ?? false;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-r2 border border-line p-3">
+      <div className="flex items-center gap-3">
+        <span className="min-w-0 flex-1 truncate font-semibold">{workspace.name}</span>
+        <Button onClick={() => start.mutate({ path })} disabled={building || start.isPending}>
+          {building ? t('settings.exportBuilding') : t('settings.exportStart')}
+        </Button>
+      </div>
+      {start.isError && <p className="text-sm text-bad">{t('settings.exportFailed')}</p>}
+      {exports && exports.length > 0 && (
+        <ul className="flex flex-col">
+          {exports.map((e) => (
+            <li key={e.id} className="flex h-[var(--row)] items-center gap-3 border-b border-line text-sm last:border-b-0">
+              <span className="flex-1">{date(e.createdAt)}</span>
+              <ExportState export={e} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ExportState({ export: e }: { export: ExportResponse }) {
+  const { t } = useTranslation();
+  if (e.state === 'building') return <span className="text-mute">{t('settings.exportBuilding')}</span>;
+  if (e.state === 'failed') return <span className="text-bad">{t('settings.exportFailed')}</span>;
+  return (
+    <a href={e.downloadUrl ?? undefined} className="text-acc-ink underline">
+      {t('settings.exportDownload', { size: formatSize(e.size ?? 0) })}
+    </a>
+  );
+}
+
+function formatSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

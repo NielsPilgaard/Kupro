@@ -3517,6 +3517,148 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/exports": {
+      "post": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "Start an export. It builds in the background; poll it until `state` is `ready`. One runs at a time.",
+        "operationId": "createExport",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "Recent exports, newest first. Files are deleted 7 days after they were started.",
+        "operationId": "listExports",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExportResponse"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/exports/{id}": {
+      "get": {
+        "tags": [
+          "Exports"
+        ],
+        "summary": "An export's state, with a download link valid for 15 minutes once it is ready.",
+        "operationId": "getExport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/issues/{key}/activity": {
       "get": {
         "tags": [
@@ -4585,6 +4727,69 @@
             "description": "URL id: lowercase letters, digits and dashes, e.g. `acme`. Immutable."
           }
         }
+      },
+      "ExportResponse": {
+        "required": [
+          "id",
+          "state",
+          "requestedBy",
+          "size",
+          "createdAt",
+          "completedAt",
+          "expiresAt",
+          "downloadUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ExportState"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "size": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "ZIP size in bytes, once ready.",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the file is deleted.",
+            "format": "date-time"
+          },
+          "downloadUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Ready exports only: a link to the ZIP, valid for 15 minutes. Ask again for a new one."
+          }
+        }
+      },
+      "ExportState": {
+        "enum": [
+          "building",
+          "ready",
+          "failed"
+        ]
       },
       "FeedChange": {
         "required": [
@@ -6928,6 +7133,9 @@
     },
     {
       "name": "Labels"
+    },
+    {
+      "name": "Exports"
     },
     {
       "name": "Comments"

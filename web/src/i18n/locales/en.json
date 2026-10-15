@@ -174,7 +174,13 @@
     "createToken": "Create token",
     "lastUsed": "Used {{date}}",
     "neverUsed": "Never used",
-    "revoke": "Revoke"
+    "revoke": "Revoke",
+    "exports": "Export",
+    "exportsHint": "Download everything in a workspace as a ZIP: JSON, CSV for spreadsheets, and attached files. Exports are deleted after 7 days.",
+    "exportStart": "Export workspace",
+    "exportBuilding": "Building…",
+    "exportFailed": "The export failed. Try again.",
+    "exportDownload": "Download ({{size}})"
   },
   "sprint": {
     "title": "Sprints",

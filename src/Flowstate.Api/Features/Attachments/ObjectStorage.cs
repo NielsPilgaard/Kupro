@@ -101,6 +101,32 @@ public sealed class ObjectStorage : IDisposable
 
     public Task DeleteAsync(string key, CancellationToken ct) => Client.DeleteObjectAsync(_options.Bucket, key, ct);
 
+    /// <summary>Reads a stored object, or null when it doesn't exist; dispose the stream when done.</summary>
+    public async Task<Stream?> OpenReadAsync(string key, CancellationToken ct)
+    {
+        try
+        {
+            return (await Client.GetObjectAsync(_options.Bucket, key, ct)).ResponseStream;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Uploads a local file from the server (workspace exports).</summary>
+    public async Task UploadFileAsync(string key, string path, string contentType, CancellationToken ct)
+    {
+        await EnsureBucketAsync();
+        await Client.PutObjectAsync(new PutObjectRequest
+        {
+            BucketName = _options.Bucket,
+            Key = key,
+            FilePath = path,
+            ContentType = contentType,
+        }, ct);
+    }
+
     public void Dispose()
     {
         _client?.Dispose();

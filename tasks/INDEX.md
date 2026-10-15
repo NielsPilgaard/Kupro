@@ -28,7 +28,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
-| 16 | [016 Workspace export](016-workspace-export.md) | P1 | 1 | 003, 004, 008 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P3 | 2 | 004, 006, 010, 012 | In progress |
 | 17 | [017 Meeting agent AI budget](017-meeting-agent-budget.md) | P1 | 2 | 015 | Todo |
 
@@ -50,6 +49,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | [009 Search](completed/009-search.md) | 1 | Done |
 | [008 Comments, attachments, activity feed](completed/008-comments-attachments.md) | 1 | Done |
 | [012 Realtime updates](completed/012-realtime.md) | 1 | Done |
+| [016 Workspace export](completed/016-workspace-export.md) | 1 | Done |
 
 ## Rationale
 

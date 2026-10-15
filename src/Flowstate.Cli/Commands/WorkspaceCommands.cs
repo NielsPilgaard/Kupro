@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using Flowstate.Cli.Api.Models;
 
 namespace Flowstate.Cli.Commands;
@@ -51,6 +52,14 @@ internal static class WorkspaceCommands
                 await c.Out.DoneAsync(w!, "Workspace updated.");
             }));
 
+        workspace.Subcommands.Add(Export());
+        workspace.Subcommands.Add(new ApiCommand("exports", "List recent exports (owners).", "listExports").Handle(async (c, ct) =>
+        {
+            var list = await (await c.InWorkspaceAsync(ct)).Exports.GetAsync(cancellationToken: ct) ?? [];
+            await c.Out.ListAsync(list, ["ID", "STATE", "SIZE", "STARTED", "BY"],
+                e => [e.Id.ToString(), Cli.Dashed(e.State.ToString()!), Size(e.Size), e.CreatedAt?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), e.RequestedBy?.Name]);
+        }));
+
         var useSlug = new Argument<string>("slug") { Description = "Workspace slug." };
         workspace.Subcommands.Add(new Command("use", "Make a workspace the default for later commands.") { useSlug }.Handle(async (c, ct) =>
         {
@@ -62,6 +71,49 @@ internal static class WorkspaceCommands
 
         return workspace;
     }
+
+    /// <summary>Starts an export (or joins the one building), waits for it, and downloads it with -o (task 016).</summary>
+    private static Command Export()
+    {
+        var output = new Option<FileInfo?>("--output", "-o") { Description = "Save the ZIP to this file." };
+        var noWait = new Option<bool>("--no-wait") { Description = "Start it and return; check later with `workspace exports`." };
+        return new ApiCommand("export", "Export the whole workspace as a ZIP: JSON, CSV and attachment files (owners).",
+            "createExport", "getExport") { output, noWait }.Handle(async (c, ct) =>
+        {
+            var api = await c.InWorkspaceAsync(ct);
+            var export = await api.Exports.PostAsync(cancellationToken: ct);
+            while (!c.Get(noWait) && export!.State == ExportState.Building)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                export = await api.Exports[export.Id!.Value].GetAsync(cancellationToken: ct);
+            }
+
+            if (export!.State == ExportState.Failed)
+            {
+                throw new CliException("The export failed. Try again, or contact support if it keeps failing.");
+            }
+
+            if (c.Get(output) is { } target && export.DownloadUrl is { } url)
+            {
+                using var http = new HttpClient(); // Storage, not the API: no API auth or transport.
+                await using var source = await http.GetStreamAsync(new Uri(url), ct);
+                await using var sink = target.Create();
+                await source.CopyToAsync(sink, ct);
+                await c.Out.DoneAsync(export, $"Saved the export ({Size(export.Size)}) to {target.FullName}.");
+                return;
+            }
+
+            await c.Out.ItemAsync(export, ("Export", export.Id.ToString()), ("State", Cli.Dashed(export.State.ToString()!)),
+                ("Size", Size(export.Size)), ("Download", export.DownloadUrl), ("Deleted", export.ExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        });
+    }
+
+    private static string? Size(long? bytes) => bytes switch
+    {
+        null => null,
+        < 1024 * 1024 => $"{Math.Max(1, bytes.Value / 1024)} KB",
+        _ => $"{bytes.Value / (1024.0 * 1024):0.0} MB",
+    };
 
     private static Command Member()
     {

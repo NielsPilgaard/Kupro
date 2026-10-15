@@ -257,6 +257,54 @@ namespace Flowstate.Api.Data.Migrations
                     b.ToTable("comments", (string)null);
                 });
 
+            modelBuilder.Entity("Flowstate.Api.Features.Exports.WorkspaceExport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_id");
+
+                    b.Property<long?>("Size")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workspace_exports");
+
+                    b.HasIndex("RequestedById")
+                        .HasDatabaseName("ix_workspace_exports_requested_by_id");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_workspace_exports_state");
+
+                    b.HasIndex("WorkspaceId", "CreatedAt")
+                        .HasDatabaseName("ix_workspace_exports_workspace_id_created_at");
+
+                    b.ToTable("workspace_exports", (string)null);
+                });
+
             modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1289,6 +1337,23 @@ namespace Flowstate.Api.Data.Migrations
                         .HasForeignKey("ProposalId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_comments_meeting_proposals_proposal_id");
+                });
+
+            modelBuilder.Entity("Flowstate.Api.Features.Exports.WorkspaceExport", b =>
+                {
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workspace_exports_members_requested_by_id");
+
+                    b.HasOne("Flowstate.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_workspace_exports_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("Flowstate.Api.Features.Issues.Issue", b =>
