@@ -74,6 +74,15 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 - **NEG-002**: Scaleway's audio API is beta.
 - **NEG-003**: Utterance batching is not true streaming: no partial words on screen while someone talks.
 
+## Alternatives Considered
+
+### Mistral API directly (Voxtral Realtime)
+
+- **ALT-001**: **Description**: Mistral's own API with `voxtral-mini-transcribe-realtime-2602` over WebSocket, for live
+  captions with sub-second delay. Re-checked 2026-10-15.
+- **ALT-002**: **Rejection Reason**: no Danish (13 languages); $0.006 per audio minute, double Scaleway's Whisper; a
+  monthly subscription on top; a new streaming adapter for about 1 s less time to proposal. Scaleway stays.
+
 ## Implementation Notes
 
 - **IMP-001**: Accuracy check once the feature runs: 10 recorded standups (5 DA, 5 EN, with issue keys and names),
