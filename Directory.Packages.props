@@ -19,7 +19,8 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(AspNetCoreVersion)" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(AspNetCoreVersion)" />
+    <!-- 10.0.13 fixes CVE-2026-70159 (GHSA-334f-vvp4-7g6p); back to $(AspNetCoreVersion) when that reaches 10.0.13. -->
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104.2" />
