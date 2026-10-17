@@ -590,6 +590,166 @@
             "__dashboardUid__": "flowstate-health",
             "__panelId__": "29"
           }
+        },
+        {
+          "uid": "flowstate-backups-unhealthy",
+          "title": "Flowstate backups unhealthy",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 300,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "max(backup_agent_health{job=\"flowstate/backup-agent\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                }
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        1.5
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "10m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "The backup agent reports Unhealthy.",
+            "description": "Data may not be reaching the backup repo (WAL gap, S3 down, no full backup in 26 h, failed drill or verify). Open the backup console (restore runbook §1); its Overview lists the issues. Missing data is 'Flowstate backup agent silent'.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "36"
+          }
+        },
+        {
+          "uid": "flowstate-backup-agent-silent",
+          "title": "Flowstate backup agent silent",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "max(backup_agent_status_age_seconds{job=\"flowstate/backup-agent\"})",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        900
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "5m",
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "isPaused": false,
+          "labels": {
+            "service": "flowstate",
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "The backup agent has not reported a status for over 15 minutes.",
+            "description": "The backup-agent container is down, stuck, or can't reach Alloy. Postgres keeps running, but nothing new is backed up: WAL piles up in Postgres until the replication slot is dropped (4 GB). Check the container (`docker ps -a | grep backup-agent`, `docker logs`) and redeploy.",
+            "__dashboardUid__": "flowstate-health",
+            "__panelId__": "37"
+          }
         }
       ]
     }

@@ -482,6 +482,39 @@ P += [
 ]
 y += 8
 
+# The backup agent's gauges (infrastructure/backup-agent/AgentMetrics.cs), from its last status (every 5 minutes).
+BACKUP = 'job="flowstate/backup-agent"'
+P.append(row("Backups (ADR-016; details in the backup console)", y)); y += 1
+backup_health = stat("Backups", [prom(f'max(backup_agent_health{{{BACKUP}}})', instant=True)], 0, y, w=4,
+                     mappings=[{"type": "value", "options": {"0": {"text": "HEALTHY", "color": "green"},
+                                                             "1": {"text": "DEGRADED", "color": "orange"},
+                                                             "2": {"text": "UNHEALTHY", "color": "red"}}}],
+                     thresholds=[{"color": "green", "value": None}, {"color": "orange", "value": 1}, {"color": "red", "value": 2}],
+                     no_value="NO DATA", color_mode="background",
+                     desc="The agent's overall health. The issues behind it are on the backup console's Overview "
+                          "(restore runbook §1). No data = the agent is down or can't reach Alloy.")
+backup_status_age = stat("Status age", [prom(f'max(backup_agent_status_age_seconds{{{BACKUP}}})', instant=True)], 16, y, w=4,
+                         unit="s", decimals=0, no_value="–",
+                         thresholds=[{"color": "green", "value": None}, {"color": "red", "value": 900}],
+                         desc="Time since the agent last built its status. Over 15 minutes = the agent is stuck.")
+P += [
+    backup_health,
+    stat("Data secured", [prom(f'max(backup_agent_data_secured_age_seconds{{{BACKUP}}})', instant=True)], 4, y, w=4,
+         unit="s", decimals=0, no_value="–",
+         thresholds=[{"color": "green", "value": None}, {"color": "red", "value": 900}],
+         desc="How long ago the newest commit known to be in the backup repo happened: the data a lost VPS would cost. "
+              "Target (RPO): 15 minutes."),
+    stat("Last full backup", [prom(f'max(backup_agent_full_backup_age_seconds{{{BACKUP}}})', instant=True)], 8, y, w=4,
+         unit="s", decimals=0, no_value="–",
+         thresholds=[{"color": "green", "value": None}, {"color": "red", "value": 26 * 3600}],
+         desc="A full backup runs every night at 02:00 (Copenhagen). Over 26 hours = a night was missed."),
+    stat("Open issues", [prom(f'max(backup_agent_issues{{{BACKUP}}})', instant=True)], 12, y, w=4, decimals=0, no_value="–",
+         thresholds=[{"color": "green", "value": None}, {"color": "orange", "value": 1}],
+         desc="Issues in the agent's status, degraded or worse. Read them on the backup console."),
+    backup_status_age,
+]
+y += 4
+
 P.append(row("Recent errors and warnings", y)); y += 1
 P.append(logs_panel("Errors and warnings", ALL + f' | severity_number >= 13 | {NOT_REQLOG}', 0, y))
 
@@ -702,6 +735,26 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "fol
         "Nobody can sign in, and the API can't fetch signing keys after a restart. Check the keycloak container in "
         "Dokploy and its logs.",
         health, kc_up, no_data="Alerting", exec_err="Alerting"),
+    rule("flowstate-backups-unhealthy", "Flowstate backups unhealthy", "C", [
+        q_prom("A", f'max(backup_agent_health{{{BACKUP}}})', 300),
+        q_reduce("B", "A"),
+        q_threshold("C", "B", "gt", 1.5),
+    ], "10m", "critical",
+        "The backup agent reports Unhealthy.",
+        "Data may not be reaching the backup repo (WAL gap, S3 down, no full backup in 26 h, failed drill or verify). "
+        "Open the backup console (restore runbook §1); its Overview lists the issues. Missing data is "
+        "'Flowstate backup agent silent'.",
+        health, backup_health),
+    rule("flowstate-backup-agent-silent", "Flowstate backup agent silent", "C", [
+        q_prom("A", f'max(backup_agent_status_age_seconds{{{BACKUP}}})', 600),
+        q_reduce("B", "A", zero_if_empty=False),
+        q_threshold("C", "B", "gt", 900),
+    ], "5m", "critical",
+        "The backup agent has not reported a status for over 15 minutes.",
+        "The backup-agent container is down, stuck, or can't reach Alloy. Postgres keeps running, but nothing new is "
+        "backed up: WAL piles up in Postgres until the replication slot is dropped (4 GB). Check the container "
+        "(`docker ps -a | grep backup-agent`, `docker logs`) and redeploy.",
+        health, backup_status_age, no_data="Alerting", exec_err="Alerting"),
 ]}]}
 
 for name, d in [("health", health), ("usage", usage), ("errors", errors)]:

@@ -12,7 +12,7 @@ compose from `aspire publish`. Everything here is mounted read-only; Grafana pro
 | `loki.yaml`, `tempo.yaml`, `prometheus.yaml` | Single-node storage, 30-day retention, usage reporting off |
 | `grafana/provisioning/datasources/` | Prometheus, Loki, Tempo with fixed uids `prometheus`, `loki`, `tempo`, trace ↔ log links |
 | `grafana/provisioning/alerting/notifications.yaml` | Email contact point and default notification policy |
-| `grafana/provisioning/alerting/alert-rules.json` | Alert rules: API down, errors logged, restart loop, latency budget breached (generated) |
+| `grafana/provisioning/alerting/alert-rules.json` | Alert rules: API down, errors logged, restart loop, latency budget breached, disk, Postgres, Keycloak, backups (generated) |
 | `grafana/dashboards/health.json` | Service health: up/down, requests, 5xx rate, latency vs the ADR-010 budget (cold vs warm, requests over budget and their traces), endpoints table, runtime and DB pool (generated) |
 | `grafana/dashboards/usage.json` | Usage: requests per feature area and caller (session / token / agent), agent share, errors and slowest request per area, weekly rhythm (generated) |
 | `grafana/dashboards/errors.json` | Errors & logs: exceptions, distinct errors, error and warning logs, startups and migrations, log volume (generated) |
@@ -66,6 +66,9 @@ field and panels go blank.
   Alloy container: CPU, memory and load are the host's, disk is the filesystem Docker's volumes live on),
   `job="integrations/postgres"` (`pg_*`) and `job="keycloak"` (`up`, `jvm_*`, Keycloak's own). They feed the "Host and
   dependencies" row and the disk-full, Postgres-down and Keycloak-down alerts.
+- **Backup metrics** come from the backup agent over OTLP (`job="flowstate/backup-agent"`, `backup_agent_*`, gauges of
+  its last status; [ADR-016](../../docs/adr/ADR-016-postgres-backups.md)). Alloy joins the agent's `backup` network for
+  this. They feed the "Backups" row and the backups-unhealthy and backup-agent-silent alerts.
 
 The "API alive" panel and the "API down" alert use the Prometheus metric for the health probe: `/alive`, which the
 compose healthcheck hits every 10 s (`/health` under `aspire run`). Health probes are not request-logged.

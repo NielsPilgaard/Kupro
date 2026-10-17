@@ -120,3 +120,4 @@ has no alerting.
 - [ADR-012](ADR-012-aspire.md) — ServiceDefaults, generated compose
 - [ADR-004](ADR-004-hosting.md) — the host this runs on; IMP-002 resolved here
 - [ADR-001](ADR-001-agent-parity.md) — caller split in the request log
+- [ADR-016](ADR-016-postgres-backups.md) — the backup agent sends metrics and logs here; backup alert rules
