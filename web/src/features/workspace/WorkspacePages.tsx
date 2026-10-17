@@ -15,6 +15,7 @@ import {
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
 import { Wordmark } from '../../components/Wordmark';
+import { keyOf, slugOf } from '../../lib/format';
 
 /** `/`: your workspace, or onboarding when you have none. */
 export function HomePage() {
@@ -43,7 +44,7 @@ function Onboarding() {
   const navigate = useNavigate();
   const { data: invites } = useQuery(listInvitesOptions());
   const [name, setName] = useState('');
-  const slug = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const slug = slugOf(name);
   const create = useMutation({
     ...createWorkspaceMutation(),
     onSuccess: (w) => {
@@ -95,7 +96,7 @@ export function NewProjectPage() {
   const navigate = useNavigate();
   const { workspace } = useParams({ strict: false }) as { workspace: string };
   const [name, setName] = useState('');
-  const key = name.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^[0-9]+/, '').slice(0, 4);
+  const key = keyOf(name);
   const create = useMutation({
     ...createProjectMutation(),
     onSuccess: (p) => {

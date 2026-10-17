@@ -176,8 +176,8 @@
     "neverUsed": "Aldrig brugt",
     "revoke": "Tilbagekald",
     "exports": "Eksport",
-    "exportsHint": "Hent alt i et workspace som en ZIP-fil: JSON, CSV til regneark og vedhæftede filer. Eksporter slettes efter 7 dage.",
-    "exportStart": "Eksportér workspace",
+    "exportsHint": "Hent alt i et arbejdsområde som en ZIP-fil: JSON, CSV til regneark og vedhæftede filer. Eksporter slettes efter 7 dage.",
+    "exportStart": "Eksportér arbejdsområde",
     "exportBuilding": "Bygger…",
     "exportFailed": "Eksporten mislykkedes. Prøv igen.",
     "exportDownload": "Hent ({{size}})"
@@ -317,7 +317,7 @@
       "suggest": "Intet ændres, før du godkender det.",
       "fullAuto": "Klare ændringer sker med det samme og kan fortrydes. Nye opgaver, uklare match og annulleringer venter stadig på dig."
     },
-    "allowFullAuto": "Tillad fuld auto i dette workspace ({{ops}})",
+    "allowFullAuto": "Tillad fuld auto i dette arbejdsområde ({{ops}})",
     "noHistory": "Ingen beslutninger endnu. Godkend forslag i foreslå-tilstand for at se, hvordan agenten klarer sig.",
     "stat": "Du godkendte {{approved}} af {{decided}} ændringer af {{op}} uændret",
     "op": {

@@ -17,7 +17,7 @@ import {
   updateMeMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
 import { Button } from '../../components/ui';
-import { useDate } from '../../lib/format';
+import { useDate, useDateTime } from '../../lib/format';
 
 /** Profile (language), API tokens for the CLI, CI and agents, and workspace exports for owners. */
 export function SettingsPage() {
@@ -154,7 +154,7 @@ function Tokens() {
 function WorkspaceExports({ workspace }: { workspace: WorkspaceSummary }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const date = useDate();
+  const dateTime = useDateTime();
   const path = { workspace: workspace.slug };
   const { data: exports } = useQuery({
     ...listExportsOptions({ path }),
@@ -180,7 +180,7 @@ function WorkspaceExports({ workspace }: { workspace: WorkspaceSummary }) {
         <ul className="flex flex-col">
           {exports.map((e) => (
             <li key={e.id} className="flex h-[var(--row)] items-center gap-3 border-b border-line text-sm last:border-b-0">
-              <span className="flex-1">{date(e.createdAt)}</span>
+              <span className="flex-1">{dateTime(e.createdAt)}</span>
               <ExportState export={e} />
             </li>
           ))}
