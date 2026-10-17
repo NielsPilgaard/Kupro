@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
@@ -104,7 +105,13 @@ public sealed class OpenAiSpeechToText(HttpClient http, IOptions<MeetingAgentOpt
 /// <summary>Chat completion with a JSON schema response (ADR-015). Issue and member matching stays in our code.</summary>
 public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAgentOptions> options) : IProposalExtractor
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
+    /// <summary>A few actions fit easily; the cap stops a model that pads the schema with whitespace until the timeout.</summary>
+    private const int MaxTokens = 1000;
 
     private static readonly JsonNode Schema = JsonNode.Parse("""
         {
@@ -138,6 +145,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         {
             ["model"] = route.Model,
             ["temperature"] = 0,
+            ["max_tokens"] = MaxTokens,
             ["messages"] = new JsonArray
             {
                 new JsonObject { ["role"] = "system", ["content"] = Prompt },
@@ -158,7 +166,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         response.EnsureSuccessStatusCode();
         var completion = await response.Content.ReadFromJsonAsync<JsonObject>(ct);
         var content = completion?["choices"]?[0]?["message"]?["content"]?.GetValue<string>();
-        if (content is null || JsonNode.Parse(content)?["actions"] is not JsonArray actions)
+        if (content is null || Parse(content)?["actions"] is not JsonArray actions)
         {
             return [];
         }
@@ -169,10 +177,23 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
             .Select(x => new ExtractedAction(
                 x.Op!.Value,
                 x.A["issue"]?.GetValue<string>() ?? "",
-                x.A["value"]?.GetValue<string>(),
+                x.A["value"]?.GetValue<string>().Trim().Trim('"'),
                 Math.Clamp(x.A["confidence"]?.GetValue<double>() ?? 0, 0, 1),
                 x.A["snippet"]?.GetValue<string>() ?? ""))
             .ToList();
+    }
+
+    /// <summary>Null when the output was cut off at <see cref="MaxTokens"/>: no proposals rather than a failed transcript.</summary>
+    private static JsonNode? Parse(string content)
+    {
+        try
+        {
+            return JsonNode.Parse(content);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private const string Prompt = """
@@ -184,7 +205,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         - state: backlog, todo, inProgress, inReview, done or canceled
         - sprint: next, current, none, or a sprint name
         - assignee: a person's name as listed, or none
-        - estimate: hours as a number (convert days at 8 hours)
+        - estimate: hours, e.g. "value": "16" (convert days at 8 hours)
         - comment: the note to add, in the meeting's language
         - createIssue: the new issue's title, in the meeting's language
         "issue" is the issue key when one is said or obvious from the list, otherwise the words used for it
