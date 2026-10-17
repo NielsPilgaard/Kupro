@@ -12,6 +12,20 @@ public static class DatabaseExtensions
     /// <summary>Command-line argument that runs migrations and exits instead of serving HTTP (ADR-012 IMP-003).</summary>
     public const string MigrateCommand = "migrate";
 
+    /// <summary>
+    /// The backup agent reads the migration history for "restore to just before migration X" (ADR-016). Its role only
+    /// exists in our Postgres image, not in test containers. Re-run on every migrate, so a database loaded with
+    /// pg_restore gets the grant too.
+    /// </summary>
+    private const string GrantBackupAgentSql = """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'backup_agent') THEN
+                GRANT SELECT ON "__EFMigrationsHistory" TO backup_agent;
+            END IF;
+        END $$;
+        """;
+
     public static IHostApplicationBuilder AddFlowstateDatabase(this IHostApplicationBuilder builder)
     {
         // Scoped (not pooled) factory: contexts take the request's WorkspaceContext for the tenant filter.
@@ -44,6 +58,7 @@ public static class DatabaseExtensions
             {
                 await using var db = await factory.CreateDbContextAsync(ct);
                 await db.Database.MigrateAsync(ct);
+                await db.Database.ExecuteSqlRawAsync(GrantBackupAgentSql, ct);
                 logger.LogInformation("Database migrated");
                 return;
             }

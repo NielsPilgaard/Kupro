@@ -6,16 +6,20 @@
 #
 # The backup-agent inputs must match what its Dockerfile copies.
 set -euo pipefail
+shopt -s inherit_errexit
 
 rev="${1:-HEAD}"
 
 tag() {
-  local path objects=()
+  local path objects=() hashes
   for path in "$@"; do
     objects+=("$rev:$path")
   done
-  echo "src-$(git rev-parse "${objects[@]}" | sha1sum | cut -c1-12)"
+  hashes=$(git rev-parse "${objects[@]}")
+  echo "src-$(sha1sum <<< "$hashes" | cut -c1-12)"
 }
 
-echo "POSTGRES_TAG=$(tag infrastructure/postgres)"
-echo "BACKUP_AGENT_TAG=$(tag infrastructure/backup-agent global.json Directory.Build.props Directory.Packages.props)"
+postgres=$(tag infrastructure/postgres)
+agent=$(tag infrastructure/backup-agent global.json Directory.Build.props Directory.Packages.props)
+echo "POSTGRES_TAG=$postgres"
+echo "BACKUP_AGENT_TAG=$agent"

@@ -1,7 +1,7 @@
 name: E2E
 
 # Playwright against the production compose file (deploy/docker-compose.yaml + tests/e2e/compose.yaml) on the runner.
-# Called from CI on pull requests (API and Keycloak images built here from the PR's code) and from Staging on main (the
+# Called from CI on pull requests (API, Keycloak and Postgres images built here from the PR's code) and from Staging on main (the
 # images CI published for that commit). The web image is always built here: the published one has the production
 # Keycloak URL baked in.
 
@@ -38,14 +38,16 @@ jobs:
           ref: ${{ inputs.ref }}
           persist-credentials: false
 
-      - name: Published API and Keycloak images
+      - name: Published API, Keycloak and Postgres images
         if: inputs.image_tag != ''
         run: |
           prefix="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate"
+          eval "$(scripts/infra-image-tags.sh)"
           {
             echo "API_IMAGE=$prefix-api:${{ inputs.image_tag }}"
             echo "MIGRATIONS_IMAGE=$prefix-api:${{ inputs.image_tag }}"
             echo "KEYCLOAK_IMAGE=$prefix-keycloak:${{ inputs.image_tag }}"
+            echo "POSTGRES_IMAGE=$prefix-postgres:$POSTGRES_TAG"
           } >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
@@ -79,6 +81,16 @@ jobs:
           tags: flowstate-keycloak:e2e
           cache-from: type=gha,scope=e2e-keycloak
           cache-to: type=gha,scope=e2e-keycloak,mode=max
+
+      - name: Build Postgres image
+        if: inputs.image_tag == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: infrastructure/postgres
+          load: true
+          tags: flowstate-postgres:e2e
+          cache-from: type=gha,scope=e2e-postgres
+          cache-to: type=gha,scope=e2e-postgres,mode=max
 
       - name: Build web image with local Keycloak URL
         uses: docker/build-push-action@v6
@@ -123,7 +135,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p stack-logs
-          for service in migrations api keycloak web; do
+          for service in postgres migrations api keycloak web; do
             docker compose logs --no-color --timestamps "$service" > "stack-logs/$service.log" 2>&1 || true
           done
           echo "::group::API log (last 200 lines)"

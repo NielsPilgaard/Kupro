@@ -1,0 +1,527 @@
+{
+  "resources": {
+    "compose": {
+      "error": "This resource does not support generation in the manifest."
+    },
+    "loki": {
+      "type": "container.v1",
+      "image": "grafana/loki:3.7.8",
+      "args": [
+        "-config.file=/etc/loki/flowstate.yaml"
+      ],
+      "bindMounts": [
+        {
+          "source": "../infrastructure/observability/loki.yaml",
+          "target": "/etc/loki/flowstate.yaml",
+          "readOnly": true
+        }
+      ],
+      "volumes": [
+        {
+          "name": "flowstate-loki-data",
+          "target": "/loki",
+          "readOnly": false
+        }
+      ],
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 3100
+        }
+      }
+    },
+    "tempo": {
+      "type": "container.v1",
+      "image": "grafana/tempo:3.1.0",
+      "args": [
+        "-target=all",
+        "-config.file=/etc/tempo/flowstate.yaml"
+      ],
+      "bindMounts": [
+        {
+          "source": "../infrastructure/observability/tempo.yaml",
+          "target": "/etc/tempo/flowstate.yaml",
+          "readOnly": true
+        }
+      ],
+      "volumes": [
+        {
+          "name": "flowstate-tempo-data",
+          "target": "/var/tempo",
+          "readOnly": false
+        }
+      ],
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 3200
+        },
+        "otlp": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 4318
+        }
+      }
+    },
+    "prometheus": {
+      "type": "container.v1",
+      "image": "prom/prometheus:v3.15.0",
+      "args": [
+        "--config.file=/etc/prometheus/flowstate.yaml",
+        "--storage.tsdb.path=/prometheus",
+        "--storage.tsdb.retention.time=30d",
+        "--web.enable-otlp-receiver",
+        "--web.enable-remote-write-receiver"
+      ],
+      "bindMounts": [
+        {
+          "source": "../infrastructure/observability/prometheus.yaml",
+          "target": "/etc/prometheus/flowstate.yaml",
+          "readOnly": true
+        }
+      ],
+      "volumes": [
+        {
+          "name": "flowstate-prometheus-data",
+          "target": "/prometheus",
+          "readOnly": false
+        }
+      ],
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 9090
+        }
+      }
+    },
+    "alloy": {
+      "type": "container.v1",
+      "image": "grafana/alloy:v1.20.1",
+      "args": [
+        "run",
+        "/etc/alloy/flowstate",
+        "--server.http.listen-addr=0.0.0.0:12345",
+        "--storage.path=/var/lib/alloy/data",
+        "--disable-reporting"
+      ],
+      "bindMounts": [
+        {
+          "source": "../infrastructure/observability/alloy/flowstate.alloy",
+          "target": "/etc/alloy/flowstate/flowstate.alloy",
+          "readOnly": true
+        },
+        {
+          "source": "../infrastructure/observability/alloy/export.alloy",
+          "target": "/etc/alloy/flowstate/export.alloy",
+          "readOnly": true
+        }
+      ],
+      "env": {
+        "LOKI_URL": "{loki.bindings.http.url}",
+        "PROMETHEUS_URL": "{prometheus.bindings.http.url}",
+        "TEMPO_OTLP_URL": "{tempo.bindings.otlp.url}"
+      },
+      "bindings": {
+        "otlp": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 4318
+        },
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 12345
+        }
+      }
+    },
+    "grafana": {
+      "type": "container.v1",
+      "image": "grafana/grafana:13.2.3",
+      "bindMounts": [
+        {
+          "source": "../infrastructure/observability/grafana/provisioning",
+          "target": "/etc/grafana/provisioning",
+          "readOnly": true
+        },
+        {
+          "source": "../infrastructure/observability/grafana/dashboards",
+          "target": "/etc/grafana/dashboards",
+          "readOnly": true
+        }
+      ],
+      "volumes": [
+        {
+          "name": "flowstate-grafana-data",
+          "target": "/var/lib/grafana",
+          "readOnly": false
+        }
+      ],
+      "env": {
+        "PROMETHEUS_URL": "{prometheus.bindings.http.url}",
+        "LOKI_URL": "{loki.bindings.http.url}",
+        "TEMPO_URL": "{tempo.bindings.http.url}",
+        "GF_ANALYTICS_REPORTING_ENABLED": "false",
+        "GF_ANALYTICS_CHECK_FOR_UPDATES": "false",
+        "GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES": "false",
+        "GF_NEWS_NEWS_FEED_ENABLED": "false",
+        "GF_SERVER_ROOT_URL": "{grafana-public-url.value}",
+        "GF_SECURITY_ADMIN_PASSWORD": "{grafana-admin-password.value}",
+        "GF_SECURITY_COOKIE_SECURE": "true",
+        "GF_SMTP_ENABLED": "true",
+        "GF_SMTP_HOST": "smtp.tem.scaleway.com:587",
+        "GF_SMTP_USER": "{smtp-user.value}",
+        "GF_SMTP_PASSWORD": "{smtp-password.value}",
+        "GF_SMTP_FROM_ADDRESS": "{grafana-smtp-from.value}",
+        "ALERT_EMAIL": "{alert-email.value}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 3000
+        }
+      }
+    },
+    "smtp-user": {
+      "type": "parameter.v0",
+      "value": "{smtp-user.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "smtp-password": {
+      "type": "parameter.v0",
+      "value": "{smtp-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "grafana-public-url": {
+      "type": "parameter.v0",
+      "value": "{grafana-public-url.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "grafana-admin-password": {
+      "type": "parameter.v0",
+      "value": "{grafana-admin-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "grafana-smtp-from": {
+      "type": "parameter.v0",
+      "value": "{grafana-smtp-from.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "alert-email": {
+      "type": "parameter.v0",
+      "value": "{alert-email.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "postgres": {
+      "type": "container.v1",
+      "connectionString": "Host={postgres.bindings.tcp.host};Port={postgres.bindings.tcp.port};Username=postgres;Password={postgres-password.value}",
+      "image": "docker.io/library/postgres:18",
+      "volumes": [
+        {
+          "name": "flowstate-postgres-data",
+          "target": "/var/lib/postgresql",
+          "readOnly": false
+        }
+      ],
+      "env": {
+        "POSTGRES_HOST_AUTH_METHOD": "scram-sha-256",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256 --auth-local=scram-sha-256",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "{postgres-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5432
+        }
+      }
+    },
+    "flowstate": {
+      "type": "value.v0",
+      "connectionString": "{postgres.connectionString};Database=flowstate"
+    },
+    "keycloak": {
+      "type": "container.v1",
+      "build": {
+        "context": "..",
+        "dockerfile": "../infrastructure/keycloak/Dockerfile"
+      },
+      "args": [
+        "start",
+        "--import-realm"
+      ],
+      "volumes": [
+        {
+          "name": "flowstate-keycloak-data",
+          "target": "/opt/keycloak/data",
+          "readOnly": false
+        }
+      ],
+      "env": {
+        "KC_BOOTSTRAP_ADMIN_USERNAME": "admin",
+        "KC_BOOTSTRAP_ADMIN_PASSWORD": "{keycloak-password.value}",
+        "KC_HEALTH_ENABLED": "true",
+        "KC_FEATURES": "resource-indicators,cimd",
+        "KC_HOSTNAME": "{keycloak-public-url.value}",
+        "KC_HTTP_ENABLED": "true",
+        "KC_PROXY_HEADERS": "xforwarded",
+        "KC_HOSTNAME_BACKCHANNEL_DYNAMIC": "true",
+        "REALM_APP_URL": "{api-public-url.value}",
+        "REALM_SMTP_HOST": "smtp.tem.scaleway.com",
+        "REALM_SMTP_PORT": "587",
+        "REALM_SMTP_STARTTLS": "true",
+        "REALM_SMTP_AUTH": "true",
+        "REALM_SMTP_USER": "{smtp-user.value}",
+        "REALM_SMTP_PASSWORD": "{smtp-password.value}",
+        "REALM_SMTP_FROM": "{keycloak-smtp-from.value}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "port": 8180,
+          "targetPort": 8080
+        },
+        "management": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 9000
+        }
+      }
+    },
+    "migrations": {
+      "type": "project.v1",
+      "path": "../src/Flowstate.Api/Flowstate.Api.csproj",
+      "args": [
+        "migrate"
+      ],
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ConnectionStrings__flowstate": "{flowstate.connectionString}",
+        "FLOWSTATE_HOST": "{postgres.bindings.tcp.host}",
+        "FLOWSTATE_PORT": "{postgres.bindings.tcp.port}",
+        "FLOWSTATE_USERNAME": "postgres",
+        "FLOWSTATE_PASSWORD": "{postgres-password.value}",
+        "FLOWSTATE_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
+        "FLOWSTATE_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
+        "FLOWSTATE_DATABASENAME": "flowstate",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "{alloy.bindings.otlp.url}",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+        "OTEL_SERVICE_NAME": "migrations"
+      }
+    },
+    "api": {
+      "type": "project.v1",
+      "path": "../src/Flowstate.Api/Flowstate.Api.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{api.bindings.http.targetPort}",
+        "ConnectionStrings__flowstate": "{flowstate.connectionString}",
+        "FLOWSTATE_HOST": "{postgres.bindings.tcp.host}",
+        "FLOWSTATE_PORT": "{postgres.bindings.tcp.port}",
+        "FLOWSTATE_USERNAME": "postgres",
+        "FLOWSTATE_PASSWORD": "{postgres-password.value}",
+        "FLOWSTATE_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
+        "FLOWSTATE_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
+        "FLOWSTATE_DATABASENAME": "flowstate",
+        "KEYCLOAK_HTTP": "{keycloak.bindings.http.url}",
+        "services__keycloak__http__0": "{keycloak.bindings.http.url}",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "{alloy.bindings.otlp.url}",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+        "OTEL_SERVICE_NAME": "api",
+        "Auth__PublicAuthority": "{keycloak-public-url.value}/realms/flowstate",
+        "Api__PublicUrl": "{api-public-url.value}",
+        "Storage__ServiceUrl": "{storage-url.value}",
+        "Storage__Region": "{storage-region.value}",
+        "Storage__Bucket": "{storage-bucket.value}",
+        "Storage__AccessKey": "{storage-access-key.value}",
+        "Storage__SecretKey": "{storage-secret-key.value}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        }
+      }
+    },
+    "keycloak-public-url": {
+      "type": "parameter.v0",
+      "value": "{keycloak-public-url.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "api-public-url": {
+      "type": "parameter.v0",
+      "value": "{api-public-url.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "keycloak-smtp-from": {
+      "type": "parameter.v0",
+      "value": "{keycloak-smtp-from.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "storage-url": {
+      "type": "parameter.v0",
+      "value": "{storage-url.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "storage-region": {
+      "type": "parameter.v0",
+      "value": "{storage-region.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "storage-bucket": {
+      "type": "parameter.v0",
+      "value": "{storage-bucket.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "storage-access-key": {
+      "type": "parameter.v0",
+      "value": "{storage-access-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "storage-secret-key": {
+      "type": "parameter.v0",
+      "value": "{storage-secret-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "web": {
+      "type": "container.v1",
+      "build": {
+        "context": "..",
+        "dockerfile": "../web/Dockerfile",
+        "args": {
+          "VITE_KEYCLOAK_URL": "{keycloak-public-url.value}"
+        }
+      },
+      "env": {
+        "API_UPSTREAM": "{api.bindings.http.url}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 80,
+          "external": true
+        }
+      }
+    },
+    "postgres-password": {
+      "type": "parameter.v0",
+      "value": "{postgres-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    },
+    "postgres-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{postgres-password.value}",
+      "filter": "uri"
+    },
+    "keycloak-password": {
+      "type": "parameter.v0",
+      "value": "{keycloak-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    }
+  }
+}

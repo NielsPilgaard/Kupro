@@ -6,6 +6,7 @@ builder.AddDockerComposeEnvironment("compose")
     // Production telemetry goes to the self-hosted Grafana stack (ADR-014), not to an Aspire dashboard container.
     .WithDashboard(false)
     .WithRepoRelativeBindMounts()
+    .WithBackupNetworkAndVolumes()
     // Come back after a VPS reboot or crash; `migrations` is one-shot and must stay exited.
     .ConfigureComposeFile(file =>
     {
@@ -17,10 +18,9 @@ builder.AddDockerComposeEnvironment("compose")
 
 var (otelCollector, grafana) = builder.AddObservability();
 
+// Our image (infrastructure/postgres) on the A/B data volumes, with the backup agent next to it (ADR-016).
 var postgres = builder.AddPostgres("postgres")
-    .WithImageTag("18")
-    // Postgres 18 images keep PGDATA under /var/lib/postgresql/<major>/, so mount the parent directory.
-    .WithVolume("flowstate-postgres-data", "/var/lib/postgresql")
+    .WithBackupVolumes()
     .WithLifetime(ContainerLifetime.Persistent);
 
 var database = postgres.AddDatabase("flowstate");
@@ -35,6 +35,8 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8180)
     .WithLifetime(ContainerLifetime.Persistent);
 
 otelCollector.WithScrapeTargets(postgres, keycloak);
+
+var backupAgent = builder.AddBackupAgent(otelCollector);
 
 // Same API image in `migrate` mode: applies EF migrations, then exits (ADR-012 IMP-003).
 // No launch profile, so it does not claim the API's port.
@@ -75,11 +77,9 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true");
 
     // Keycloak's data in the shared Postgres cluster instead of its embedded H2 file, so one backup covers both.
-    // infrastructure/postgres/init creates its role and database when the Postgres volume is first created.
+    // infrastructure/postgres/init (in the image) creates its role and database when the cluster is first created.
     var keycloakDbPassword = builder.AddParameter("keycloak-db-password", secret: true);
-    postgres
-        .WithBindMount("../../infrastructure/postgres/init", "/docker-entrypoint-initdb.d", isReadOnly: true)
-        .WithEnvironment("KEYCLOAK_DB_PASSWORD", keycloakDbPassword);
+    postgres.WithEnvironment("KEYCLOAK_DB_PASSWORD", keycloakDbPassword);
     keycloak
         .WithEnvironment("KC_DB", "postgres")
         .WithEnvironment("KC_DB_URL", ReferenceExpression.Create(
@@ -182,6 +182,7 @@ else
         .WithEnvironment("Storage__SecretKey", ReferenceExpression.Create($"{storageSecret}"))
         .WithEnvironment("Storage__CreateBucket", "true")
         .WaitFor(storage);
+    backupAgent.WithLocalBuckets(storage, "flowstate", storageSecret);
 
     builder.AddViteApp("web", "../../web")
         .WithBun()

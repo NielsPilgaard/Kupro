@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/infrastructure/">
+    <Project Path="infrastructure/backup-agent/Flowstate.BackupAgent.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Flowstate.Api/Flowstate.Api.csproj" />
     <Project Path="src/Flowstate.AppHost/Flowstate.AppHost.csproj" />

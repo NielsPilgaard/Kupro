@@ -36,10 +36,15 @@ jobs:
     env:
       IMAGE_TAG: ${{ inputs.image_tag }}
     steps:
+      # Full history: the Postgres and agent tags are computed at the deployed commit, which a rollback makes older.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Image prefix
-        run: echo "IMAGE_PREFIX=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate" >> "$GITHUB_ENV"
+      - name: Image prefix and tags
+        run: |
+          echo "IMAGE_PREFIX=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate" >> "$GITHUB_ENV"
+          scripts/infra-image-tags.sh "${IMAGE_TAG#sha-}" >> "$GITHUB_ENV"
 
       - uses: docker/login-action@v3
         with:
@@ -51,8 +56,8 @@ jobs:
       - name: Check images exist
         run: |
           missing=0
-          for name in api web keycloak; do
-            image="$IMAGE_PREFIX-$name:$IMAGE_TAG"
+          for image in "$IMAGE_PREFIX-api:$IMAGE_TAG" "$IMAGE_PREFIX-web:$IMAGE_TAG" "$IMAGE_PREFIX-keycloak:$IMAGE_TAG" \
+                       "$IMAGE_PREFIX-postgres:$POSTGRES_TAG" "$IMAGE_PREFIX-backup-agent:$BACKUP_AGENT_TAG"; do
             if docker buildx imagetools inspect "$image" > /dev/null 2>&1; then
               echo "Found $image"
             else

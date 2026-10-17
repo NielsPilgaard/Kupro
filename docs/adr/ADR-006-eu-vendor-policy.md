@@ -41,6 +41,7 @@ Sovereignty is a core selling point. Customers will ask for a sub-processor list
 | Source + CI | GitHub | US | Exception (no customer data) |
 | Logs, traces, metrics | Grafana, Loki, Tempo, Prometheus (self-hosted OSS) | — | Chosen, see [ADR-014](ADR-014-observability.md) |
 | External uptime monitoring | PingPuffin | DK | Chosen — probes a public health endpoint only, see [ADR-014](ADR-014-observability.md) |
+| Backup heartbeats (dead-man's switch) | elmah.io | DK | Chosen — receives the backup agent's health and a short status text, no customer data, see [ADR-016](ADR-016-postgres-backups.md) |
 
 ## Consequences
 
@@ -57,3 +58,4 @@ Sovereignty is a core selling point. Customers will ask for a sub-processor list
 - [ADR-004](ADR-004-hosting.md) — hosting choice
 - [ADR-013](ADR-013-seats-billing.md) — billing model using Alunta
 - [ADR-014](ADR-014-observability.md) — self-hosted telemetry, PingPuffin uptime check
+- [ADR-016](ADR-016-postgres-backups.md) — Postgres backups, elmah.io heartbeats

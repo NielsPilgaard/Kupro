@@ -7,6 +7,7 @@
 //   DOKPLOY_COMPOSE_ID  — compose ID visible in the Dokploy dashboard URL
 //   IMAGE_TAG           — e.g. sha-abc1234
 //   IMAGE_PREFIX        — e.g. ghcr.io/owner/flowstate (images are <prefix>-api, -web and -keycloak)
+//   POSTGRES_TAG, BACKUP_AGENT_TAG — source-hash tags of <prefix>-postgres and -backup-agent (scripts/infra-image-tags.sh)
 //
 // The Dokploy deployment log (docker pull/compose output) is streamed into this
 // process's output. On failure its error lines become GitHub annotations and the
@@ -15,13 +16,15 @@
 
 import { appendFileSync } from "node:fs";
 
-const { DOKPLOY_API_KEY, DOKPLOY_URL, DOKPLOY_COMPOSE_ID, IMAGE_TAG, IMAGE_PREFIX, GITHUB_ACTIONS, GITHUB_STEP_SUMMARY } = process.env;
+const { DOKPLOY_API_KEY, DOKPLOY_URL, DOKPLOY_COMPOSE_ID, IMAGE_TAG, IMAGE_PREFIX, POSTGRES_TAG, BACKUP_AGENT_TAG, GITHUB_ACTIONS, GITHUB_STEP_SUMMARY } = process.env;
 
 if (!DOKPLOY_API_KEY) throw new Error("DOKPLOY_API_KEY is not set");
 if (!DOKPLOY_URL) throw new Error("DOKPLOY_URL is not set");
 if (!DOKPLOY_COMPOSE_ID) throw new Error("DOKPLOY_COMPOSE_ID is not set");
 if (!IMAGE_TAG) throw new Error("IMAGE_TAG is not set");
 if (!IMAGE_PREFIX) throw new Error("IMAGE_PREFIX is not set");
+if (!POSTGRES_TAG) throw new Error("POSTGRES_TAG is not set");
+if (!BACKUP_AGENT_TAG) throw new Error("BACKUP_AGENT_TAG is not set");
 
 const headers = { "x-api-key": DOKPLOY_API_KEY, "Content-Type": "application/json" };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -53,6 +56,9 @@ async function saveEnvironment(compose) {
         MIGRATIONS_IMAGE: `${IMAGE_PREFIX}-api:${IMAGE_TAG}`,
         WEB_IMAGE: `${IMAGE_PREFIX}-web:${IMAGE_TAG}`,
         KEYCLOAK_IMAGE: `${IMAGE_PREFIX}-keycloak:${IMAGE_TAG}`,
+        // Unchanged unless their sources changed, so Compose leaves Postgres and the agent running (ADR-016).
+        POSTGRES_IMAGE: `${IMAGE_PREFIX}-postgres:${POSTGRES_TAG}`,
+        BACKUP_AGENT_IMAGE: `${IMAGE_PREFIX}-backup-agent:${BACKUP_AGENT_TAG}`,
     };
 
     // Replace matching lines in-place to preserve blank lines and ordering.

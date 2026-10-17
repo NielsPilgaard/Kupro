@@ -12,7 +12,7 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Agent parity (API / CLI / MCP), feature services as commands | [ADR-001](ADR-001-agent-parity.md) | Accepted |
 | Backend stack, controllers, EF Core, PostgreSQL | [ADR-002](ADR-002-backend-stack.md) | Accepted |
 | Frontend stack, optimistic updates, component library, TS client codegen (hey-api) | [ADR-003](ADR-003-frontend-stack.md) | Accepted |
-| Hosting, deployment, backups, object storage | [ADR-004](ADR-004-hosting.md) | Accepted |
+| Hosting, deployment, object storage | [ADR-004](ADR-004-hosting.md) | Accepted |
 | Authentication, API tokens, MCP OAuth | [ADR-005](ADR-005-auth-keycloak.md) | Accepted |
 | EU vendor policy, vendor register | [ADR-006](ADR-006-eu-vendor-policy.md) | Accepted |
 | Licensing, open-core split | [ADR-007](ADR-007-licensing.md) | Accepted |
@@ -24,3 +24,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Seats, billing unit, member status, meeting agent AI budget | [ADR-013](ADR-013-seats-billing.md) | Proposed |
 | Observability: self-hosted Grafana stack, request log, dashboards, alerts, uptime check | [ADR-014](ADR-014-observability.md) | Accepted |
 | Meeting agent: speech-to-text and LLM vendors | [ADR-015](ADR-015-meeting-agent-vendors.md) | Accepted |
+| Postgres backups, WAL streaming, restore console, A/B data volumes, drills | [ADR-016](ADR-016-postgres-backups.md) | Accepted |

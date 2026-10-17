@@ -1,0 +1,8 @@
+# Build context is the repo root; the agent needs only its own folder and the shared build files.
+**
+!global.json
+!Directory.Build.props
+!Directory.Packages.props
+!infrastructure/backup-agent/**
+infrastructure/backup-agent/bin/
+infrastructure/backup-agent/obj/

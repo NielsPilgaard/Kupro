@@ -183,6 +183,58 @@ jobs:
           cache-from: type=gha,scope=keycloak
           cache-to: type=gha,scope=keycloak,mode=max
 
+  # Postgres and the backup agent (ADR-016) are tagged by their sources (scripts/infra-image-tags.sh), not the commit,
+  # so a deploy only replaces the database container when infrastructure/postgres changed. Built only when missing.
+  publish-infra:
+    name: Publish Postgres and backup-agent images
+    runs-on: ubuntu-latest
+    needs: [dotnet]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image names and tags
+        run: |
+          echo "PREFIX=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate" >> "$GITHUB_ENV"
+          scripts/infra-image-tags.sh >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Which images are missing
+        id: missing
+        run: |
+          missing() { docker buildx imagetools inspect "$1" > /dev/null 2>&1 && echo false || echo true; }
+          echo "postgres=$(missing "$PREFIX-postgres:$POSTGRES_TAG")" >> "$GITHUB_OUTPUT"
+          echo "agent=$(missing "$PREFIX-backup-agent:$BACKUP_AGENT_TAG")" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        if: steps.missing.outputs.postgres == 'true'
+        with:
+          context: infrastructure/postgres
+          push: true
+          tags: ${{ env.PREFIX }}-postgres:${{ env.POSTGRES_TAG }}
+          cache-from: type=gha,scope=postgres
+          cache-to: type=gha,scope=postgres,mode=max
+
+      - uses: docker/build-push-action@v6
+        if: steps.missing.outputs.agent == 'true'
+        with:
+          context: .
+          file: infrastructure/backup-agent/Dockerfile
+          push: true
+          tags: ${{ env.PREFIX }}-backup-agent:${{ env.BACKUP_AGENT_TAG }}
+          cache-from: type=gha,scope=backup-agent
+          cache-to: type=gha,scope=backup-agent,mode=max
+
   # VITE_KEYCLOAK_URL is baked in at build time, so this waits for the repository variable (deploy runbook).
   publish-web:
     name: Publish web image

@@ -102,6 +102,7 @@ services:
         read_only: true
     networks:
       - "aspire"
+      - "backup"
     restart: "unless-stopped"
     deploy:
       resources:
@@ -156,7 +157,7 @@ services:
         limits:
           memory: "384m"
   postgres:
-    image: "docker.io/library/postgres:18"
+    image: "${POSTGRES_IMAGE}"
     environment:
       POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
@@ -167,16 +168,35 @@ services:
       - "5432"
     volumes:
       - type: "volume"
-        target: "/var/lib/postgresql"
-        source: "flowstate-postgres-data"
+        target: "/pgdata/a"
+        source: "flowstate-pgdata-a"
         read_only: false
-      - type: "bind"
-        target: "/docker-entrypoint-initdb.d"
-        source: "../infrastructure/postgres/init"
-        read_only: true
+      - type: "volume"
+        target: "/pgdata/b"
+        source: "flowstate-pgdata-b"
+        read_only: false
+      - type: "volume"
+        target: "/pg-control"
+        source: "flowstate-pg-control"
+        read_only: false
+      - type: "volume"
+        target: "/var/run/postgresql"
+        source: "flowstate-pg-socket"
+        read_only: false
     networks:
       - "aspire"
     restart: "unless-stopped"
+    healthcheck:
+      test:
+        - "CMD"
+        - "pg_isready"
+        - "-h"
+        - "/var/run/postgresql"
+      interval: "10s"
+      timeout: "5s"
+      retries: 12
+      start_period: "30s"
+    stop_grace_period: "60s"
   keycloak:
     image: "${KEYCLOAK_IMAGE}"
     command:
@@ -218,6 +238,67 @@ services:
     networks:
       - "aspire"
     restart: "unless-stopped"
+  backup-agent:
+    image: "${BACKUP_AGENT_IMAGE}"
+    environment:
+      Agent__VolumeNamePrefix: "flowstate-pgdata-"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      OTEL_SERVICE_NAME: "backup-agent"
+      Agent__SshTunnelCommand: "${BACKUP_CONSOLE_SSH}"
+      PGBACKREST_REPO1_S3_ENDPOINT: "${BACKUP_S3_ENDPOINT}"
+      PGBACKREST_REPO1_S3_REGION: "${BACKUP_S3_REGION}"
+      PGBACKREST_REPO1_S3_BUCKET: "${BACKUP_S3_BUCKET}"
+      PGBACKREST_REPO1_S3_KEY: "${BACKUP_S3_KEY}"
+      PGBACKREST_REPO1_S3_KEY_SECRET: "${BACKUP_S3_KEY_SECRET}"
+      PGBACKREST_REPO1_CIPHER_PASS: "${BACKUP_CIPHER_PASS}"
+      OpsBucket__ServiceUrl: "${BACKUP_OPS_URL}"
+      OpsBucket__BucketName: "${BACKUP_OPS_BUCKET}"
+      OpsBucket__AccessKey: "${BACKUP_OPS_ACCESS_KEY}"
+      OpsBucket__SecretKey: "${BACKUP_OPS_SECRET_KEY}"
+      Heartbeats__ElmahIo__ApiKey: "${ELMAHIO_API_KEY}"
+      Heartbeats__ElmahIo__LogId: "${ELMAHIO_LOG_ID}"
+      Heartbeats__Wal: "${ELMAHIO_HEARTBEAT_WAL}"
+      Heartbeats__Backup: "${ELMAHIO_HEARTBEAT_BACKUP}"
+      Heartbeats__Verify: "${ELMAHIO_HEARTBEAT_VERIFY}"
+      Heartbeats__Drill: "${ELMAHIO_HEARTBEAT_DRILL}"
+    ports:
+      - "127.0.0.1:${BACKUP_CONSOLE_PORT:-9090}:9090"
+    volumes:
+      - type: "volume"
+        target: "/var/run/postgresql"
+        source: "flowstate-pg-socket"
+        read_only: false
+      - type: "volume"
+        target: "/pgdata/a"
+        source: "flowstate-pgdata-a"
+        read_only: false
+      - type: "volume"
+        target: "/pgdata/b"
+        source: "flowstate-pgdata-b"
+        read_only: false
+      - type: "volume"
+        target: "/pg-control"
+        source: "flowstate-pg-control"
+        read_only: false
+      - type: "volume"
+        target: "/wal-receive"
+        source: "flowstate-wal-receive"
+        read_only: false
+      - type: "volume"
+        target: "/var/lib/backup-agent"
+        source: "flowstate-backup-agent-state"
+        read_only: false
+    networks:
+      - "backup"
+    restart: "unless-stopped"
+    deploy:
+      resources:
+        limits:
+          memory: "${BACKUP_AGENT_MEMORY:-1536m}"
+    stop_grace_period: "30s"
+    tmpfs:
+      - "/drill:size=${DRILL_TMPFS_SIZE:-1g},uid=999,gid=999,mode=0700"
   migrations:
     image: "${MIGRATIONS_IMAGE}"
     command:
@@ -307,6 +388,8 @@ services:
 networks:
   aspire:
     driver: "bridge"
+  backup:
+    driver: "bridge"
 volumes:
   flowstate-loki-data:
     driver: "local"
@@ -316,7 +399,17 @@ volumes:
     driver: "local"
   flowstate-grafana-data:
     driver: "local"
-  flowstate-postgres-data:
+  flowstate-pgdata-a:
+    external: true
+  flowstate-pgdata-b:
+    external: true
+  flowstate-pg-control:
+    external: true
+  flowstate-pg-socket:
     driver: "local"
   flowstate-keycloak-data:
     driver: "local"
+  flowstate-wal-receive:
+    external: true
+  flowstate-backup-agent-state:
+    external: true

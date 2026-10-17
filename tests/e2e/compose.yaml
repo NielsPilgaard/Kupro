@@ -1,5 +1,5 @@
 # E2E stack: the production compose file plus host ports, on a CI runner or locally (e2e.yml).
-# Only `web` and its dependencies start; the Grafana stack is left out.
+# Only `web` and its dependencies start; the Grafana stack and the backup agent are left out.
 #
 #   docker compose -p flowstate-e2e -f deploy/docker-compose.yaml -f tests/e2e/compose.yaml \
 #     --env-file tests/e2e/e2e.env up -d web
@@ -15,3 +15,16 @@ services:
   web:
     ports:
       - "5180:80"
+# Production pins the data volumes as external (ADR-016). Here they belong to the E2E project instead, so they never
+# touch a local dev stack's volumes of the same name, and `down -v` removes them.
+volumes:
+  flowstate-pgdata-a:
+    external: false
+  flowstate-pgdata-b:
+    external: false
+  flowstate-pg-control:
+    external: false
+  flowstate-wal-receive:
+    external: false
+  flowstate-backup-agent-state:
+    external: false
