@@ -7,6 +7,7 @@ using System.Text.Json;
 using Flowstate.Api.Data;
 using Flowstate.Api.Features.Attachments;
 using Flowstate.Api.Features.Comments;
+using Flowstate.Api.Features.Email;
 using Flowstate.Api.Features.Exports;
 using Flowstate.Api.Features.Issues;
 using Flowstate.Api.Features.Projects;
@@ -15,6 +16,7 @@ using Flowstate.Api.Features.Workspaces;
 using Flowstate.Api.Tenancy;
 using Flowstate.Cli;
 using Flowstate.Tests.Infrastructure;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using CliApp = Flowstate.Cli.Cli;
@@ -29,12 +31,13 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
     private readonly HttpClient _storage = new();
     private HttpClient _client = null!;
     private WorkspaceSummary _workspace = null!;
+    private TestUser _owner = null!;
     private string Ws => $"/api/v1/workspaces/{_workspace.Slug}";
 
     public override async ValueTask InitializeAsync()
     {
         await base.InitializeAsync();
-        (_client, _workspace, _) = await NewWorkspaceAsync("Kobber & Søn");
+        (_client, _workspace, _owner) = await NewWorkspaceAsync("Kobber & Søn");
         await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("FLOW", "Flowstate"), Json.Options, Ct),
             HttpStatusCode.Created);
         await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues",
@@ -119,6 +122,20 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
         using var zip = await DownloadAsync(ready.DownloadUrl!);
         zip.Entries.ShouldNotContain(e => e.FullName.EndsWith(".png", StringComparison.Ordinal));
         (await ReadEntryAsync(zip, "attachments/MISSING.txt")).ShouldContain("-skærm.png");
+    }
+
+    [Fact]
+    public async Task A_failed_email_does_not_fail_a_finished_export()
+    {
+        var email = new FailingEmailSender();
+        await using var factory = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<IEmailSender>(email)));
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", FlowstateApiFactory.CreateJwt(_owner));
+
+        var started = await ReadAsync<ExportResponse>(await client.PostAsync($"{Ws}/exports", null, Ct), HttpStatusCode.Accepted);
+        var ready = await ReadyAsync(started.Id);
+        ready.DownloadUrl.ShouldNotBeNull();
+        email.Attempts.ShouldBe(1);
     }
 
     [Fact]
@@ -227,5 +244,16 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
         var bytes = buffer.ToArray();
         bytes.AsSpan().StartsWith(Encoding.UTF8.Preamble).ShouldBe(bom, $"{name} BOM");
         return Encoding.UTF8.GetString(bom ? bytes[3..] : bytes);
+    }
+
+    private sealed class FailingEmailSender : IEmailSender
+    {
+        public int Attempts { get; private set; }
+
+        public Task SendAsync(EmailMessage message, CancellationToken ct)
+        {
+            Attempts++;
+            throw new HttpRequestException("SMTP is down");
+        }
     }
 }

@@ -128,7 +128,17 @@ public static class AuthExtensions
             principal.FindFirstValue("locale") ?? PreferredLanguage(context.HttpContext.Request));
 
         var users = context.HttpContext.RequestServices.GetRequiredService<UserService>();
-        var userId = await users.EnsureUserAsync(identity, context.HttpContext.RequestAborted);
+        Guid userId;
+        try
+        {
+            userId = await users.EnsureUserAsync(identity, context.HttpContext.RequestAborted);
+        }
+        catch (OperationCanceledException) when (context.HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // The browser left (e.g. navigated during sign-in); without this JwtBearer logs an error and fires the errors alert.
+            context.NoResult();
+            return;
+        }
 
         ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(FlowstateClaims.UserId, userId.ToString()));
     }

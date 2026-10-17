@@ -213,7 +213,6 @@ public sealed partial class ExportJob(
             export.Size = new FileInfo(path).Length;
             export.CompletedAt = clock.GetUtcNow();
             await db.SaveChangesAsync(ct);
-            await NotifyAsync(scope, db, export, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -221,10 +220,21 @@ public sealed partial class ExportJob(
             export.State = ExportState.Failed;
             export.CompletedAt = clock.GetUtcNow();
             await db.SaveChangesAsync(CancellationToken.None);
+            return;
         }
         finally
         {
             File.Delete(path);
+        }
+
+        // The export is ready either way; Settings shows it even when the email doesn't arrive.
+        try
+        {
+            await NotifyAsync(scope, db, export, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogNotifyFailed(logger, id, ex);
         }
     }
 
@@ -257,4 +267,7 @@ public sealed partial class ExportJob(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Export {ExportId} failed")]
     private static partial void LogBuildFailed(ILogger logger, Guid exportId, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Export {ExportId} is ready, but the email to its owner failed")]
+    private static partial void LogNotifyFailed(ILogger logger, Guid exportId, Exception exception);
 }
