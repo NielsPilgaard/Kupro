@@ -195,7 +195,6 @@ export const da: Copy = {
   footer: {
     company: 'Pilgaard Development',
     cvr: 'CVR 41249269',
-    address: 'Nordlyvej 20, 8550 Ryomgård',
     product: 'Produkt',
     legal: 'Juridisk',
     cookieLine: 'Ingen sporing. Vi bruger kun de cookies, som login kræver.',
