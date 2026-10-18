@@ -179,7 +179,7 @@ export const da: Copy = {
         cta: 'Kontakt os',
       },
     },
-    contact: '[sales@domain]',
+    contact: 'contact@kupro.app',
     faqTitle: 'Spørgsmål',
     faq: [
       { q: 'Hvad tæller som en plads?', a: 'Alle aktive Owners og Members i et arbejdsområde. Inviterede tager først en plads, når de siger ja, og deaktiverede tager ingen.' },
@@ -193,9 +193,9 @@ export const da: Copy = {
     ],
   },
   footer: {
-    company: '[Company ApS]',
-    cvr: 'CVR [12345678]',
-    address: '[Gade 1, 2100 København Ø]',
+    company: 'Pilgaard Development',
+    cvr: 'CVR 41249269',
+    address: 'Nordlyvej 20, 8550 Ryomgård',
     product: 'Produkt',
     legal: 'Juridisk',
     cookieLine: 'Ingen sporing. Vi bruger kun de cookies, som login kræver.',

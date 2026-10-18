@@ -9,7 +9,7 @@
 <article>
     <span class="eyebrow">Legal · Databehandleraftale</span>
     <h1>Data processing agreement</h1>
-    <p class="meta">Version <span class="ph">[1.0]</span>, <span class="ph">[1 December 2026]</span> · <a href="/da/databehandleraftale" hreflang="da">Dansk version</a></p>
+    <p class="meta">Version 1.0, <span class="ph">[go-live date]</span> · <a href="/da/databehandleraftale" hreflang="da">Dansk version</a></p>
     <p class="draft"><b>Draft for legal review.</b> The body is Datatilsynet's standard contractual clauses, unchanged. Only the
       choices and appendices below are Kupro's own text.</p>
 
@@ -26,8 +26,8 @@
 
     <h2 id="how">How this agreement works</h2>
     <p>This agreement uses the <b>standard contractual clauses for data processing</b> adopted by the Danish Data Protection Agency
-      (Datatilsynet) under GDPR Article 28(8), in the version published at <span class="ph">[datatilsynet.dk link]</span>. Those clauses
-      (sections 1 to 15) apply word for word between you and <span class="ph">[Company ApS]</span>, CVR <span class="ph">[12345678]</span>.
+      (Datatilsynet) under GDPR Article 28(8), in the version published by Datatilsynet, as amended in March 2024 (<a href="https://www.datatilsynet.dk/presse-og-nyheder/nyhedsarkiv/2024/mar/aendring-i-datatilsynets-standarddatabehandleraftale">datatilsynet.dk</a>). Those clauses
+      (sections 1 to 15) apply word for word between you and Pilgaard Development, CVR 41249269.
       Appendices A to D below complete them.</p>
     <p>If anything in our <a href="/terms">terms of service</a> conflicts with this agreement on the protection of personal data,
       this agreement wins.</p>
@@ -40,7 +40,7 @@
         <tr><td>10.1 Breach notification</td><td>Without undue delay, and no later than <b>48 hours</b> after we become aware of a breach.</td></tr>
         <tr><td>11.1 End of processing</td><td>Delete the data after the 30-day export window, unless EU or Danish law requires us to keep it.</td></tr>
         <tr><td>12 Audit</td><td>A yearly written statement on our security measures, on request. On-site audits as in appendix C.7.</td></tr>
-        <tr><td>15 Contacts</td><td>Our contact: <span class="ph">[name, privacy@domain]</span>. Yours: the workspace owner's email unless you tell us otherwise.</td></tr>
+        <tr><td>15 Contacts</td><td>Our contact: Niels Pilgaard Grøndahl, niels@kupro.app. Yours: the workspace owner's email unless you tell us otherwise.</td></tr>
       </tbody>
     </table></div>
 
@@ -70,8 +70,8 @@
     <div class="tbl"><table>
       <thead><tr><th>Sub-processor</th><th>Address</th><th>Processing</th><th>Location</th></tr></thead>
       <tbody>
-        <tr><td>OVH SAS (OVHcloud)</td><td><span class="ph">[2 rue Kellermann, 59100 Roubaix, France]</span></td><td>Servers, database, file storage, backups</td><td><span class="ph">[Gravelines / Limburg]</span>, EU</td></tr>
-        <tr><td>Scaleway SAS</td><td><span class="ph">[8 rue de la Ville l'Évêque, 75008 Paris, France]</span></td><td>Transactional email. Meeting agent transcription and suggestions (only when used)</td><td>Paris, France</td></tr>
+        <tr><td>OVH SAS (OVHcloud)</td><td>2 rue Kellermann, 59100 Roubaix, France</td><td>Servers, database, file storage, backups</td><td>France</td></tr>
+        <tr><td>Scaleway SAS</td><td>8 rue de la Ville l'Évêque, 75008 Paris, France</td><td>Transactional email. Meeting agent transcription and suggestions (only when used)</td><td>Paris, France</td></tr>
       </tbody>
     </table></div>
     <p>Billing vendors (Alunta, card acquirer) process data we control about the paying company, not workspace content, so they are not sub-processors under this agreement.</p>
@@ -83,12 +83,12 @@
       instructs in writing.</p>
     <h3>C.2 Security measures</h3>
     <ul>
-      <li><b>Encryption</b>: TLS for all traffic. Disks and backups encrypted at rest <span class="ph">[confirm OVHcloud settings]</span>.</li>
+      <li><b>Encryption</b>: TLS for all traffic. Backups encrypted with AES-256 before they leave the server. Server disks rely on OVHcloud's physical and access security.</li>
       <li><b>Tenant separation</b>: every workspace-owned record carries the workspace id; a database query filter limits every request to the signed-in workspace, and automated tests check it.</li>
-      <li><b>Access</b>: production access limited to <span class="ph">[named people]</span>, with SSH keys and two-factor authentication. Admin consoles behind separate accounts with 2FA.</li>
+      <li><b>Access</b>: production access limited to the founders, with SSH keys and two-factor authentication. Admin consoles behind separate accounts with 2FA.</li>
       <li><b>Authentication</b>: self-hosted Keycloak; hashed passwords; brute-force protection; revocable API and agent tokens.</li>
       <li><b>Meeting audio</b>: held in memory only, never written to disk or logs; transcripts deleted when the meeting ends unless the controller sets a retention period.</li>
-      <li><b>Backups</b>: nightly database backups and continuous WAL archiving to EU object storage, kept <span class="ph">[35]</span> days; restore tested monthly.</li>
+      <li><b>Backups</b>: nightly database backups and continuous WAL archiving to EU object storage, kept 35 days; restore tested weekly.</li>
       <li><b>Monitoring</b>: self-hosted logs, traces and metrics kept 30 days; alerts on errors and downtime.</li>
       <li><b>Development</b>: code review, automated tests and dependency updates; secrets kept out of the source code.</li>
     </ul>
@@ -99,7 +99,7 @@
     <ul>
       <li>Meeting audio: seconds, in memory. Transcripts and suggestion snippets: until the meeting ends, or after a day if it is never ended. The controller can set up to 365 days in the workspace settings.</li>
       <li>Workspace content: until the controller deletes it. After the subscription ends, read-only and exportable for 30 days, then deleted.</li>
-      <li>Backups: overwritten within <span class="ph">[35]</span> days after deletion.</li>
+      <li>Backups: overwritten within 35 days after deletion.</li>
     </ul>
     <h3>C.5 Location</h3>
     <p>Processing takes place in the processor's and sub-processors' facilities in the EU listed in appendix B, and by the processor's staff working from the EU.</p>
@@ -115,11 +115,11 @@
     <h2 id="d">Appendix D · Other terms</h2>
     <ul>
       <li>Liability under this agreement follows section 11 of the <a href="/terms#t11">terms of service</a>, without limiting either party's liability towards data subjects or authorities under GDPR.</li>
-      <li>Assistance that goes beyond what the product does on its own and takes more than <span class="ph">[2]</span> hours a year may be charged at our usual hourly rate, agreed in advance.</li>
+      <li>Assistance that goes beyond what the product does on its own and takes more than 2 hours a year may be charged at our usual hourly rate, agreed in advance.</li>
       <li>This agreement ends when the main agreement ends and all personal data is deleted or returned.</li>
     </ul>
 
     <h2 id="sign">Accepting</h2>
     <p>This agreement is accepted when a workspace owner accepts the terms of service. If you need a signed copy for your records,
-      write to <span class="ph">[privacy@domain]</span> and we send one for e-signature.</p>
+      write to <a href="mailto:contact@kupro.app">contact@kupro.app</a> and we send one for e-signature.</p>
   </article>

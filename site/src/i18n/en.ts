@@ -178,7 +178,7 @@ export const en = {
         cta: 'Get in touch',
       },
     },
-    contact: '[sales@domain]',
+    contact: 'contact@kupro.app',
     faqTitle: 'Questions',
     faq: [
       { q: 'What counts as a seat?', a: 'Every active Owner or Member of a workspace. Invited people don’t take a seat until they accept, and deactivated people don’t take one at all.' },
@@ -192,9 +192,9 @@ export const en = {
     ],
   },
   footer: {
-    company: '[Company ApS]',
-    cvr: 'CVR [12345678]',
-    address: '[Street 1, 2100 København Ø]',
+    company: 'Pilgaard Development',
+    cvr: 'CVR 41249269',
+    address: 'Nordlyvej 20, 8550 Ryomgård',
     product: 'Product',
     legal: 'Legal',
     cookieLine: 'No tracking. We only use the cookies sign-in needs.',
