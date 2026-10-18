@@ -9,6 +9,6 @@ describe('names to ids', () => {
 
   it('keeps Danish letters readable in project keys', () => {
     expect(keyOf('Ærø Webshop')).toBe('AERO');
-    expect(keyOf('2026 Flowstate')).toBe('FLOW');
+    expect(keyOf('2026 Roadmap')).toBe('ROAD');
   });
 });

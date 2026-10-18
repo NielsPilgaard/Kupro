@@ -39,6 +39,9 @@ and restraint, not symbols — the product is for EU teams too.
 
 Never: "FlowState", "Flow State", "FLOWSTATE", "Flowstate.io" in prose.
 
+The name is provisional ([name search](naming.md)). `node scripts/rename-product.mjs <NewName>` renames it everywhere (paths, namespaces, realm,
+database, CLI, copy); safe until go-live. Keep the name in one of the three forms above so the script catches it.
+
 ## Logo mark — Stream
 
 Three rounded bars on a 32-unit grid, staggered like cards on a timeline. Top and bottom bars in ink (bottom at 50%),
