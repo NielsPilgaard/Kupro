@@ -1,0 +1,52 @@
+---
+// Carried over from docs/design/public-pages/cookies.html (draft for legal review, manual step E2).
+---
+<aside class="toc"><b>Contents</b><ol>
+    <li><a href="#none">Why there's no banner</a></li><li><a href="#cookies">Cookies</a></li><li><a href="#storage">Browser storage</a></li><li><a href="#control">Your control</a></li></ol></aside>
+
+<article>
+    <span class="eyebrow">Legal</span>
+    <h1>Cookies</h1>
+    <p class="meta">Last updated <span class="ph">[1 December 2026]</span> · <a href="/da/cookies" hreflang="da">Dansk version</a></p>
+
+    <section class="short" aria-labelledby="short-h">
+      <h2 id="short-h">The short version</h2>
+      <ul>
+        <li>We only store what you need to sign in and stay signed in.</li>
+        <li>No tracking, no analytics, no advertising cookies, and nothing from other companies.</li>
+        <li>That's why you don't see a cookie banner.</li>
+      </ul>
+    </section>
+
+    <h2 id="none">Why there's no banner</h2>
+    <p>Danish rules on cookies (cookiebekendtgørelsen) require consent for storing information in your browser, except when it is
+      strictly necessary for a service you asked for. Everything Flowstate stores is needed to sign you in and keep your session secure,
+      so no consent is needed. If we ever add something that does need consent, we will ask first, with "Reject" as easy as "Accept".</p>
+
+    <h2 id="cookies">Cookies</h2>
+    <p>Set by our sign-in server (Keycloak, hosted by us at <span class="ph">auth.[domain]</span>). They are first-party, and never shared.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Name</th><th>Purpose</th><th>Expires</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">AUTH_SESSION_ID<br>KC_AUTH_SESSION_HASH</td><td>Keeps track of a sign-in while it is in progress</td><td>End of session</td></tr>
+        <tr><td class="mono">KC_RESTART</td><td>Lets a sign-in continue if it was interrupted</td><td>End of session</td></tr>
+        <tr><td class="mono">KEYCLOAK_IDENTITY<br>KEYCLOAK_SESSION</td><td>Keeps you signed in, so you don't type your password on every visit</td><td>End of session, or <span class="ph">[30 days]</span> with "Remember me"</td></tr>
+        <tr><td class="mono">KEYCLOAK_LOCALE</td><td>Shows the sign-in page in the language you chose</td><td>End of session</td></tr>
+      </tbody>
+    </table></div>
+    <p class="draft"><b>Check before publishing:</b> confirm the exact names and lifetimes in the browser on production; they depend on the Keycloak version and realm settings.</p>
+
+    <h2 id="storage">Browser storage</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Name</th><th>Type</th><th>Purpose</th><th>Expires</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">oidc.user:…</td><td>Session storage</td><td>Your sign-in token for the Flowstate app</td><td>When you close the tab</td></tr>
+        <tr><td class="mono">oidc.…</td><td>Session storage</td><td>Short-lived check that protects the sign-in from forgery</td><td>When sign-in completes</td></tr>
+      </tbody>
+    </table></div>
+    <p>The public website itself stores nothing.</p>
+
+    <h2 id="control">Your control</h2>
+    <p>You can delete cookies and site data in your browser settings at any time. You'll be signed out and need to sign in again.
+      Questions: <span class="ph">[privacy@domain]</span>.</p>
+  </article>

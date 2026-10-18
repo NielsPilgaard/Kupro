@@ -1,0 +1,141 @@
+---
+// Carried over from docs/design/public-pages/privacy.html (draft for legal review, manual step E2).
+---
+<aside class="toc"><b>Contents</b><ol>
+    <li><a href="#who">Who we are</a></li><li><a href="#roles">Your data or your company's</a></li><li><a href="#what">What we collect</a></li>
+    <li><a href="#meetings">Meeting agent</a></li><li><a href="#why">Why we may use it</a></li><li><a href="#keep">How long we keep it</a></li>
+    <li><a href="#share">Who else sees it</a></li><li><a href="#not">What we don't do</a></li><li><a href="#security">Security</a></li>
+    <li><a href="#rights">Your rights</a></li><li><a href="#changes">Changes</a></li></ol></aside>
+
+<article>
+    <span class="eyebrow">Legal</span>
+    <h1>Privacy policy</h1>
+    <p class="meta">Last updated <span class="ph">[1 December 2026]</span> · <a href="/da/privatliv" hreflang="da">Dansk version</a></p>
+    <p class="draft"><b>Draft for legal review.</b> Placeholders are highlighted. Describes Flowstate as built in October 2026, with
+      transcripts deleted when a meeting ends.</p>
+
+    <section class="short" aria-labelledby="short-h">
+      <h2 id="short-h">The short version</h2>
+      <ul>
+        <li>We collect what we need to run your account and your workspace. Nothing for advertising.</li>
+        <li>Everything is stored and processed in the EU, by EU companies.</li>
+        <li>Meeting audio is never stored. Transcripts are deleted when the meeting ends, unless your workspace chooses to keep them.</li>
+        <li>We don't use your data to train AI models, and neither do our vendors.</li>
+        <li>We use no tracking cookies. You can see, export and delete your data.</li>
+      </ul>
+    </section>
+
+    <h2 id="who">Who we are</h2>
+    <p>Flowstate is run by <span class="ph">[Company ApS]</span>, CVR <span class="ph">[12345678]</span>, <span class="ph">[street, postcode city]</span>, Denmark.
+      Questions about privacy go to <span class="ph">[privacy@domain]</span>. We answer within 30 days, usually much sooner.</p>
+
+    <h2 id="roles">Your data or your company's</h2>
+    <p>Flowstate holds two kinds of personal data, and the rules differ.</p>
+    <ul>
+      <li><b>Data about you as a user</b>: your account, how you sign in, invoices, support emails and security logs. We decide how
+        this is used, so we are the <i>data controller</i>. This policy covers it.</li>
+      <li><b>Data inside a workspace</b>: issues, comments, attachments, meeting transcripts and everything else your team puts in. The
+        company that owns the workspace decides what goes in and who sees it. They are the controller and we are their
+        <i>data processor</i>, bound by our <a href="/dpa">data processing agreement</a>. Questions about that data go to your
+        workspace owner first; we help them answer.</li>
+    </ul>
+
+    <h2 id="what">What we collect</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Data</th><th>Where it comes from</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td>Account</td><td>You, when you sign up or are invited</td><td>Name, email, password (stored only as a hash), language, time zone</td></tr>
+        <tr><td>Workspace membership</td><td>You and your workspace owner</td><td>Workspaces you belong to, your role, hours per week for capacity planning</td></tr>
+        <tr><td>Agents and tokens</td><td>You</td><td>Agent names you create, API tokens and when they were last used</td></tr>
+        <tr><td>Workspace content</td><td>You and your team</td><td>Issues, comments, attachments, activity history. We process this for your company (see above)</td></tr>
+        <tr><td>Billing</td><td>The workspace owner</td><td>Company name, CVR/VAT number, billing email, invoices. Card details go straight to the card acquirer; we never see them</td></tr>
+        <tr><td>Security and operations logs</td><td>Your browser, the CLI or an MCP client</td><td>IP address, time, which request, errors, sign-in attempts</td></tr>
+        <tr><td>Support</td><td>You, when you write to us</td><td>Your email and what you tell us</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="meetings">Meeting agent</h2>
+    <p>The meeting agent is off until someone in your workspace starts a meeting session. While it runs:</p>
+    <ul>
+      <li>Your browser records short pieces of speech, a few seconds each, and sends them to our servers.</li>
+      <li>We send each piece to Scaleway in Paris for transcription, then drop the audio. <b>Audio is held in memory only and
+        never written to disk.</b></li>
+      <li>We send the text, with the titles of issues that might be relevant, to a language model at Scaleway to suggest issue changes.</li>
+      <li>The transcript is kept while the meeting runs, so the agent can follow the conversation. Each suggestion shows the few
+        words that triggered it, so you can see why it was proposed. <b>When the meeting ends, the transcript and those words are
+        deleted.</b> If nobody ends the meeting, they are deleted after a day.</li>
+      <li>A workspace owner can choose to keep transcripts for up to 365 days instead, for example to look back at a planning
+        meeting. Everyone in a session then sees how long the transcript is kept.</li>
+    </ul>
+    <p class="callout">Everyone in a session sees that it is listening. If people who are not Flowstate users are in the meeting, the
+      workspace owner is responsible for telling them and, where needed, asking for their consent. The person who starts the
+      session can pause or stop it at any time.</p>
+
+    <h2 id="why">Why we may use it</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Purpose</th><th>Legal basis (GDPR)</th></tr></thead>
+      <tbody>
+        <tr><td>Create your account, sign you in, run the service you or your company signed up for</td><td>Contract, Art. 6(1)(b)</td></tr>
+        <tr><td>Send emails the service needs: invites, password resets, notifications you turned on</td><td>Contract, Art. 6(1)(b)</td></tr>
+        <tr><td>Keep the service secure, stop abuse, find and fix errors</td><td>Legitimate interest, Art. 6(1)(f): a service that works and isn't misused</td></tr>
+        <tr><td>Invoices and bookkeeping</td><td>Legal obligation, Art. 6(1)(c): the Danish Bookkeeping Act</td></tr>
+        <tr><td>Answer support questions</td><td>Contract or legitimate interest, depending on the question</td></tr>
+        <tr><td>Product emails about new features (only if you opt in)</td><td>Consent, Art. 6(1)(a). Unsubscribe from any email</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="keep">How long we keep it</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Data</th><th>Kept for</th></tr></thead>
+      <tbody>
+        <tr><td>Meeting audio</td><td>A few seconds, in memory only</td></tr>
+        <tr><td>Meeting transcript and the words behind each suggestion</td><td>Until the meeting ends, or up to 365 days if the workspace owner chooses</td></tr>
+        <tr><td>Workspace content</td><td>Until the workspace owner deletes it, or 30 days after the subscription ends</td></tr>
+        <tr><td>Account</td><td>Until you delete it. Your name stays on changes you made in a workspace's history; ask the owner or us to replace it with "Former member"</td></tr>
+        <tr><td>Security and operations logs</td><td>30 days</td></tr>
+        <tr><td>Backups</td><td><span class="ph">[35]</span> days, then overwritten</td></tr>
+        <tr><td>Invoices and billing records</td><td>5 years from the end of the financial year, as Danish law requires</td></tr>
+        <tr><td>Support emails</td><td><span class="ph">[24 months]</span> after the conversation ends</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="share">Who else sees it</h2>
+    <p>We use a small number of EU companies to run Flowstate. They process data only on our instructions, under a data
+      processing agreement. The full list, with what each one does, is on the <a href="/subprocessors">sub-processors page</a>.</p>
+    <ul>
+      <li><b>OVHcloud</b> (France): servers, database, file storage and backups, in EU data centres.</li>
+      <li><b>Scaleway</b> (France): sending email, and transcription and suggestions for the meeting agent.</li>
+      <li><b>Alunta</b> (Denmark) and our card acquirer <span class="ph">[OnPay / QuickPay]</span> (Denmark): subscriptions and payments.</li>
+    </ul>
+    <p>We don't transfer personal data outside the EU/EEA. Our source code is hosted on GitHub; no customer data is stored there.
+      We share data with public authorities only when Danish or EU law requires it.</p>
+
+    <h2 id="not">What we don't do</h2>
+    <ul>
+      <li>No advertising, no selling or renting data, no data brokers.</li>
+      <li>No tracking cookies or third-party analytics. See the <a href="/cookies">cookie policy</a>.</li>
+      <li>No training of AI models on your data. Scaleway processes meeting audio and text to return a result. It doesn't keep
+        what we send or use it to train or improve models. The one exception: if traffic harms their service, Scaleway may keep
+        the affected requests for up to two weeks to investigate. It keeps anonymous usage statistics (such as request counts)
+        for up to 6 months.</li>
+      <li>No automated decisions with legal or similar effect on you. Meeting suggestions are applied only when your workspace allows it, and can always be undone.</li>
+    </ul>
+
+    <h2 id="security">Security</h2>
+    <p>Data is encrypted in transit (TLS). Passwords are hashed by Keycloak, the open-source sign-in server we host ourselves. Access to
+      production is limited to <span class="ph">[named people]</span> and protected with two-factor authentication. Each workspace's data is
+      separated in the database, and every query is checked against the workspace you are signed in to. If a breach affects your data,
+      we tell the workspace owner without undue delay, and Datatilsynet within 72 hours where the law requires it.</p>
+
+    <h2 id="rights">Your rights</h2>
+    <p>You can ask us to show you the data we hold about you, correct it, delete it, limit how we use it, or give it to you in a
+      machine-readable format. You can object to processing based on legitimate interest. Write to <span class="ph">[privacy@domain]</span>.
+      For data inside a workspace, we pass your request to the workspace owner and help them handle it.</p>
+    <p>Much of this you can do yourself: edit your profile in the app, export a workspace (owners), or delete your account.</p>
+    <p>If you think we handle your data wrongly, you can complain to the Danish Data Protection Agency: Datatilsynet, Carl Jacobsens Vej 35,
+      2500 Valby, <span class="mono">dt@datatilsynet.dk</span>, datatilsynet.dk. We would like the chance to fix it first.</p>
+
+    <h2 id="changes">Changes</h2>
+    <p>When we change this policy in a way that matters, we email workspace owners at least 30 days before it takes effect and
+      show a note in the app. Earlier versions are kept at <span class="ph">[domain]/privacy/history</span>.</p>
+  </article>

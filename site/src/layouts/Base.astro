@@ -1,0 +1,59 @@
+---
+import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource-variable/hanken-grotesk';
+import '@fontsource/fragment-mono';
+import '../styles/site.css';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import Icons from '../components/Icons.astro';
+import { other, path, t, type Locale, type Page } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** The page this is, for the language switch, hreflang links and the current nav item. Omit on the 404 page. */
+  page?: Page;
+  title: string;
+  description?: string;
+}
+
+const { locale, page, title, description } = Astro.props;
+const c = t(locale);
+const alt = other(locale);
+const site = Astro.site ?? new URL('http://localhost:4321');
+const url = (l: Locale) => (page ? new URL(path(l, page), site).href : undefined);
+---
+
+<!doctype html>
+<html lang={c.meta.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {
+      page && (
+        <>
+          <link rel="canonical" href={url(locale)} />
+          <link rel="alternate" hreflang={locale} href={url(locale)} />
+          <link rel="alternate" hreflang={alt} href={url(alt)} />
+          <link rel="alternate" hreflang="x-default" href={url('en')} />
+        </>
+      )
+    }
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:site_name" content={c.meta.siteName} />
+  </head>
+  <body>
+    <Icons />
+    <a class="skip" href="#main">{c.nav.skip}</a>
+    <Header locale={locale} page={page} />
+    <main id="main">
+      <slot />
+    </main>
+    <div class="wrap">
+      <Footer locale={locale} />
+    </div>
+  </body>
+</html>

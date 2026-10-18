@@ -33,16 +33,16 @@ Do these in order. Each step links to the runbook section with the exact values.
 
 | # | Step | Where |
 |---|---|---|
-| G1 | [ ] Pick and register the domain. The app runs on `<domain>`, with `auth.<domain>` and `grafana.<domain>` beside it. | any EU registrar (e.g. DK Hostmaster for `.dk`) |
+| G1 | [ ] Pick and register the domain. The public site runs on `<domain>` (and `www.`), the app on `app.<domain>`, with `auth.<domain>` and `grafana.<domain>` beside it ([ADR-017](adr/ADR-017-public-site.md)). | any EU registrar (e.g. DK Hostmaster for `.dk`) |
 | G2 | [ ] Create a GitHub repository and push: `git remote add origin <url>` then `git push -u origin main`. The repo has no remote yet. | github.com |
 | G3 | [ ] Order an OVHcloud VPS with at least 8 GB RAM in an EU region near Denmark ([ADR-004](adr/ADR-004-hosting.md)). In the firewall, allow only ports 22, 80 and 443. | OVHcloud control panel |
 | G4 | [ ] Install Dokploy on the VPS (its one-line installer over SSH), then create an admin account. | VPS |
-| G5 | [ ] Point DNS A records for the three domains at the VPS ([First deploy](runbooks/deploy.md#first-deploy-once-per-environment) step 1). | registrar / DNS |
+| G5 | [ ] Point DNS A records for the apex, `www`, `app`, `auth` and `grafana` at the VPS ([First deploy](runbooks/deploy.md#first-deploy-once-per-environment) step 1). | registrar / DNS |
 | G6 | [ ] Create an Object Storage bucket and an S3 user, then run the CORS command (runbook step 2). | OVHcloud control panel + your terminal |
 | G7 | [ ] Scaleway Transactional Email: verify the domain (SPF/DKIM records in DNS) and create an API key with TEM permissions only. | console.scaleway.com |
 | G7b | [ ] Backups ([runbook](runbooks/deploy.md#backups-once-per-environment)): two more buckets with their own S3 users (backup repo, ops), a long random cipher pass, all three stored in your password manager; an elmah.io log, API key and four heartbeats; then create the five `flowstate-*` data volumes on the VPS over SSH. The `BACKUP_*` and `ELMAHIO_*` values go into G8. | OVHcloud control panel, elmah.io, password manager, VPS |
 | G8 | [ ] Create the Dokploy compose app and fill in every [environment variable](runbooks/deploy.md#environment-variables), including long random passwords, the Scaleway Generative APIs key (`SCALEWAY_AI_KEY`) and the keys from G6 and G7. Add the [domains](runbooks/deploy.md#domains). Turn Autodeploy off. | Dokploy |
-| G9 | [ ] Set the [GitHub configuration](runbooks/deploy.md#github-configuration): 2 repository variables, plus the `production` environment with 3 secrets. Make the GHCR packages public, or add a GHCR registry in Dokploy. | GitHub settings |
+| G9 | [ ] Set the [GitHub configuration](runbooks/deploy.md#github-configuration): 3 repository variables (`KEYCLOAK_PUBLIC_URL`, `APP_URL`, `SITE_URL`), plus the `production` environment with 3 secrets. Make the GHCR packages public, or add a GHCR registry in Dokploy. | GitHub settings |
 | G10 | [ ] Push to `main`, or run `cd.yml` by hand, and watch the first deploy. | GitHub Actions |
 | G11 | [ ] Keycloak: create a permanent admin with 2FA, delete the bootstrap `admin`, and send a test email (runbook steps 4–5). | `https://auth.<domain>/admin` |
 | G12 | [ ] Grafana: sign in, change the admin password, test the `flowstate-email` contact point. Optional: create a Viewer service account for agents (runbook step 6). | `https://grafana.<domain>` |
@@ -54,7 +54,7 @@ Do these in order. Each step links to the runbook section with the exact values.
 | # | Step | Notes |
 |---|---|---|
 | E1 | [ ] Rehearse a restore on the VPS through the backup console: restore to a few minutes ago, go live, restart, check the app, switch back ([restore runbook](runbooks/restore.md)). Log the measured time on the console's Drills page as the first manual drill. | Backups run from the first deploy (G7b, runbook step 10); so far the restore path is only tested under `aspire run`. The console asks for a manual drill every quarter. |
-| E2 | [ ] Fill the placeholders in the draft privacy policy, terms, cookie policy and DPA ([docs/design/public-pages/](design/public-pages/index.html)), have a lawyer review them, and publish them on the domain. | Keycloak's MCP consent page links to them, and so will sign-up. Open items are listed in the drafts' Legal tab. |
+| E2 | [ ] Fill the placeholders in the privacy policy, terms, cookie policy and DPA (now in `site/src/legal/en/`, plus the company, CVR and contact placeholders in `site/src/i18n/`), have a lawyer review them, and add the reviewed Danish text in `site/src/legal/da/`. | Keycloak's MCP consent page links to them, and so will sign-up. Open items are listed in the drafts' Legal tab. |
 | E3 | [ ] Data processing agreements with the sub-processors in the [ADR-006 register](adr/ADR-006-eu-vendor-policy.md#vendor-register): OVHcloud, Scaleway, PingPuffin. Publish the sub-processor list. | Usually accepted in each vendor's console or terms. Check with your advisor whether anything more is needed. |
 | E4 | [ ] Scaleway console: set a billing alert on the project that holds the Generative APIs key, at a monthly amount you would notice (for example EUR 50). | Until [task 017](../tasks/017-meeting-agent-budget.md) ships there is no AI budget per workspace, so this is the only brake on meeting agent cost. |
 

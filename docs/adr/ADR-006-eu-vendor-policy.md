@@ -59,3 +59,4 @@ Sovereignty is a core selling point. Customers will ask for a sub-processor list
 - [ADR-013](ADR-013-seats-billing.md) — billing model using Alunta
 - [ADR-014](ADR-014-observability.md) — self-hosted telemetry, PingPuffin uptime check
 - [ADR-016](ADR-016-postgres-backups.md) — Postgres backups, elmah.io heartbeats
+- [ADR-017](ADR-017-public-site.md) — the public site: no third-party fonts, analytics or embeds

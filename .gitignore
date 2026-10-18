@@ -26,3 +26,6 @@ Thumbs.db
 
 # Tooling output
 .playwright-mcp/
+
+# Astro
+.astro/

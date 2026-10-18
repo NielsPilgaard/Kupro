@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+import { path, t } from '../i18n';
+
+// One 404 for both languages: nginx serves it for any unknown path, so it can't know the language.
+const c = t('en');
+const d = t('da');
+---
+
+<Base locale="en" title={c.meta.notFoundTitle}>
+  <div class="wrap notfound">
+    <h1>{c.notFound.title}</h1>
+    <p>{c.notFound.body}</p>
+    <a class="btn pri" href={path('en', 'home')}>{c.notFound.home}</a>
+    <p lang="da" style="margin-top:24px">{d.notFound.title}. <a href={path('da', 'home')}>{d.notFound.home}</a></p>
+  </div>
+</Base>

@@ -64,6 +64,23 @@ jobs:
       - run: bun run test
       - run: bun run build
 
+  site:
+    name: Site typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: site/package.json
+
+      - run: bun install --frozen-lockfile
+      # astro check + astro build (ADR-017).
+      - run: bun run build
+
   grafana:
     name: Grafana dashboards drift
     runs-on: ubuntu-latest
@@ -269,3 +286,40 @@ jobs:
           build-args: VITE_KEYCLOAK_URL=${{ vars.KEYCLOAK_PUBLIC_URL }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
+
+  # Public website (ADR-017). SITE_URL (canonical links) and APP_URL (sign-in links) are baked in at build time.
+  publish-site:
+    name: Publish site image
+    runs-on: ubuntu-latest
+    needs: [site]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.SITE_URL != ''
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate-site" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: site/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          build-args: |
+            SITE_URL=${{ vars.SITE_URL }}
+            PUBLIC_APP_URL=${{ vars.APP_URL }}
+          cache-from: type=gha,scope=site
+          cache-to: type=gha,scope=site,mode=max

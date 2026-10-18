@@ -1,0 +1,230 @@
+---
+// Landing page, same structure in both languages (ADR-017): meeting agent, speed, delivery plan, agents, EU, price.
+import { appUrl, path, t, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = t(locale);
+
+// Plan mock layout: grid columns are half-months (1-13); colours are project tokens.
+const rowColours = ['var(--acc)', 'var(--rev)', 'var(--prog)'];
+type CardLayout = { cols: string; done?: string; epic?: boolean; late?: boolean };
+const cardLayout: CardLayout[][] = [
+  [
+    { cols: '1/8', done: '62%', epic: true },
+    { cols: '2/6', done: '80%' },
+    { cols: '6/10', done: '10%' },
+  ],
+  [
+    { cols: '3/12', done: '20%', epic: true },
+    { cols: '5/9', late: true },
+  ],
+  [
+    { cols: '1/5', done: '100%' },
+    { cols: '7/13', done: '0%' },
+  ],
+];
+const capacity = [
+  { need: 60, have: 80 },
+  { need: 72, have: 80 },
+  { need: 78, have: 80 },
+  { need: 70, have: 80 },
+  { need: 96, have: 68 },
+  { need: 52, have: 80 },
+];
+---
+
+<div class="wrap">
+  <section class="hero" id="meeting" aria-labelledby="hero-h">
+    <div>
+      <span class="eyebrow">{c.hero.eyebrow}</span>
+      <h1 id="hero-h">{c.hero.title}</h1>
+      <p class="sub">{c.hero.sub}</p>
+      <div class="ctas">
+        <a class="btn pri" href={appUrl}>{c.hero.ctaPrimary}</a>
+        <a class="btn sec" href={path(locale, 'pricing')}>{c.hero.ctaSecondary}</a>
+      </div>
+      <p class="fine">{c.hero.fine}</p>
+    </div>
+    <div class="room" role="img" aria-label={c.mock.label}>
+      <div class="listen">
+        <span class="dot" aria-hidden="true"></span><span><b>{c.mock.listening}</b> · {c.mock.session}</span>
+        <span class="sp"></span><span class="btn sec sm">{c.mock.pause}</span>
+      </div>
+      <p class="utt" lang="da">
+        <b>{c.mock.speaker}</b> · {c.mock.quoteBefore}<mark>{c.mock.quoteKey}</mark>{c.mock.quoteMiddle}<mark>{c.mock.quoteMark}</mark>{c.mock.quoteAfter}
+      </p>
+      <div class="prop lead">
+        <div class="prop-h">
+          <svg class="ring"><use href="#r-rev"></use></svg><span class="key">FLOW-212</span><span>{c.mock.p1Title}</span><span class="conf">0.94</span>
+        </div>
+        <div class="diff">
+          <span class="chip"><svg class="ring"><use href="#r-prog"></use></svg>{c.mock.p1From}</span><span aria-hidden="true">→</span>
+          <span class="chip"><svg class="ring"><use href="#r-rev"></use></svg>{c.mock.p1To}</span>
+        </div>
+        <div class="acts">
+          <span class="btn pri sm">{c.mock.approve}</span><span class="btn sec sm">{c.mock.edit}</span><span class="btn ghost sm">{c.mock.reject}</span>
+        </div>
+      </div>
+      <div class="prop">
+        <div class="prop-h"><span class="key">FLOW-218</span><span>{c.mock.p2Title}</span><span class="conf">0.81</span></div>
+        <div class="diff"><span class="chip">{c.mock.p2From}</span><span aria-hidden="true">→</span><span class="chip">{c.mock.p2To}</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="band">
+    {
+      c.privacy.map((p) => (
+        <div>
+          <b>{p.title}</b>
+          <span>{p.body}</span>
+        </div>
+      ))
+    }
+  </div>
+
+  <section class="block" aria-labelledby="how-h">
+    <div class="sec-h"><span class="eyebrow">{c.how.eyebrow}</span><h2 id="how-h">{c.how.title}</h2></div>
+    <div class="grid3">
+      {
+        c.how.items.map((i) => (
+          <div class="feat">
+            <h3>{i.title}</h3>
+            <p>{i.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="block" id="fast" aria-labelledby="fast-h">
+    <div class="sec-h"><span class="eyebrow">{c.fast.eyebrow}</span><h2 id="fast-h">{c.fast.title}</h2><p>{c.fast.sub}</p></div>
+    <div class="stats">
+      {
+        c.fast.stats.map((s) => (
+          <div class="stat">
+            <b class="mono">{s.value}</b>
+            <span>{s.label}</span>
+          </div>
+        ))
+      }
+    </div>
+    <div class="grid3">
+      {
+        c.fast.items.map((i) => (
+          <div class="feat">
+            <h3>{i.title}</h3>
+            <p>{i.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="block split" id="plan" aria-labelledby="plan-h">
+    <div class="sec-h"><span class="eyebrow">{c.plan.eyebrow}</span><h2 id="plan-h">{c.plan.title}</h2><p>{c.plan.sub}</p></div>
+    <div class="plan" role="img" aria-label={c.plan.mockLabel}>
+      <div class="plan-top">
+        <b>{c.plan.mockTitle}</b>
+        <div class="seg"><span>{c.plan.viewList}</span><span>{c.plan.viewBoard}</span><span class="on">{c.plan.viewPlan}</span></div>
+      </div>
+      <div class="pgrid">
+        <div class="mh"></div>
+        {c.plan.months.map((m) => <div class="mh">{m}</div>)}
+        {
+          c.plan.rows.map((row, r) => (
+            <>
+              <div class="rh" style={`--pc:${rowColours[r]}`}>
+                <b>
+                  <i class="sq" />
+                  {row.name}
+                </b>
+                <small>{c.plan.people(row.people)}</small>
+              </div>
+              <div class="track" style={`--pc:${rowColours[r]}`}>
+                {row.cards.map((name, i) => {
+                  const l = cardLayout[r]?.[i];
+                  return (
+                    <div class:list={['card', { epic: l?.epic, late: l?.late }]} style={`grid-column:${l?.cols};--done:${l?.done ?? '0%'}`}>
+                      {name}
+                      {l?.late && <span class="bang">!</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ))
+        }
+        <div class="caplab">{c.plan.capacity}</div>
+        <div class="cap" aria-hidden="true">
+          {
+            capacity.map((m) => (
+              <div>
+                <i class:list={['d', { over: m.need > m.have }]} style={`height:${m.need}%`} />
+                <i class="s" style={`height:${m.have}%`} />
+              </div>
+            ))
+          }
+        </div>
+        <div class="ms"><span>{c.plan.milestone}</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="agents" aria-labelledby="agents-h">
+    <div class="sec-h"><span class="eyebrow">{c.agents.eyebrow}</span><h2 id="agents-h">{c.agents.title}</h2><p>{c.agents.sub}</p></div>
+    <div class="parity">
+      <div class="par">
+        <span class="eyebrow">{c.agents.web}</span>
+        <div class="palette">
+          <div class="q">{c.agents.paletteQuery}</div>
+          <div class="it on"><span>{c.agents.paletteMove}</span><kbd>S</kbd></div>
+          <div class="it"><span>{c.agents.paletteRemove}</span></div>
+        </div>
+      </div>
+      <div class="par">
+        <span class="eyebrow">{c.agents.cli}</span>
+        <code>{'flowstate issue update FLOW-12 \\\n  --sprint active'}</code>
+      </div>
+      <div class="par">
+        <span class="eyebrow">{c.agents.mcp}</span>
+        <code
+          >{'update_issues({ items: [{\n  key: "FLOW-12",\n  changes: { sprint: "active" }\n}] })'}</code
+        >
+      </div>
+    </div>
+    <div class="toast"><span class="av-agent" aria-hidden="true">&gt;_</span><span><b>triage-agent</b> {c.agents.toast}</span></div>
+  </section>
+
+  <section class="block" aria-labelledby="eu-h">
+    <div class="eu">
+      <div class="sec-h" style="margin:0"><span class="eyebrow">{c.eu.eyebrow}</span><h2 id="eu-h">{c.eu.title}</h2><p>{c.eu.sub}</p></div>
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div class="tbl">
+          <table>
+            <thead><tr><th>{c.eu.who}</th><th>{c.eu.what}</th><th>{c.eu.where}</th></tr></thead>
+            <tbody>{c.eu.vendors.map((v) => <tr><td>{v.who}</td><td>{v.what}</td><td>{v.where}</td></tr>)}</tbody>
+          </table>
+        </div>
+        <ul>{c.eu.points.map((p) => <li><svg aria-hidden="true"><use href="#i-check" /></svg>{p}</li>)}</ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" aria-label={c.nav.pricing}>
+    <div class="strip">
+      <div><div class="big">{c.strip.title}</div><p>{c.strip.body}</p></div>
+      <a class="btn sec" href={path(locale, 'pricing')}>{c.strip.cta}</a>
+    </div>
+  </section>
+
+  <section class="block closing" aria-labelledby="close-h">
+    <h2 id="close-h">{c.closing.title}</h2>
+    <p>{c.closing.body}</p>
+    <a class="btn pri" href={appUrl}>{c.closing.cta}</a>
+  </section>
+</div>

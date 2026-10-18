@@ -1,0 +1,32 @@
+---
+import { appUrl, other, path, t, type Locale, type Page } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  page?: Page;
+}
+
+const { locale, page } = Astro.props;
+const c = t(locale);
+const alt = other(locale);
+const home = path(locale, 'home');
+const anchor = (id: string) => (page === 'home' ? `#${id}` : `${home}#${id}`);
+---
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="lockup" href={home} aria-label={c.nav.home}><svg aria-hidden="true"><use href="#mark"></use></svg>flowstate</a>
+    <nav aria-label={c.nav.label}>
+      <a href={anchor('meeting')}>{c.nav.meeting}</a>
+      <a href={anchor('fast')}>{c.nav.fast}</a>
+      <a href={anchor('plan')}>{c.nav.plan}</a>
+      <a href={path(locale, 'pricing')} aria-current={page === 'pricing' ? 'page' : undefined}>{c.nav.pricing}</a>
+    </nav>
+    <span class="sp"></span>
+    <div class="actions">
+      <a class="btn ghost sm" href={path(alt, page ?? 'home')} hreflang={alt} lang={alt} aria-label={c.nav.languageLabel}>{c.nav.language}</a>
+      <a class="btn sec sm signin" href={appUrl}>{c.nav.signIn}</a>
+      <a class="btn pri sm" href={appUrl}>{c.nav.trial}</a>
+    </div>
+  </div>
+</header>

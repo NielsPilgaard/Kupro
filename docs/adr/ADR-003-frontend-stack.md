@@ -89,3 +89,4 @@ Realtime updates via SignalR client invalidate/patch TanStack Query caches.
 - [ADR-010](ADR-010-performance-budget.md) — perceived latency
 - [design-guide.md](../design-guide.md) — tokens and component specs
 - [ADR-012](ADR-012-aspire.md) — SPA runs under Aspire locally
+- [ADR-017](ADR-017-public-site.md) — the public site shares the toolchain and tokens

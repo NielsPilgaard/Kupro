@@ -88,7 +88,8 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("KC_DB_PASSWORD", keycloakDbPassword)
         .WaitFor(postgres);
 
-    // MCP resource URL = token audience for MCP clients using resource indicators (ADR-005 IMP-001), e.g. https://flowstate.dk.
+    // The app's public URL, on the app. subdomain (ADR-017), e.g. https://app.flowstate.dk. Also the MCP resource URL =
+    // token audience for MCP clients using resource indicators (ADR-005 IMP-001).
     var apiPublicUrl = builder.AddParameter("api-public-url");
     api.WithEnvironment("Api__PublicUrl", apiPublicUrl);
 
@@ -139,6 +140,14 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithExternalHttpEndpoints()
         .PublishAsDockerComposeService((_, service) => service.Ports.Clear())
         .WaitFor(api);
+
+    // Public website (ADR-017): static Astro build in nginx, on the apex domain (e.g. https://flowstate.dk).
+    builder.AddDockerfile("site", "../..", "site/Dockerfile")
+        .WithBuildArg("SITE_URL", builder.AddParameter("site-public-url"))
+        .WithBuildArg("PUBLIC_APP_URL", apiPublicUrl)
+        .WithHttpEndpoint(targetPort: 80)
+        .WithExternalHttpEndpoints()
+        .PublishAsDockerComposeService((_, service) => service.Ports.Clear());
 }
 else
 {
@@ -191,6 +200,13 @@ else
         .WithEnvironment("VITE_KEYCLOAK_URL", keycloak.GetEndpoint("http"))
         .WithReference(api)
         .WaitFor(api);
+
+    // Public website (ADR-017): Astro dev server; its sign-in and trial links point at the local SPA.
+    // astro.config.mjs reads PORT.
+    builder.AddJavaScriptApp("site", "../../site", "dev")
+        .WithBun()
+        .WithHttpEndpoint(env: "PORT")
+        .WithEnvironment("PUBLIC_APP_URL", "http://localhost:5180");
 }
 
 builder.Build().Run();

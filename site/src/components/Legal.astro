@@ -1,0 +1,44 @@
+---
+// Shell for the legal pages: legal nav, then the English draft text (or, in Danish, a note pointing to it until the
+// reviewed Danish text exists, manual step E2).
+import Base from '../layouts/Base.astro';
+import { path, t, type Locale, type Page } from '../i18n';
+import Cookies from '../legal/en/Cookies.astro';
+import Dpa from '../legal/en/Dpa.astro';
+import Privacy from '../legal/en/Privacy.astro';
+import Subprocessors from '../legal/en/Subprocessors.astro';
+import Terms from '../legal/en/Terms.astro';
+
+type LegalPage = Extract<Page, 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies'>;
+
+interface Props {
+  locale: Locale;
+  page: LegalPage;
+}
+
+const { locale, page } = Astro.props;
+const c = t(locale);
+const english = { privacy: Privacy, terms: Terms, dpa: Dpa, subprocessors: Subprocessors, cookies: Cookies }[page];
+const pages: LegalPage[] = ['privacy', 'terms', 'dpa', 'subprocessors', 'cookies'];
+const Body = english;
+---
+
+<Base locale={locale} page={page} title={`${c.footer[page]} · ${c.meta.siteName}`}>
+  <div class="wrap">
+    <nav class="legal-nav" aria-label={c.legal.nav}>
+      {pages.map((p) => <a href={path(locale, p)} aria-current={p === page ? 'page' : undefined}>{c.footer[p]}</a>)}
+    </nav>
+    {
+      locale === 'da' && (
+        <div class="pending" style="margin-top:24px">
+          <b>{c.legal.pendingTitle}</b>
+          <span>{c.legal.pendingBody}</span>
+          <a href={path('en', page)} hreflang="en">{c.legal.readEnglish}</a>
+        </div>
+      )
+    }
+    <div class="legal" lang="en">
+      <Body />
+    </div>
+  </div>
+</Base>

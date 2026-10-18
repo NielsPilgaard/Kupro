@@ -56,6 +56,7 @@ async function saveEnvironment(compose) {
         MIGRATIONS_IMAGE: `${IMAGE_PREFIX}-api:${IMAGE_TAG}`,
         WEB_IMAGE: `${IMAGE_PREFIX}-web:${IMAGE_TAG}`,
         KEYCLOAK_IMAGE: `${IMAGE_PREFIX}-keycloak:${IMAGE_TAG}`,
+        SITE_IMAGE: `${IMAGE_PREFIX}-site:${IMAGE_TAG}`,
         // Unchanged unless their sources changed, so Compose leaves Postgres and the agent running (ADR-016).
         POSTGRES_IMAGE: `${IMAGE_PREFIX}-postgres:${POSTGRES_TAG}`,
         BACKUP_AGENT_IMAGE: `${IMAGE_PREFIX}-backup-agent:${BACKUP_AGENT_TAG}`,

@@ -1,0 +1,38 @@
+---
+import { path, t, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = t(locale);
+const home = path(locale, 'home');
+const anchor = (id: string) => `${home}#${id}`;
+---
+
+<footer class="foot">
+  <div class="about">
+    <a class="lockup" href={home} aria-label={c.nav.home}><svg aria-hidden="true"><use href="#mark"></use></svg>flowstate</a>
+    <span>{c.footer.company} · {c.footer.cvr}<br />{c.footer.address}</span>
+    <span class="cookie"><svg aria-hidden="true"><use href="#i-shield"></use></svg><span>{c.footer.cookieLine}</span></span>
+  </div>
+  <div>
+    <h2>{c.footer.product}</h2>
+    <ul>
+      <li><a href={anchor('meeting')}>{c.nav.meeting}</a></li>
+      <li><a href={anchor('plan')}>{c.nav.plan}</a></li>
+      <li><a href={path(locale, 'pricing')}>{c.nav.pricing}</a></li>
+    </ul>
+  </div>
+  <div>
+    <h2>{c.footer.legal}</h2>
+    <ul>
+      <li><a href={path(locale, 'privacy')}>{c.footer.privacy}</a></li>
+      <li><a href={path(locale, 'terms')}>{c.footer.terms}</a></li>
+      <li><a href={path(locale, 'dpa')}>{c.footer.dpa}</a></li>
+      <li><a href={path(locale, 'subprocessors')}>{c.footer.subprocessors}</a></li>
+      <li><a href={path(locale, 'cookies')}>{c.footer.cookies}</a></li>
+    </ul>
+  </div>
+</footer>

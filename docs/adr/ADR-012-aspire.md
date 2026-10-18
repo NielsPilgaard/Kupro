@@ -86,6 +86,7 @@ and emits compose for production. Aspire is MIT-licensed OSS — no vendor ([ADR
 - [ADR-003](ADR-003-frontend-stack.md) — SPA orchestrated as `web`
 - [ADR-005](ADR-005-auth-keycloak.md) — Keycloak resource + realm import
 - [ADR-014](ADR-014-observability.md) — telemetry stack in dev and prod (the Aspire dashboard is dev-only)
+- [ADR-017](ADR-017-public-site.md) — the `site` resource
 
 ## References
 

@@ -1,0 +1,63 @@
+---
+// Pricing page (ADR-013 prices), same structure in both languages.
+import { appUrl, t, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const c = t(locale);
+const p = c.pricing;
+const tiers = p.tiers;
+const mailto = `mailto:${p.contact}`;
+---
+
+<div class="wrap">
+  <header class="p-head">
+    <span class="eyebrow">{p.eyebrow}</span>
+    <h1>{p.title}</h1>
+    <p>{p.sub}</p>
+  </header>
+
+  <div class="tiers">
+    <section class="tier" aria-labelledby="t-trial">
+      <div class="tier-h"><h2 id="t-trial">{tiers.trial.name}</h2></div>
+      <div class="amt">{tiers.trial.price}<small>{tiers.trial.unit}</small></div>
+      <ul>{tiers.trial.points.map((x) => <li>{x}</li>)}</ul>
+      <a class="btn pri" href={appUrl}>{tiers.trial.cta}</a>
+    </section>
+    <section class="tier" aria-labelledby="t-monthly">
+      <div class="tier-h"><h2 id="t-monthly">{tiers.monthly.name}</h2></div>
+      <div class="amt">{tiers.monthly.price}<small>{p.perSeatMonth} · {tiers.monthly.alt}</small></div>
+      <ul>{tiers.monthly.points.map((x) => <li>{x}</li>)}</ul>
+      <a class="btn sec" href={appUrl}>{tiers.monthly.cta}</a>
+    </section>
+    <section class="tier rec" aria-labelledby="t-yearly">
+      <div class="tier-h"><h2 id="t-yearly">{tiers.yearly.name}</h2><span class="tag">{tiers.yearly.badge}</span></div>
+      <div class="amt">{tiers.yearly.price}<small>{p.perSeatYear} · {tiers.yearly.alt}</small></div>
+      <ul>{tiers.yearly.points.map((x) => <li>{x}</li>)}</ul>
+      <a class="btn pri" href={appUrl}>{tiers.yearly.cta}</a>
+    </section>
+    <section class="tier" aria-labelledby="t-custom">
+      <div class="tier-h"><h2 id="t-custom">{tiers.custom.name}</h2></div>
+      <div class="amt">{tiers.custom.price}<small>{tiers.custom.unit}</small></div>
+      <ul>{tiers.custom.points.map((x) => <li>{x}</li>)}</ul>
+      <a class="btn sec" href={mailto}>{tiers.custom.cta}</a>
+    </section>
+  </div>
+
+  <section class="block" aria-labelledby="faq-h">
+    <div class="sec-h"><h2 id="faq-h">{p.faqTitle}</h2></div>
+    <div class="faq">
+      {
+        p.faq.map((f) => (
+          <details>
+            <summary>{f.q}</summary>
+            <p>{f.a}</p>
+          </details>
+        ))
+      }
+    </div>
+  </section>
+</div>

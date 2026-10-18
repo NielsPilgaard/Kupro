@@ -385,6 +385,11 @@ services:
     networks:
       - "aspire"
     restart: "unless-stopped"
+  site:
+    image: "${SITE_IMAGE}"
+    networks:
+      - "aspire"
+    restart: "unless-stopped"
 networks:
   aspire:
     driver: "bridge"

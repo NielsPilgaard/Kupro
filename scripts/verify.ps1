@@ -7,7 +7,7 @@
 .PARAMETER SkipTests
     Skip .NET integration tests and web unit tests (quick compile check).
 .PARAMETER SkipWeb
-    Skip all web/ steps (lint, typecheck/build, tests).
+    Skip all web/ and site/ steps (lint, typecheck/build, tests).
 .PARAMETER SkipDotnet
     Skip all dotnet steps (format, build, tests).
 .PARAMETER SkipDocs
@@ -107,6 +107,13 @@ if (-not $SkipWeb) {
         } else {
             Skip "Web tests" "no 'test' script in web/package.json"
         }
+    }
+
+    # Public site (ADR-017): `build` is astro check + astro build.
+    $SiteDir = Join-Path $RepoRoot 'site'
+    if ((Test-Path (Join-Path $SiteDir 'package.json')) -and (Get-Command bun -ErrorAction SilentlyContinue)) {
+        Step "Site install" { Set-Location $SiteDir; bun install --frozen-lockfile }
+        Step "Site build" { Set-Location $SiteDir; bun run build }
     }
 }
 

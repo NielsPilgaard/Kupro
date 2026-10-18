@@ -57,7 +57,7 @@ jobs:
         run: |
           missing=0
           for image in "$IMAGE_PREFIX-api:$IMAGE_TAG" "$IMAGE_PREFIX-web:$IMAGE_TAG" "$IMAGE_PREFIX-keycloak:$IMAGE_TAG" \
-                       "$IMAGE_PREFIX-postgres:$POSTGRES_TAG" "$IMAGE_PREFIX-backup-agent:$BACKUP_AGENT_TAG"; do
+                       "$IMAGE_PREFIX-site:$IMAGE_TAG" "$IMAGE_PREFIX-postgres:$POSTGRES_TAG" "$IMAGE_PREFIX-backup-agent:$BACKUP_AGENT_TAG"; do
             if docker buildx imagetools inspect "$image" > /dev/null 2>&1; then
               echo "Found $image"
             else
