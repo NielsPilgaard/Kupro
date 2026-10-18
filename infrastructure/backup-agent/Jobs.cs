@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 public enum JobKind
 {

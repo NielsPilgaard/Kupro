@@ -2,17 +2,17 @@ services:
   loki:
     image: "grafana/loki:3.7.8"
     command:
-      - "-config.file=/etc/loki/flowstate.yaml"
+      - "-config.file=/etc/loki/kupro.yaml"
     expose:
       - "3100"
     volumes:
       - type: "bind"
-        target: "/etc/loki/flowstate.yaml"
+        target: "/etc/loki/kupro.yaml"
         source: "../infrastructure/observability/loki.yaml"
         read_only: true
       - type: "volume"
         target: "/loki"
-        source: "flowstate-loki-data"
+        source: "kupro-loki-data"
         read_only: false
     networks:
       - "aspire"
@@ -25,18 +25,18 @@ services:
     image: "grafana/tempo:3.1.0"
     command:
       - "-target=all"
-      - "-config.file=/etc/tempo/flowstate.yaml"
+      - "-config.file=/etc/tempo/kupro.yaml"
     expose:
       - "3200"
       - "4318"
     volumes:
       - type: "bind"
-        target: "/etc/tempo/flowstate.yaml"
+        target: "/etc/tempo/kupro.yaml"
         source: "../infrastructure/observability/tempo.yaml"
         read_only: true
       - type: "volume"
         target: "/var/tempo"
-        source: "flowstate-tempo-data"
+        source: "kupro-tempo-data"
         read_only: false
     networks:
       - "aspire"
@@ -48,7 +48,7 @@ services:
   prometheus:
     image: "prom/prometheus:v3.15.0"
     command:
-      - "--config.file=/etc/prometheus/flowstate.yaml"
+      - "--config.file=/etc/prometheus/kupro.yaml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=30d"
       - "--web.enable-otlp-receiver"
@@ -57,12 +57,12 @@ services:
       - "9090"
     volumes:
       - type: "bind"
-        target: "/etc/prometheus/flowstate.yaml"
+        target: "/etc/prometheus/kupro.yaml"
         source: "../infrastructure/observability/prometheus.yaml"
         read_only: true
       - type: "volume"
         target: "/prometheus"
-        source: "flowstate-prometheus-data"
+        source: "kupro-prometheus-data"
         read_only: false
     networks:
       - "aspire"
@@ -75,7 +75,7 @@ services:
     image: "grafana/alloy:v1.20.1"
     command:
       - "run"
-      - "/etc/alloy/flowstate"
+      - "/etc/alloy/kupro"
       - "--server.http.listen-addr=0.0.0.0:12345"
       - "--storage.path=/var/lib/alloy/data"
       - "--disable-reporting"
@@ -93,11 +93,11 @@ services:
       - "12345"
     volumes:
       - type: "bind"
-        target: "/etc/alloy/flowstate/flowstate.alloy"
-        source: "../infrastructure/observability/alloy/flowstate.alloy"
+        target: "/etc/alloy/kupro/kupro.alloy"
+        source: "../infrastructure/observability/alloy/kupro.alloy"
         read_only: true
       - type: "bind"
-        target: "/etc/alloy/flowstate/export.alloy"
+        target: "/etc/alloy/kupro/export.alloy"
         source: "../infrastructure/observability/alloy/export.alloy"
         read_only: true
     networks:
@@ -140,7 +140,7 @@ services:
         read_only: true
       - type: "volume"
         target: "/var/lib/grafana"
-        source: "flowstate-grafana-data"
+        source: "kupro-grafana-data"
         read_only: false
     depends_on:
       loki:
@@ -169,19 +169,19 @@ services:
     volumes:
       - type: "volume"
         target: "/pgdata/a"
-        source: "flowstate-pgdata-a"
+        source: "kupro-pgdata-a"
         read_only: false
       - type: "volume"
         target: "/pgdata/b"
-        source: "flowstate-pgdata-b"
+        source: "kupro-pgdata-b"
         read_only: false
       - type: "volume"
         target: "/pg-control"
-        source: "flowstate-pg-control"
+        source: "kupro-pg-control"
         read_only: false
       - type: "volume"
         target: "/var/run/postgresql"
-        source: "flowstate-pg-socket"
+        source: "kupro-pg-socket"
         read_only: false
     networks:
       - "aspire"
@@ -230,7 +230,7 @@ services:
     volumes:
       - type: "volume"
         target: "/opt/keycloak/data"
-        source: "flowstate-keycloak-data"
+        source: "kupro-keycloak-data"
         read_only: false
     depends_on:
       postgres:
@@ -241,7 +241,7 @@ services:
   backup-agent:
     image: "${BACKUP_AGENT_IMAGE}"
     environment:
-      Agent__VolumeNamePrefix: "flowstate-pgdata-"
+      Agent__VolumeNamePrefix: "kupro-pgdata-"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_SERVICE_NAME: "backup-agent"
@@ -267,27 +267,27 @@ services:
     volumes:
       - type: "volume"
         target: "/var/run/postgresql"
-        source: "flowstate-pg-socket"
+        source: "kupro-pg-socket"
         read_only: false
       - type: "volume"
         target: "/pgdata/a"
-        source: "flowstate-pgdata-a"
+        source: "kupro-pgdata-a"
         read_only: false
       - type: "volume"
         target: "/pgdata/b"
-        source: "flowstate-pgdata-b"
+        source: "kupro-pgdata-b"
         read_only: false
       - type: "volume"
         target: "/pg-control"
-        source: "flowstate-pg-control"
+        source: "kupro-pg-control"
         read_only: false
       - type: "volume"
         target: "/wal-receive"
-        source: "flowstate-wal-receive"
+        source: "kupro-wal-receive"
         read_only: false
       - type: "volume"
         target: "/var/lib/backup-agent"
-        source: "flowstate-backup-agent-state"
+        source: "kupro-backup-agent-state"
         read_only: false
     networks:
       - "backup"
@@ -305,14 +305,14 @@ services:
       - "migrate"
     environment:
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
-      ConnectionStrings__flowstate: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=flowstate"
-      FLOWSTATE_HOST: "postgres"
-      FLOWSTATE_PORT: "5432"
-      FLOWSTATE_USERNAME: "postgres"
-      FLOWSTATE_PASSWORD: "${POSTGRES_PASSWORD}"
-      FLOWSTATE_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/flowstate"
-      FLOWSTATE_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/flowstate"
-      FLOWSTATE_DATABASENAME: "flowstate"
+      ConnectionStrings__kupro: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=kupro"
+      KUPRO_HOST: "postgres"
+      KUPRO_PORT: "5432"
+      KUPRO_USERNAME: "postgres"
+      KUPRO_PASSWORD: "${POSTGRES_PASSWORD}"
+      KUPRO_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/kupro"
+      KUPRO_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/kupro"
+      KUPRO_DATABASENAME: "kupro"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
       OTEL_SERVICE_NAME: "migrations"
@@ -329,14 +329,14 @@ services:
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       HTTP_PORTS: "${API_PORT}"
-      ConnectionStrings__flowstate: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=flowstate"
-      FLOWSTATE_HOST: "postgres"
-      FLOWSTATE_PORT: "5432"
-      FLOWSTATE_USERNAME: "postgres"
-      FLOWSTATE_PASSWORD: "${POSTGRES_PASSWORD}"
-      FLOWSTATE_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/flowstate"
-      FLOWSTATE_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/flowstate"
-      FLOWSTATE_DATABASENAME: "flowstate"
+      ConnectionStrings__kupro: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=kupro"
+      KUPRO_HOST: "postgres"
+      KUPRO_PORT: "5432"
+      KUPRO_USERNAME: "postgres"
+      KUPRO_PASSWORD: "${POSTGRES_PASSWORD}"
+      KUPRO_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/kupro"
+      KUPRO_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/kupro"
+      KUPRO_DATABASENAME: "kupro"
       KEYCLOAK_HTTP: "http://keycloak:8080"
       services__keycloak__http__0: "http://keycloak:8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4318"
@@ -348,7 +348,7 @@ services:
       MeetingAgent__Extraction__Endpoint: "https://api.scaleway.ai/v1"
       MeetingAgent__Extraction__Model: "mistral-small-3.2-24b-instruct-2506"
       MeetingAgent__Extraction__ApiKey: "${SCALEWAY_AI_KEY}"
-      Auth__PublicAuthority: "${KEYCLOAK_PUBLIC_URL}/realms/flowstate"
+      Auth__PublicAuthority: "${KEYCLOAK_PUBLIC_URL}/realms/kupro"
       Api__PublicUrl: "${API_PUBLIC_URL}"
       Storage__ServiceUrl: "${STORAGE_URL}"
       Storage__Region: "${STORAGE_REGION}"
@@ -396,25 +396,25 @@ networks:
   backup:
     driver: "bridge"
 volumes:
-  flowstate-loki-data:
+  kupro-loki-data:
     driver: "local"
-  flowstate-tempo-data:
+  kupro-tempo-data:
     driver: "local"
-  flowstate-prometheus-data:
+  kupro-prometheus-data:
     driver: "local"
-  flowstate-grafana-data:
+  kupro-grafana-data:
     driver: "local"
-  flowstate-pgdata-a:
+  kupro-pgdata-a:
     external: true
-  flowstate-pgdata-b:
+  kupro-pgdata-b:
     external: true
-  flowstate-pg-control:
+  kupro-pg-control:
     external: true
-  flowstate-pg-socket:
+  kupro-pg-socket:
     driver: "local"
-  flowstate-keycloak-data:
+  kupro-keycloak-data:
     driver: "local"
-  flowstate-wal-receive:
+  kupro-wal-receive:
     external: true
-  flowstate-backup-agent-state:
+  kupro-backup-agent-state:
     external: true

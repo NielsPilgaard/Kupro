@@ -31,7 +31,7 @@ Follow [design-guide.md](../../docs/design-guide.md) (tokens, shell, components)
 - Routes: `/` (onboarding or first workspace), `/w/:workspace/p/:project?view=list|board`, `/w/:workspace/my-issues`,
   `/w/:workspace/new-project`, `/settings`. `?issue=KEY` opens the detail panel over any view, so it is linkable.
 - The command palette (cmdk) is also the picker for state, assignee, priority and labels, and its footer shows the
-  equivalent `flowstate` command. Board drag uses dnd-kit; `S` changes state without a mouse.
+  equivalent `kupro` command. Board drag uses dnd-kit; `S` changes state without a mouse.
 - Optimistic updates patch every cached issue list and the detail in the same frame (`web/src/api/issues.ts`).
 - Settings has language and API tokens, so people can create tokens for agents without the CLI.
 - Project colours and the backdrop scrim are tokens; checked in light and dark.

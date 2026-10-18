@@ -17,7 +17,7 @@ purpose: 'The incident runbook for the database and its backups (ADR-016).'
 3. Type the name again and click **Go live**, then restart the stack (§4).
 4. Work through the checklist the console shows, including the GDPR assessment within 72 hours.
 
-Never delete a `flowstate-pgdata-*`, `flowstate-pg-control` or `flowstate-wal-receive` volume, and never run
+Never delete a `kupro-pgdata-*`, `kupro-pg-control` or `kupro-wal-receive` volume, and never run
 `docker compose down -v`. They are the database.
 
 How it works: [ADR-016](../adr/ADR-016-postgres-backups.md) and the
@@ -87,7 +87,7 @@ If live Postgres is down, the comparisons with live are skipped and marked "—"
 
 1. Under the summary, type the spare volume's name and click **Go live**. If a check failed, read it first: tick the
    box to go live anyway (in a real incident live may be worse). The agent writes the spare's letter to
-   `/pg-control/active`, and the header shows "flowstate-pgdata-b live on restart".
+   `/pg-control/active`, and the header shows "kupro-pgdata-b live on restart".
 2. Restart the stack so Postgres starts again and reads the marker: in Dokploy, **Stop** then **Start** the compose
    app, or on the VPS:
 
@@ -130,12 +130,12 @@ between the restore point and the incident) and which workspaces wrote data in i
 ## 7. One workspace's mistake
 
 Restore to the spare volume with the wizard (§3) but **don't go live**. Then read that workspace's rows from the spare
-(the console names it; `flowstate-pgdata-b` here) with a throwaway Postgres that has no network, on the VPS:
+(the console names it; `kupro-pgdata-b` here) with a throwaway Postgres that has no network, on the VPS:
 
 ```bash
-docker run --rm -d --name restore-read --network none -e PGDATA=/pgdata/b -v flowstate-pgdata-b:/pgdata/b \
+docker run --rm -d --name restore-read --network none -e PGDATA=/pgdata/b -v kupro-pgdata-b:/pgdata/b \
   postgres:18 bash -c "echo 'local all all trust' > /tmp/hba && exec docker-entrypoint.sh postgres -c hba_file=/tmp/hba"
-docker exec -it restore-read psql -U postgres -d flowstate
+docker exec -it restore-read psql -U postgres -d kupro
 # \copy (SELECT * FROM issues WHERE workspace_id = '<workspace id>') TO '/tmp/issues.csv' CSV HEADER
 docker stop restore-read
 ```
@@ -163,21 +163,21 @@ then the agent pauses and Postgres holds up to 4 GB more in the slot, then §8. 
 The agent image restores without anything from the old box. On a new VPS with Docker:
 
 ```bash
-for v in pgdata-a pgdata-b pg-control wal-receive backup-agent-state; do docker volume create flowstate-$v; done
+for v in pgdata-a pgdata-b pg-control wal-receive backup-agent-state; do docker volume create kupro-$v; done
 docker run -d --name backup-agent -p 127.0.0.1:9090:9090 \
   --label com.docker.compose.service=backup-agent \
-  -v flowstate-pgdata-a:/pgdata/a -v flowstate-pgdata-b:/pgdata/b \
-  -v flowstate-pg-control:/pg-control \
+  -v kupro-pgdata-a:/pgdata/a -v kupro-pgdata-b:/pgdata/b \
+  -v kupro-pg-control:/pg-control \
   --env-file agent.env \
-  ghcr.io/<owner>/flowstate-backup-agent:<tag>
+  ghcr.io/<owner>/kupro-backup-agent:<tag>
 ```
 
 `agent.env` holds the values from the password manager: `PGBACKREST_REPO1_S3_ENDPOINT`, `_S3_REGION`, `_S3_BUCKET`,
 `_S3_KEY`, `_S3_KEY_SECRET`, `_CIPHER_PASS`, and `OpsBucket__ServiceUrl`, `__BucketName`, `__AccessKey`,
-`__SecretKey`. Open the console (§1); it shows Postgres as down, which is right, and treats `flowstate-pgdata-a` as
-live, so the wizard restores into `flowstate-pgdata-b`. Restore, click Go live (it writes `b` to the marker), stop and
+`__SecretKey`. Open the console (§1); it shows Postgres as down, which is right, and treats `kupro-pgdata-a` as
+live, so the wizard restores into `kupro-pgdata-b`. Restore, click Go live (it writes `b` to the marker), stop and
 remove this container, then install Dokploy and deploy the compose app as in the [deploy runbook](deploy.md). Postgres
-starts on `flowstate-pgdata-b`. Without the cipher pass the backups are unreadable.
+starts on `kupro-pgdata-b`. Without the cipher pass the backups are unreadable.
 
 ## 11. A backup is older than 35 days
 
@@ -202,10 +202,10 @@ them (within 35 days, DPA).
 
 | Thing | Where |
 |---|---|
-| Live and spare database | Docker volumes `flowstate-pgdata-a` / `-b`; `/pg-control/active` (volume `flowstate-pg-control`) says which one Postgres starts on |
-| WAL not yet in the repo | Docker volume `flowstate-wal-receive` |
+| Live and spare database | Docker volumes `kupro-pgdata-a` / `-b`; `/pg-control/active` (volume `kupro-pg-control`) says which one Postgres starts on |
+| WAL not yet in the repo | Docker volume `kupro-wal-receive` |
 | Backups (encrypted) | pgBackRest repo bucket in OVHcloud Object Storage (`BACKUP_S3_BUCKET`) |
 | Status, history, migration list | Ops bucket (`BACKUP_OPS_BUCKET`: `status.json`, `history/`, `migrations.json`) |
-| Console access key, agent state | Docker volume `flowstate-backup-agent-state` |
+| Console access key, agent state | Docker volume `kupro-backup-agent-state` |
 | Secrets (S3 keys, cipher pass, role passwords) | Dokploy environment and the password manager |
 | Measured restore times | Console → Drills (weekly drills and the quarterly manual drill) |

@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Flowstate",
+    "name": "Kupro",
     "tagline": "Planlæg året. Lever ugen."
   },
   "status": {
@@ -168,7 +168,7 @@
     "profile": "Profil",
     "language": "Sprog",
     "tokens": "API-tokens",
-    "tokensHint": "Til CLI, CI og agenter. Brug med `flowstate token set` eller som Bearer-token.",
+    "tokensHint": "Til CLI, CI og agenter. Brug med `kupro token set` eller som Bearer-token.",
     "tokenOnce": "Kopiér tokenet nu. Det vises ikke igen.",
     "tokenName": "Tokenets navn, fx bærbar",
     "createToken": "Opret token",

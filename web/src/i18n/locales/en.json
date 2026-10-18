@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Flowstate",
+    "name": "Kupro",
     "tagline": "Plan the year. Ship the week."
   },
   "status": {
@@ -168,7 +168,7 @@
     "profile": "Profile",
     "language": "Language",
     "tokens": "API tokens",
-    "tokensHint": "For the CLI, CI and agents. Use with `flowstate token set` or as a Bearer token.",
+    "tokensHint": "For the CLI, CI and agents. Use with `kupro token set` or as a Bearer token.",
     "tokenOnce": "Copy this token now. It won't be shown again.",
     "tokenName": "Token name, e.g. laptop",
     "createToken": "Create token",

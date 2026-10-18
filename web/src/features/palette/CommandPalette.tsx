@@ -127,16 +127,16 @@ export function CommandPalette({ workspace }: { workspace: string }) {
                 { id: 'close', label: t('palette.close', { key }), icon: <StatusRing state="done" />, cli: cliFor('close', key), run: () => change({ state: 'done' }) },
               ]
             : []),
-          { id: 'nav:mine', label: t('nav.myIssues'), icon: <Inbox size={16} />, cli: 'flowstate issue list --assignee me', run: () => { close(); void navigate({ to: '/w/$workspace/my-issues', params: { workspace } }); } },
+          { id: 'nav:mine', label: t('nav.myIssues'), icon: <Inbox size={16} />, cli: 'kupro issue list --assignee me', run: () => { close(); void navigate({ to: '/w/$workspace/my-issues', params: { workspace } }); } },
           ...(projects ?? []).flatMap((p) => [
-            { id: `nav:${p.key}:list`, label: t('palette.openList', { name: p.name }), icon: <List size={16} />, cli: `flowstate issue list --project ${p.key}`, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'list' } }); } },
+            { id: `nav:${p.key}:list`, label: t('palette.openList', { name: p.name }), icon: <List size={16} />, cli: `kupro issue list --project ${p.key}`, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'list' } }); } },
             { id: `nav:${p.key}:board`, label: t('palette.openBoard', { name: p.name }), icon: <FolderKanban size={16} />, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'board' } }); } },
           ]),
           ...((searching ? found?.items : recent?.items) ?? []).map((i) => ({
             id: `issue:${i.key}`,
             label: `${i.key} ${i.title}`,
             icon: <StatusRing state={i.state} />,
-            cli: searching ? `flowstate issue search ${search}` : `flowstate issue get ${i.key}`,
+            cli: searching ? `kupro issue search ${search}` : `kupro issue get ${i.key}`,
             run: () => {
               close();
               ui.setActiveKey(i.key);

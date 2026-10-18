@@ -7,18 +7,18 @@
       "type": "container.v1",
       "image": "grafana/loki:3.7.8",
       "args": [
-        "-config.file=/etc/loki/flowstate.yaml"
+        "-config.file=/etc/loki/kupro.yaml"
       ],
       "bindMounts": [
         {
           "source": "../infrastructure/observability/loki.yaml",
-          "target": "/etc/loki/flowstate.yaml",
+          "target": "/etc/loki/kupro.yaml",
           "readOnly": true
         }
       ],
       "volumes": [
         {
-          "name": "flowstate-loki-data",
+          "name": "kupro-loki-data",
           "target": "/loki",
           "readOnly": false
         }
@@ -37,18 +37,18 @@
       "image": "grafana/tempo:3.1.0",
       "args": [
         "-target=all",
-        "-config.file=/etc/tempo/flowstate.yaml"
+        "-config.file=/etc/tempo/kupro.yaml"
       ],
       "bindMounts": [
         {
           "source": "../infrastructure/observability/tempo.yaml",
-          "target": "/etc/tempo/flowstate.yaml",
+          "target": "/etc/tempo/kupro.yaml",
           "readOnly": true
         }
       ],
       "volumes": [
         {
-          "name": "flowstate-tempo-data",
+          "name": "kupro-tempo-data",
           "target": "/var/tempo",
           "readOnly": false
         }
@@ -72,7 +72,7 @@
       "type": "container.v1",
       "image": "prom/prometheus:v3.15.0",
       "args": [
-        "--config.file=/etc/prometheus/flowstate.yaml",
+        "--config.file=/etc/prometheus/kupro.yaml",
         "--storage.tsdb.path=/prometheus",
         "--storage.tsdb.retention.time=30d",
         "--web.enable-otlp-receiver",
@@ -81,13 +81,13 @@
       "bindMounts": [
         {
           "source": "../infrastructure/observability/prometheus.yaml",
-          "target": "/etc/prometheus/flowstate.yaml",
+          "target": "/etc/prometheus/kupro.yaml",
           "readOnly": true
         }
       ],
       "volumes": [
         {
-          "name": "flowstate-prometheus-data",
+          "name": "kupro-prometheus-data",
           "target": "/prometheus",
           "readOnly": false
         }
@@ -106,20 +106,20 @@
       "image": "grafana/alloy:v1.20.1",
       "args": [
         "run",
-        "/etc/alloy/flowstate",
+        "/etc/alloy/kupro",
         "--server.http.listen-addr=0.0.0.0:12345",
         "--storage.path=/var/lib/alloy/data",
         "--disable-reporting"
       ],
       "bindMounts": [
         {
-          "source": "../infrastructure/observability/alloy/flowstate.alloy",
-          "target": "/etc/alloy/flowstate/flowstate.alloy",
+          "source": "../infrastructure/observability/alloy/kupro.alloy",
+          "target": "/etc/alloy/kupro/kupro.alloy",
           "readOnly": true
         },
         {
           "source": "../infrastructure/observability/alloy/export.alloy",
-          "target": "/etc/alloy/flowstate/export.alloy",
+          "target": "/etc/alloy/kupro/export.alloy",
           "readOnly": true
         }
       ],
@@ -160,7 +160,7 @@
       ],
       "volumes": [
         {
-          "name": "flowstate-grafana-data",
+          "name": "kupro-grafana-data",
           "target": "/var/lib/grafana",
           "readOnly": false
         }
@@ -254,7 +254,7 @@
       "image": "docker.io/library/postgres:18",
       "volumes": [
         {
-          "name": "flowstate-postgres-data",
+          "name": "kupro-postgres-data",
           "target": "/var/lib/postgresql",
           "readOnly": false
         }
@@ -274,9 +274,9 @@
         }
       }
     },
-    "flowstate": {
+    "kupro": {
       "type": "value.v0",
-      "connectionString": "{postgres.connectionString};Database=flowstate"
+      "connectionString": "{postgres.connectionString};Database=kupro"
     },
     "keycloak": {
       "type": "container.v1",
@@ -290,7 +290,7 @@
       ],
       "volumes": [
         {
-          "name": "flowstate-keycloak-data",
+          "name": "kupro-keycloak-data",
           "target": "/opt/keycloak/data",
           "readOnly": false
         }
@@ -331,20 +331,20 @@
     },
     "migrations": {
       "type": "project.v1",
-      "path": "../src/Flowstate.Api/Flowstate.Api.csproj",
+      "path": "../src/Kupro.Api/Kupro.Api.csproj",
       "args": [
         "migrate"
       ],
       "env": {
         "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
-        "ConnectionStrings__flowstate": "{flowstate.connectionString}",
-        "FLOWSTATE_HOST": "{postgres.bindings.tcp.host}",
-        "FLOWSTATE_PORT": "{postgres.bindings.tcp.port}",
-        "FLOWSTATE_USERNAME": "postgres",
-        "FLOWSTATE_PASSWORD": "{postgres-password.value}",
-        "FLOWSTATE_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
-        "FLOWSTATE_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
-        "FLOWSTATE_DATABASENAME": "flowstate",
+        "ConnectionStrings__kupro": "{kupro.connectionString}",
+        "KUPRO_HOST": "{postgres.bindings.tcp.host}",
+        "KUPRO_PORT": "{postgres.bindings.tcp.port}",
+        "KUPRO_USERNAME": "postgres",
+        "KUPRO_PASSWORD": "{postgres-password.value}",
+        "KUPRO_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/kupro",
+        "KUPRO_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/kupro",
+        "KUPRO_DATABASENAME": "kupro",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "{alloy.bindings.otlp.url}",
         "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
         "OTEL_SERVICE_NAME": "migrations"
@@ -352,25 +352,25 @@
     },
     "api": {
       "type": "project.v1",
-      "path": "../src/Flowstate.Api/Flowstate.Api.csproj",
+      "path": "../src/Kupro.Api/Kupro.Api.csproj",
       "env": {
         "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
         "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
         "HTTP_PORTS": "{api.bindings.http.targetPort}",
-        "ConnectionStrings__flowstate": "{flowstate.connectionString}",
-        "FLOWSTATE_HOST": "{postgres.bindings.tcp.host}",
-        "FLOWSTATE_PORT": "{postgres.bindings.tcp.port}",
-        "FLOWSTATE_USERNAME": "postgres",
-        "FLOWSTATE_PASSWORD": "{postgres-password.value}",
-        "FLOWSTATE_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
-        "FLOWSTATE_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/flowstate",
-        "FLOWSTATE_DATABASENAME": "flowstate",
+        "ConnectionStrings__kupro": "{kupro.connectionString}",
+        "KUPRO_HOST": "{postgres.bindings.tcp.host}",
+        "KUPRO_PORT": "{postgres.bindings.tcp.port}",
+        "KUPRO_USERNAME": "postgres",
+        "KUPRO_PASSWORD": "{postgres-password.value}",
+        "KUPRO_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/kupro",
+        "KUPRO_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/kupro",
+        "KUPRO_DATABASENAME": "kupro",
         "KEYCLOAK_HTTP": "{keycloak.bindings.http.url}",
         "services__keycloak__http__0": "{keycloak.bindings.http.url}",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "{alloy.bindings.otlp.url}",
         "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
         "OTEL_SERVICE_NAME": "api",
-        "Auth__PublicAuthority": "{keycloak-public-url.value}/realms/flowstate",
+        "Auth__PublicAuthority": "{keycloak-public-url.value}/realms/kupro",
         "Api__PublicUrl": "{api-public-url.value}",
         "Storage__ServiceUrl": "{storage-url.value}",
         "Storage__Region": "{storage-region.value}",

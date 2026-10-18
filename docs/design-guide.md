@@ -1,5 +1,5 @@
 ---
-title: 'Flowstate — Design Guide'
+title: 'Kupro — Design Guide'
 description: >-
   The UI rulebook for the web app: Kobber design tokens (colour in light and dark, type, spacing, radius, density),
   app-shell layout, and the spec for every shared component — status ring, type tags, labels, avatars, list rows,
@@ -8,7 +8,7 @@ status: 'Accepted'
 purpose: 'Canonical source for UI tokens and component rules; every web UI change follows it.'
 ---
 
-# Flowstate — Design Guide
+# Kupro — Design Guide
 
 ## TL;DR
 
@@ -188,7 +188,7 @@ Structure and behaviour: [delivery-plan.md](delivery-plan.md). Visual rules:
 
 `Ctrl/Cmd K`. Centered, 540 px max, 44 px from the top, `--panel`, `--r2`, float shadow, dimmed backdrop. Query row
 (`md`) with search icon; results with icon, label, context (e.g. sprint dates) and the shortcut `kbd`; active item
-`--sel`. Footer on `--sunk` shows the equivalent CLI command (`flowstate issue move FLOW-12 --sprint next`) — parity
+`--sel`. Footer on `--sunk` shows the equivalent CLI command (`kupro issue move FLOW-12 --sprint next`) — parity
 made visible ([ADR-001](adr/ADR-001-agent-parity.md)).
 
 ### Buttons and inputs

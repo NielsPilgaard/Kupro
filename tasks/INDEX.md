@@ -32,7 +32,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 18 | [018 Members page and billing access](018-members-billing-access.md) | P1 | 1 | 003 | Todo |
 | 17 | [017 Meeting agent AI budget](017-meeting-agent-budget.md) | P1 | 2 | 015, 018 | Todo |
 | 19 | [019 Public website](019-public-site.md) | P1 | 1 | — | In progress |
-| 20 | [020 CLI install script and `flowstate install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
+| 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
 
 ## Completed
 

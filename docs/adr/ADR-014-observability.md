@@ -38,7 +38,7 @@ has no alerting.
 
 ## Decision
 
-- **Signals**: ServiceDefaults configures OpenTelemetry for all services with `service.namespace=flowstate`,
+- **Signals**: ServiceDefaults configures OpenTelemetry for all services with `service.namespace=kupro`,
   `deployment.environment.name` and `service.version`; `service.name` is the Aspire resource name (`api`,
   `migrations`). Traces include EF Core/Npgsql (SQL spans) and record exceptions; metrics include ASP.NET Core,
   Kestrel, runtime, HttpClient, EF Core and the Npgsql pool.
@@ -105,7 +105,7 @@ has no alerting.
 
 ## Implementation Notes
 
-- **IMP-001**: Topology in `src/Flowstate.AppHost/Observability.cs`; component config in `infrastructure/observability/`. Locally Grafana is on <http://localhost:3180> with anonymous admin.
+- **IMP-001**: Topology in `src/Kupro.AppHost/Observability.cs`; component config in `infrastructure/observability/`. Locally Grafana is on <http://localhost:3180> with anonymous admin.
 - **IMP-002**: Production variables, Grafana domain and PingPuffin setup: [deploy runbook](../runbooks/deploy.md).
 - **IMP-003**: The compose healthcheck probes `/alive` (`/health` under `aspire run`); the "API down" alert relies on it.
 - **IMP-004**: One-shot runs (`migrate`) must call `FlushTelemetry()` before exiting, or their logs are lost.

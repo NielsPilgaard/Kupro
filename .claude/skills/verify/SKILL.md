@@ -1,6 +1,6 @@
 ---
 name: verify
-description: "Run all local validation checks for Flowstate before declaring work done. USE THIS SKILL when the user says 'verify', 'check everything', 'validate', 'is this ready', 'does it compile', 'are there errors', or similar, and after every code change before committing. Runs: web lint, web build/typecheck, web *:check guards (i18n), web tests, dotnet format, dotnet build (warnings as errors), .NET integration tests, and ryni (Markdown links + skill metadata)."
+description: "Run all local validation checks for Kupro before declaring work done. USE THIS SKILL when the user says 'verify', 'check everything', 'validate', 'is this ready', 'does it compile', 'are there errors', or similar, and after every code change before committing. Runs: web lint, web build/typecheck, web *:check guards (i18n), web tests, dotnet format, dotnet build (warnings as errors), .NET integration tests, and ryni (Markdown links + skill metadata)."
 ---
 
 # Verify Skill
@@ -33,7 +33,7 @@ The script runs all steps and **collects all errors before exiting** — you see
 3. **Web build** — `bun run build` (typecheck + codegen via `prebuild`); falls back to `typecheck`
 4. **Web guards** — every `*:check` script, e.g. `bun run i18n:check` (no hardcoded UI strings, ADR-011). Add new static guards as `<name>:check` scripts and they run here automatically.
 5. **Web tests** — `bun run test` (skipped with `-SkipTests`)
-6. **dotnet format** — on `Flowstate.slnx`; auto-fixes by default, output suppressed. Use `-NoFix` to see violations.
+6. **dotnet format** — on `Kupro.slnx`; auto-fixes by default, output suppressed. Use `-NoFix` to see violations.
 7. **dotnet build** — Release, `-p:CI=true`. `Directory.Build.props` sets `TreatWarningsAsErrors`, `AnalysisLevel=latest-recommended`, `EnforceCodeStyleInBuild`, so analyzer violations fail here. Some `.editorconfig` rules (e.g. naming, IDE1006) only surface in `dotnet format`, which is why both run.
 8. **.NET tests** — xUnit v3 + Testcontainers (skipped with `-SkipTests`; needs Docker)
 9. **ryni** — broken local Markdown links and invalid `SKILL.md` metadata across `docs/`, `tasks/`, `.claude/` (skipped with `-SkipDocs`). Checks a temp mirror of non-gitignored files, so `node_modules` and build output are ignored.

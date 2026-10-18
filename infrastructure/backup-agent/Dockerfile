@@ -9,11 +9,11 @@ ARG PG_MAJOR=18
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
-COPY infrastructure/backup-agent/Flowstate.BackupAgent.csproj infrastructure/backup-agent/
-RUN dotnet restore infrastructure/backup-agent/Flowstate.BackupAgent.csproj --runtime linux-x64
+COPY infrastructure/backup-agent/Kupro.BackupAgent.csproj infrastructure/backup-agent/
+RUN dotnet restore infrastructure/backup-agent/Kupro.BackupAgent.csproj --runtime linux-x64
 COPY infrastructure/backup-agent/ infrastructure/backup-agent/
 # No analyzers here: their settings live in the repo's .editorconfig, and CI's solution build enforces them.
-RUN dotnet publish infrastructure/backup-agent/Flowstate.BackupAgent.csproj \
+RUN dotnet publish infrastructure/backup-agent/Kupro.BackupAgent.csproj \
     --no-restore --configuration Release --runtime linux-x64 --self-contained -p:RunAnalyzers=false \
     --output /app
 
@@ -36,6 +36,6 @@ ENV ASPNETCORE_URLS=http://+:9090 \
     PGBACKREST_CONFIG=/etc/pgbackrest/pgbackrest.conf
 EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD curl -fsS http://127.0.0.1:9090/healthz || exit 1
-ENTRYPOINT ["/app/Flowstate.BackupAgent"]
+ENTRYPOINT ["/app/Kupro.BackupAgent"]
 # Clear the base image's CMD ("postgres"), or it would be passed to the agent as an argument.
 CMD []

@@ -1,4 +1,4 @@
-"""Generates the Flowstate Grafana dashboards (grafana/dashboards) and alert rules (grafana/provisioning/alerting).
+"""Generates the Kupro Grafana dashboards (grafana/dashboards) and alert rules (grafana/provisioning/alerting).
 
 Everything here is generated; edit this script, not the JSON. Run:
 
@@ -6,9 +6,9 @@ Everything here is generated; edit this script, not the JSON. Run:
 
 Grafana provisions both from these files at startup (see README.md). Standard library only.
 
-Request numbers come from the API's request log lines in Loki, one per request (src/Flowstate.Api/Common/
+Request numbers come from the API's request log lines in Loki, one per request (src/Kupro.Api/Common/
 RequestLogging.cs): Method, Path, Route (template), Caller, StatusCode, Duration, plus RequestId from the log scope.
-tests/Flowstate.Tests/Features/RequestLoggingTests.cs pins that shape, and the queries were checked against a local
+tests/Kupro.Tests/Features/RequestLoggingTests.cs pins that shape, and the queries were checked against a local
 Loki fed by the API's own OTLP export. Rename a field there and panels here go blank.
 """
 import json
@@ -17,20 +17,20 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "grafana", "dashboards")
 ALERTS = os.path.join(HERE, "grafana", "provisioning", "alerting", "alert-rules.json")
-FOLDER = "Flowstate"
+FOLDER = "Kupro"
 # Uids fixed in grafana/provisioning/datasources/datasources.yaml.
 PROM = {"type": "prometheus", "uid": "prometheus"}
 LOKI = {"type": "loki", "uid": "loki"}
 TEMPO = {"type": "tempo", "uid": "tempo"}
 
 # service.namespace comes from ServiceDefaults, service.name from OTEL_SERVICE_NAME (Aspire resource name).
-# Prometheus' OTLP receiver turns the pair into the job "flowstate/api".
-JOB = 'job="flowstate/api"'
-API = '{service_namespace="flowstate", service_name="api"}'
-ALL = '{service_namespace="flowstate"}'  # api + migrations
+# Prometheus' OTLP receiver turns the pair into the job "kupro/api".
+JOB = 'job="kupro/api"'
+API = '{service_namespace="kupro", service_name="api"}'
+ALL = '{service_namespace="kupro"}'  # api + migrations
 # Health probes: Docker's compose healthcheck calls /alive every 10 s; under `aspire run` Aspire probes /health.
 PROBES = 'http_route=~"/alive|/health"'
-TRACE_SVC = 'resource.service.namespace="flowstate" && resource.service.name="api"'
+TRACE_SVC = 'resource.service.namespace="kupro" && resource.service.name="api"'
 
 # ADR-010 latency budget, server-side.
 P50_TARGET_MS = 100
@@ -154,13 +154,13 @@ ANNOTATIONS = {"list": [
      "titleFormat": "API started", "textFormat": "{{service_version}} on {{service_instance_id}}", "instant": False},
 ]}
 
-LINKS = [{"title": "Flowstate", "type": "dashboards", "tags": ["flowstate"],
+LINKS = [{"title": "Kupro", "type": "dashboards", "tags": ["kupro"],
           "asDropdown": False, "includeVars": False, "keepTime": True}]
 
 
 def dashboard(uid, title, desc, panels, time_from="now-24h", refresh="1m"):
     return {"uid": uid, "title": title, "description": desc,
-            "tags": ["flowstate", "aspnetcore"], "timezone": "Europe/Copenhagen",
+            "tags": ["kupro", "aspnetcore"], "timezone": "Europe/Copenhagen",
             "editable": True, "graphTooltip": 1, "refresh": refresh, "schemaVersion": 39,
             "time": {"from": time_from, "to": "now"}, "links": LINKS,
             "annotations": ANNOTATIONS, "templating": {"list": []}, "panels": panels}
@@ -357,15 +357,15 @@ def trace_table(title, query, x, y, desc, renames, hide, extra_overrides, order)
 over_budget_traces = trace_table(
     f"Requests over budget (> {P99_BUDGET_MS} ms)",
     f'{{{TRACE_SVC} && kind=server && duration > {P99_BUDGET_MS}ms}}'
-    ' | select(span.http.response.status_code, span.flowstate.caller, resource.service.instance.id, resource.service.version)',
+    ' | select(span.http.response.status_code, span.kupro.caller, resource.service.instance.id, resource.service.version)',
     0, y,
     "From Tempo. Click the span ID to see where the time went. Several in the same second on one instance = cold "
     "start after a deploy. 5xx = error path, not slowness. Tempo search covers at most 30 days.",
-    {"http.response.status_code": "Status", "flowstate.caller": "Caller", "service.instance.id": "Instance",
+    {"http.response.status_code": "Status", "kupro.caller": "Caller", "service.instance.id": "Instance",
      "service.version": "Version"},
     ["Name"],
     [{"matcher": {"id": "byName", "options": "Status"}, "properties": status_cell()}],
-    ["Trace Name", "Duration", "http.response.status_code", "flowstate.caller", "Start time", "Span ID",
+    ["Trace Name", "Duration", "http.response.status_code", "kupro.caller", "Start time", "Span ID",
      "service.instance.id", "service.version"])
 P += [
     over_budget_traces,
@@ -437,7 +437,7 @@ P += [
 ]
 y += 8
 
-# Scraped by Alloy and remote-written to Prometheus (alloy/flowstate.alloy). "Host" is read from inside the Alloy
+# Scraped by Alloy and remote-written to Prometheus (alloy/kupro.alloy). "Host" is read from inside the Alloy
 # container: CPU, memory and load are the host's; disk is the filesystem Docker's volumes live on.
 DISK_USED = 'max(1 - node_filesystem_avail_bytes{job="integrations/unix", mountpoint="/"} / node_filesystem_size_bytes{job="integrations/unix", mountpoint="/"})'
 MEM_USED = 'max(1 - node_memory_MemAvailable_bytes{job="integrations/unix"} / node_memory_MemTotal_bytes{job="integrations/unix"})'
@@ -462,7 +462,7 @@ P += [
          thresholds=PCT_THRESHOLDS, no_value="–", desc="Host memory in use (excluding reclaimable cache)."),
     pg_up,
     kc_up,
-    stat("Database size", [prom('sum(pg_database_size_bytes{job="integrations/postgres", datname="flowstate"})', instant=True)],
+    stat("Database size", [prom('sum(pg_database_size_bytes{job="integrations/postgres", datname="kupro"})', instant=True)],
          16, y, w=4, unit="bytes", no_value="–"),
     stat("DB connections", [prom('sum(pg_stat_database_numbackends{job="integrations/postgres"}) / max(pg_settings_max_connections{job="integrations/postgres"})', instant=True)],
          20, y, w=4, unit="percentunit", decimals=0, thresholds=PCT_THRESHOLDS, no_value="–",
@@ -483,7 +483,7 @@ P += [
 y += 8
 
 # The backup agent's gauges (infrastructure/backup-agent/AgentMetrics.cs), from its last status (every 5 minutes).
-BACKUP = 'job="flowstate/backup-agent"'
+BACKUP = 'job="kupro/backup-agent"'
 P.append(row("Backups (ADR-016; details in the backup console)", y)); y += 1
 backup_health = stat("Backups", [prom(f'max(backup_agent_health{{{BACKUP}}})', instant=True)], 0, y, w=4,
                      mappings=[{"type": "value", "options": {"0": {"text": "HEALTHY", "color": "green"},
@@ -518,21 +518,21 @@ y += 4
 P.append(row("Recent errors and warnings", y)); y += 1
 P.append(logs_panel("Errors and warnings", ALL + f' | severity_number >= 13 | {NOT_REQLOG}', 0, y))
 
-health = dashboard("flowstate-health", "Flowstate – Service health",
+health = dashboard("kupro-health", "Kupro – Service health",
                    "Is the API up, fast (ADR-010 budget) and error-free? Request numbers from the request log in Loki.", P)
 
 # ================================================================ Usage
 _id = 0
 U = []
 y = 0
-U.append(row("Who uses Flowstate, and through which surface", y)); y += 1
+U.append(row("Who uses Kupro, and through which surface", y)); y += 1
 AUTHED = REAL + ' | Caller!="anonymous"'
 U += [
     stat("Authenticated requests", [loki(cnt(AUTHED, "$__range"), qtype="instant")], 0, y, w=6, decimals=0),
     stat("Agent + token share", [loki(f'({cnt(AUTHED, "$__range", extra=" | Caller=~`agent|token`")} or vector(0)) / {cnt(AUTHED, "$__range")}', qtype="instant")],
          6, y, w=6, unit="percentunit", decimals=0, color_mode="none",
          desc="Share of authenticated requests made with API tokens (CLI, scripts, agents) instead of a browser/MCP session. "
-              "Flowstate is agent-first (ADR-001): this should grow."),
+              "Kupro is agent-first (ADR-001): this should grow."),
     stat("Feature areas used", [loki(f"count(sum by (area) (count_over_time({AUTHED} | {AREA} [$__range])))", qtype="instant")],
          12, y, w=6, decimals=0, color_mode="none"),
     stat("Scanner requests", [loki(cnt(REQ + UNMATCHED, "$__range"), qtype="instant")], 18, y, w=6, decimals=0,
@@ -575,7 +575,7 @@ rhythm = ts("Requests per hour by caller", [loki(cnt(AUTHED, "1h", by=["Caller"]
 rhythm["interval"] = "1h"
 U.append(rhythm)
 
-usage = dashboard("flowstate-usage", "Flowstate – Usage",
+usage = dashboard("kupro-usage", "Kupro – Usage",
                   "Requests by feature area and caller (web/MCP session, API token, agent token), from the request log in Loki.",
                   U, time_from="now-7d", refresh="5m")
 
@@ -609,7 +609,7 @@ y += 8
 
 E.append(row("Lifecycle and log volume", y)); y += 1
 lifecycle = logs_panel("Startups, shutdowns and migrations",
-                       ALL + ' | scope_name=~"Microsoft.Hosting.Lifetime|Flowstate.Api|Flowstate.Api.Data.DatabaseExtensions"',
+                       ALL + ' | scope_name=~"Microsoft.Hosting.Lifetime|Kupro.Api|Kupro.Api.Data.DatabaseExtensions"',
                        0, y, w=12, h=8,
                        desc="One 'Application started' per deploy or restart, and the migrations run before it.")
 E += [
@@ -619,7 +619,7 @@ E += [
        desc="The request log writes one line per request (health probes excluded). Main driver of Loki ingest."),
 ]
 
-errors = dashboard("flowstate-errors", "Flowstate – Errors & logs",
+errors = dashboard("kupro-errors", "Kupro – Errors & logs",
                    "Exceptions, error/warning logs, deploys, migrations and log volume for the api and migrations services.", E)
 
 
@@ -662,53 +662,53 @@ def rule(uid, title, condition, data, for_, severity, summary, description, dash
          no_data="OK", exec_err="Error"):
     return {"uid": uid, "title": title, "condition": condition, "data": data, "for": for_,
             "noDataState": no_data, "execErrState": exec_err, "isPaused": False,
-            "labels": {"service": "flowstate", "severity": severity},
+            "labels": {"service": "kupro", "severity": severity},
             "annotations": {"summary": summary, "description": description,
                             "__dashboardUid__": dash["uid"], "__panelId__": str(panel["id"])}}
 
 
 WARM_REQ = REAL + WARM
-alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "folder": FOLDER, "interval": "1m", "rules": [
-    rule("flowstate-api-down", "Flowstate API down", "C", [
+alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "kupro-api", "folder": FOLDER, "interval": "1m", "rules": [
+    rule("kupro-api-down", "Kupro API down", "C", [
         q_prom("A", f'sum(rate(http_server_request_duration_seconds_count{{{JOB}, {PROBES}}}[5m]))', 300),
         q_reduce("B", "A", zero_if_empty=False),
         q_threshold("C", "B", "lt", 0.001),
     ], "5m", "critical",
-        "Flowstate API has not answered a health probe for 5 minutes.",
+        "Kupro API has not answered a health probe for 5 minutes.",
         "No /alive (or local /health) requests recorded. The container is down or crash-looping, a migration failed (the API waits for "
         "it), or telemetry stopped reaching Prometheus (alloy). Check Dokploy and 'Startups, shutdowns and migrations'.",
         health, alive, no_data="Alerting", exec_err="Alerting"),
-    rule("flowstate-errors-logged", "Flowstate errors logged", "C", [
+    rule("kupro-errors-logged", "Kupro errors logged", "C", [
         q_loki("A", f"sum(count_over_time({ALL} | {ERRLVL} [10m]))", 600),
         q_reduce("B", "A"),
         q_threshold("C", "B", "gt", 0),
     ], "0s", "warning",
-        "Flowstate logged {{ $values.B.Value }} error line(s) in the last 10 minutes.",
+        "Kupro logged {{ $values.B.Value }} error line(s) in the last 10 minutes.",
         "Covers 500 responses, failed migrations and background work. See 'Distinct errors' on the Errors & logs "
         "dashboard for message, stack trace and TraceId.",
         errors, distinct),
-    rule("flowstate-restart-loop", "Flowstate API restart loop", "C", [
+    rule("kupro-restart-loop", "Kupro API restart loop", "C", [
         q_loki("A", f"sum(count_over_time({STARTED} [15m]))", 900),
         q_reduce("B", "A"),
         q_threshold("C", "B", "gt", 2),
     ], "0s", "critical",
-        "Flowstate API started {{ $values.B.Value }} times in 15 minutes.",
+        "Kupro API started {{ $values.B.Value }} times in 15 minutes.",
         "Three or more 'Application started' lines in 15 minutes: the container is crash-looping (missing config, "
         "OOM, Keycloak unreachable). A normal deploy starts once.",
         errors, lifecycle),
-    rule("flowstate-latency-budget", "Flowstate latency budget breached", "D", [
+    rule("kupro-latency-budget", "Kupro latency budget breached", "D", [
         q_loki("A", f"quantile_over_time(0.99, {WARM_REQ} | unwrap Duration [1h]) by (service_name)", 3600),
         q_reduce("B", "A"),
         q_loki("E", f"sum by (service_name) (count_over_time({WARM_REQ} [1h]))", 3600),
         q_reduce("F", "E"),
         q_math("D", f"$B > {P99_BUDGET_MS} && $F >= 100"),
     ], "15m", "warning",
-        'Flowstate warm p99 is {{ printf "%.0f" $values.B.Value }} ms over the last hour (budget ' + str(P99_BUDGET_MS) + ' ms).',
+        'Kupro warm p99 is {{ printf "%.0f" $values.B.Value }} ms over the last hour (budget ' + str(P99_BUDGET_MS) + ' ms).',
         f"ADR-010: every endpoint < {P99_BUDGET_MS} ms p99. Warm requests only (reused connections), so a deploy's "
         "cold-start burst can't trigger it; needs 100+ requests in the hour. Open 'Endpoints' and 'Requests over "
         "budget' on the Service health dashboard for the route and the trace.",
         health, latency),
-    rule("flowstate-disk-full", "Flowstate disk almost full", "C", [
+    rule("kupro-disk-full", "Kupro disk almost full", "C", [
         q_prom("A", DISK_USED, 600),
         q_reduce("B", "A", zero_if_empty=False),
         q_threshold("C", "B", "gt", 0.85),
@@ -717,16 +717,16 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "fol
         "Postgres stops accepting writes when the disk fills. Prune old images (`docker image prune -a`), check the "
         "telemetry volumes, or grow the disk.",
         health, disk),
-    rule("flowstate-postgres-down", "Flowstate Postgres down", "C", [
+    rule("kupro-postgres-down", "Kupro Postgres down", "C", [
         q_prom("A", 'max(pg_up{job="integrations/postgres"})', 300),
         q_reduce("B", "A", zero_if_empty=False),
         q_threshold("C", "B", "lt", 1),
     ], "2m", "critical",
         "Postgres is not answering.",
         "Alloy's Postgres exporter can't connect. The API fails every request that touches the database. Check the "
-        "postgres container in Dokploy. No data = Alloy itself is down; 'Flowstate API down' fires too then.",
+        "postgres container in Dokploy. No data = Alloy itself is down; 'Kupro API down' fires too then.",
         health, pg_up, no_data="Alerting", exec_err="Alerting"),
-    rule("flowstate-keycloak-down", "Flowstate Keycloak down", "C", [
+    rule("kupro-keycloak-down", "Kupro Keycloak down", "C", [
         q_prom("A", 'max(up{job="keycloak"})', 300),
         q_reduce("B", "A", zero_if_empty=False),
         q_threshold("C", "B", "lt", 1),
@@ -735,7 +735,7 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "fol
         "Nobody can sign in, and the API can't fetch signing keys after a restart. Check the keycloak container in "
         "Dokploy and its logs.",
         health, kc_up, no_data="Alerting", exec_err="Alerting"),
-    rule("flowstate-backups-unhealthy", "Flowstate backups unhealthy", "C", [
+    rule("kupro-backups-unhealthy", "Kupro backups unhealthy", "C", [
         q_prom("A", f'max(backup_agent_health{{{BACKUP}}})', 300),
         q_reduce("B", "A"),
         q_threshold("C", "B", "gt", 1.5),
@@ -743,9 +743,9 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "flowstate-api", "fol
         "The backup agent reports Unhealthy.",
         "Data may not be reaching the backup repo (WAL gap, S3 down, no full backup in 26 h, failed drill or verify). "
         "Open the backup console (restore runbook §1); its Overview lists the issues. Missing data is "
-        "'Flowstate backup agent silent'.",
+        "'Kupro backup agent silent'.",
         health, backup_health),
-    rule("flowstate-backup-agent-silent", "Flowstate backup agent silent", "C", [
+    rule("kupro-backup-agent-silent", "Kupro backup agent silent", "C", [
         q_prom("A", f'max(backup_agent_status_age_seconds{{{BACKUP}}})', 600),
         q_reduce("B", "A", zero_if_empty=False),
         q_threshold("C", "B", "gt", 900),

@@ -38,18 +38,18 @@ export function cliFor(action: string, key?: string, value?: string) {
   const dashed = value?.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
   switch (action) {
     case 'state':
-      return `flowstate issue update ${key} --state ${dashed}`;
+      return `kupro issue update ${key} --state ${dashed}`;
     case 'priority':
-      return `flowstate issue update ${key} --priority ${dashed}`;
+      return `kupro issue update ${key} --priority ${dashed}`;
     case 'assign':
-      return `flowstate issue update ${key} --assignee ${value ?? 'me'}`;
+      return `kupro issue update ${key} --assignee ${value ?? 'me'}`;
     case 'label':
-      return `flowstate issue update ${key} --add-label ${value}`;
+      return `kupro issue update ${key} --add-label ${value}`;
     case 'create':
-      return 'flowstate issue create --project <KEY> --title "..."';
+      return 'kupro issue create --project <KEY> --title "..."';
     case 'close':
-      return `flowstate issue close ${key}`;
+      return `kupro issue close ${key}`;
     default:
-      return 'flowstate --help';
+      return 'kupro --help';
   }
 }

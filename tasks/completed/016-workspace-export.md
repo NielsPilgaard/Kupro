@@ -38,7 +38,7 @@ end-of-processing clause lean on it. Built: one ZIP per export, built in the bac
   - Exports are deleted 7 days after they start.
 - **Surfaces**:
   - Web: Settings, Export section per owned workspace.
-  - CLI: `flowstate workspace export [-o file.zip] [--no-wait]` and `flowstate workspace exports`.
+  - CLI: `kupro workspace export [-o file.zip] [--no-wait]` and `kupro workspace exports`.
   - MCP opts out: the result is a file to save, and the coarse tool cap ([ADR-001](../../docs/adr/ADR-001-agent-parity.md) IMP-003) is reached.
 - **After the subscription ends**: export only needs the Owner role, not write access, so it keeps working once billing
   makes workspaces read-only.
@@ -56,5 +56,5 @@ end-of-processing clause lean on it. Built: one ZIP per export, built in the bac
 
 ## Out of scope
 
-- Import (from Flowstate, Linear or Jira): separate task.
+- Import (from Kupro, Linear or Jira): separate task.
 - A per-person export of one user's data across workspaces (GDPR Art. 15): handled by email to the privacy address until volume says otherwise.

@@ -12,8 +12,8 @@ describe('issues helpers', () => {
   });
 
   it('shows the CLI command with dashed enum values', () => {
-    expect(cliFor('state', 'FLOW-3', 'inProgress')).toBe('flowstate issue update FLOW-3 --state in-progress');
-    expect(cliFor('close', 'FLOW-3')).toBe('flowstate issue close FLOW-3');
+    expect(cliFor('state', 'FLOW-3', 'inProgress')).toBe('kupro issue update FLOW-3 --state in-progress');
+    expect(cliFor('close', 'FLOW-3')).toBe('kupro issue close FLOW-3');
   });
 
   it('extracts the project key from multi-dash keys', () => {

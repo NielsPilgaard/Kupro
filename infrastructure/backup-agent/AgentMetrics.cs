@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>
 /// The last status as OpenTelemetry gauges, exported over OTLP to Alloy and on to Prometheus (ADR-014). Grafana's
@@ -9,7 +9,7 @@ namespace Flowstate.BackupAgent;
 /// </summary>
 public sealed class AgentMetrics : IDisposable
 {
-    public const string MeterName = "Flowstate.BackupAgent";
+    public const string MeterName = "Kupro.BackupAgent";
 
     private readonly Meter _meter = new(MeterName);
 

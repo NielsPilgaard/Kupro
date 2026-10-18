@@ -32,6 +32,6 @@ purpose: 'Implementation spec for task 012.'
 - Web `useRealtime` in the app shell patches every cached issue list, refetches the touched detail, activity, plan
   and sprints, and refetches everything after a reconnect. Server wins; when someone else changes the issue open in
   the panel, a toast says who and via which surface.
-- Measured live: a `flowstate issue move` by an agent token showed on the open board before the CLI process had
+- Measured live: a `kupro issue move` by an agent token showed on the open board before the CLI process had
   exited (well under 1 s), with the panel, feed and toast updated.
 - Not yet: membership changes don't drop an already joined connection until it reconnects.

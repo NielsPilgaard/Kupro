@@ -8,7 +8,7 @@ const keycloakUrl = (import.meta.env.VITE_KEYCLOAK_URL as string | undefined) ??
 export const callbackPath = '/auth/callback';
 
 export const userManager = new UserManager({
-  authority: `${keycloakUrl.replace(/\/$/, '')}/realms/flowstate`,
+  authority: `${keycloakUrl.replace(/\/$/, '')}/realms/kupro`,
   client_id: 'web',
   redirect_uri: `${window.location.origin}${callbackPath}`,
   post_logout_redirect_uri: window.location.origin,

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>What the WAL loop knows right now. Read by the status and the console.</summary>
 public sealed record WalSnapshot(

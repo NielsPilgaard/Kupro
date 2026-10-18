@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 public enum Health
 {

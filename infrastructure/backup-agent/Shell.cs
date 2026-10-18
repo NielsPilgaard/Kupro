@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 public sealed record ShellResult(int ExitCode, IReadOnlyList<string> Output)
 {

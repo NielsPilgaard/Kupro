@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Npgsql;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 public sealed record CheckReport(
     List<CheckResult> Checks,

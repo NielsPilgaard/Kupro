@@ -67,7 +67,7 @@ See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-a
 ### Parity
 
 - Sessions and proposals are API resources: list sessions, list proposals, approve / edit / reject a proposal.
-- CLI: `flowstate meeting proposals`, `flowstate meeting approve|reject <id>`. MCP: `list_proposals`, `review_proposals`.
+- CLI: `kupro meeting proposals`, `kupro meeting approve|reject <id>`. MCP: `list_proposals`, `review_proposals`.
 - Audio capture is browser-only — explicit opt-out for CLI/MCP; text transcript ingest has full parity.
 
 ### Privacy

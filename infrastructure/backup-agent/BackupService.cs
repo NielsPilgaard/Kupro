@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>Full and incremental backups, expire and verify.</summary>
 public sealed class BackupService(

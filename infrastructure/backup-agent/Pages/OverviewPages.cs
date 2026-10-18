@@ -1,7 +1,7 @@
 using System.Text;
-using static Flowstate.BackupAgent.Pages.Html;
+using static Kupro.BackupAgent.Pages.Html;
 
-namespace Flowstate.BackupAgent.Pages;
+namespace Kupro.BackupAgent.Pages;
 
 /// <summary>Overview and History.</summary>
 public static class OverviewPages

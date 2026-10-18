@@ -36,7 +36,7 @@ See [ADR-008](../../docs/adr/ADR-008-work-item-model.md).
 - List: filters `project`, `state`, `type`, `assignee` (`me`/`none`/id), `label`, `parent`; keyset pagination with an
   opaque cursor for `sort=updated|created|priority|rank` (Postgres row-value comparisons).
 - Board order is a fractional `rank`; `move` places an issue between two neighbours.
-- Every mutation writes an `activity` row (actor member, surface from `X-Flowstate-Client`, field changes as jsonb)
+- Every mutation writes an `activity` row (actor member, surface from `X-Kupro-Client`, field changes as jsonb)
   in the same SaveChanges.
 - `Idempotency-Key` (per user, 24 h) replays the first response with `Idempotent-Replayed: true`; a different body
   with the same key is `422 idempotency_key_reused`. Documented as a header on every mutation in the OpenAPI spec.

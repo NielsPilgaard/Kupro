@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/infrastructure/">
+    <Project Path="infrastructure/backup-agent/Kupro.BackupAgent.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Kupro.Api/Kupro.Api.csproj" />
+    <Project Path="src/Kupro.AppHost/Kupro.AppHost.csproj" />
+    <Project Path="src/Kupro.Cli/Kupro.Cli.csproj" />
+    <Project Path="src/Kupro.ServiceDefaults/Kupro.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Kupro.Tests/Kupro.Tests.csproj" />
+  </Folder>
+</Solution>

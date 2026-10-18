@@ -1,9 +1,9 @@
 {
-  "uid": "flowstate-errors",
-  "title": "Flowstate – Errors & logs",
+  "uid": "kupro-errors",
+  "title": "Kupro – Errors & logs",
   "description": "Exceptions, error/warning logs, deploys, migrations and log volume for the api and migrations services.",
   "tags": [
-    "flowstate",
+    "kupro",
     "aspnetcore"
   ],
   "timezone": "Europe/Copenhagen",
@@ -17,10 +17,10 @@
   },
   "links": [
     {
-      "title": "Flowstate",
+      "title": "Kupro",
       "type": "dashboards",
       "tags": [
-        "flowstate"
+        "kupro"
       ],
       "asDropdown": false,
       "includeVars": false,
@@ -49,7 +49,7 @@
         "enable": true,
         "iconColor": "purple",
         "name": "Deploys / restarts",
-        "expr": "{service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\"",
+        "expr": "{service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\"",
         "titleFormat": "API started",
         "textFormat": "{{service_version}} on {{service_instance_id}}",
         "instant": false
@@ -95,7 +95,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (severity_text) (count_over_time({service_namespace=\"flowstate\"} | scope_name!=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" [$__interval]))",
+          "expr": "sum by (severity_text) (count_over_time({service_namespace=\"kupro\"} | scope_name!=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" [$__interval]))",
           "legendFormat": "{{severity_text}}",
           "queryType": "range"
         }
@@ -235,7 +235,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (exception_type) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware\" [$__interval]))",
+          "expr": "sum by (exception_type) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware\" [$__interval]))",
           "legendFormat": "{{exception_type}}",
           "queryType": "range"
         }
@@ -299,7 +299,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (service_name, exception_type, exception_message, scope_name) (count_over_time({service_namespace=\"flowstate\"} | severity_number >= 17 [$__range]))",
+          "expr": "sum by (service_name, exception_type, exception_message, scope_name) (count_over_time({service_namespace=\"kupro\"} | severity_number >= 17 [$__range]))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -366,7 +366,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "{service_namespace=\"flowstate\"} | severity_number >= 17",
+          "expr": "{service_namespace=\"kupro\"} | severity_number >= 17",
           "legendFormat": "",
           "queryType": "range"
         }
@@ -402,7 +402,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "{service_namespace=\"flowstate\"} | severity_number >= 13 and severity_number < 17 | scope_name!=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\"",
+          "expr": "{service_namespace=\"kupro\"} | severity_number >= 13 and severity_number < 17 | scope_name!=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\"",
           "legendFormat": "",
           "queryType": "range"
         }
@@ -451,7 +451,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "{service_namespace=\"flowstate\"} | scope_name=~\"Microsoft.Hosting.Lifetime|Flowstate.Api|Flowstate.Api.Data.DatabaseExtensions\"",
+          "expr": "{service_namespace=\"kupro\"} | scope_name=~\"Microsoft.Hosting.Lifetime|Kupro.Api|Kupro.Api.Data.DatabaseExtensions\"",
           "legendFormat": "",
           "queryType": "range"
         }
@@ -487,7 +487,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (scope_name) (count_over_time({service_namespace=\"flowstate\"} [$__interval]))",
+          "expr": "sum by (scope_name) (count_over_time({service_namespace=\"kupro\"} [$__interval]))",
           "legendFormat": "{{scope_name}}",
           "queryType": "range"
         }

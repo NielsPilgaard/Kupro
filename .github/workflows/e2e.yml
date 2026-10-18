@@ -20,7 +20,7 @@ on:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  COMPOSE_PROJECT_NAME: flowstate-e2e
+  COMPOSE_PROJECT_NAME: kupro-e2e
   COMPOSE_FILE: deploy/docker-compose.yaml:tests/e2e/compose.yaml
   COMPOSE_ENV_FILES: tests/e2e/e2e.env
 
@@ -41,7 +41,7 @@ jobs:
       - name: Published API, Keycloak and Postgres images
         if: inputs.image_tag != ''
         run: |
-          prefix="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate"
+          prefix="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/kupro"
           eval "$(scripts/infra-image-tags.sh)"
           {
             echo "API_IMAGE=$prefix-api:${{ inputs.image_tag }}"
@@ -66,8 +66,8 @@ jobs:
       - name: Build API image
         if: inputs.image_tag == ''
         run: >-
-          dotnet publish src/Flowstate.Api -c Release -t:PublishContainer --os linux --arch x64
-          -p:ContainerRepository=flowstate-api '-p:ContainerImageTags="e2e"'
+          dotnet publish src/Kupro.Api -c Release -t:PublishContainer --os linux --arch x64
+          -p:ContainerRepository=kupro-api '-p:ContainerImageTags="e2e"'
 
       - uses: docker/setup-buildx-action@v3
 
@@ -78,7 +78,7 @@ jobs:
           context: .
           file: infrastructure/keycloak/Dockerfile
           load: true
-          tags: flowstate-keycloak:e2e
+          tags: kupro-keycloak:e2e
           cache-from: type=gha,scope=e2e-keycloak
           cache-to: type=gha,scope=e2e-keycloak,mode=max
 
@@ -88,7 +88,7 @@ jobs:
         with:
           context: infrastructure/postgres
           load: true
-          tags: flowstate-postgres:e2e
+          tags: kupro-postgres:e2e
           cache-from: type=gha,scope=e2e-postgres
           cache-to: type=gha,scope=e2e-postgres,mode=max
 
@@ -98,7 +98,7 @@ jobs:
           context: .
           file: web/Dockerfile
           load: true
-          tags: flowstate-web:e2e
+          tags: kupro-web:e2e
           build-args: VITE_KEYCLOAK_URL=http://localhost:8180
           cache-from: type=gha,scope=e2e-web
           cache-to: type=gha,scope=e2e-web,mode=max
@@ -119,7 +119,7 @@ jobs:
       - name: Wait for API and Keycloak
         timeout-minutes: 5
         run: |
-          until curl -sf -o /dev/null http://localhost:5180/api/v1/status && curl -sf -o /dev/null http://localhost:8180/realms/flowstate; do
+          until curl -sf -o /dev/null http://localhost:5180/api/v1/status && curl -sf -o /dev/null http://localhost:8180/realms/kupro; do
             sleep 3
           done
           curl -s http://localhost:5180/api/v1/status
@@ -127,7 +127,7 @@ jobs:
       - name: Run Playwright
         working-directory: tests/e2e
         env:
-          FLOWSTATE_WEB_URL: http://localhost:5180
+          KUPRO_WEB_URL: http://localhost:5180
         run: bunx playwright test --reporter=line,html
 
       # The stack only lives on this runner: print the API tail into the job log and keep the full logs.

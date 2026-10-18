@@ -20,7 +20,7 @@ class Tap extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('flowstate-tap', Tap);
+registerProcessor('kupro-tap', Tap);
 `;
 
 export interface Microphone {
@@ -43,7 +43,7 @@ export interface MicrophoneEvents {
 export const canCaptureCallAudio = () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
 
 // Chromium options lib.dom doesn't type yet: offer "share system audio" for whole screens (desktop Teams), and keep
-// Flowstate's own tab out of the picker.
+// Kupro's own tab out of the picker.
 type CallAudioOptions = DisplayMediaStreamOptions & { systemAudio: 'include'; selfBrowserSurface: 'exclude' };
 
 export async function startMicrophone(events: MicrophoneEvents): Promise<Microphone> {
@@ -56,7 +56,7 @@ export async function startMicrophone(events: MicrophoneEvents): Promise<Microph
   URL.revokeObjectURL(url);
 
   const source = context.createMediaStreamSource(stream);
-  const tap = new AudioWorkletNode(context, 'flowstate-tap');
+  const tap = new AudioWorkletNode(context, 'kupro-tap');
   source.connect(tap);
 
   const detector = new UtteranceDetector(context.sampleRate, events);

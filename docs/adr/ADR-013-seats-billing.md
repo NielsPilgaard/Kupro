@@ -7,7 +7,7 @@ tags: ['business', 'billing', 'tenancy']
 supersedes: ''
 superseded_by: ''
 description: >-
-  Hosted Flowstate is billed per workspace by seat. A seat is an active human member with role Owner or Member,
+  Hosted Kupro is billed per workspace by seat. A seat is an active human member with role Owner or Member,
   counted from the Member table. The meeting agent is in every plan, limited by a monthly AI budget per workspace
   that speech and LLM tokens both draw from. Guests are free up to 5 per seat; billing access is a per-member flag
   Owners grant. Agent pricing and where billing code lives are open questions.
@@ -33,7 +33,7 @@ description: >-
 
 ## Context
 
-Flowstate targets teams and will be sold as a seat-priced SaaS. Auth and membership are built per user from the start
+Kupro targets teams and will be sold as a seat-priced SaaS. Auth and membership are built per user from the start
 ([ADR-005](ADR-005-auth-keycloak.md), task 003), but nothing defines what a seat is. That definition shapes the
 Member entity (task 003) and is awkward to retrofit once workspaces have data.
 
@@ -53,7 +53,7 @@ running a fleet of agents.
   guests and only blocks new ones. Trials use the same ratio. Self-hosted has no cap.
 - **Billing access** (decided 2026-10-18): a `CanManageBilling` flag on a human member, not a role, so it combines
   with any role and doesn't add a seat. Owners always have it. It allows seeing usage and cost and managing the
-  subscription; card details stay in Alunta's hosted pages and never reach Flowstate. A finance person with no project
+  subscription; card details stay in Alunta's hosted pages and never reach Kupro. A finance person with no project
   work joins as a guest with the flag. Agents never get it.
 - **Member status**:
   - `invited`: no seat until the invite is accepted.
@@ -80,7 +80,7 @@ workspace leaving the agent on all day must not cost more than it pays.
   offline keyword extractor, which uses no LLM. The feature gets less clever; it never disappears. Resets each month.
 - **Guards on every call and meeting**: a `max_tokens` limit on LLM output, a pause after 10 minutes without speech, a
   3-hour meeting limit, and a server-wide daily spending ceiling that turns the agent off for everyone.
-- **Not now**: extra-hour packs (only if customers ask), customer API keys on hosted Flowstate (secret storage, and a
+- **Not now**: extra-hour packs (only if customers ask), customer API keys on hosted Kupro (secret storage, and a
   key could point at a non-EU vendor), a higher seat tier with more hours (later, OQ-4). Self-hosters configure their
   own endpoints and keys and have no budget.
 
@@ -134,7 +134,7 @@ workspace leaving the agent on all day must not cost more than it pays.
 
 ## Related Decisions
 
-- [ADR-005](ADR-005-auth-keycloak.md) — identity and tokens; roles live in Flowstate
+- [ADR-005](ADR-005-auth-keycloak.md) — identity and tokens; roles live in Kupro
 - [ADR-006](ADR-006-eu-vendor-policy.md) — Alunta as billing vendor
 - [ADR-007](ADR-007-licensing.md) — open-core boundary (OQ-3)
 - [ADR-008](ADR-008-work-item-model.md) — agents as members

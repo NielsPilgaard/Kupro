@@ -1,0 +1,113 @@
+/* Kupro look for Keycloak's PatternFly 5 pages. Colours and fonts come from tokens.css (web/src/styles,
+   docs/design-guide.md); this file only maps them onto PatternFly's variables. */
+
+/* Self-hosted, never loaded from Google (ADR-006). Same files as the web app's @fontsource-variable packages. */
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('../fonts/bricolage-grotesque-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Hanken Grotesk Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../fonts/hanken-grotesk-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+:root,
+:root.pf-v5-theme-dark {
+  --pf-v5-global--FontFamily--text: var(--font-ui);
+  --pf-v5-global--FontFamily--heading: var(--font-display);
+  --pf-v5-global--FontFamily--monospace: var(--font-mono);
+
+  --pf-v5-global--BackgroundColor--100: var(--panel);
+  --pf-v5-global--BackgroundColor--200: var(--sunk);
+  /* Form controls in PatternFly's dark theme. */
+  --pf-v5-global--BackgroundColor--400: var(--sunk);
+  --pf-v5-global--Color--100: var(--ink);
+  --pf-v5-global--Color--200: var(--mute);
+  --pf-v5-global--BorderColor--100: var(--line);
+  --pf-v5-global--BorderColor--300: var(--line);
+
+  --pf-v5-global--primary-color--100: var(--acc);
+  --pf-v5-global--primary-color--200: var(--acc-ink);
+  --pf-v5-global--link--Color: var(--acc-ink);
+  --pf-v5-global--link--Color--hover: var(--acc);
+  --pf-v5-global--Color--light-100: var(--on-acc);
+  --pf-v5-global--active-color--100: var(--acc);
+
+  --pf-v5-global--danger-color--100: var(--bad);
+  --pf-v5-global--success-color--100: var(--ok);
+  --pf-v5-global--warning-color--100: var(--warn);
+  --pf-v5-global--info-color--100: var(--acc);
+
+  --pf-v5-global--BorderRadius--sm: var(--r1);
+  --pf-v5-global--BorderRadius--lg: var(--r2);
+
+  --keycloak-card-top-color: transparent;
+  --fs-mark: url('../img/kupro-mark.svg');
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  :root.pf-v5-theme-dark {
+    --fs-mark: url('../img/kupro-mark-dark.svg');
+  }
+}
+
+.login-pf body {
+  background: var(--bg);
+}
+
+.pf-v5-c-login__main {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+.pf-v5-c-login__main-header {
+  border-top: 0;
+}
+
+/* No language picker: the language comes from the app (ui_locales) or the browser. */
+.pf-v5-c-login__main-header-utilities {
+  display: none;
+}
+
+#kc-page-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.pf-v5-c-button.pf-m-primary {
+  --pf-v5-c-button--m-primary--Color: var(--on-acc);
+  --pf-v5-c-button--m-primary--hover--Color: var(--on-acc);
+  --pf-v5-c-button--m-primary--BackgroundColor: var(--acc);
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: var(--acc-ink);
+}
+
+/* Lockup: mark left, lowercase wordmark right, gap 0.4 x mark height (docs/branding.md). */
+#kc-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: var(--ink) !important;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  line-height: 1;
+}
+
+#kc-header-wrapper::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  background: var(--fs-mark) no-repeat center / contain;
+}

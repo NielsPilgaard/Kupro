@@ -1,13 +1,13 @@
 ---
-title: 'Flowstate — Product Vision & Scope'
+title: 'Kupro — Product Vision & Scope'
 description: >-
-  What Flowstate is, who it is for, the principles that decide feature fights, and what is in/out of v1.
+  What Kupro is, who it is for, the principles that decide feature fights, and what is in/out of v1.
   Technical decisions live in ADRs (docs/adr/INDEX.md); this doc only covers product intent.
 status: 'Draft'
 purpose: 'Canonical source for product vision, target customer, principles and v1 scope.'
 ---
 
-# Flowstate — Product Vision & Scope
+# Kupro — Product Vision & Scope
 
 ## TL;DR
 

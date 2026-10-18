@@ -3,7 +3,7 @@ title: 'Delivery Plan View — Design'
 description: >-
   Design brief for the delivery plan: a high-level, multi-project timeline (think Azure DevOps Delivery Plans) where a
   team lays out epics, features and delivery dates for a year and sees whether the plan fits the people they have.
-  This is Flowstate's main differentiator.
+  This is Kupro's main differentiator.
 status: 'Draft'
 purpose: 'Canonical requirements and open questions for the delivery plan view.'
 ---

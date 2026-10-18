@@ -1,9 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using static Flowstate.BackupAgent.Pages.Html;
+using static Kupro.BackupAgent.Pages.Html;
 
-namespace Flowstate.BackupAgent.Pages;
+namespace Kupro.BackupAgent.Pages;
 
 /// <summary>The restore wizard: pick a point, restore to the spare volume, check it, go live by hand.</summary>
 public static class RestorePages

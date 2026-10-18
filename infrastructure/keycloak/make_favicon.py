@@ -12,7 +12,7 @@ INK, VERDIGRIS = (0x16, 0x20, 0x1D), (0x2C, 0x7A, 0x6A)
 BARS = [(3, 6.5, 17, INK, 1.0), (9, 13.5, 20, VERDIGRIS, 1.0), (5, 20.5, 12, INK, 0.5)]
 SIZES = (16, 32, 48)
 SUPERSAMPLE = 8
-OUT = Path(__file__).parent / "themes/flowstate/login/resources/img/favicon.ico"
+OUT = Path(__file__).parent / "themes/kupro/login/resources/img/favicon.ico"
 
 
 def coverage(px: float, py: float) -> tuple[tuple[int, int, int], float] | None:

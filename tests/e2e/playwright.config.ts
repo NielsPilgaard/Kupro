@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   use: {
-    baseURL: process.env.FLOWSTATE_WEB_URL ?? 'http://localhost:5180',
+    baseURL: process.env.KUPRO_WEB_URL ?? 'http://localhost:5180',
     // Keycloak serves the ASP.NET dev certificate locally.
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',

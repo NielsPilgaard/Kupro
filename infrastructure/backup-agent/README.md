@@ -55,8 +55,8 @@ flowchart LR
 - The agent is **not** on the app network. It reaches Postgres only through the shared Unix socket, as the role
   `backup_agent` with peer authentication. Its own `backup` network has one other member, Alloy, for telemetry. Nothing
   reaches the console except `127.0.0.1:9090` on the host, plus a random access key in the agent's volume.
-- **Two data volumes, one marker.** Both containers mount `flowstate-pgdata-a` at `/pgdata/a` and `flowstate-pgdata-b`
-  at `/pgdata/b`, plus `flowstate-pg-control` at `/pg-control`. Postgres's entrypoint
+- **Two data volumes, one marker.** Both containers mount `kupro-pgdata-a` at `/pgdata/a` and `kupro-pgdata-b`
+  at `/pgdata/b`, plus `kupro-pg-control` at `/pg-control`. Postgres's entrypoint
   ([select-volume.sh](../postgres/select-volume.sh)) reads `/pg-control/active` (`a` or `b`) and starts on that
   directory. The agent asks Postgres which directory it runs on (`data_directory`) and only ever writes to the other one.
 - **Go live** writes the spare's letter to the marker. Restarting the stack starts Postgres on the restored volume, with
@@ -101,7 +101,7 @@ flowchart LR
 
 **Elsewhere:**
 
-- [Backups.cs](../../src/Flowstate.AppHost/Backups.cs) in the AppHost runs Postgres and the agent under `aspire run`
+- [Backups.cs](../../src/Kupro.AppHost/Backups.cs) in the AppHost runs Postgres and the agent under `aspire run`
   (Silo stands in for both buckets) and publishes them into [deploy/docker-compose.yaml](../../deploy/docker-compose.yaml).
 - [scripts/backup-console.ps1](../../scripts/backup-console.ps1) opens the tunnel, reads the access link and opens the browser.
 - [scripts/infra-image-tags.sh](../../scripts/infra-image-tags.sh) derives the Postgres and agent image tags from their
@@ -116,14 +116,14 @@ flowchart LR
 
 | Volume | Postgres | Agent | Holds |
 |---|---|---|---|
-| `flowstate-pgdata-a`, `-b` | `/pgdata/a`, `/pgdata/b` | same paths | The database. One is live, the other is the restore target |
-| `flowstate-pg-control` | `/pg-control` | `/pg-control` | `active`: which one Postgres starts on |
-| `flowstate-pg-socket` | `/var/run/postgresql` | same | The socket. The agent's only way into Postgres |
-| `flowstate-wal-receive` | – | `/wal-receive` | WAL received but not yet in the repo. The only copy until it's pushed |
-| `flowstate-backup-agent-state` | – | `/var/lib/backup-agent` | `state.json`, the console key, local copies of the ops files |
+| `kupro-pgdata-a`, `-b` | `/pgdata/a`, `/pgdata/b` | same paths | The database. One is live, the other is the restore target |
+| `kupro-pg-control` | `/pg-control` | `/pg-control` | `active`: which one Postgres starts on |
+| `kupro-pg-socket` | `/var/run/postgresql` | same | The socket. The agent's only way into Postgres |
+| `kupro-wal-receive` | – | `/wal-receive` | WAL received but not yet in the repo. The only copy until it's pushed |
+| `kupro-backup-agent-state` | – | `/var/lib/backup-agent` | `state.json`, the console key, local copies of the ops files |
 | tmpfs | – | `/drill` | The weekly drill's restore. Must fit the whole cluster, and it counts against the agent's memory limit |
 
-Every volume except `flowstate-pg-socket` is **external** in compose: create them once per server (deploy runbook).
+Every volume except `kupro-pg-socket` is **external** in compose: create them once per server (deploy runbook).
 Never delete them, and never run `docker compose down -v`.
 
 ### Roles and authentication
@@ -148,19 +148,19 @@ Dokploy variables (deploy runbook) onto these.
 | `PGBACKREST_REPO1_S3_ENDPOINT`, `_S3_REGION`, `_S3_BUCKET` | – | The repo bucket. Its own bucket, not shared with attachments or the ops bucket |
 | `PGBACKREST_REPO1_S3_KEY`, `_S3_KEY_SECRET` | – | Read-write key for the repo bucket only |
 | `PGBACKREST_REPO1_CIPHER_PASS` | – | Encrypts everything in the repo. Keep it in a password manager: without it the backups are unreadable |
-| `OpsBucket__ServiceUrl`, `__BucketName`, `__AccessKey`, `__SecretKey` | bucket `flowstate-ops` | Status, history and migration list. Unset URL or keys: nothing is written to S3 |
+| `OpsBucket__ServiceUrl`, `__BucketName`, `__AccessKey`, `__SecretKey` | bucket `kupro-ops` | Status, history and migration list. Unset URL or keys: nothing is written to S3 |
 | `Heartbeats__Provider` | `ElmahIo` | `ElmahIo` or `Ping` |
 | `Heartbeats__Wal`, `__Backup`, `__Verify`, `__Drill` | – | Each heartbeat's elmah.io id (or ping URL). A heartbeat without one is skipped |
 | `Heartbeats__ElmahIo__ApiKey`, `__LogId` | – | elmah.io. Use a key with only *Heartbeats - Write* |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | – | Alloy. Unset: no metrics or OTLP logs |
 | `Agent__SshTunnelCommand` | – | Shown in the console |
-| `Agent__VolumeNamePrefix` | `pgdata-` | Volume names as the console shows them and asks you to type (`flowstate-pgdata-` from the AppHost). Display only |
+| `Agent__VolumeNamePrefix` | `pgdata-` | Volume names as the console shows them and asks you to type (`kupro-pgdata-` from the AppHost). Display only |
 | `Agent__KeycloakDatabase` | `keycloak` | Empty under `aspire run`, where Keycloak keeps its own volume: the Keycloak checks are skipped |
 | `Agent__ConsoleKey` | random | Dev only: a fixed key so the Aspire dashboard links into the console. Never set in production |
 
 Paths, names and schedule (`Agent__*`) default to what the images and the compose file use, so production sets none of
 them: `Stanza` (`main`), `SocketDirectory`, `DataRoot` (`/pgdata`), `ControlDirectory`, `StateDirectory`,
-`DrillDirectory`, `WalReceiveDirectory`, `AppDatabase` (`flowstate`), `KeycloakRealm` (`flowstate`), `DatabaseUser`
+`DrillDirectory`, `WalReceiveDirectory`, `AppDatabase` (`kupro`), `KeycloakRealm` (`kupro`), `DatabaseUser`
 (`backup_agent`), `SlotName` (`agent`), `WalSpoolMaxBytes` (4 GiB), `SlotWarnBytes` (2 GiB), `RetentionDays` (35;
 keep in step with `repo1-retention-full`), `FullBackupHour` (2), `VerifyDay`/`VerifyHour` (Wednesday 3),
 `DrillDay`/`DrillHour` (Sunday 4), `WalSwitchInterval`, `StatusInterval` (5 minutes), `MaxDataLoss` (15 minutes). Times
@@ -174,7 +174,7 @@ pg_size_pretty(sum(pg_database_size(datname))) FROM pg_database`).
 
 - **Postgres 18**, not 17. With `PGDATA` set by `select-volume.sh`, the new default data directory of the 18 images
   doesn't matter; tested with backup, drill, point-in-time restore, go-live and switch back under `aspire run`.
-- **No deletion ledger.** Skoleoverblikket mirrors erased schools so a restore can re-delete them. Flowstate has no
+- **No deletion ledger.** Skoleoverblikket mirrors erased schools so a restore can re-delete them. Kupro has no
   workspace or account erasure yet; when it gets one, port the ledger back (Skoleoverblikket's `LedgerAsync`,
   `ResurrectedAsync`, `PrepareRedeletionAsync` and the Deleted schools page) with that feature.
 - **Checks:** workspaces count (±2) and tenant isolation on `workspace_id` → `workspaces.id` ([ADR-009](../../docs/adr/ADR-009-multi-tenancy.md)).

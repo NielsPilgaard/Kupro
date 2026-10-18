@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Antiforgery;
 
-namespace Flowstate.BackupAgent.Pages;
+namespace Kupro.BackupAgent.Pages;
 
 /// <summary>
 /// Server-rendered HTML, no build step and no CDN (ADR-016). Every dynamic value goes through
@@ -52,7 +52,7 @@ public static class Html
             </head>
             <body>
             <header class="top">
-              <div class="brand">Flowstate · Backup console</div>
+              <div class="brand">Kupro · Backup console</div>
               {health}
               {volumes}
             </header>

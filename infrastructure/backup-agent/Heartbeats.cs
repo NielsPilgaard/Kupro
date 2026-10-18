@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>
 /// Dead-man's-switch heartbeats (ADR-016): the vendor alerts on Unhealthy and on a missing

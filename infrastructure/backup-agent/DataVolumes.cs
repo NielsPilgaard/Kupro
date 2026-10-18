@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>
 /// Which data volume is live and which is the restore target (ADR-016). Both are mounted in

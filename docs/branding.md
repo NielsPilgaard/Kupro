@@ -1,26 +1,26 @@
 ---
-title: 'Flowstate — Branding'
+title: 'Kupro — Branding'
 description: >-
-  Who Flowstate sounds and looks like: name and wordmark, the Stream logo mark, the Kobber brand palette, voice and
+  Who Kupro sounds and looks like: name and wordmark, the Stream logo mark, the Kobber brand palette, voice and
   tone in English and Danish, and the product glossary. UI tokens and component rules live in design-guide.md.
 status: 'Accepted'
 purpose: 'Canonical source for name, logo, brand colours, voice and terminology.'
 ---
 
-# Flowstate — Branding
+# Kupro — Branding
 
 ## TL;DR
 
 - **Direction: Kobber** (copper). Copenhagen's copper roofs weather into verdigris green: local, durable, calm.
   Chosen in [task 000](../tasks/completed/000-frontend-ideas.md) from [the directions look book](design/directions.html); runner-up Fjord.
 - **Mark: Stream** — three staggered bars, a delivery plan in miniature. Files in [design/brand/](design/brand/).
-- **Wordmark**: lowercase `flowstate` in Bricolage Grotesque Bold. In running text: "Flowstate".
+- **Wordmark**: lowercase `kupro` in Bricolage Grotesque Bold. In running text: "Kupro".
 - **Voice**: plain, direct, short. Says what happened and what to do next. Same tone in English and Danish.
 - UI tokens, components and layout rules: [design-guide.md](design-guide.md).
 
 ## Story
 
-Flowstate is a Danish, EU-sovereign issue tracker and planner ([product.md](product.md)). The identity borrows from
+Kupro is a Danish, EU-sovereign issue tracker and planner ([product.md](product.md)). The identity borrows from
 one thing every Dane recognises: the green copper spires of Christiansborg, Frederik's Church and the Stock Exchange.
 Copper starts warm and weathers into verdigris (Danish: *irgrøn*) — a material that gets better the longer it is used.
 That is the brand promise in one image: a tool you settle into, not one you fight.
@@ -32,15 +32,17 @@ and restraint, not symbols — the product is for EU teams too.
 
 | Use | Form |
 |---|---|
-| Running text (EN and DA) | Flowstate |
-| Wordmark (logo lockup, app sidebar) | `flowstate` — lowercase, Bricolage Grotesque 700, tracking −1% |
-| CLI binary, package names, domains | `flowstate` |
-| MCP server name | `flowstate` |
+| Running text (EN and DA) | Kupro |
+| Wordmark (logo lockup, app sidebar) | `kupro` — lowercase, Bricolage Grotesque 700, tracking −1% |
+| CLI binary, package names, domains | `kupro` |
+| MCP server name | `kupro` |
 
-Never: "FlowState", "Flow State", "FLOWSTATE", "Flowstate.io" in prose.
+Never: "KuPro", "KUPRO", "Kupro.app" in prose.
 
-The name is provisional ([name search](naming.md)). `node scripts/rename-product.mjs <NewName>` renames it everywhere (paths, namespaces, realm,
-database, CLI, copy); safe until go-live. Keep the name in one of the three forms above so the script catches it.
+The name comes from Latin *cuprum*, copper, spelled with a Nordic K: the material the whole identity is built on.
+Say it "KOO-pro". Chosen in Oct 2026 to replace the working name ([name search](naming.md)). Should it change again before go-live,
+`node scripts/rename-product.mjs <NewName>` renames it everywhere (paths, namespaces, realm, database, CLI, copy).
+Keep the name in one of the three forms above so the script catches it.
 
 ## Logo mark — Stream
 
@@ -49,9 +51,9 @@ middle bar in verdigris: the piece of work currently in flow.
 
 | File | Use |
 |---|---|
-| [flowstate-mark.svg](design/brand/flowstate-mark.svg) | Light backgrounds |
-| [flowstate-mark-dark.svg](design/brand/flowstate-mark-dark.svg) | Dark backgrounds, tinted sidebar |
-| [flowstate-mark-mono.svg](design/brand/flowstate-mark-mono.svg) | Single colour (`currentColor`): docs, CLI banners, print |
+| [kupro-mark.svg](design/brand/kupro-mark.svg) | Light backgrounds |
+| [kupro-mark-dark.svg](design/brand/kupro-mark-dark.svg) | Dark backgrounds, tinted sidebar |
+| [kupro-mark-mono.svg](design/brand/kupro-mark-mono.svg) | Single colour (`currentColor`): docs, CLI banners, print |
 | [favicon.svg](design/brand/favicon.svg) | Browser tab; follows OS light/dark |
 
 Geometry (viewBox `0 0 32 32`, bar height 5, radius 2.5): `(3, 6.5, w17)`, `(9, 13.5, w20)`, `(5, 20.5, w12)`.

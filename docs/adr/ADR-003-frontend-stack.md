@@ -74,7 +74,7 @@ Realtime updates via SignalR client invalidate/patch TanStack Query caches.
 
 - **IMP-001**: Strings via i18n library from day 1 ([ADR-011](ADR-011-i18n.md)).
 - **IMP-002**: E2E tests with Playwright.
-- **IMP-003**: Codegen: API writes the spec to `openapi/flowstate.json` at repo root on build
+- **IMP-003**: Codegen: API writes the spec to `openapi/kupro.json` at repo root on build
   (`Microsoft.Extensions.ApiDescription.Server`, `OpenApiDocumentsDirectory`). Spec is committed; CI fails on drift.
   `@hey-api/openapi-ts` reads `../openapi/` and generates `web/src/api/gen/` (gitignored) with `@hey-api/client-fetch` +
   `@tanstack/react-query` plugins (typed `queryOptions` / `mutationOptions`); runs in `predev`/`prebuild` scripts, so

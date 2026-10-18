@@ -5,7 +5,7 @@ description: >-
   Keycloak and Grafana setup, backups, the GitHub deploy pipeline, the external uptime check, and the gaps still open
   before the first external user.
 status: 'Draft'
-purpose: 'Checklist for setting up and operating a Flowstate production environment on Dokploy.'
+purpose: 'Checklist for setting up and operating a Kupro production environment on Dokploy.'
 ---
 
 # Runbook: production deploy
@@ -17,7 +17,7 @@ purpose: 'Checklist for setting up and operating a Flowstate production environm
   (`web`, port 80), auth (`keycloak`, port 8080) and Grafana (`grafana`, port 3000) ([ADR-017](../adr/ADR-017-public-site.md)).
 - Push to `main` → CI publishes images → Staging runs E2E on them → CD deploys them through the Dokploy API and waits
   until `/api/v1/status` reports the commit. CD stays off until the [GitHub configuration](#github-configuration) exists.
-- Keycloak runs our image (`infrastructure/keycloak`): the Flowstate theme plus the realm, whose web client URLs and
+- Keycloak runs our image (`infrastructure/keycloak`): the Kupro theme plus the realm, whose web client URLs and
   email settings come from the environment on first start. Afterwards only the permanent admin is manual.
 - Postgres runs on external data volumes next to the backup agent ([ADR-016](../adr/ADR-016-postgres-backups.md)): create
   the volumes and the two backup buckets before the first deploy. Incidents: the [restore runbook](restore.md).
@@ -30,25 +30,25 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 
 | Variable | Secret | Example / value | Used by | Notes |
 |---|---|---|---|---|
-| `API_IMAGE` | | `ghcr.io/<owner>/flowstate-api:sha-<commit>` | `api` | Set by CD (`scripts/deploy.mjs`) on every deploy. |
+| `API_IMAGE` | | `ghcr.io/<owner>/kupro-api:sha-<commit>` | `api` | Set by CD (`scripts/deploy.mjs`) on every deploy. |
 | `MIGRATIONS_IMAGE` | | same as `API_IMAGE` | `migrations` | Set by CD. Same image, run with `migrate`. |
-| `WEB_IMAGE` | | `ghcr.io/<owner>/flowstate-web:sha-<commit>` | `web` | Set by CD. Built with the `KEYCLOAK_PUBLIC_URL` GitHub variable. |
-| `KEYCLOAK_IMAGE` | | `ghcr.io/<owner>/flowstate-keycloak:sha-<commit>` | `keycloak` | Set by CD. Keycloak with the Flowstate theme and the realm. |
-| `SITE_IMAGE` | | `ghcr.io/<owner>/flowstate-site:sha-<commit>` | `site` | Set by CD. Built with the `SITE_URL` and `APP_URL` GitHub variables. |
-| `POSTGRES_IMAGE` | | `ghcr.io/<owner>/flowstate-postgres:src-<hash>` | `postgres` | Set by CD. Tagged by its sources (`scripts/infra-image-tags.sh`), so it only changes, and Postgres only restarts, when `infrastructure/postgres` changed. |
-| `BACKUP_AGENT_IMAGE` | | `ghcr.io/<owner>/flowstate-backup-agent:src-<hash>` | `backup-agent` | Set by CD, tagged the same way. |
+| `WEB_IMAGE` | | `ghcr.io/<owner>/kupro-web:sha-<commit>` | `web` | Set by CD. Built with the `KEYCLOAK_PUBLIC_URL` GitHub variable. |
+| `KEYCLOAK_IMAGE` | | `ghcr.io/<owner>/kupro-keycloak:sha-<commit>` | `keycloak` | Set by CD. Keycloak with the Kupro theme and the realm. |
+| `SITE_IMAGE` | | `ghcr.io/<owner>/kupro-site:sha-<commit>` | `site` | Set by CD. Built with the `SITE_URL` and `APP_URL` GitHub variables. |
+| `POSTGRES_IMAGE` | | `ghcr.io/<owner>/kupro-postgres:src-<hash>` | `postgres` | Set by CD. Tagged by its sources (`scripts/infra-image-tags.sh`), so it only changes, and Postgres only restarts, when `infrastructure/postgres` changed. |
+| `BACKUP_AGENT_IMAGE` | | `ghcr.io/<owner>/kupro-backup-agent:src-<hash>` | `backup-agent` | Set by CD, tagged the same way. |
 | `API_PORT` | | `8080` | `api`, `web` | Port Kestrel listens on inside the network. |
 | `POSTGRES_PASSWORD` | yes | long random | `postgres`, `api`, `migrations`, `alloy` | Applied **only on first start** (empty volume). Rotate with `ALTER USER`, then update the variable. |
 | `KEYCLOAK_PASSWORD` | yes | long random | `keycloak` | Bootstrap admin, **first start only**. Replace with a permanent admin (below). |
 | `KEYCLOAK_DB_PASSWORD` | yes | long random | `postgres`, `keycloak` | Keycloak's own Postgres role and database, created by `infrastructure/postgres/init` **only on first start** (empty volume). Rotate with `ALTER ROLE keycloak`, then update the variable. |
 | `BACKUP_S3_ENDPOINT` | | `s3.gra.io.cloud.ovh.net` | `backup-agent` | pgBackRest repo endpoint: host only, no `https://`. |
 | `BACKUP_S3_REGION` | | `gra` | `backup-agent` | |
-| `BACKUP_S3_BUCKET` | | `flowstate-pgbackrest` | `backup-agent` | Its own bucket, see [Backups](#backups-once-per-environment). |
+| `BACKUP_S3_BUCKET` | | `kupro-pgbackrest` | `backup-agent` | Its own bucket, see [Backups](#backups-once-per-environment). |
 | `BACKUP_S3_KEY` | | S3 user access key | `backup-agent` | User with read/write on the repo bucket only. |
 | `BACKUP_S3_KEY_SECRET` | yes | S3 user secret key | `backup-agent` | |
 | `BACKUP_CIPHER_PASS` | yes | long random | `backup-agent` | Encrypts the backups. **Also store it in the password manager**: without it no backup can be read, and it can't be changed for an existing repo. |
 | `BACKUP_OPS_URL` | | `https://s3.gra.io.cloud.ovh.net` | `backup-agent` | Ops bucket endpoint (status, history): full URL this time. |
-| `BACKUP_OPS_BUCKET` | | `flowstate-backup-ops` | `backup-agent` | Must not be empty. |
+| `BACKUP_OPS_BUCKET` | | `kupro-backup-ops` | `backup-agent` | Must not be empty. |
 | `BACKUP_OPS_ACCESS_KEY` | | S3 user access key | `backup-agent` | User with read/write on the ops bucket only. |
 | `BACKUP_OPS_SECRET_KEY` | yes | S3 user secret key | `backup-agent` | |
 | `BACKUP_CONSOLE_SSH` | | `ssh -L 9090:127.0.0.1:9090 ubuntu@<vps>` | `backup-agent` | Shown in the console. |
@@ -66,7 +66,7 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `KEYCLOAK_SMTP_FROM` | | `no-reply@<domain>` | `keycloak` | Sender of password reset and verification mails. Must not be empty, or the realm import fails. |
 | `STORAGE_URL` | | `https://s3.gra.io.cloud.ovh.net` | `api` | OVHcloud Object Storage S3 endpoint for the bucket's region. Browsers upload to it directly. |
 | `STORAGE_REGION` | | `gra` | `api` | Must match the endpoint. |
-| `STORAGE_BUCKET` | | `flowstate-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
+| `STORAGE_BUCKET` | | `kupro-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
 | `STORAGE_ACCESS_KEY` | | S3 user access key | `api` | User with read/write on the bucket only. |
 | `STORAGE_SECRET_KEY` | yes | S3 user secret key | `api` | |
 | `SCALEWAY_AI_KEY` | yes | Scaleway API secret key | `api` | Meeting agent transcription and proposals ([ADR-015](../adr/ADR-015-meeting-agent-vendors.md)). Key needs Generative APIs permissions only. Empty: no microphone, proposals from the keyword fallback. |
@@ -103,8 +103,8 @@ The workflows are `ci.yml` (build, test, publish images), `staging.yml` (E2E on 
 | Environment `production`, secret | `DOKPLOY_API_KEY` | Dokploy → Settings → Profile → API keys | |
 | Environment `production`, secret | `DOKPLOY_COMPOSE_ID` | from the compose app's URL in Dokploy | |
 
-Images go to GHCR as `ghcr.io/<owner>/flowstate-{api,web,keycloak,site}:sha-<commit>` and `:latest`, plus
-`flowstate-{postgres,backup-agent}:src-<hash>`. GHCR packages start private: either make them public, or add a GHCR
+Images go to GHCR as `ghcr.io/<owner>/kupro-{api,web,keycloak,site}:sha-<commit>` and `:latest`, plus
+`kupro-{postgres,backup-agent}:src-<hash>`. GHCR packages start private: either make them public, or add a GHCR
 registry in Dokploy (a GitHub token with `read:packages`) so the VPS can pull.
 
 ## First deploy (once per environment)
@@ -126,17 +126,17 @@ registry in Dokploy (a GitHub token with `read:packages`) so the VPS can pull.
    [GitHub configuration](#github-configuration). The first deploy is a push to `main`, or `cd.yml` run by hand.
 5. **Keycloak: admin.** Sign in at `https://auth.<domain>/admin` with `admin` / `KEYCLOAK_PASSWORD`. Create a
    permanent admin user in the `master` realm with 2FA, then delete the temporary `admin`.
-6. **Keycloak: check the realm.** On first start Keycloak imports `src/Flowstate.AppHost/Realms/flowstate-realm.json`
+6. **Keycloak: check the realm.** On first start Keycloak imports `src/Kupro.AppHost/Realms/kupro-realm.json`
    from the image, with `REALM_*` placeholders filled from the variables above. No dev users are in the image. In realm
-   `flowstate`, check that client `web` has `https://app.<domain>/*` as redirect URI, then go to Realm settings → Email →
-   **Test connection** and confirm the mail arrives in Flowstate's look.
-7. **Grafana**: sign in at `https://grafana.<domain>` as `admin`. Go to Alerting → Contact points → `flowstate-email`
+   `kupro`, check that client `web` has `https://app.<domain>/*` as redirect URI, then go to Realm settings → Email →
+   **Test connection** and confirm the mail arrives in Kupro's look.
+7. **Grafana**: sign in at `https://grafana.<domain>` as `admin`. Go to Alerting → Contact points → `kupro-email`
    → **Test** and confirm the mail arrives. For agent access, create a service account with role **Viewer**
    ([observability README](../../infrastructure/observability/README.md#querying-from-an-agent)).
 8. **PingPuffin** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): add an HTTP check on
    `https://app.<domain>/api/v1/status`, expect 200, alert by email and SMS. Grafana runs on the same VPS and can't report
    the VPS itself being down; this check catches that, plus DNS, TLS and Traefik failures.
-9. **Smoke test**: register a user, reset its password (Flowstate-styled pages and mail), then create a workspace and an issue, and paste an image into a comment. Run `flowstate login` against the domain.
+9. **Smoke test**: register a user, reset its password (Kupro-styled pages and mail), then create a workspace and an issue, and paste an image into a comment. Run `kupro login` against the domain.
    Connect an MCP client to `https://app.<domain>/mcp`. Check that requests show up on Grafana's **Service health**
    dashboard.
 10. **Backups running**: open the backup console (`pwsh scripts/backup-console.ps1 <user>@<vps>`, [restore runbook](restore.md) §1).
@@ -153,14 +153,14 @@ The backup agent and our Postgres image ([ADR-016](../adr/ADR-016-postgres-backu
    reuse the attachments bucket or its user.
 2. **Cipher pass**: generate a long random `BACKUP_CIPHER_PASS` and store it in the password manager together with the
    two S3 users' keys. Restoring after losing the VPS needs exactly these ([restore runbook](restore.md) §10).
-3. **elmah.io** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): a log for Flowstate, an API key with only
+3. **elmah.io** ([ADR-006](../adr/ADR-006-eu-vendor-policy.md), DK): a log for Kupro, an API key with only
    *Heartbeats - Write*, and four heartbeats (WAL, backup, verify, drill) with the intervals in the variables table.
    Alerts by email and SMS.
 4. **Data volumes**, over SSH on the VPS. They are external in the compose file, so compose refuses to start without
    them instead of starting an empty database:
 
    ```sh
-   for v in pgdata-a pgdata-b pg-control wal-receive backup-agent-state; do docker volume create flowstate-$v; done
+   for v in pgdata-a pgdata-b pg-control wal-receive backup-agent-state; do docker volume create kupro-$v; done
    ```
 
 5. After the first deploy: check the console (step 10 above). On a later normal deploy, check that the Postgres

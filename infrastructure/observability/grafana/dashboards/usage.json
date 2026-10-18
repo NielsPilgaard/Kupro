@@ -1,9 +1,9 @@
 {
-  "uid": "flowstate-usage",
-  "title": "Flowstate – Usage",
+  "uid": "kupro-usage",
+  "title": "Kupro – Usage",
   "description": "Requests by feature area and caller (web/MCP session, API token, agent token), from the request log in Loki.",
   "tags": [
-    "flowstate",
+    "kupro",
     "aspnetcore"
   ],
   "timezone": "Europe/Copenhagen",
@@ -17,10 +17,10 @@
   },
   "links": [
     {
-      "title": "Flowstate",
+      "title": "Kupro",
       "type": "dashboards",
       "tags": [
-        "flowstate"
+        "kupro"
       ],
       "asDropdown": false,
       "includeVars": false,
@@ -49,7 +49,7 @@
         "enable": true,
         "iconColor": "purple",
         "name": "Deploys / restarts",
-        "expr": "{service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\"",
+        "expr": "{service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\"",
         "titleFormat": "API started",
         "textFormat": "{{service_version}} on {{service_instance_id}}",
         "instant": false
@@ -63,7 +63,7 @@
     {
       "type": "row",
       "id": 1,
-      "title": "Who uses Flowstate, and through which surface",
+      "title": "Who uses Kupro, and through which surface",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -95,7 +95,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum(count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [$__range]))",
+          "expr": "sum(count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -140,7 +140,7 @@
       "type": "stat",
       "id": 3,
       "title": "Agent + token share",
-      "description": "Share of authenticated requests made with API tokens (CLI, scripts, agents) instead of a browser/MCP session. Flowstate is agent-first (ADR-001): this should grow.",
+      "description": "Share of authenticated requests made with API tokens (CLI, scripts, agents) instead of a browser/MCP session. Kupro is agent-first (ADR-001): this should grow.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -158,7 +158,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "(sum(count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | Caller=~`agent|token` [$__range])) or vector(0)) / sum(count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [$__range]))",
+          "expr": "(sum(count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | Caller=~`agent|token` [$__range])) or vector(0)) / sum(count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -221,7 +221,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "count(sum by (area) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__range])))",
+          "expr": "count(sum by (area) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__range])))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -284,7 +284,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum(count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route=\"(unmatched)\" [$__range]))",
+          "expr": "sum(count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route=\"(unmatched)\" [$__range]))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -347,7 +347,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (Caller) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [$__interval]))",
+          "expr": "sum by (Caller) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [$__interval]))",
           "legendFormat": "{{Caller}}",
           "queryType": "range"
         }
@@ -472,7 +472,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (area, Caller) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__range]))",
+          "expr": "sum by (area, Caller) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__range]))",
           "legendFormat": "",
           "queryType": "instant"
         }
@@ -551,7 +551,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (area) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__interval]))",
+          "expr": "sum by (area) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__interval]))",
           "legendFormat": "{{area}}",
           "queryType": "range"
         }
@@ -615,7 +615,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (area) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | StatusCode=~\"4..|5..\" | StatusCode!=\"401\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__interval]))",
+          "expr": "sum by (area) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | StatusCode=~\"4..|5..\" | StatusCode!=\"401\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` [$__interval]))",
           "legendFormat": "{{area}}",
           "queryType": "range"
         }
@@ -679,7 +679,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "max_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` | unwrap Duration [$__interval]) by (area)",
+          "expr": "max_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" | label_format area=`{{ regexReplaceAll \"[/{].*\" (trimPrefix \"workspaces/{workspace}/\" (trimPrefix \"/\" (trimPrefix \"/api/v1\" .Route))) \"\" }}` | unwrap Duration [$__interval]) by (area)",
           "legendFormat": "{{area}}",
           "queryType": "range"
         }
@@ -777,7 +777,7 @@
             "uid": "loki"
           },
           "refId": "A",
-          "expr": "sum by (Caller) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [1h]))",
+          "expr": "sum by (Caller) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | Caller!=\"anonymous\" [1h]))",
           "legendFormat": "{{Caller}}",
           "queryType": "range"
         }

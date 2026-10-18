@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Flowstate Design Directions</title>
+<title>Kupro Design Directions</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=Fragment+Mono&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -254,7 +254,7 @@ button{font:inherit; color:inherit}
 <div class="wrap">
   <header>
     <div class="eyebrow">Task 000 · Frontend ideas</div>
-    <h1>Flowstate design directions</h1>
+    <h1>Kupro design directions</h1>
     <p class="lede">Eleven visual directions for the web app, each rendered as the same working screen: the issue list, the board, the 2027 delivery plan and the command palette. Every direction is a full token set (colour in light and dark, type, radius, density defaults). The component variants on the right apply on top of any direction, so you can mix.</p>
     <ol class="steps">
       <li><b>1</b>Star the directions you like</li>
@@ -334,7 +334,7 @@ const DIRS = [
    why:'The palette is local without being folkloric: the green roofs of Christiansborg and Frederik’s Church are recognisable to every Dane. Green and copper are complementary, so “in progress” stands out without shouting. Bricolage Grotesque gives the wordmark character; Hanken Grotesk stays quiet at 13 px.',
    risk:'Green accent can read as “success”. Done therefore uses a yellower green and the check glyph, never colour alone.',
    f:{ui:'"Hanken Grotesk"', display:'"Bricolage Grotesque"', mono:'"Fragment Mono"'}, fn:'Bricolage Grotesque · Hanken Grotesk · Fragment Mono',
-   r:5, mark:'oe', word:'flowstate', hw:700, caps:false, btn:'solid',
+   r:5, mark:'oe', word:'kupro', hw:700, caps:false, btn:'solid',
    def:{status:'ring', types:'shapes', density:'compact', sidebar:'tinted', plan:'outline', cap:'bars'},
    L:P('#F2F4F3','#FFFFFF','#E7ECEA','#D3DBD8','#16201D','#56655F','#2C7A6A','#246859','#FFFFFF','#1C2A26','#CFE0DA','#B5651F','#6553A8','#3F8A3C','#A9801A','#B3393B'),
    D:P('#0F1514','#161F1D','#0B100F','#25322E','#E2ECE8','#8FA29B','#5BB8A3','#6CC4AF','#08130F','#0B100F','#B7CAC3','#E08E52','#A194E6','#78C36F','#E3BC55','#EE6E6E') },
@@ -343,7 +343,7 @@ const DIRS = [
    why:'Reads as serious infrastructure, which helps the sovereignty story with CTOs and procurement. IBM Plex has excellent Danish glyph coverage and a mono sibling for keys and hours.',
    risk:'Closest to Jira and Azure DevOps in feel. Needs sharp density and speed to not read as “another blue tracker”.',
    f:{ui:'"IBM Plex Sans"', display:'"IBM Plex Sans"', mono:'"IBM Plex Mono"'}, fn:'IBM Plex Sans · IBM Plex Mono',
-   r:4, mark:'stream', word:'Flowstate', hw:600, caps:false, btn:'solid',
+   r:4, mark:'stream', word:'Kupro', hw:600, caps:false, btn:'solid',
    def:{status:'ring', types:'shapes', density:'comfortable', sidebar:'flat', plan:'bar', cap:'bars'},
    L:P('#F4F6F8','#FFFFFF','#EAEEF2','#D5DCE3','#15202A','#566573','#1D5B7C','#1D5B7C','#FFFFFF','#EAEEF2','#253441','#2C7DB3','#7556B3','#2D7F57','#AD7C22','#B23B3B'),
    D:P('#0E141A','#141C24','#0A0F14','#24313D','#E0E8EF','#8797A7','#6DB3D6','#7CBEDF','#07131B','#0A0F14','#B4C3D0','#6DB3D6','#A891E0','#5DBB8A','#E2B15A','#E57373') },
@@ -352,7 +352,7 @@ const DIRS = [
    why:'Directly signals the “Linear speed” promise to the startup audience who are switching from Linear. Geist is designed for interface text and has a matching mono.',
    risk:'The most generic of the set. Without a strong mark it looks like every developer tool from 2024.',
    f:{ui:'"Geist"', display:'"Geist"', mono:'"Geist Mono"'}, fn:'Geist · Geist Mono',
-   r:6, mark:'wave', word:'flowstate', hw:600, caps:false, btn:'solid',
+   r:6, mark:'wave', word:'kupro', hw:600, caps:false, btn:'solid',
    def:{status:'ring', types:'shapes', density:'compact', sidebar:'flat', plan:'bar', cap:'numbers'},
    L:P('#FFFFFF','#FFFFFF','#F4F5F8','#E3E5EC','#0F1222','#5A5F70','#2E46F5','#2E46F5','#FFFFFF','#F7F8FB','#2A2F45','#2E46F5','#9447E0','#1E8A5A','#B8740F','#D23B4B'),
    D:P('#0B0C14','#11131E','#08090F','#22263A','#E8EAF5','#8C91A8','#7A8BFF','#8E9CFF','#0B0C14','#08090F','#BFC4DA','#7A8BFF','#C08BFF','#4CC38A','#F0AE4A','#FF6B7A') },
@@ -361,7 +361,7 @@ const DIRS = [
    why:'Grounded in Danish building culture rather than flags. The dark sidebar gives a strong frame, and the warm palette makes long planning sessions feel less clinical.',
    risk:'Red accent competes with error states. Errors use a deeper wine red and always carry an icon.',
    f:{ui:'"Instrument Sans"', display:'"Instrument Sans"', mono:'"JetBrains Mono"'}, fn:'Instrument Sans · JetBrains Mono',
-   r:3, mark:'blocks', word:'Flowstate', hw:700, caps:false, btn:'solid',
+   r:3, mark:'blocks', word:'Kupro', hw:700, caps:false, btn:'solid',
    def:{status:'dot', types:'letters', density:'comfortable', sidebar:'tinted', plan:'tag', cap:'heat'},
    L:P('#EEEDEB','#FAF9F8','#E4E2DF','#D3CFCA','#211C1A','#665D58','#A63D24','#A63D24','#FFFFFF','#2A2321','#D9CFCA','#C0662A','#4F6A8F','#4C7A3F','#A87418','#8E1F3A'),
    D:P('#171312','#1F1A18','#120F0E','#332B28','#ECE5E1','#A2958E','#E07A5C','#E8876A','#1A0F0B','#120F0E','#CDBFB8','#E39A5C','#8FAAD4','#86B873','#E0B154','#E86A8A') },
@@ -370,7 +370,7 @@ const DIRS = [
    why:'Puts the differentiator, the delivery plan, at the centre of the identity. Public Sans was built for government services, which suits the later public-sector audience.',
    risk:'Orange on white needs a darkened tone for text. The bright orange is reserved for fills and markers.',
    f:{ui:'"Public Sans"', display:'"Public Sans"', mono:'"DM Mono"'}, fn:'Public Sans · DM Mono',
-   r:2, mark:'contour', word:'Flowstate', hw:700, caps:true, btn:'solid',
+   r:2, mark:'contour', word:'Kupro', hw:700, caps:true, btn:'solid',
    def:{status:'glyph', types:'shapes', density:'comfortable', sidebar:'flat', plan:'tag', cap:'bars'},
    L:P('#F6F7F3','#FFFFFF','#EDEFE8','#D7DCCF','#1B2420','#5A655B','#D4561A','#B5470F','#FFFFFF','#EDEFE8','#2B352F','#D4561A','#3B6EA8','#4D7A3A','#A88214','#B3261E'),
    D:P('#121612','#191E19','#0D100D','#2A3229','#E6EBE3','#95A091','#FF8A4C','#FF9A62','#1A0C04','#0D100D','#C4CEC0','#FF8A4C','#7FA8DB','#8CC47A','#E8C25A','#F07068') },
@@ -379,7 +379,7 @@ const DIRS = [
    why:'The most direct way to say “Danish” at a glance in a screenshot, a booth or a LinkedIn post. Archivo’s extra-bold weights make a strong wordmark.',
    risk:'National symbol use can feel kitsch or exclusionary to EU customers outside Denmark. A red UI is tiring over a full day.',
    f:{ui:'"Archivo"', display:'"Archivo"', mono:'"JetBrains Mono"'}, fn:'Archivo · JetBrains Mono',
-   r:0, mark:'cross', word:'FLOWSTATE', hw:800, caps:true, btn:'solid',
+   r:0, mark:'cross', word:'KUPRO', hw:800, caps:true, btn:'solid',
    def:{status:'pill', types:'letters', density:'comfortable', sidebar:'tinted', plan:'bar', cap:'numbers'}, sideAcc:'#FFFFFF',
    L:P('#FFFFFF','#FFFFFF','#F6F3F3','#E5DEDE','#140A0B','#675B5C','#C8102E','#C8102E','#FFFFFF','#C8102E','#FFFFFF','#1D5FA8','#7A4BB0','#1F7A4A','#AE7A14','#C8102E'),
    D:P('#120A0B','#1A1011','#0C0607','#33222A','#F5ECEC','#A89597','#FF4D63','#FF6577','#1A0508','#6E0918','#FFE9EC','#6FA8EA','#B48BEB','#5CC48C','#E8B65A','#FF4D63') },
@@ -388,7 +388,7 @@ const DIRS = [
    why:'Developers mostly run dark mode; designing dark first gets that experience right. Albert Sans was drawn by a Danish designer and has a Scandinavian geometric feel.',
    risk:'Light mode is the afterthought here and amber needs darkening to pass contrast on white.',
    f:{ui:'"Albert Sans"', display:'"Albert Sans"', mono:'"DM Mono"'}, fn:'Albert Sans · DM Mono',
-   r:8, mark:'sun', word:'flowstate', hw:700, caps:false, btn:'solid', darkFirst:true,
+   r:8, mark:'sun', word:'kupro', hw:700, caps:false, btn:'solid', darkFirst:true,
    def:{status:'ring', types:'color', density:'comfortable', sidebar:'tinted', plan:'bar', cap:'heat'},
    L:P('#F1F1F4','#FFFFFF','#E8E8ED','#D6D6DE','#1A1A24','#5D5D6E','#A9581A','#A9581A','#FFFFFF','#1C1C2A','#D8D6E6','#A9581A','#5B57B8','#2E8159','#9E8210','#C2393B'),
    D:P('#0F0F18','#171724','#0A0A11','#26263A','#ECEAF5','#9592AE','#F2A93B','#F2A93B','#1A1206','#0A0A11','#C9C6DE','#F2A93B','#9D97F2','#5BC28C','#E8D25A','#F06A6A') },
@@ -397,7 +397,7 @@ const DIRS = [
    why:'Makes the agent-parity principle visible: what you see is what the CLI prints. Schibsted Grotesk (from the Norwegian newspaper group) is used only for headings.',
    risk:'Alienates non-developer users (PMs, founders). Long issue titles are harder to scan in mono.',
    f:{ui:'"JetBrains Mono"', display:'"Schibsted Grotesk"', mono:'"JetBrains Mono"'}, fn:'Schibsted Grotesk · JetBrains Mono (UI)',
-   r:0, mark:'prompt', word:'flowstate', hw:700, caps:true, btn:'outline', bracket:true,
+   r:0, mark:'prompt', word:'kupro', hw:700, caps:true, btn:'outline', bracket:true,
    def:{status:'glyph', types:'letters', density:'compact', sidebar:'tinted', plan:'outline', cap:'numbers'},
    L:P('#F5F6F6','#FFFFFF','#ECEEEE','#D5D9D9','#101414','#596262','#0E7490','#0E7490','#FFFFFF','#101414','#C7D0D0','#0E7490','#8A4FB0','#2F7D3A','#A07010','#B42318'),
    D:P('#0A0D0D','#101414','#060808','#1F2727','#DDE5E5','#849090','#3CC6E0','#3CC6E0','#041013','#060808','#A7B4B4','#3CC6E0','#C08FE8','#6CCB7A','#E8BC4A','#F2685C') },
@@ -406,7 +406,7 @@ const DIRS = [
    why:'Restraint is the brand: the UI is almost colourless so state colours and the yellow selection carry all meaning. Familjen Grotesk comes from a Stockholm studio and has a confident editorial voice.',
    risk:'Yellow cannot be used for text, so the accent only appears as fills. Easy to make look unfinished.',
    f:{ui:'"Familjen Grotesk"', display:'"Familjen Grotesk"', mono:'"Red Hat Mono"'}, fn:'Familjen Grotesk · Red Hat Mono',
-   r:0, mark:'stack', word:'flowstate', hw:700, caps:false, btn:'solid',
+   r:0, mark:'stack', word:'kupro', hw:700, caps:false, btn:'solid',
    def:{status:'dot', types:'color', density:'roomy', sidebar:'flat', plan:'outline', cap:'numbers'},
    L:P('#FFFFFF','#FFFFFF','#F3F3F1','#DCDCD8','#111111','#5A5A56','#F2C200','#111111','#111111','#FFFFFF','#111111','#2D5BD7','#8B4BC2','#2E7D32','#B88A00','#D32F2F'),
    D:P('#121212','#1A1A1A','#0C0C0C','#2E2E2E','#F2F2F0','#9C9C96','#FFD21F','#FFD21F','#111111','#0C0C0C','#DADAD6','#7C9BFF','#C190F0','#6CC070','#FFD21F','#FF6B6B') },
@@ -415,7 +415,7 @@ const DIRS = [
    why:'Lowers the barrier for non-developers on the team. Figtree is round and legible at small sizes without looking childish.',
    risk:'Least “power tool” of the set; may undersell speed and keyboard-first to the core developer audience.',
    f:{ui:'"Figtree"', display:'"Figtree"', mono:'"DM Mono"'}, fn:'Figtree · DM Mono',
-   r:10, mark:'ring', word:'flowstate', hw:700, caps:false, btn:'solid',
+   r:10, mark:'ring', word:'kupro', hw:700, caps:false, btn:'solid',
    def:{status:'pill', types:'color', density:'roomy', sidebar:'flat', plan:'bar', cap:'bars'},
    L:P('#F3F7FA','#FFFFFF','#E8F0F5','#D3E0E8','#142230','#566E80','#1A6FA6','#1A6FA6','#FFFFFF','#FFFFFF','#1E3242','#1A6FA6','#7B5CC9','#20885E','#BA7E14','#CC4040'),
    D:P('#0D1620','#13202C','#09111A','#22344A','#E4EEF6','#8DA6BA','#5DB6EE','#6DC0F2','#06121C','#09111A','#BFD2E0','#5DB6EE','#AE98F2','#55C79A','#EDB75A','#F07474') },
@@ -424,7 +424,7 @@ const DIRS = [
    why:'Atkinson Hyperlegible was designed for low-vision readers, so a dense UI stays readable. Suits people who triage 200 issues before lunch.',
    risk:'Dense and grey can feel austere in screenshots and marketing. Needs the logo to carry the personality.',
    f:{ui:'"Atkinson Hyperlegible"', display:'"Atkinson Hyperlegible"', mono:'"Red Hat Mono"'}, fn:'Atkinson Hyperlegible · Red Hat Mono',
-   r:3, mark:'stack', word:'Flowstate', hw:700, caps:false, btn:'solid',
+   r:3, mark:'stack', word:'Kupro', hw:700, caps:false, btn:'solid',
    def:{status:'bar', types:'letters', density:'compact', sidebar:'flat', plan:'tag', cap:'numbers'},
    L:P('#EDEEEE','#FBFBFB','#E2E4E4','#CDD1D1','#1A1D1D','#566060','#3B6E3F','#3B6E3F','#FFFFFF','#E2E4E4','#252A2A','#2F6596','#7A4E9E','#3B6E3F','#9E7018','#A83232'),
    D:P('#131515','#1A1D1D','#0E1010','#2A2F2F','#E2E6E6','#939C9C','#7DBB7F','#88C48A','#0C140C','#0E1010','#C2CACA','#7FAEE0','#BB98DE','#7DBB7F','#DDB560','#E87878') },
@@ -468,7 +468,7 @@ const ISSUES = [
  {k:'FLOW-151',t:'Danish translations for issue detail',ty:'task',st:'todo',lb:['i18n'],h:3,who:'agent'},
  {k:'FLOW-147',t:'Command palette fuzzy ranking',ty:'task',st:'todo',lb:['web'],h:6,who:'SL'},
  {k:'FLOW-155',t:'Board drag jitters on Firefox',ty:'task',st:'backlog',lb:['bug','web'],h:2,who:null},
- {k:'FLOW-133',t:'CLI: flowstate issue list --json',ty:'task',st:'done',lb:['cli'],h:4,who:'agent'},
+ {k:'FLOW-133',t:'CLI: kupro issue list --json',ty:'task',st:'done',lb:['cli'],h:4,who:'agent'},
  {k:'FLOW-131',t:'Keycloak token exchange for MCP',ty:'task',st:'done',lb:['auth'],h:12,who:'MK'},
 ];
 const LABEL_C = {web:'var(--prog)',plan:'var(--accInk)',mcp:'var(--rev)',i18n:'var(--warn)',bug:'var(--bad)',cli:'var(--mute)',auth:'var(--ok)'};
@@ -518,7 +518,7 @@ const MARKS = {
 const markSvg=(id,size=22)=>`<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true">${MARKS[id].s}</svg>`;
 
 /* ───────── State ───────── */
-const LS='flowstate-directions-v1';
+const LS='kupro-directions-v1';
 const sysDark = matchMedia('(prefers-color-scheme: dark)').matches;
 let S = {dir:'kobber', mode: sysDark?'dark':'light', view:'list', lang:'en', ov:{}, mark:null, stars:['kobber']};
 try{ const saved=JSON.parse(localStorage.getItem(LS)||'null'); if(saved) S={...S,...saved,mode:S.mode}; }catch(e){}
@@ -667,7 +667,7 @@ function cmdView(o){
       <li>${ic('me',15)}<span>${T('cmd3')}</span><kbd>A</kbd></li>
       <li>${stIcon('progress','ring')}<span>${T('cmd4')}</span><kbd>S</kbd></li>
     </ul>
-    <div class="cli">${T('cli')}: <code>flowstate issue move FLOW-12 --sprint next</code></div>
+    <div class="cli">${T('cli')}: <code>kupro issue move FLOW-12 --sprint next</code></div>
   </div>`;
 }
 
@@ -762,7 +762,7 @@ function picksText(){
   const lab=(k,v)=>VARIANTS.find(x=>x.key===k).opts.find(x=>x[0]===v)[1];
   const mk=S.mark||d.mark;
   const notes=document.getElementById('picksNotes').value.trim();
-  return [`Flowstate design picks`,
+  return [`Kupro design picks`,
    `Direction: ${d.name} (${d.gloss})`,
    ...VARIANTS.map(vr=>`${vr.label}: ${lab(vr.key,o[vr.key])}${o[vr.key]===d.def[vr.key]?'':' (changed)'}`),
    `Logo mark: ${MARKS[mk].n}${S.mark?'':' (direction default)'}`,

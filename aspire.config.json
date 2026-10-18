@@ -1,5 +1,5 @@
 {
   "appHost": {
-    "path": "src/Flowstate.AppHost/Flowstate.AppHost.csproj"
+    "path": "src/Kupro.AppHost/Kupro.AppHost.csproj"
   }
 }

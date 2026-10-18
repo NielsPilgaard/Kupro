@@ -4,13 +4,13 @@ import type { Copy } from './en';
 export const da: Copy = {
   meta: {
     lang: 'da',
-    siteName: 'Flowstate',
-    homeTitle: 'Flowstate · Sig det til standup. Så står det i trackeren.',
+    siteName: 'Kupro',
+    homeTitle: 'Kupro · Sig det til standup. Så står det i trackeren.',
     homeDescription:
       'En issue tracker og planlægger, der lytter med til standup og foreslår de ændringer, I nævner. Hurtig, bygget til tastaturet og hostet i EU.',
-    pricingTitle: 'Priser · Flowstate',
+    pricingTitle: 'Priser · Kupro',
     pricingDescription: '69 kr. pr. person om måneden eller 690 kr. om året. 30 dages gratis prøveperiode med mødeagenten. Intet kort.',
-    notFoundTitle: 'Siden findes ikke · Flowstate',
+    notFoundTitle: 'Siden findes ikke · Kupro',
   },
   nav: {
     label: 'Hovedmenu',
@@ -23,12 +23,12 @@ export const da: Copy = {
     language: 'English',
     languageLabel: 'Read in English',
     skip: 'Gå til indhold',
-    home: 'Flowstate forside',
+    home: 'Kupro forside',
   },
   hero: {
     eyebrow: 'Mødeagent · lavet i Danmark',
     title: 'Sig det til standup. Så står det i trackeren.',
-    sub: 'Flowstate lytter med, mens I taler, og foreslår de ændringer på opgaverne, som bliver nævnt. Intet ændres, før nogen godkender det. Intet af det, I siger, gemmes efter mødet.',
+    sub: 'Kupro lytter med, mens I taler, og foreslår de ændringer på opgaverne, som bliver nævnt. Intet ændres, før nogen godkender det. Intet af det, I siger, gemmes efter mødet.',
     ctaPrimary: 'Prøv gratis',
     ctaSecondary: 'Se priser',
     fine: '30 dage gratis med mødeagenten. Intet kort. Dansk og engelsk.',
@@ -71,7 +71,7 @@ export const da: Copy = {
   fast: {
     eyebrow: 'Hurtig og nem',
     title: 'Hver handling på under et halvt sekund',
-    sub: 'De fleste trackere får dig til at vente og til at konfigurere. Flowstate gør ingen af delene. Skærmen opdaterer, i det øjeblik du handler, og serveren bekræfter i baggrunden.',
+    sub: 'De fleste trackere får dig til at vente og til at konfigurere. Kupro gør ingen af delene. Skærmen opdaterer, i det øjeblik du handler, og serveren bekræfter i baggrunden.',
     stats: [
       { value: '< 500 ms', label: 'for hver handling, 99 ud af 100 gange, målt på serveren.' },
       { value: '0', label: 'skemaer, felter eller workflows at sætte op før den første opgave.' },
@@ -183,13 +183,13 @@ export const da: Copy = {
     faqTitle: 'Spørgsmål',
     faq: [
       { q: 'Hvad tæller som en plads?', a: 'Alle aktive Owners og Members i et arbejdsområde. Inviterede tager først en plads, når de siger ja, og deaktiverede tager ingen.' },
-      { q: 'Hvad med folk, der holder op med at bruge det?', a: 'De tager stadig en plads, indtil du deaktiverer dem. Flowstate markerer medlemmer, der ikke har brugt det i 30 dage, og før en årlig fornyelse får ejerne listen på mail, så I kan rydde op først.' },
+      { q: 'Hvad med folk, der holder op med at bruge det?', a: 'De tager stadig en plads, indtil du deaktiverer dem. Kupro markerer medlemmer, der ikke har brugt det i 30 dage, og før en årlig fornyelse får ejerne listen på mail, så I kan rydde op først.' },
       { q: 'Kræver agenter og gæster en plads?', a: 'Nej. Agenter får deres eget navn og token og tager ingen plads. Gæster kan læse, kommentere og vedhæfte filer, gratis for op til 5 pr. plads.' },
       { q: 'Hvad sker der, når prøveperioden slutter?', a: 'Arbejdsområdet bliver skrivebeskyttet, indtil I tegner abonnement. I kan stadig eksportere det hele. Tegner I ikke abonnement, slettes det 30 dage senere, og vi skriver til jer før hvert skridt.' },
       { q: 'Hvad hvis vi bruger mødetimerne op?', a: 'Mikrofonen stopper til næste måned. Tekst sendt via API, CLI eller MCP bliver stadig til forslag med en enklere søgning på nøgleord.' },
       { q: 'Kan vi opsige?', a: 'Ja, i appen, når som helst. Planen løber til slutningen af den måned eller det år, I har betalt for. Vi refunderer ikke dele af en periode.' },
       { q: 'Foreninger og uddannelse?', a: 'Den betalte plan er gratis efter aftale, men uden mødeagenten: hver mødetime koster os omkring 5 kr. i AI-gebyrer, og en gratis plan betaler intet af det tilbage.' },
-      { q: 'Kan vi selv hoste det?', a: 'Ja. Flowstate er open source under AGPL. Selvhostet har ingen grænse for pladser; I står selv for servere og AI-nøgler.' },
+      { q: 'Kan vi selv hoste det?', a: 'Ja. Kupro er open source under AGPL. Selvhostet har ingen grænse for pladser; I står selv for servere og AI-nøgler.' },
     ],
   },
   footer: {

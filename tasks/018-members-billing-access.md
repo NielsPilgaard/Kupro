@@ -51,7 +51,7 @@ A finance person with no project work joins as Guest with the billing flag, and 
     workspace: whether *you* have billing access, so the SPA can show the billing section).
   - `InviteMemberRequest` and `UpdateMemberRequest` gain an optional `canManageBilling`. Owner only, as today.
   - Setting the flag on an agent → 400 `billing_access_humans_only`.
-- **CLI**: `flowstate member invite --billing` and `flowstate member update <id> --billing true|false`; `member list`
+- **CLI**: `kupro member invite --billing` and `kupro member update <id> --billing true|false`; `member list`
   gets a BILLING column. Role on `update` becomes optional so the flag can change on its own.
 - **MCP**: no new tools. Member administration stays opted out ([ADR-001](../docs/adr/ADR-001-agent-parity.md),
   `[NoAgentSurface]` on `MembersController`); `list_members` returns the new field.
@@ -68,7 +68,7 @@ A finance person with no project work joins as Guest with the billing flag, and 
 
 ## Out of scope
 
-- Billing itself (plans, checkout, invoices, card details). Card details never touch Flowstate: they live in Alunta's
+- Billing itself (plans, checkout, invoices, card details). Card details never touch Kupro: they live in Alunta's
   hosted checkout and portal ([ADR-013](../docs/adr/ADR-013-seats-billing.md) IMP-007). The billing task adds the
   pages that `[BillingAccess]` guards.
 - Idle-seat flags (`LastActiveAt`, ADR-013 IMP-006): the members page leaves room for an "idle" badge.

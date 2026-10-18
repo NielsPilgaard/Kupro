@@ -17,7 +17,7 @@ description: >-
 
 - Business logic lives in one plain service per feature. Nothing else contains rules.
 - REST controllers and MCP tools (hosted in the API process at `/mcp`) call those services directly.
-- CLI is a .NET AOT binary using a client generated from the OpenAPI spec; `flowstate mcp` exposes a local stdio MCP bridge.
+- CLI is a .NET AOT binary using a client generated from the OpenAPI spec; `kupro mcp` exposes a local stdio MCP bridge.
 - CI parity test: every OpenAPI `operationId` must map to a CLI command and an MCP tool (or be explicitly excluded).
 
 ## Status
@@ -36,7 +36,7 @@ without a check. Agents also need things humans don't: machine-readable output, 
 - **MCP** server in the API process (streamable HTTP, OAuth via Keycloak, see [ADR-005](ADR-005-auth-keycloak.md)).
   Tools are coarse-grained (~12–20) to keep agent context small, e.g. `search_issues`, `get_issue`, `create_issues` (bulk),
   `update_issues` (bulk), `add_comment`, `list_sprints`, `get_plan`.
-- **CLI** `flowstate` (alias TBD): resource-verb shape (`flowstate issue create`, `flowstate issue list --json`).
+- **CLI** `kupro` (alias TBD): resource-verb shape (`kupro issue create`, `kupro issue list --json`).
 - **Agent ergonomics, everywhere**:
   - Human-readable stable IDs (`KEY-123`) accepted wherever an ID is.
   - Markdown in/out for descriptions and comments.

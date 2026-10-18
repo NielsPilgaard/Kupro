@@ -23,7 +23,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $RepoRoot = Split-Path $PSScriptRoot -Parent
-$Solution = Join-Path $RepoRoot 'Flowstate.slnx'
+$Solution = Join-Path $RepoRoot 'Kupro.slnx'
 $WebDir = Join-Path $RepoRoot 'web'
 $Errors = @()
 $StepResults = @()
@@ -178,7 +178,7 @@ if (-not $SkipDocs) {
         # ryni has no ignore support and would walk node_modules, bin/ and obj/.
         # Check a mirror of the non-ignored files instead: Markdown copied, everything
         # else as an empty placeholder so links to code files still resolve.
-        $mirror = Join-Path ([IO.Path]::GetTempPath()) "flowstate-ryni"
+        $mirror = Join-Path ([IO.Path]::GetTempPath()) "kupro-ryni"
         if (Test-Path $mirror) { Remove-Item -Recurse -Force $mirror }
         git -C $RepoRoot -c core.quotepath=false ls-files -co --exclude-standard | ForEach-Object {
             $src = Join-Path $RepoRoot $_

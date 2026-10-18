@@ -2,9 +2,9 @@
 apiVersion: 1
 
 providers:
-  - name: flowstate
+  - name: kupro
     # Matched by title, no folderUid: alert rule provisioning (by title only) may create the folder first.
-    folder: Flowstate
+    folder: Kupro
     type: file
     disableDeletion: true
     allowUiUpdates: false

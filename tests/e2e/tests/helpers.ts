@@ -16,7 +16,7 @@ export async function signInToProject(page: Page) {
   const list = page.getByRole('tablist', { name: 'View' });
   await expect(newProject.or(list)).toBeVisible();
   if (await newProject.isVisible()) {
-    await page.getByLabel('Project name').fill('Flowstate');
+    await page.getByLabel('Project name').fill('Kupro');
     await page.getByRole('button', { name: 'Create project' }).click();
   }
 

@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using static Flowstate.BackupAgent.Pages.Html;
+using static Kupro.BackupAgent.Pages.Html;
 
-namespace Flowstate.BackupAgent.Pages;
+namespace Kupro.BackupAgent.Pages;
 
 /// <summary>Backups, Drills, the safe actions (backup, verify, drill) and the live job log.</summary>
 public static class BackupPages

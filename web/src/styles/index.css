@@ -94,35 +94,35 @@
 
 /* Markdown in issue descriptions: readable at md size, links in accent ink. */
 @layer components {
-  .prose-flowstate {
+  .prose-kupro {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
-  .prose-flowstate h1,
-  .prose-flowstate h2,
-  .prose-flowstate h3 {
+  .prose-kupro h1,
+  .prose-kupro h2,
+  .prose-kupro h3 {
     font-weight: 600;
   }
-  .prose-flowstate a {
+  .prose-kupro a {
     color: var(--acc-ink);
     text-decoration: underline;
   }
-  .prose-flowstate ul {
+  .prose-kupro ul {
     list-style: disc;
     padding-left: 20px;
   }
-  .prose-flowstate ol {
+  .prose-kupro ol {
     list-style: decimal;
     padding-left: 20px;
   }
-  .prose-flowstate code {
+  .prose-kupro code {
     font-family: var(--font-mono);
     background: var(--sunk);
     padding: 0 4px;
     border-radius: 4px;
   }
-  .prose-flowstate pre {
+  .prose-kupro pre {
     background: var(--sunk);
     padding: 8px;
     border-radius: var(--r1);

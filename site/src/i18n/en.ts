@@ -3,13 +3,13 @@
 export const en = {
   meta: {
     lang: 'en',
-    siteName: 'Flowstate',
-    homeTitle: 'Flowstate · Say it in standup. It’s in the tracker.',
+    siteName: 'Kupro',
+    homeTitle: 'Kupro · Say it in standup. It’s in the tracker.',
     homeDescription:
       'An issue tracker and planner that listens in standup and suggests the changes people mention. Fast, keyboard first, hosted in the EU.',
-    pricingTitle: 'Pricing · Flowstate',
+    pricingTitle: 'Pricing · Kupro',
     pricingDescription: '€9 per person a month or €90 a year. 30-day free trial with the meeting agent included. No card needed.',
-    notFoundTitle: 'Page not found · Flowstate',
+    notFoundTitle: 'Page not found · Kupro',
   },
   nav: {
     label: 'Main',
@@ -22,12 +22,12 @@ export const en = {
     language: 'Dansk',
     languageLabel: 'Læs på dansk',
     skip: 'Skip to content',
-    home: 'Flowstate home',
+    home: 'Kupro home',
   },
   hero: {
     eyebrow: 'Meeting agent · made in Denmark',
     title: 'Say it in standup. It’s in the tracker.',
-    sub: 'Flowstate listens while your team talks and suggests the issue changes people mention. Nothing changes until someone approves it. Nothing you say is kept after the meeting.',
+    sub: 'Kupro listens while your team talks and suggests the issue changes people mention. Nothing changes until someone approves it. Nothing you say is kept after the meeting.',
     ctaPrimary: 'Start a free trial',
     ctaSecondary: 'See pricing',
     fine: '30 days free, meeting agent included. No card needed. Danish and English.',
@@ -70,7 +70,7 @@ export const en = {
   fast: {
     eyebrow: 'Fast and easy',
     title: 'Every action in under half a second',
-    sub: 'Most trackers make you wait and make you configure. Flowstate does neither. The screen updates the moment you act, and the server confirms in the background.',
+    sub: 'Most trackers make you wait and make you configure. Kupro does neither. The screen updates the moment you act, and the server confirms in the background.',
     stats: [
       { value: '< 500 ms', label: 'for every action, 99 times out of 100, measured at the server.' },
       { value: '0', label: 'schemes, fields or workflows to set up before your first issue.' },
@@ -182,13 +182,13 @@ export const en = {
     faqTitle: 'Questions',
     faq: [
       { q: 'What counts as a seat?', a: 'Every active Owner or Member of a workspace. Invited people don’t take a seat until they accept, and deactivated people don’t take one at all.' },
-      { q: 'What about people who stop using it?', a: 'They still take a seat until you deactivate them. Flowstate marks members who haven’t used it for 30 days, and before a yearly renewal it emails owners the list, so you can tidy up first.' },
+      { q: 'What about people who stop using it?', a: 'They still take a seat until you deactivate them. Kupro marks members who haven’t used it for 30 days, and before a yearly renewal it emails owners the list, so you can tidy up first.' },
       { q: 'Do agents and guests need a seat?', a: 'No. Agents get their own name and token and don’t take a seat. Guests can read, comment and attach files, free for up to 5 per seat.' },
       { q: 'What happens when the trial ends?', a: 'The workspace turns read-only until you subscribe. You can still export everything. If you don’t subscribe, it is deleted 30 days later, and we email you before each step.' },
       { q: 'What if we use up the meeting hours?', a: 'The microphone stops until next month. Text sent through the API, CLI or MCP still turns into proposals with a simpler keyword matcher.' },
       { q: 'Can we cancel?', a: 'Yes, in the app, any time. The plan runs to the end of the month or year you paid for. We don’t refund part periods.' },
       { q: 'Non-profits and education?', a: 'The paid plan is free on request, without the meeting agent: every meeting hour costs us about €0.70 in AI fees, and a free plan pays none of it back.' },
-      { q: 'Can we host it ourselves?', a: 'Yes. Flowstate is open source under AGPL. Self-hosted has no seat limit; you bring your own servers and AI keys.' },
+      { q: 'Can we host it ourselves?', a: 'Yes. Kupro is open source under AGPL. Self-hosted has no seat limit; you bring your own servers and AI keys.' },
     ],
   },
   footer: {

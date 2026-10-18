@@ -32,7 +32,7 @@ framework overhead is negligible next to query design.
 ## Decision
 
 - Feature folders: `Features/Issues/{IssuesController, IssueService, Issue entity, DTOs}`.
-- `IDbContextFactory<FlowstateDbContext>`, `await using`, `AsNoTracking()` for reads.
+- `IDbContextFactory<KuproDbContext>`, `await using`, `AsNoTracking()` for reads.
 - Projections to DTOs in queries (`Select`) — never load full graphs for lists.
 - EF migrations, applied on startup in dev; explicit migration step in deploy.
 - Background jobs: start with `BackgroundService` + a Postgres-backed queue table; no broker until needed.

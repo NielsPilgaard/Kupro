@@ -21,7 +21,7 @@ describe('ApiStatus', () => {
     await i18n.changeLanguage('en');
     client.setConfig({
       baseUrl: 'http://test',
-      fetch: async () => Response.json({ service: 'flowstate', version: '1.2.3' }),
+      fetch: async () => Response.json({ service: 'kupro', version: '1.2.3' }),
     });
 
     renderWithQuery();

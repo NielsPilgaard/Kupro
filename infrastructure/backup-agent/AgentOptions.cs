@@ -1,4 +1,4 @@
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>
 /// Everything the agent needs to find Postgres, its volumes and its schedule. Bound from the
@@ -33,7 +33,7 @@ public sealed class AgentOptions
     /// <summary>tmpfs for the weekly drill. Nothing restored there survives the drill.</summary>
     public string DrillDirectory { get; init; } = "/drill";
 
-    public string AppDatabase { get; init; } = "flowstate";
+    public string AppDatabase { get; init; } = "kupro";
 
     /// <summary>
     /// Keycloak's database in the same cluster (production). Empty under <c>aspire run</c>, where Keycloak keeps its
@@ -41,7 +41,7 @@ public sealed class AgentOptions
     /// </summary>
     public string KeycloakDatabase { get; init; } = "keycloak";
 
-    public string KeycloakRealm { get; init; } = "flowstate";
+    public string KeycloakRealm { get; init; } = "kupro";
 
     public string DatabaseUser { get; init; } = "backup_agent";
     public string SlotName { get; init; } = "agent";
@@ -103,7 +103,7 @@ public sealed class OpsBucketOptions
     public string ServiceUrl { get; init; } = "";
     public string AccessKey { get; init; } = "";
     public string SecretKey { get; init; } = "";
-    public string BucketName { get; init; } = "flowstate-ops";
+    public string BucketName { get; init; } = "kupro-ops";
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(ServiceUrl) && !string.IsNullOrWhiteSpace(AccessKey) && !string.IsNullOrWhiteSpace(SecretKey);

@@ -37,7 +37,7 @@ purpose: 'Implementation spec for task 008.'
   for the SPA origin. Production needs an OVHcloud bucket, keys and a CORS rule for the app origin in task 013.
 - Parity: CLI `issue activity|comment|attach`, `comment edit|delete`, `attachment get [-o]`; MCP
   `get_issue_activity`, `comment`, `get_attachment`. Upload create/complete opt out of MCP (MCP clients can't PUT
-  bytes); agents use `flowstate issue attach`.
+  bytes); agents use `kupro issue attach`.
 - Web: feed and composer in the issue panel; paste or drop files into the description or a comment to upload.
   Also fixed a crash when opening the panel: newer Chromium returns a promise from `scrollIntoView`, which an
   effect in the list returned.

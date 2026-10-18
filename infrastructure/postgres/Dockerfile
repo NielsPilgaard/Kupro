@@ -1,4 +1,4 @@
-# Postgres for Flowstate (ADR-016). No backup tooling in here: WAL streaming and pgBackRest live in the backup-agent
+# Postgres for Kupro (ADR-016). No backup tooling in here: WAL streaming and pgBackRest live in the backup-agent
 # image (infrastructure/backup-agent), so a broken backup setup can't take Postgres down.
 # PG_MAJOR must match infrastructure/backup-agent/Dockerfile, because physical restores need the same major.
 ARG PG_MAJOR=18

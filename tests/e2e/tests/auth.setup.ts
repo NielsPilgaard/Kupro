@@ -7,8 +7,8 @@ export const authFile = '.auth/user.json';
 setup('sign in', async ({ page }) => {
   // The app redirects to Keycloak straight away, which can abort a goto that waits for `load`.
   await page.goto('/', { waitUntil: 'commit' });
-  await page.getByRole('textbox', { name: 'Email' }).fill(process.env.FLOWSTATE_USER ?? 'dev@flowstate.local');
-  await page.getByRole('textbox', { name: 'Password' }).fill(process.env.FLOWSTATE_PASSWORD ?? 'dev');
+  await page.getByRole('textbox', { name: 'Email' }).fill(process.env.KUPRO_USER ?? 'dev@kupro.local');
+  await page.getByRole('textbox', { name: 'Password' }).fill(process.env.KUPRO_PASSWORD ?? 'dev');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page.getByRole('heading', { name: 'Create your workspace' }).or(page.getByRole('navigation', { name: 'Main' }))).toBeVisible();
   await page.context().storageState({ path: authFile });

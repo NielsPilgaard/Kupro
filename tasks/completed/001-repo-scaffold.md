@@ -12,11 +12,11 @@ purpose: 'Implementation spec for task 001.'
 
 ## Scope
 
-- .NET 10 solution: `src/Flowstate.AppHost`, `src/Flowstate.ServiceDefaults`, `src/Flowstate.Api`, `src/Flowstate.Cli`, `tests/Flowstate.Tests` (xUnit + Testcontainers).
+- .NET 10 solution: `src/Kupro.AppHost`, `src/Kupro.ServiceDefaults`, `src/Kupro.Api`, `src/Kupro.Cli`, `tests/Kupro.Tests` (xUnit + Testcontainers).
 - `web/`: Vite + React + TS + TanStack Query/Router, Bun as toolchain ([ADR-003](../../docs/adr/ADR-003-frontend-stack.md)).
 - Aspire AppHost ([ADR-012](../../docs/adr/ADR-012-aspire.md)): postgres 18, keycloak (dev realm import), api, web (Vite).
 - `aspire publish` → `deploy/docker-compose.yaml` committed.
-- OpenAPI emitted to `openapi/flowstate.json` at build; `@hey-api/openapi-ts` generates `web/src/api/gen/` in `predev`/`prebuild` ([ADR-003](../../docs/adr/ADR-003-frontend-stack.md) IMP-003).
+- OpenAPI emitted to `openapi/kupro.json` at build; `@hey-api/openapi-ts` generates `web/src/api/gen/` in `predev`/`prebuild` ([ADR-003](../../docs/adr/ADR-003-frontend-stack.md) IMP-003).
 - `web/Dockerfile` + `web/nginx.conf` ([ADR-012](../../docs/adr/ADR-012-aspire.md) IMP-002), roughly:
 
   ```dockerfile

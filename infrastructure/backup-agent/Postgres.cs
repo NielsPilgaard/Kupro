@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using NpgsqlTypes;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 public sealed record ServerInfo(int VersionNum, long SystemIdentifier, int Timeline, NpgsqlLogSequenceNumber CurrentLsn, long SlotKeepBytes, string DataDirectory);
 

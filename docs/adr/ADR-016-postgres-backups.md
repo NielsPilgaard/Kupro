@@ -30,7 +30,7 @@ description: >-
 
 [ADR-004](ADR-004-hosting.md) puts a self-managed Postgres on one VPS, so losing the VPS, a bad migration or a mass
 delete must be recoverable by one person at 3 a.m., and the restore must be proven, not assumed. Skoleoverblikket built
-and tested exactly this agent ([its README](../../infrastructure/backup-agent/README.md)); Flowstate has the same stack
+and tested exactly this agent ([its README](../../infrastructure/backup-agent/README.md)); Kupro has the same stack
 (.NET, Aspire, Dokploy, OVHcloud), so we port it instead of writing a second one.
 
 ## Decision
@@ -71,7 +71,7 @@ and tested exactly this agent ([its README](../../infrastructure/backup-agent/RE
 - **NEG-002**: Attachments in object storage are not covered; only the database is. A restore can leave orphaned files
   or rows pointing at deleted files.
 - **NEG-003**: One more container with memory headroom for the drill's tmpfs (default 1 GB tmpfs, 1.5 GB limit).
-- **NEG-004**: No GDPR erasure ledger yet: Flowstate has no workspace or account deletion. When it gets one, a restore
+- **NEG-004**: No GDPR erasure ledger yet: Kupro has no workspace or account deletion. When it gets one, a restore
   would bring erased data back; the agent's ledger (see the README) must be added with that feature.
 
 ## Alternatives Considered
@@ -97,8 +97,8 @@ and tested exactly this agent ([its README](../../infrastructure/backup-agent/RE
 - **IMP-001**: Agent code, contract and adapting notes: [infrastructure/backup-agent/README.md](../../infrastructure/backup-agent/README.md).
   Incident steps: [restore runbook](../runbooks/restore.md). Variables and first-time setup: [deploy runbook](../runbooks/deploy.md).
 - **IMP-002**: Postgres 18 (Skoleoverblikket runs 17). `PG_MAJOR` sits in both Dockerfiles; change them together.
-- **IMP-003**: The pinned volumes are external in compose (`flowstate-pgdata-a`, `-b`, `flowstate-pg-control`,
-  `flowstate-wal-receive`, `flowstate-backup-agent-state`) and are created by hand once per server.
+- **IMP-003**: The pinned volumes are external in compose (`kupro-pgdata-a`, `-b`, `kupro-pg-control`,
+  `kupro-wal-receive`, `kupro-backup-agent-state`) and are created by hand once per server.
 - **IMP-004**: The migrate step grants `backup_agent` `SELECT` on `__EFMigrationsHistory` on every run
   (`DatabaseExtensions`), so a `pg_restore`d database gets it too.
 

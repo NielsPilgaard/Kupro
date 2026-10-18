@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>Console formatting. Times are stored in UTC and shown in Europe/Copenhagen, in English.</summary>
 public static class Fmt

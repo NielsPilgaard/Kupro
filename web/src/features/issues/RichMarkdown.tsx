@@ -6,7 +6,7 @@ import { ATTACHMENT_SCHEME, useAttachment } from '../../api/attachments';
 /** Markdown for descriptions and comments; `attachment:ID` images and links resolve through the API (members only). */
 export function RichMarkdown({ workspace, children }: { workspace: string; children: string }) {
   return (
-    <div className="prose-flowstate text-md">
+    <div className="prose-kupro text-md">
       <Markdown
         remarkPlugins={[remarkGfm]}
         urlTransform={(url) => (url.startsWith(ATTACHMENT_SCHEME) ? url : defaultUrlTransform(url))}

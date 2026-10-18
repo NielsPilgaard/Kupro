@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent.Pages;
+namespace Kupro.BackupAgent.Pages;
 
 /// <summary>
 /// The console's only gate besides the SSH tunnel. The agent sits on its own network, but testing on

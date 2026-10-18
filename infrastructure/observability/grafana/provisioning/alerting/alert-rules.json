@@ -3,13 +3,13 @@
   "groups": [
     {
       "orgId": 1,
-      "name": "flowstate-api",
-      "folder": "Flowstate",
+      "name": "kupro-api",
+      "folder": "Kupro",
       "interval": "1m",
       "rules": [
         {
-          "uid": "flowstate-api-down",
-          "title": "Flowstate API down",
+          "uid": "kupro-api-down",
+          "title": "Kupro API down",
           "condition": "C",
           "data": [
             {
@@ -21,7 +21,7 @@
               },
               "model": {
                 "refId": "A",
-                "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"flowstate/api\", http_route=~\"/alive|/health\"}[5m]))",
+                "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"kupro/api\", http_route=~\"/alive|/health\"}[5m]))",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -75,19 +75,19 @@
           "execErrState": "Alerting",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
-            "summary": "Flowstate API has not answered a health probe for 5 minutes.",
+            "summary": "Kupro API has not answered a health probe for 5 minutes.",
             "description": "No /alive (or local /health) requests recorded. The container is down or crash-looping, a migration failed (the API waits for it), or telemetry stopped reaching Prometheus (alloy). Check Dokploy and 'Startups, shutdowns and migrations'.",
-            "__dashboardUid__": "flowstate-health",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "2"
           }
         },
         {
-          "uid": "flowstate-errors-logged",
-          "title": "Flowstate errors logged",
+          "uid": "kupro-errors-logged",
+          "title": "Kupro errors logged",
           "condition": "C",
           "data": [
             {
@@ -100,7 +100,7 @@
               },
               "model": {
                 "refId": "A",
-                "expr": "sum(count_over_time({service_namespace=\"flowstate\"} | severity_number >= 17 [10m]))",
+                "expr": "sum(count_over_time({service_namespace=\"kupro\"} | severity_number >= 17 [10m]))",
                 "queryType": "instant",
                 "intervalMs": 1000,
                 "maxDataPoints": 43200
@@ -157,19 +157,19 @@
           "execErrState": "Error",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "warning"
           },
           "annotations": {
-            "summary": "Flowstate logged {{ $values.B.Value }} error line(s) in the last 10 minutes.",
+            "summary": "Kupro logged {{ $values.B.Value }} error line(s) in the last 10 minutes.",
             "description": "Covers 500 responses, failed migrations and background work. See 'Distinct errors' on the Errors & logs dashboard for message, stack trace and TraceId.",
-            "__dashboardUid__": "flowstate-errors",
+            "__dashboardUid__": "kupro-errors",
             "__panelId__": "4"
           }
         },
         {
-          "uid": "flowstate-restart-loop",
-          "title": "Flowstate API restart loop",
+          "uid": "kupro-restart-loop",
+          "title": "Kupro API restart loop",
           "condition": "C",
           "data": [
             {
@@ -182,7 +182,7 @@
               },
               "model": {
                 "refId": "A",
-                "expr": "sum(count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\" [15m]))",
+                "expr": "sum(count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.Hosting.Lifetime\" |= \"Application started\" [15m]))",
                 "queryType": "instant",
                 "intervalMs": 1000,
                 "maxDataPoints": 43200
@@ -239,19 +239,19 @@
           "execErrState": "Error",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
-            "summary": "Flowstate API started {{ $values.B.Value }} times in 15 minutes.",
+            "summary": "Kupro API started {{ $values.B.Value }} times in 15 minutes.",
             "description": "Three or more 'Application started' lines in 15 minutes: the container is crash-looping (missing config, OOM, Keycloak unreachable). A normal deploy starts once.",
-            "__dashboardUid__": "flowstate-errors",
+            "__dashboardUid__": "kupro-errors",
             "__panelId__": "8"
           }
         },
         {
-          "uid": "flowstate-latency-budget",
-          "title": "Flowstate latency budget breached",
+          "uid": "kupro-latency-budget",
+          "title": "Kupro latency budget breached",
           "condition": "D",
           "data": [
             {
@@ -264,7 +264,7 @@
               },
               "model": {
                 "refId": "A",
-                "expr": "quantile_over_time(0.99, {service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | RequestId!~\".*:00000001\" | unwrap Duration [1h]) by (service_name)",
+                "expr": "quantile_over_time(0.99, {service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | RequestId!~\".*:00000001\" | unwrap Duration [1h]) by (service_name)",
                 "queryType": "instant",
                 "intervalMs": 1000,
                 "maxDataPoints": 43200
@@ -300,7 +300,7 @@
               },
               "model": {
                 "refId": "E",
-                "expr": "sum by (service_name) (count_over_time({service_namespace=\"flowstate\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | RequestId!~\".*:00000001\" [1h]))",
+                "expr": "sum by (service_name) (count_over_time({service_namespace=\"kupro\", service_name=\"api\"} | scope_name=\"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware\" | Route!=\"\" | Route!=\"(unmatched)\" | RequestId!~\".*:00000001\" [1h]))",
                 "queryType": "instant",
                 "intervalMs": 1000,
                 "maxDataPoints": 43200
@@ -347,19 +347,19 @@
           "execErrState": "Error",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "warning"
           },
           "annotations": {
-            "summary": "Flowstate warm p99 is {{ printf \"%.0f\" $values.B.Value }} ms over the last hour (budget 500 ms).",
+            "summary": "Kupro warm p99 is {{ printf \"%.0f\" $values.B.Value }} ms over the last hour (budget 500 ms).",
             "description": "ADR-010: every endpoint < 500 ms p99. Warm requests only (reused connections), so a deploy's cold-start burst can't trigger it; needs 100+ requests in the hour. Open 'Endpoints' and 'Requests over budget' on the Service health dashboard for the route and the trace.",
-            "__dashboardUid__": "flowstate-health",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "17"
           }
         },
         {
-          "uid": "flowstate-disk-full",
-          "title": "Flowstate disk almost full",
+          "uid": "kupro-disk-full",
+          "title": "Kupro disk almost full",
           "condition": "C",
           "data": [
             {
@@ -425,19 +425,19 @@
           "execErrState": "Error",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
             "summary": "Docker's data disk on the VPS is {{ humanizePercentage $values.B.Value }} full.",
             "description": "Postgres stops accepting writes when the disk fills. Prune old images (`docker image prune -a`), check the telemetry volumes, or grow the disk.",
-            "__dashboardUid__": "flowstate-health",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "27"
           }
         },
         {
-          "uid": "flowstate-postgres-down",
-          "title": "Flowstate Postgres down",
+          "uid": "kupro-postgres-down",
+          "title": "Kupro Postgres down",
           "condition": "C",
           "data": [
             {
@@ -503,19 +503,19 @@
           "execErrState": "Alerting",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
             "summary": "Postgres is not answering.",
-            "description": "Alloy's Postgres exporter can't connect. The API fails every request that touches the database. Check the postgres container in Dokploy. No data = Alloy itself is down; 'Flowstate API down' fires too then.",
-            "__dashboardUid__": "flowstate-health",
+            "description": "Alloy's Postgres exporter can't connect. The API fails every request that touches the database. Check the postgres container in Dokploy. No data = Alloy itself is down; 'Kupro API down' fires too then.",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "28"
           }
         },
         {
-          "uid": "flowstate-keycloak-down",
-          "title": "Flowstate Keycloak down",
+          "uid": "kupro-keycloak-down",
+          "title": "Kupro Keycloak down",
           "condition": "C",
           "data": [
             {
@@ -581,19 +581,19 @@
           "execErrState": "Alerting",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
             "summary": "Keycloak has not answered a metrics scrape for 5 minutes.",
             "description": "Nobody can sign in, and the API can't fetch signing keys after a restart. Check the keycloak container in Dokploy and its logs.",
-            "__dashboardUid__": "flowstate-health",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "29"
           }
         },
         {
-          "uid": "flowstate-backups-unhealthy",
-          "title": "Flowstate backups unhealthy",
+          "uid": "kupro-backups-unhealthy",
+          "title": "Kupro backups unhealthy",
           "condition": "C",
           "data": [
             {
@@ -605,7 +605,7 @@
               },
               "model": {
                 "refId": "A",
-                "expr": "max(backup_agent_health{job=\"flowstate/backup-agent\"})",
+                "expr": "max(backup_agent_health{job=\"kupro/backup-agent\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -663,19 +663,19 @@
           "execErrState": "Error",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
             "summary": "The backup agent reports Unhealthy.",
-            "description": "Data may not be reaching the backup repo (WAL gap, S3 down, no full backup in 26 h, failed drill or verify). Open the backup console (restore runbook §1); its Overview lists the issues. Missing data is 'Flowstate backup agent silent'.",
-            "__dashboardUid__": "flowstate-health",
+            "description": "Data may not be reaching the backup repo (WAL gap, S3 down, no full backup in 26 h, failed drill or verify). Open the backup console (restore runbook §1); its Overview lists the issues. Missing data is 'Kupro backup agent silent'.",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "36"
           }
         },
         {
-          "uid": "flowstate-backup-agent-silent",
-          "title": "Flowstate backup agent silent",
+          "uid": "kupro-backup-agent-silent",
+          "title": "Kupro backup agent silent",
           "condition": "C",
           "data": [
             {
@@ -687,7 +687,7 @@
               },
               "model": {
                 "refId": "A",
-                "expr": "max(backup_agent_status_age_seconds{job=\"flowstate/backup-agent\"})",
+                "expr": "max(backup_agent_status_age_seconds{job=\"kupro/backup-agent\"})",
                 "instant": true,
                 "range": false,
                 "intervalMs": 1000,
@@ -741,13 +741,13 @@
           "execErrState": "Alerting",
           "isPaused": false,
           "labels": {
-            "service": "flowstate",
+            "service": "kupro",
             "severity": "critical"
           },
           "annotations": {
             "summary": "The backup agent has not reported a status for over 15 minutes.",
             "description": "The backup-agent container is down, stuck, or can't reach Alloy. Postgres keeps running, but nothing new is backed up: WAL piles up in Postgres until the replication slot is dropped (4 GB). Check the container (`docker ps -a | grep backup-agent`, `docker logs`) and redeploy.",
-            "__dashboardUid__": "flowstate-health",
+            "__dashboardUid__": "kupro-health",
             "__panelId__": "37"
           }
         }

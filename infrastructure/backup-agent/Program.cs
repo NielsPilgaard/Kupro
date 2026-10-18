@@ -1,5 +1,5 @@
-using Flowstate.BackupAgent;
-using Flowstate.BackupAgent.Pages;
+using Kupro.BackupAgent;
+using Kupro.BackupAgent.Pages;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using OpenTelemetry;
@@ -51,7 +51,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<Scheduler>());
 if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
 {
     builder.Services.AddOpenTelemetry()
-        .ConfigureResource(resource => resource.AddAttributes([new("service.namespace", "flowstate")]))
+        .ConfigureResource(resource => resource.AddAttributes([new("service.namespace", "kupro")]))
         .WithMetrics(metrics => metrics.AddMeter(AgentMetrics.MeterName))
         .WithLogging()
         .UseOtlpExporter();

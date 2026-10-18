@@ -6,7 +6,7 @@
 //   DOKPLOY_URL         — e.g. https://dokploy.yourvps.com
 //   DOKPLOY_COMPOSE_ID  — compose ID visible in the Dokploy dashboard URL
 //   IMAGE_TAG           — e.g. sha-abc1234
-//   IMAGE_PREFIX        — e.g. ghcr.io/owner/flowstate (images are <prefix>-api, -web and -keycloak)
+//   IMAGE_PREFIX        — e.g. ghcr.io/owner/kupro (images are <prefix>-api, -web and -keycloak)
 //   POSTGRES_TAG, BACKUP_AGENT_TAG — source-hash tags of <prefix>-postgres and -backup-agent (scripts/infra-image-tags.sh)
 //
 // The Dokploy deployment log (docker pull/compose output) is streamed into this

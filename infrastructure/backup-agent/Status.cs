@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 // status.json in the ops bucket. PII-free. The same status feeds the agent's metrics (AgentMetrics), which Grafana
 // alerts on, and the WAL heartbeat.

@@ -29,7 +29,7 @@ See [ADR-008](../../docs/adr/ADR-008-work-item-model.md).
   filtered with `?sprint=active|none|<id>`. Only open sprints of the issue's own project are accepted.
 - Close moves unfinished issues to the next planned sprint (earliest start) or the backlog; each move is logged on the
   issue. Without a planned sprint, `next` fails with `no_next_sprint`.
-- Surfaces: REST `/sprints`, CLI `flowstate sprint list|get|create|update|start|close` and `--sprint` on issues, MCP
+- Surfaces: REST `/sprints`, CLI `kupro sprint list|get|create|update|start|close` and `--sprint` on issues, MCP
   `list_sprints` and `manage_sprint` (create/start/close; renaming is opted out of MCP).
 - UI: Sprints in the sidebar; per-project tabs; active sprint board with done/total hours and a close prompt
   (next sprint or backlog); planned sprints with Start; sprint field in the issue panel.

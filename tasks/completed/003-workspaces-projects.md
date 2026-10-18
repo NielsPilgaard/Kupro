@@ -32,7 +32,7 @@ See [ADR-009](../../docs/adr/ADR-009-multi-tenancy.md), [ADR-013](../../docs/adr
 - Workspace routes are `/api/v1/workspaces/{workspace}/...` (slug). A global action filter resolves the slug to the
   caller's active membership in one query, sets the scoped `WorkspaceContext`, and answers 404 `workspace_not_found`
   for non-members so other tenants are indistinguishable from missing ones. `[WorkspaceRole(...)]` sets a minimum role.
-- `FlowstateDbContext` applies a named `tenant` query filter to every `ITenantOwned` entity; with no workspace resolved
+- `KuproDbContext` applies a named `tenant` query filter to every `ITenantOwned` entity; with no workspace resolved
   the filter matches nothing. The DbContext factory is scoped (not pooled) so contexts see the request's workspace.
 - API tokens can be scoped to a workspace; agent tokens must be, and create/reuse an agent member (kind `agent`,
   owner = the creating user, role capped at Member). Deactivating a member deactivates their agents and revokes their

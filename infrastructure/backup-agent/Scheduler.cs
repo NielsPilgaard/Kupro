@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>
 /// The agent's clock: status every 5 minutes (status.json, the migration mirror, the agent

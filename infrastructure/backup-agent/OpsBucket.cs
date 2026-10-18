@@ -5,7 +5,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 
-namespace Flowstate.BackupAgent;
+namespace Kupro.BackupAgent;
 
 /// <summary>A run, action or event, appended to history/YYYY-MM.json. PII-free: no row content, ever.</summary>
 public sealed record HistoryEntry(

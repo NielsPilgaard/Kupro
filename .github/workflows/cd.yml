@@ -43,7 +43,7 @@ jobs:
 
       - name: Image prefix and tags
         run: |
-          echo "IMAGE_PREFIX=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/flowstate" >> "$GITHUB_ENV"
+          echo "IMAGE_PREFIX=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/kupro" >> "$GITHUB_ENV"
           scripts/infra-image-tags.sh "${IMAGE_TAG#sha-}" >> "$GITHUB_ENV"
 
       - uses: docker/login-action@v3

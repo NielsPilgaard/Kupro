@@ -16,10 +16,10 @@ description: >-
 
 ## TL;DR
 
-- `src/Flowstate.AppHost` declares the topology: `api`, `web` (Vite), `postgres`, `keycloak` (+ dev realm import), and the observability stack ([ADR-014](ADR-014-observability.md)).
+- `src/Kupro.AppHost` declares the topology: `api`, `web` (Vite), `postgres`, `keycloak` (+ dev realm import), and the observability stack ([ADR-014](ADR-014-observability.md)).
 - Local dev: `aspire run` — one command, dashboard with logs/traces/metrics (OpenTelemetry) out of the box.
 - Prod: `aspire publish` with the Docker Compose publisher → `deploy/docker-compose.yaml` + `.env` template → Dokploy ([ADR-004](ADR-004-hosting.md)).
-- `src/Flowstate.ServiceDefaults` holds shared OTel, health checks and resilience defaults.
+- `src/Kupro.ServiceDefaults` holds shared OTel, health checks and resilience defaults.
 - Same generated compose file is the self-hosting package.
 
 ## Status

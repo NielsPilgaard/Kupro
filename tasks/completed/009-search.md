@@ -24,7 +24,7 @@ purpose: 'Implementation spec for task 009.'
 
 ## Implementation notes
 
-- `GET /issues?q=` (operation `listIssues`), CLI `flowstate issue search <words...>` and `issue list -q`, MCP
+- `GET /issues?q=` (operation `listIssues`), CLI `kupro issue search <words...>` and `issue list -q`, MCP
   `search_issues` (`query`; it also gained the missing `sprint` filter), and the Ctrl+K palette. One parser
   (`IssueSearch`) serves all of them; `q` filters AND with the explicit parameters. Unknown keys stay free text;
   bad values return `invalid_query`.
