@@ -21,7 +21,7 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Performance budget and enforcement | [ADR-010](ADR-010-performance-budget.md) | Accepted |
 | Internationalization (English + Danish) | [ADR-011](ADR-011-i18n.md) | Accepted |
 | Local orchestration (Aspire), prod compose generation (`aspire publish`) | [ADR-012](ADR-012-aspire.md) | Accepted |
-| Seats, billing unit, member status, meeting agent AI budget | [ADR-013](ADR-013-seats-billing.md) | Proposed |
+| Seats, billing unit, member status, guests, billing access, meeting agent AI budget | [ADR-013](ADR-013-seats-billing.md) | Proposed |
 | Observability: self-hosted Grafana stack, request log, dashboards, alerts, uptime check | [ADR-014](ADR-014-observability.md) | Accepted |
 | Meeting agent: speech-to-text and LLM vendors | [ADR-015](ADR-015-meeting-agent-vendors.md) | Accepted |
 | Postgres backups, WAL streaming, restore console, A/B data volumes, drills | [ADR-016](ADR-016-postgres-backups.md) | Accepted |

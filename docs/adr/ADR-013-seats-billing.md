@@ -9,7 +9,8 @@ superseded_by: ''
 description: >-
   Hosted Flowstate is billed per workspace by seat. A seat is an active human member with role Owner or Member,
   counted from the Member table. The meeting agent is in every plan, limited by a monthly AI budget per workspace
-  that speech and LLM tokens both draw from. Guest and agent pricing, and where billing code lives, are open questions.
+  that speech and LLM tokens both draw from. Guests are free up to 5 per seat; billing access is a per-member flag
+  Owners grant. Agent pricing and where billing code lives are open questions.
 ---
 
 # ADR-013: Seats and Billing Model
@@ -22,7 +23,8 @@ description: >-
 - No free plan: a 30-day trial of everything, then paid seats. The workspace is read-only (exportable) until it subscribes.
 - Meeting agent: in the trial and the paid plan. Monthly AI budget per workspace (5 h per paid seat pooled, 10 h for the
   whole trial); when spent, the microphone stops and typed text uses keyword matching. No customer API keys on hosted.
-- Open: are guests and agents free (OQ-1, OQ-2), and does billing code live in core or `ee/` (OQ-3)?
+- Guests (view and comment) are free, up to 5 per seat. Billing access is a flag on any human member; Owners always have it.
+- Open: are agents free (OQ-2), and does billing code live in core or `ee/` (OQ-3)?
 - Billing implementation stays after v1 ([product.md](../product.md)); only the data model is decided now.
 
 ## Status
@@ -44,6 +46,15 @@ running a fleet of agents.
 
 - **Billing unit**: the workspace ([ADR-009](ADR-009-multi-tenancy.md)). A user in several workspaces takes a seat in each.
 - **Seat**: `kind = human AND role IN (Owner, Member) AND status = active`.
+- **Guests** (decided 2026-10-18): free, up to 5 per seat. A guest can read everything, comment and attach files,
+  but not create or edit work, so a guest can't stand in for a paid member. The cap protects the server: every guest
+  is a session, a realtime connection and requests that pay nothing. Active guests and pending guest invites count;
+  an invite or role change past the cap is refused. Dropping below the cap later (a seat deactivated) keeps existing
+  guests and only blocks new ones. Trials use the same ratio. Self-hosted has no cap.
+- **Billing access** (decided 2026-10-18): a `CanManageBilling` flag on a human member, not a role, so it combines
+  with any role and doesn't add a seat. Owners always have it. It allows seeing usage and cost and managing the
+  subscription; card details stay in Alunta's hosted pages and never reach Flowstate. A finance person with no project
+  work joins as a guest with the flag. Agents never get it.
 - **Member status**:
   - `invited`: no seat until the invite is accepted.
   - `active`: counts as a seat.
@@ -75,8 +86,7 @@ workspace leaving the agent on all day must not cost more than it pays.
 
 ## Open questions
 
-- **OQ-1**: Guests: free, free up to a ratio (e.g. 5 per paid seat), or paid?
-  Leaning: free with a ratio cap.
+- **OQ-1**: Resolved 2026-10-18: guests are free, up to 5 per seat (see Decision).
 - **OQ-2**: Agents: free and unlimited, free up to N per paid seat, or metered by usage?
   Leaning: free up to N per paid seat in v1, then revisit with usage data. Agent adoption is the differentiator, so it shouldn't be taxed early.
 - **OQ-3**: Where billing code lives: the AGPL core or proprietary `ee/` ([ADR-007](ADR-007-licensing.md))?
@@ -115,9 +125,12 @@ workspace leaving the agent on all day must not cost more than it pays.
 - **IMP-001**: Task 003 adds `Member.Status` and deactivate (not delete) semantics.
 - **IMP-002**: Deactivating a member revokes their API tokens ([ADR-005](ADR-005-auth-keycloak.md)), and their agent tokens with them.
 - **IMP-003**: Seat count index: `(workspace_id, kind, status)`.
-- **IMP-004**: Billing task is written once OQ-1 to OQ-3 are resolved; it is not part of v1.
+- **IMP-004**: Billing task is written once OQ-2 and OQ-3 are resolved; it is not part of v1.
 - **IMP-005**: The AI budget, meters and guards are [task 017](../../tasks/017-meeting-agent-budget.md). Until billing
   exists, every workspace gets the paid allowance for its seat count, and a Scaleway billing alert is the outer brake.
+- **IMP-008**: The billing-access flag, a `[BillingAccess]` guard, the guest cap (`Members:GuestsPerSeat`, 5 on
+  hosted, unset on self-hosted) and the members page are [task 018](../../tasks/018-members-billing-access.md).
+  Task 017's usage view and budget emails use that guard.
 
 ## Related Decisions
 

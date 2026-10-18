@@ -6,7 +6,7 @@ description: >-
   decision in ADR-013.
 status: 'Todo'
 phase: 2
-depends_on: [015]
+depends_on: [015, 018]
 purpose: 'Implementation spec for task 017.'
 ---
 
@@ -46,7 +46,7 @@ This task builds them:
   - `GET …/meeting-settings` gains `usage`: hours used, hours included, and the reset date. The CLI `meeting settings` and
     the MCP settings tool show it.
   - The meeting panel shows "≈ 3.5 of 30 hours used this month" to everyone.
-  - Owners get an email (EN/DA) once at 80 % and once at 100 %.
+  - Everyone with billing access (Owners, plus members with the flag from task 018) gets an email (EN/DA) once at 80 % and once at 100 %.
 - **Guards**:
   - `max_tokens` (512) on every extraction call.
   - The web pauses the meeting after 10 minutes without speech. The API ends meetings live for more than 3 hours.
@@ -61,7 +61,7 @@ This task builds them:
 - [ ] Concurrent utterances in one workspace are counted exactly (parallel test).
 - [ ] Over budget: audio gets `409 meeting_budget_spent`, and text produces keyword proposals with `extractor: "keyword"`.
       Both work the same through REST, CLI and MCP; parity test passes.
-- [ ] Usage shows in settings (web, CLI, MCP) and in the meeting panel; owners get the 80 % and 100 % emails once each month.
+- [ ] Usage shows in settings (web, CLI, MCP) and in the meeting panel; members with billing access get the 80 % and 100 % emails once each month.
 - [ ] Budget resets on the 1st; last month's row is kept for reporting.
 - [ ] `max_tokens`, the 10-minute silence pause, the 3-hour limit and the server-wide ceiling each have a test.
 - [ ] No `Budget` configuration means no limits (self-hosted).

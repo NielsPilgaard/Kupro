@@ -29,7 +29,8 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P3 | 2 | 004, 006, 010, 012 | In progress |
-| 17 | [017 Meeting agent AI budget](017-meeting-agent-budget.md) | P1 | 2 | 015 | Todo |
+| 18 | [018 Members page and billing access](018-members-billing-access.md) | P1 | 1 | 003 | Todo |
+| 17 | [017 Meeting agent AI budget](017-meeting-agent-budget.md) | P1 | 2 | 015, 018 | Todo |
 
 ## Completed
 
