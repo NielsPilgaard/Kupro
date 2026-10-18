@@ -79,3 +79,4 @@ without a check. Agents also need things humans don't: machine-readable output, 
 
 - [ADR-002](ADR-002-backend-stack.md) — controllers and services
 - [ADR-005](ADR-005-auth-keycloak.md) — tokens for CLI and MCP
+- [ADR-018](ADR-018-cli-distribution.md) — how the CLI is installed and MCP is set up

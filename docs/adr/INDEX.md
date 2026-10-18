@@ -25,3 +25,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Observability: self-hosted Grafana stack, request log, dashboards, alerts, uptime check | [ADR-014](ADR-014-observability.md) | Accepted |
 | Meeting agent: speech-to-text and LLM vendors | [ADR-015](ADR-015-meeting-agent-vendors.md) | Accepted |
 | Postgres backups, WAL streaming, restore console, A/B data volumes, drills | [ADR-016](ADR-016-postgres-backups.md) | Accepted |
+| CLI distribution (install script, binaries in Object Storage), `flowstate install mcp`, the Flowstate agent skill | [ADR-018](ADR-018-cli-distribution.md) | Accepted |
