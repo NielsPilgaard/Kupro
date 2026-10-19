@@ -33,7 +33,7 @@ This task builds them:
   - Updated with an atomic increment, so concurrent microphones don't lose counts.
 - **Rates and allowances** in configuration (`MeetingAgent:Budget`):
   - euro per audio minute, and per million input and output tokens, for each route;
-  - hours per paid seat a month (5) and hours for a whole trial (10);
+  - hours per seat a month (2) and hours for a whole trial (2);
   - the euro value of one "hour", used to turn hours into cents.
   - The budget period is the calendar month for paid workspaces and the whole 30 days for a trial.
   - Until billing exists, every workspace counts as paid with its current seat count.
@@ -45,10 +45,10 @@ This task builds them:
 - **Visibility**:
   - `GET …/meeting-settings` gains `usage`: hours used, hours included, and the reset date. The CLI `meeting settings` and
     the MCP settings tool show it.
-  - The meeting panel shows "≈ 3.5 of 30 hours used this month" to everyone.
+  - The meeting panel shows "≈ 3.5 of 12 hours used this month" to everyone.
   - Everyone with billing access (Owners, plus members with the flag from task 018) gets an email (EN/DA) once at 80 % and once at 100 %.
 - **Guards**:
-  - `max_tokens` (512) on every extraction call.
+  - `max_tokens` on every extraction call (already 4,000, [ADR-015](../docs/adr/ADR-015-meeting-agent-vendors.md) IMP-007).
   - The web pauses the meeting after 10 minutes without speech. The API ends meetings live for more than 3 hours.
   - A server-wide daily ceiling in euro (configuration): when reached, every workspace falls back as if over budget,
     and an alert fires ([ADR-014](../docs/adr/ADR-014-observability.md)).
