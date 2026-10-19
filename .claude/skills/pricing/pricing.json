@@ -1,0 +1,41 @@
+{
+  "$comment": "Calculator input for the pricing skill. ADR-013 holds the decisions; keep this file in step with it.",
+  "updated": "2026-10-17",
+  "seat": {
+    "monthlyEur": 9,
+    "monthlyDkk": 69,
+    "yearlyEur": 90,
+    "yearlyDkk": 690
+  },
+  "trial": {
+    "days": 30,
+    "meetingHours": 2
+  },
+  "allowance": {
+    "hoursPerSeat": 2,
+    "maxAiShareOfSeat": 0.2
+  },
+  "meetingAgent": {
+    "callsPerHour": 400,
+    "transcription": {
+      "model": "whisper-large-v3",
+      "eurPerAudioMinute": 0.003
+    },
+    "extraction": {
+      "model": "deepseek-v4.1-flash",
+      "reasoningEffort": "low",
+      "eurPerMInput": 0.6,
+      "eurPerMCachedInput": 0.12,
+      "eurPerMOutput": 1.8,
+      "inputTokens": 1969,
+      "cachedShare": 0.38,
+      "outputTokens": 257,
+      "measured": "2026-10-17, scripts/meeting-agent-spike.cs, 60-issue context"
+    }
+  },
+  "examples": {
+    "standupTeamSize": 6,
+    "standupMinutes": 15,
+    "workdaysPerMonth": 22
+  }
+}
