@@ -5,11 +5,15 @@ internal static class MeetingAgent
 {
     private const string Endpoint = "https://api.scaleway.ai/v1";
     private const string TranscriptionModel = "whisper-large-v3";
-    private const string ExtractionModel = "mistral-small-3.2-24b-instruct-2506";
+    private const string ExtractionModel = "deepseek-v4.1-flash";
+
+    /// <summary>Low keeps the slowest proposals inside the 5 s budget at the same precision (ADR-015 IMP-006).</summary>
+    private const string ExtractionReasoningEffort = "low";
 
     /// <summary>
     /// One key for transcription and proposals. A model for one language only is more environment here:
-    /// <c>MeetingAgent__{Transcription|Extraction}__Languages__&lt;lang&gt;__{Endpoint|Model|ApiKey}</c> (ADR-015 decision 4).
+    /// <c>MeetingAgent__{Transcription|Extraction}__Languages__&lt;lang&gt;__{Endpoint|Model|ApiKey|ReasoningEffort}</c>
+    /// (ADR-015 decision 4).
     /// </summary>
     public static IResourceBuilder<ProjectResource> WithMeetingAgent(this IResourceBuilder<ProjectResource> api)
     {
@@ -21,6 +25,7 @@ internal static class MeetingAgent
                 .WithEnvironment($"MeetingAgent__{seam}__ApiKey", key);
         }
 
+        api.WithEnvironment("MeetingAgent__Extraction__ReasoningEffort", ExtractionReasoningEffort);
         return api;
     }
 }

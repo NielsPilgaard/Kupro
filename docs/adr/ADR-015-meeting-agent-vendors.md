@@ -8,7 +8,8 @@ supersedes: ''
 superseded_by: ''
 description: >-
   Proposed vendors for task 015: Scaleway Generative APIs (Paris) for both transcription (whisper-large-v3, in short
-  chunks cut by voice activity) and proposal extraction (a Mistral model with structured output). Mistral's realtime
+  chunks cut by voice activity) and proposal extraction (deepseek-v4.1-flash with structured output, picked by a model
+  spike over Scaleway's catalogue). Mistral's realtime
   Voxtral has no Danish; syv.ai's Hviske is the stronger Danish model but has no public streaming API. Both sit behind
   vendor-neutral interfaces with the model chosen per language, so a better model for one language (e.g. Hviske for
   Danish) is configuration plus, at most, one adapter.
@@ -20,8 +21,8 @@ description: >-
 
 - **Speech-to-text**: Scaleway Generative APIs, `whisper-large-v3`, OpenAI-compatible `/audio/transcriptions`. The
   API cuts the browser's audio into utterances (voice activity detection, a few seconds each) and transcribes each one.
-- **LLM**: Scaleway Generative APIs, `mistral-small-3.2-24b-instruct-2506` with structured output, one call per
-  utterance plus the recent transcript and the session's candidate issues.
+- **LLM**: Scaleway Generative APIs, `deepseek-v4.1-flash` (low reasoning effort) with structured output, one call per
+  utterance plus the recent transcript and the session's candidate issues. Chosen over Mistral Small in a spike (IMP-006).
 - One EU vendor (FR) that is already in the [ADR-006](ADR-006-eu-vendor-policy.md) register for email (TEM), one bill,
   one data processing agreement.
 - Vendor-neutral: models are configured per language; any OpenAI-compatible endpoint works without code changes.
@@ -50,9 +51,11 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
    connection ([ADR-002](ADR-002-backend-stack.md)); the API splits it into utterances with voice activity
    detection and sends each one (WAV, under 30 s) to `/audio/transcriptions` with the meeting's language. Audio is
    kept in memory only and dropped after transcription.
-2. **Proposals**: Scaleway `mistral-small-3.2-24b-instruct-2506`, structured output whose schema is the proposal
+2. **Proposals**: Scaleway `deepseek-v4.1-flash` with `reasoning_effort: low` (changed 2026-10-17 from
+   `mistral-small-3.2-24b-instruct-2506` after IMP-006), structured output whose schema is the proposal
    (operation, target issue reference, new value, confidence, snippet). Issue references are resolved by our own
-   search ([task 009](../../tasks/completed/009-search.md)), never by the model.
+   search ([task 009](../../tasks/completed/009-search.md)), never by the model. Scaleway serves the open weights in
+   Paris, so the model's origin doesn't move any data out of the EU.
 3. **Seams**: `ISpeechToText` and `IProposalExtractor`, the only interfaces the feature adds (external systems that
    tests replace). Both default to an OpenAI-compatible HTTP implementation.
 4. **Per-language routing**: configuration maps a meeting language to endpoint + model for each seam, with a default
@@ -73,6 +76,9 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
   common in dev teams. Mitigation: the accuracy check below, and suggest mode by default.
 - **NEG-002**: Scaleway's audio API is beta.
 - **NEG-003**: Utterance batching is not true streaming: no partial words on screen while someone talks.
+- **NEG-004**: The extraction model costs about 3.5× Mistral Small per meeting hour, and its slowest calls (95th
+  percentile 3.4–3.9 s, rare vendor spikes up to 10 s) leave little of the 5 s budget for transcription. The
+  [ADR-013](ADR-013-seats-billing.md) allowance was cut to match.
 
 ## Alternatives Considered
 
@@ -89,11 +95,32 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 - **IMP-001**: Accuracy check once the feature runs: 10 recorded standups (5 DA, 5 EN, with issue keys and names),
   compare WER and proposal precision for Whisper vs Hviske. If Danish proposal precision is below ~90 %, route Danish
   transcription to Hviske (decision 4).
-- **IMP-006**: Extraction model spike, once a real key exists: Mistral Small 3.2 may be too weak to pick the right
-  operation, issue reference and value from loose speech. Run the IMP-001 recordings (and typed samples) through it and
-  through larger models Scaleway hosts, checking the catalogue at the time. Compare proposal precision, latency against the
-  5 s budget, and cost per meeting hour. Switching is configuration (decision 4); cost is absorbed by the AI budget in
-  [ADR-013](ADR-013-seats-billing.md), but a model costing much more per hour lowers the hours an allowance buys.
+- **IMP-006**: Extraction model spike, run 2026-10-15 to 2026-10-17 with typed samples (the IMP-001 recordings are
+  still to come). 30 Danish and English utterances, including discussion that must produce nothing, issues named by
+  title, "that one", code-switching and keys as Whisper writes them ("flow 12"), through the production extractor
+  against all 12 Scaleway chat models. Cost assumes 400 calls an hour and the production context of 60 issues
+  (~2,000 input tokens per call).
+
+  | Model | Precision | Recall | Wrong at confidence ≥ 0.8 | Latency p50 / p95 | € per meeting hour |
+  |---|---|---|---|---|---|
+  | mistral-small-3.2 (before) | 74–77 % | 93–100 % | 7–10 | 0.5 / 0.8–1.3 s | 0.14 |
+  | llama-3.3-70b | 84 % | 93 % | 5 | 0.7 / 1.9 s | 0.85 |
+  | gpt-oss-120b | 78–88 % | 96–100 % | 3–8 | 1.2–2.8 / 2.1–5.4 s | 0.21 |
+  | **deepseek-v4.1-flash, low effort** | **97–100 %** | **100 %** | **0–1** | **0.9–1.0 / 3.4–3.9 s** | **≈ 0.51** |
+  | glm-5.3, low effort | 93 % | 96 % | 1 | 0.3 / 0.7 s | 1.76 |
+  | qwen3.8-27b | 97 % | 100 % | 1 | 1.7 / 4.2–5.0 s | 0.99 |
+
+  Mistral Small changed issues during mere discussion ("should we even do dark mode?" became canceled) and gave every
+  proposal confidence 1.0, so full auto's confidence gate could not hold anything back. Default reasoning effort let
+  deepseek think for up to 2,000 tokens (6–9 s) on a few utterances; low effort kept the precision. Remaining doubts:
+  one run per configuration (± 1–2 cases), and no transcription errors in typed text. Re-run with the IMP-001
+  recordings.
+- **IMP-007**: Extractor guards from the spike: `max_tokens` 4,000 (a model padded the schema with whitespace until the
+  timeout when it wanted a number where the schema says string); output cut off at the cap yields no proposals rather
+  than a failed transcript request; a vendor error or timeout keeps the utterance and falls back to keyword matching;
+  the context lists what stays fixed through a meeting (language, type, issues sorted by key, people, sprints) before
+  the transcript, so Scaleway's cached-input price applies (38 % of input tokens cached in the spike);
+  `reasoning_effort` is per route (decision 4).
 - **IMP-002**: Scaleway Generative APIs is Chosen in the ADR-006 register; syv.ai stays Candidate.
 - **IMP-003**: Parameter `scaleway-ai-key` (secret) and the model ids in the AppHost (`MeetingAgent.cs`); the key is
   not in the repo. A route without a key counts as not configured: no microphone, keyword fallback for proposals.

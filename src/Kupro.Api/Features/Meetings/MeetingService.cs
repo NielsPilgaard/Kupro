@@ -838,11 +838,13 @@ public sealed partial class MeetingService(
         var sprints = await db.Sprints.AsNoTracking()
             .Where(s => s.ProjectId == meeting.ProjectId && s.State != SprintState.Closed)
             .OrderBy(s => s.StartDate).Select(s => s.Name).ToListAsync(ct);
+        // Sorted by key, not recency, so an issue updated mid-meeting doesn't reshuffle the cached prompt prefix.
         return new ExtractionContext(
-            meeting.Language, meeting.Type, recent, utterance,
-            hints.Select(h => new IssueHint(h.Key, h.Title, Camel(h.State), people.FirstOrDefault(p => p.Id == h.AssigneeId)?.Name)).ToList(),
+            meeting.Language, meeting.Type,
+            hints.OrderBy(h => h.Key, StringComparer.Ordinal)
+                .Select(h => new IssueHint(h.Key, h.Title, Camel(h.State), people.FirstOrDefault(p => p.Id == h.AssigneeId)?.Name)).ToList(),
             people.Where(p => p.Kind == MemberKind.Human).Select(p => p.Name).ToList(),
-            sprints);
+            sprints, recent, utterance);
     }
 
     private static Task<List<MemberRef>> PeopleAsync(KuproDbContext db, CancellationToken ct) =>

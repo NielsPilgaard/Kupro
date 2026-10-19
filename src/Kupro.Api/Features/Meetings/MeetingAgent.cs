@@ -13,18 +13,21 @@ namespace Kupro.Api.Features.Meetings;
 /// <summary>An issue the agent may refer to, as the extractor sees it.</summary>
 public sealed record IssueHint(string Key, string Title, string State, string? Assignee);
 
-/// <summary>Everything the extractor knows when it reads one utterance.</summary>
-/// <param name="RecentTranscript">Earlier utterances, oldest first, for references like "that one".</param>
+/// <summary>
+/// Everything the extractor knows when it reads one utterance. Serialized in this order: what stays the same through a
+/// meeting comes first, so the vendor's prompt cache can reuse it (ADR-015 IMP-006).
+/// </summary>
 /// <param name="Members">Display names people may be called by.</param>
 /// <param name="Sprints">Names of the project's active and planned sprints.</param>
+/// <param name="RecentTranscript">Earlier utterances, oldest first, for references like "that one".</param>
 public sealed record ExtractionContext(
     string Language,
     MeetingType Type,
-    IReadOnlyList<string> RecentTranscript,
-    string Utterance,
     IReadOnlyList<IssueHint> Issues,
     IReadOnlyList<string> Members,
-    IReadOnlyList<string> Sprints);
+    IReadOnlyList<string> Sprints,
+    IReadOnlyList<string> RecentTranscript,
+    string Utterance);
 
 /// <summary>
 /// One action heard, before it is matched to issues and members. Values: state <c>backlog|todo|inProgress|inReview|done|canceled</c>;
@@ -66,11 +69,21 @@ public sealed class ModelRoute
 
     public string? Model { get; set; }
     public string? ApiKey { get; set; }
+
+    /// <summary>Chat only: <c>low</c>, <c>medium</c> or <c>high</c> for a reasoning model; unset sends nothing.</summary>
+    public string? ReasoningEffort { get; set; }
+
     public Dictionary<string, ModelRoute> Languages { get; set; } = [];
 
     public ModelRoute For(string language) =>
         Languages.TryGetValue(language, out var route)
-            ? new ModelRoute { Endpoint = route.Endpoint ?? Endpoint, Model = route.Model ?? Model, ApiKey = route.ApiKey ?? ApiKey }
+            ? new ModelRoute
+            {
+                Endpoint = route.Endpoint ?? Endpoint,
+                Model = route.Model ?? Model,
+                ApiKey = route.ApiKey ?? ApiKey,
+                ReasoningEffort = route.ReasoningEffort ?? ReasoningEffort,
+            }
             : this;
 
     /// <summary>All three set. Production always passes the key variable, so an empty key means "not set up yet".</summary>
@@ -110,8 +123,11 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    /// <summary>A few actions fit easily; the cap stops a model that pads the schema with whitespace until the timeout.</summary>
-    private const int MaxTokens = 1000;
+    /// <summary>
+    /// Room for a reasoning model's thinking (up to ~2,000 tokens in the ADR-015 spike) plus a few actions; the cap stops a
+    /// model that pads the schema with whitespace until the timeout.
+    /// </summary>
+    private const int MaxTokens = 4000;
 
     private static readonly JsonNode Schema = JsonNode.Parse("""
         {
@@ -157,6 +173,11 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
                 ["json_schema"] = new JsonObject { ["name"] = "proposals", ["strict"] = true, ["schema"] = Schema.DeepClone() },
             },
         };
+        if (!string.IsNullOrWhiteSpace(route.ReasoningEffort))
+        {
+            payload["reasoning_effort"] = route.ReasoningEffort;
+        }
+
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{route.Endpoint!.TrimEnd('/')}/chat/completions")
         {
             Content = JsonContent.Create(payload),
@@ -198,8 +219,8 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
 
     private const string Prompt = """
         You listen to a software team's meeting and propose changes to their issue tracker.
-        The user message is JSON: the meeting language and type, the recent transcript, the newest utterance, the
-        project's issues (key, title, state, assignee), the people, and the sprints.
+        The user message is JSON: the meeting language and type, the project's issues (key, title, state, assignee),
+        the people, the sprints, the recent transcript, and the newest utterance.
         Propose actions only for what the newest utterance clearly decides or asks for, never for mere discussion.
         Operations and their value:
         - state: backlog, todo, inProgress, inReview, done or canceled

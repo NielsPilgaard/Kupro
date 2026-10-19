@@ -14,8 +14,8 @@ public sealed class ProposalExtractorTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private static readonly ExtractionContext Context = new("en", MeetingType.Standup, [], "Dark mode is two days.",
-        [new IssueHint("FLOW-15", "Dark mode for the board", "backlog", null)], ["Sofie Larsen"], ["Sprint 15"]);
+    private static readonly ExtractionContext Context = new("en", MeetingType.Standup,
+        [new IssueHint("FLOW-15", "Dark mode for the board", "backlog", null)], ["Sofie Larsen"], ["Sprint 15"], [], "Dark mode is two days.");
 
     [Fact]
     public async Task Request_caps_output_and_names_the_meeting_type()
@@ -25,8 +25,29 @@ public sealed class ProposalExtractorTests
         await Extractor(model).ExtractAsync(Context, Ct);
 
         model.Request!["max_tokens"]!.GetValue<int>().ShouldBeGreaterThan(0);
+        model.Request.AsObject().ContainsKey("reasoning_effort").ShouldBeFalse();
         var context = JsonNode.Parse(model.Request["messages"]![1]!["content"]!.GetValue<string>())!;
         context["type"]!.GetValue<string>().ShouldBe("standup");
+    }
+
+    [Fact]
+    public async Task Configured_reasoning_effort_is_sent_and_a_language_route_inherits_it()
+    {
+        var model = new FakeModel("""{"actions":[]}""");
+        var route = new ModelRoute
+        {
+            Endpoint = "https://llm.test/v1",
+            Model = "test-model",
+            ApiKey = "test",
+            ReasoningEffort = "low",
+            Languages = { ["en"] = new ModelRoute { Model = "english-model" } },
+        };
+
+        await new OpenAiProposalExtractor(new HttpClient(model), Options.Create(new MeetingAgentOptions { Extraction = route }))
+            .ExtractAsync(Context, Ct);
+
+        model.Request!["model"]!.GetValue<string>().ShouldBe("english-model");
+        model.Request["reasoning_effort"]!.GetValue<string>().ShouldBe("low");
     }
 
     [Fact]
