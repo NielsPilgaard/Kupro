@@ -11,6 +11,7 @@ using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Polly.Timeout;
 
 namespace Kupro.Api.Features.Meetings;
 
@@ -28,7 +29,8 @@ public sealed partial class MeetingService(
     IProposalExtractor extractor,
     ISpeechToText speech,
     RealtimeEvents realtime,
-    TimeProvider clock)
+    TimeProvider clock,
+    ILogger<MeetingService> logger)
 {
     public const string AgentName = "meeting-agent";
 
@@ -43,6 +45,8 @@ public sealed partial class MeetingService(
     private static readonly TimeSpan DuplicateWindow = TimeSpan.FromMinutes(2);
 
     private static readonly ProposalOperation[] DefaultFullAutoOperations = [ProposalOperation.State, ProposalOperation.Sprint];
+
+    private static readonly KeywordProposalExtractor Keywords = new();
 
     // ---------------------------------------------------------------- meetings
 
@@ -227,7 +231,7 @@ public sealed partial class MeetingService(
         };
 
         var context = await ContextAsync(db, meeting, recent, text, ct);
-        var extracted = await extractor.ExtractAsync(context, ct);
+        var extracted = await ExtractAsync(context, ct);
         var heard = new List<MeetingProposal>();
         foreach (var action in extracted)
         {
@@ -799,6 +803,27 @@ public sealed partial class MeetingService(
                 return null;
         }
     }
+
+    /// <summary>
+    /// The model vendor down or too slow must not lose what was said: the utterance is kept and proposals come from
+    /// keyword matching instead (ADR-015 IMP-007).
+    /// </summary>
+    private async Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct)
+    {
+        try
+        {
+            return await extractor.ExtractAsync(context, ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException
+            || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+        {
+            LogExtractorFailed(logger, ex);
+            return await Keywords.ExtractAsync(context, ct);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Proposal extractor failed; fell back to keyword matching")]
+    private static partial void LogExtractorFailed(ILogger logger, Exception exception);
 
     private static async Task<ExtractionContext> ContextAsync(KuproDbContext db, MeetingSession meeting, IReadOnlyList<string> recent,
         string utterance, CancellationToken ct)

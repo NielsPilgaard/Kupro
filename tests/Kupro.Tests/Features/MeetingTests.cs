@@ -9,6 +9,7 @@ using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Tokens;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Tests.Infrastructure;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -287,6 +288,27 @@ public sealed class MeetingTests(PostgresFixture postgres) : ApiTestBase(postgre
         await PurgeAsync(DateTimeOffset.UtcNow.AddDays(31));
         (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldBeEmpty();
         (await GetAsync<List<ProposalResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/proposals")).Single(p => p.Id == proposal.Id).Snippet.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_failing_model_keeps_the_utterance_and_falls_back_to_keywords()
+    {
+        await using var factory = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<IProposalExtractor, FailingExtractor>()));
+        var meeting = await StartAsync();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = _client.DefaultRequestHeaders.Authorization;
+
+        var heard = await ReadAsync<TranscriptResult>(await client.PostAsJsonAsync($"{Ws}/meetings/{meeting.Id}/transcript",
+            new TranscriptRequest("FLOW-1 is done."), Json.Options, Ct));
+
+        heard.Proposals.ShouldHaveSingleItem().Operation.ShouldBe(ProposalOperation.State);
+        (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldHaveSingleItem();
+    }
+
+    private sealed class FailingExtractor : IProposalExtractor
+    {
+        public Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct) =>
+            throw new HttpRequestException("model vendor unavailable");
     }
 
     private async Task PurgeAsync(DateTimeOffset now)
