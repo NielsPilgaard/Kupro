@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search } from 'lucide-react';
+import { CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
@@ -151,6 +151,10 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
               ))}
           </div>
         )}
+        <Link to="/w/$workspace/members" params={{ workspace }} className={nav} activeProps={active}>
+          <Users size={16} strokeWidth={1.5} aria-hidden="true" />
+          {!collapsed && t('nav.members')}
+        </Link>
         <Link to="/settings" className={nav}>
           <CircleUser size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.settings')}

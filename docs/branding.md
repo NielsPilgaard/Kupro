@@ -132,6 +132,9 @@ Mechanics of i18n: [ADR-011](adr/ADR-011-i18n.md). Domain definitions: [ADR-008]
 | Effort (hours) | Estimat (timer) | Unit: `h` / `t` |
 | Assignee | Ansvarlig | |
 | Agent | Agent | |
+| Owner · Member · Guest | Ejer · Medlem · Gæst | Workspace roles. Guest is described as "Can view and comment. Free." |
+| Seat | Plads | "5 per seat" → "5 pr. plads" |
+| Billing access | Adgang til fakturering | A flag on any person, not a role |
 | Label | Label | |
 | Command palette | Kommandopalet | |
 

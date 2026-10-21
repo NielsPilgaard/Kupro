@@ -34,6 +34,16 @@ export function SettingsPage() {
         )}
       </div>
       <Profile />
+      {workspaces && workspaces.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold">{t('settings.workspaces')}</h2>
+          {workspaces.map((w) => (
+            <Link key={w.slug} to="/w/$workspace/members" params={{ workspace: w.slug }} className="text-acc-ink underline">
+              {t('settings.membersOf', { name: w.name })}
+            </Link>
+          ))}
+        </section>
+      )}
       <Tokens />
       {workspaces?.some((w) => w.role === 'owner') && (
         <section className="flex flex-col gap-3">

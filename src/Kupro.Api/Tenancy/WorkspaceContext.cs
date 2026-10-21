@@ -23,6 +23,10 @@ public sealed class WorkspaceContext
 
     public Guid UserId { get; private set; }
     public WorkspaceRole Role { get; private set; }
+
+    /// <summary>Billing access (ADR-013): Owners and people an Owner granted it; never agents.</summary>
+    public bool CanManageBilling { get; private set; }
+
     public string? AgentName { get; private set; }
 
     /// <summary>Client surface, from the <c>X-Kupro-Client</c> header; MCP tools set it in-process.</summary>
@@ -46,6 +50,7 @@ public sealed class WorkspaceContext
         MemberId = access.MemberId;
         UserId = userId;
         Role = access.Role;
+        CanManageBilling = access.CanManageBilling;
         AgentName = agentName;
     }
 

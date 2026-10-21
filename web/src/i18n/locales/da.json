@@ -35,7 +35,8 @@
     "newProject": "Nyt projekt",
     "settings": "Indstillinger",
     "sprints": "Sprints",
-    "plan": "Leveranceplan"
+    "plan": "Leveranceplan",
+    "members": "Medlemmer"
   },
   "views": {
     "label": "Visning",
@@ -142,7 +143,8 @@
       "assign": "Tildel til…",
       "priority": "Sæt prioritet…",
       "label": "Tilføj en label…"
-    }
+    },
+    "members": "Medlemmer"
   },
   "onboarding": {
     "title": "Opret dit arbejdsområde",
@@ -180,7 +182,9 @@
     "exportStart": "Eksportér arbejdsområde",
     "exportBuilding": "Bygger…",
     "exportFailed": "Eksporten mislykkedes. Prøv igen.",
-    "exportDownload": "Hent ({{size}})"
+    "exportDownload": "Hent ({{size}})",
+    "workspaces": "Arbejdsområder",
+    "membersOf": "Medlemmer i {{name}}"
   },
   "sprint": {
     "title": "Sprints",
@@ -360,5 +364,45 @@
     "whichIssueGroup": "Hvilken opgave?",
     "approvedBy": "godkendt af {{name}}",
     "autoApplied": "gennemført af fuld auto"
+  },
+  "role": {
+    "owner": "Ejer",
+    "ownerHint": "Alt, også medlemmer, indstillinger for arbejdsområdet, eksport og fakturering.",
+    "member": "Medlem",
+    "memberHint": "Opretter og redigerer opgaver, projekter, sprints, planer og møder.",
+    "guest": "Gæst",
+    "guestHint": "Kan se og kommentere. Gratis."
+  },
+  "members": {
+    "title": "Medlemmer",
+    "seats_one": "{{count}} plads",
+    "seats_other": "{{count}} pladser",
+    "guests_one": "{{count}} gæst",
+    "guests_other": "{{count}} gæster",
+    "guestsOfLimit": "Gæster: {{count}} af {{limit}}",
+    "people": "Personer",
+    "agents": "Agenter",
+    "invited": "Ventende invitationer",
+    "deactivated": "Deaktiverede",
+    "invite": "Inviter en person",
+    "email": "E-mail",
+    "role": "Rolle",
+    "takesSeat": "Bruger en plads.",
+    "noSeat": "Bruger ingen plads.",
+    "billing": "Adgang til fakturering",
+    "billingHint": "Kan se forbrug og pris og styre abonnementet. Kan kombineres med enhver rolle og bruger ingen plads.",
+    "billingAlways": "Fakturering (ejer)",
+    "sendInvite": "Send invitation",
+    "joined": "med siden {{date}}",
+    "roleOf": "Rolle for {{name}}",
+    "deactivate": "Deaktiver",
+    "deactivateTitle": "Deaktiver {{name}}",
+    "deactivateConfirm": "Deaktiver {{name}}? Adgang og API-tokens bliver tilbagekaldt, også for personens agenter. Navnet bliver stående i historikken.",
+    "errors": {
+      "guestLimit": "Alle gratis gæstepladser er brugt ({{count}} af {{limit}}, 5 pr. plads). Tilføj en plads eller deaktiver en gæst først.",
+      "alreadyMember": "Den e-mail er allerede medlem eller inviteret.",
+      "lastOwner": "Et arbejdsområde skal have mindst én aktiv ejer. Gør en anden til ejer først.",
+      "failed": "Det lykkedes ikke. Prøv igen."
+    }
   }
 }

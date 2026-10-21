@@ -356,6 +356,7 @@ services:
       Storage__Bucket: "${STORAGE_BUCKET}"
       Storage__AccessKey: "${STORAGE_ACCESS_KEY}"
       Storage__SecretKey: "${STORAGE_SECRET_KEY}"
+      Members__GuestsPerSeat: "${MEMBERS_GUESTS_PER_SEAT}"
     depends_on:
       migrations:
         condition: "service_completed_successfully"

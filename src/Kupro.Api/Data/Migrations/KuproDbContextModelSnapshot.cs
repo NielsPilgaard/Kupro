@@ -1148,6 +1148,10 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("agent_name");
 
+                    b.Property<bool>("CanManageBilling")
+                        .HasColumnType("boolean")
+                        .HasColumnName("can_manage_billing");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

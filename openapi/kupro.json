@@ -95,7 +95,7 @@
         "tags": [
           "Workspaces"
         ],
-        "summary": "Get a workspace, your role in it and its seat count.",
+        "summary": "Get a workspace, your role and billing access in it, its seat count and its guests against the cap.",
         "operationId": "getWorkspace",
         "parameters": [
           {
@@ -216,7 +216,7 @@
         "tags": [
           "Members"
         ],
-        "summary": "Invite someone by email. They join when they accept.",
+        "summary": "Invite someone by email, optionally with billing access. They join when they accept.",
         "operationId": "inviteMember",
         "parameters": [
           {
@@ -286,7 +286,7 @@
         "tags": [
           "Members"
         ],
-        "summary": "Change a member's role.",
+        "summary": "Change a member's role or billing access. Billing access is for people, not agents.",
         "operationId": "updateMember",
         "parameters": [
           {
@@ -339,6 +339,16 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -489,6 +499,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4942,6 +4962,13 @@
           "role": {
             "description": "Role they get on accepting.",
             "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "canManageBilling": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Grant billing access (see usage and cost, manage the subscription)."
           }
         }
       },
@@ -5605,6 +5632,7 @@
           "name",
           "email",
           "role",
+          "canManageBilling",
           "status",
           "ownerName",
           "joinedAt"
@@ -5634,6 +5662,10 @@
           "role": {
             "description": "Workspace role.",
             "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "canManageBilling": {
+            "type": "boolean",
+            "description": "Billing access granted by an Owner. Owners have billing access regardless."
           },
           "status": {
             "description": "Invited, active or deactivated.",
@@ -6858,14 +6890,25 @@
         }
       },
       "UpdateMemberRequest": {
-        "required": [
-          "role"
-        ],
         "type": "object",
         "properties": {
           "role": {
-            "description": "New role.",
-            "$ref": "#/components/schemas/WorkspaceRole"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "New role; unchanged when omitted.",
+                "$ref": "#/components/schemas/WorkspaceRole"
+              }
+            ]
+          },
+          "canManageBilling": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Grant or revoke billing access; unchanged when omitted. People only."
           }
         }
       },
@@ -7014,7 +7057,10 @@
           "name",
           "hoursPerWeek",
           "role",
-          "seats"
+          "seats",
+          "guests",
+          "guestLimit",
+          "canManageBilling"
         ],
         "type": "object",
         "properties": {
@@ -7044,6 +7090,23 @@
             "type": "integer",
             "description": "Active human owners and members (ADR-013).",
             "format": "int32"
+          },
+          "guests": {
+            "type": "integer",
+            "description": "Active guests and pending guest invites.",
+            "format": "int32"
+          },
+          "guestLimit": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Most guests the seats allow (5 per seat on hosted Kupro); null when uncapped.",
+            "format": "int32"
+          },
+          "canManageBilling": {
+            "type": "boolean",
+            "description": "Whether you have billing access: Owners, and members an Owner granted it."
           }
         }
       },

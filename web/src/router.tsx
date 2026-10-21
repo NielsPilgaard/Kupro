@@ -3,6 +3,7 @@ import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect
 import { AppShell } from './app/AppShell';
 import { callbackPath, completeSignIn, getSession, signIn } from './auth/auth';
 import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/IssuePages';
+import { MembersPage } from './features/members/MembersPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { PlanPage, type Zoom } from './features/plan/PlanPage';
 import { SprintsPage } from './features/sprints/SprintsPage';
@@ -56,6 +57,7 @@ const settingsRoute = createRoute({ getParentRoute: () => authedRoute, path: '/s
 const workspaceRoute = createRoute({ getParentRoute: () => authedRoute, path: '/w/$workspace', component: AppShell });
 const workspaceIndexRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/', component: WorkspaceIndexPage });
 const newProjectRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/new-project', component: NewProjectPage });
+const membersRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/members', component: MembersPage });
 const myIssuesRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/my-issues',
@@ -99,7 +101,7 @@ const routeTree = rootRoute.addChildren([
   authedRoute.addChildren([
     homeRoute,
     settingsRoute,
-    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, myIssuesRoute, sprintsRoute, planRoute, projectRoute]),
+    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, membersRoute, myIssuesRoute, sprintsRoute, planRoute, projectRoute]),
   ]),
 ]);
 

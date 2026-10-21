@@ -14,6 +14,13 @@ public sealed class WorkspaceRoleAttribute(WorkspaceRole minimum) : Attribute
 }
 
 /// <summary>
+/// Requires billing access (ADR-013): Owners, and people an Owner granted it, whatever their role. Agent tokens never
+/// pass, not even an Owner's.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class BillingAccessAttribute : Attribute;
+
+/// <summary>
 /// Global filter: any route with a <c>{workspace}</c> segment is resolved to a workspace the caller is an active member
 /// of, or answered with 404 so other tenants' workspaces are indistinguishable from missing ones.
 /// </summary>
@@ -56,6 +63,13 @@ public sealed class WorkspaceAccessFilter(WorkspaceService workspaces, Workspace
         {
             context.Result = Problems.Create(http, StatusCodes.Status403Forbidden, "insufficient_role",
                 $"Requires the {required.Minimum} role.");
+            return;
+        }
+
+        if (!access.CanManageBilling && context.ActionDescriptor.EndpointMetadata.OfType<BillingAccessAttribute>().Any())
+        {
+            context.Result = Problems.Create(http, StatusCodes.Status403Forbidden, "billing_access_required",
+                "Requires billing access. An owner can grant it on the members page.");
             return;
         }
 

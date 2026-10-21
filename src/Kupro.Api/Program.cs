@@ -28,6 +28,7 @@ builder.AddKuproMcp();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+builder.Services.Configure<MembersOptions>(builder.Configuration.GetSection(MembersOptions.Section));
 builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<LabelService>();

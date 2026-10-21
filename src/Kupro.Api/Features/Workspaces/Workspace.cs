@@ -58,6 +58,10 @@ public sealed class Member : ITenantOwned
     public string? InviteEmail { get; set; }
 
     public WorkspaceRole Role { get; set; }
+
+    /// <summary>Billing access on top of the role (ADR-013). Humans only; Owners have it regardless.</summary>
+    public bool CanManageBilling { get; set; }
+
     public MemberStatus Status { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? JoinedAt { get; set; }

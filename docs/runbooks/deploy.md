@@ -70,6 +70,7 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `STORAGE_ACCESS_KEY` | | S3 user access key | `api` | User with read/write on the bucket only. |
 | `STORAGE_SECRET_KEY` | yes | S3 user secret key | `api` | |
 | `SCALEWAY_AI_KEY` | yes | Scaleway API secret key | `api` | Meeting agent transcription and proposals ([ADR-015](../adr/ADR-015-meeting-agent-vendors.md)). Key needs Generative APIs permissions only. Empty: no microphone, proposals from the keyword fallback. |
+| `MEMBERS_GUESTS_PER_SEAT` | | `5` | `api` | Free guests per seat ([ADR-013](../adr/ADR-013-seats-billing.md)). Hosted Kupro sets `5`. Empty: no guest cap. |
 
 Optional, with defaults in the compose file: `BACKUP_AGENT_MEMORY` (`1536m`), `DRILL_TMPFS_SIZE` (`1g`; must hold the
 whole cluster) and `BACKUP_CONSOLE_PORT` (`9090`, on `127.0.0.1` only). `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost

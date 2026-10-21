@@ -112,6 +112,9 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("Storage__AccessKey", builder.AddParameter("storage-access-key"))
         .WithEnvironment("Storage__SecretKey", builder.AddParameter("storage-secret-key", secret: true));
 
+    // Free guests per seat (ADR-013): 5 on hosted Kupro. Empty means no cap, as for self-hosting.
+    api.WithEnvironment("Members__GuestsPerSeat", builder.AddParameter("members-guests-per-seat"));
+
     // Docker probes /alive every 10 s. Besides restart/health status, Grafana's "API down" alert counts these
     // requests (ADR-014), so without a healthcheck the API would look down. The runtime image has bash, no curl.
     // No `ports:`: Traefik reaches services over the Docker network, so a published host port would only bypass it.

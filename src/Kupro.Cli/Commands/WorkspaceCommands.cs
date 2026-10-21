@@ -30,7 +30,9 @@ internal static class WorkspaceCommands
         {
             var w = await (await c.InWorkspaceAsync(ct)).GetAsync(cancellationToken: ct);
             await c.Out.ItemAsync(w!, ("Name", w!.Name), ("Slug", w.Slug), ("Your role", Cli.Dashed(w.Role.ToString()!)),
-                ("Seats", w.Seats?.ToString()), ("Hours/week", w.HoursPerWeek?.ToString()));
+                ("Billing access", w.CanManageBilling == true ? "yes" : "no"), ("Seats", w.Seats?.ToString()),
+                ("Guests", w.GuestLimit is { } limit ? $"{w.Guests} of {limit}" : w.Guests?.ToString()),
+                ("Hours/week", w.HoursPerWeek?.ToString()));
         }));
 
         var slug = new Argument<string>("slug") { Description = "URL id: lowercase letters, digits, dashes." };
@@ -122,29 +124,40 @@ internal static class WorkspaceCommands
         member.Subcommands.Add(new ApiCommand("list", "List members, invites and deactivated members.", "listMembers").Handle(async (c, ct) =>
         {
             var members = await (await c.InWorkspaceAsync(ct)).Members.GetAsync(cancellationToken: ct) ?? [];
-            await c.Out.ListAsync(members, ["ID", "KIND", "ROLE", "STATUS", "NAME"],
-                m => [m.Id?.ToString(), Cli.Dashed(m.Kind.ToString()!), Cli.Dashed(m.Role.ToString()!), Cli.Dashed(m.Status.ToString()!),
+            await c.Out.ListAsync(members, ["ID", "KIND", "ROLE", "BILLING", "STATUS", "NAME"],
+                m => [m.Id?.ToString(), Cli.Dashed(m.Kind.ToString()!), Cli.Dashed(m.Role.ToString()!), Billing(m), Cli.Dashed(m.Status.ToString()!),
                     m.Kind == MemberKind.Agent ? $"{m.Name} (for {m.OwnerName})" : m.Email is { } e && e != m.Name ? $"{m.Name} <{e}>" : m.Name]);
         }));
 
         var email = new Argument<string>("email") { Description = "Email to invite." };
-        var role = Cli.EnumOption<WorkspaceRole>("--role", "Role on joining (default member)");
-        member.Subcommands.Add(new ApiCommand("invite", "Invite someone by email.", "inviteMember") { email, role }.Handle(async (c, ct) =>
+        var role = Cli.EnumOption<WorkspaceRole>("--role", "Role on joining (default member; guest is free: view and comment)");
+        var billing = new Option<bool>("--billing") { Description = "Grant billing access: see usage and cost, manage the subscription." };
+        member.Subcommands.Add(new ApiCommand("invite", "Invite someone by email.", "inviteMember") { email, role, billing }.Handle(async (c, ct) =>
         {
-            var invited = await (await c.InWorkspaceAsync(ct)).Members.PostAsync(
-                new InviteMemberRequest { Email = c.Get(email), Role = c.Get(role) ?? WorkspaceRole.Member }, cancellationToken: ct);
+            var invited = await (await c.InWorkspaceAsync(ct)).Members.PostAsync(new InviteMemberRequest
+            {
+                Email = c.Get(email),
+                Role = c.Get(role) ?? WorkspaceRole.Member,
+                CanManageBilling = c.Get(billing) ? true : null,
+            }, cancellationToken: ct);
             await c.Out.DoneAsync(invited!, $"Invited {invited!.Email}.");
         }));
 
         var id = new Argument<Guid>("member-id") { Description = "Member id (from `member list`)." };
         var newRole = Cli.EnumOption<WorkspaceRole>("--role", "New role");
-        newRole.Required = true;
-        member.Subcommands.Add(new ApiCommand("update", "Change a member's role.", "updateMember") { id, newRole }.Handle(async (c, ct) =>
-        {
-            await (await c.InWorkspaceAsync(ct)).Members[c.Get(id)].PatchAsync(
-                new UpdateMemberRequest { Role = c.Get(newRole) }, cancellationToken: ct);
-            await c.Out.MessageAsync("Role updated.");
-        }));
+        var newBilling = new Option<bool?>("--billing") { Description = "Grant (true) or revoke (false) billing access." };
+        member.Subcommands.Add(new ApiCommand("update", "Change a member's role or billing access.", "updateMember") { id, newRole, newBilling }
+            .Handle(async (c, ct) =>
+            {
+                if (c.Get(newRole) is null && c.Get(newBilling) is null)
+                {
+                    throw new CliException("Nothing to change: pass --role, --billing or both.");
+                }
+
+                await (await c.InWorkspaceAsync(ct)).Members[c.Get(id)].PatchAsync(
+                    new UpdateMemberRequest { Role = c.Get(newRole), CanManageBilling = c.Get(newBilling) }, cancellationToken: ct);
+                await c.Out.MessageAsync("Member updated.");
+            }));
 
         member.Subcommands.Add(new ApiCommand("deactivate", "Remove access and revoke their tokens; history keeps their name.",
             "deactivateMember") { id }.Handle(async (c, ct) =>
@@ -155,6 +168,10 @@ internal static class WorkspaceCommands
 
         return member;
     }
+
+    /// <summary>Owners have billing access by role; others only when granted.</summary>
+    private static string Billing(MemberResponse m) =>
+        m.Role == WorkspaceRole.Owner ? "owner" : m.CanManageBilling == true ? "yes" : "";
 
     private static Command Invite()
     {

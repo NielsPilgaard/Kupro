@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Command } from 'cmdk';
-import { CircleCheck, FolderKanban, Inbox, List, Plus, Search, Tag, UserRound } from 'lucide-react';
+import { CircleCheck, FolderKanban, Inbox, List, Plus, Search, Tag, UserRound, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, listIssuesOptions, listLabelsOptions, listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
@@ -128,6 +128,7 @@ export function CommandPalette({ workspace }: { workspace: string }) {
               ]
             : []),
           { id: 'nav:mine', label: t('nav.myIssues'), icon: <Inbox size={16} />, cli: 'kupro issue list --assignee me', run: () => { close(); void navigate({ to: '/w/$workspace/my-issues', params: { workspace } }); } },
+          { id: 'nav:members', label: t('palette.members'), icon: <Users size={16} />, cli: 'kupro member list', run: () => { close(); void navigate({ to: '/w/$workspace/members', params: { workspace } }); } },
           ...(projects ?? []).flatMap((p) => [
             { id: `nav:${p.key}:list`, label: t('palette.openList', { name: p.name }), icon: <List size={16} />, cli: `kupro issue list --project ${p.key}`, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'list' } }); } },
             { id: `nav:${p.key}:board`, label: t('palette.openBoard', { name: p.name }), icon: <FolderKanban size={16} />, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'board' } }); } },

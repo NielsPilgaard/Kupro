@@ -138,6 +138,22 @@ public sealed class WorkspaceTests(PostgresFixture postgres) : ApiTestBase(postg
     }
 
     [Fact]
+    public async Task Guests_are_uncapped_without_GuestsPerSeat()
+    {
+        var (owner, workspace, _) = await NewWorkspaceAsync();
+        for (var i = 0; i < 6; i++)
+        {
+            (await owner.PostAsJsonAsync($"/api/v1/workspaces/{workspace.Slug}/members",
+                new InviteMemberRequest(TestUser.New().Email, WorkspaceRole.Guest), Json.Options, Ct))
+                .StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
+
+        var detail = await GetAsync<WorkspaceResponse>(owner, $"/api/v1/workspaces/{workspace.Slug}");
+
+        (detail.Seats, detail.Guests, detail.GuestLimit).ShouldBe((1, 6, (int?)null));
+    }
+
+    [Fact]
     public async Task Deactivated_member_loses_access_and_tokens_but_keeps_their_name()
     {
         var (owner, workspace, _) = await NewWorkspaceAsync();

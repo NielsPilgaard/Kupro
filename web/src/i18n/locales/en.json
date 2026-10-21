@@ -35,7 +35,8 @@
     "newProject": "New project",
     "settings": "Settings",
     "sprints": "Sprints",
-    "plan": "Delivery plan"
+    "plan": "Delivery plan",
+    "members": "Members"
   },
   "views": {
     "label": "View",
@@ -142,7 +143,8 @@
       "assign": "Assign to…",
       "priority": "Set priority…",
       "label": "Add a label…"
-    }
+    },
+    "members": "Members"
   },
   "onboarding": {
     "title": "Create your workspace",
@@ -180,7 +182,9 @@
     "exportStart": "Export workspace",
     "exportBuilding": "Building…",
     "exportFailed": "The export failed. Try again.",
-    "exportDownload": "Download ({{size}})"
+    "exportDownload": "Download ({{size}})",
+    "workspaces": "Workspaces",
+    "membersOf": "Members of {{name}}"
   },
   "sprint": {
     "title": "Sprints",
@@ -360,5 +364,45 @@
     "whichIssueGroup": "Which issue?",
     "approvedBy": "approved by {{name}}",
     "autoApplied": "applied by full auto"
+  },
+  "role": {
+    "owner": "Owner",
+    "ownerHint": "Everything, including members, workspace settings, export and billing.",
+    "member": "Member",
+    "memberHint": "Creates and edits issues, projects, sprints, plans and meetings.",
+    "guest": "Guest",
+    "guestHint": "Can view and comment. Free."
+  },
+  "members": {
+    "title": "Members",
+    "seats_one": "{{count}} seat",
+    "seats_other": "{{count}} seats",
+    "guests_one": "{{count}} guest",
+    "guests_other": "{{count}} guests",
+    "guestsOfLimit": "Guests: {{count}} of {{limit}}",
+    "people": "People",
+    "agents": "Agents",
+    "invited": "Pending invites",
+    "deactivated": "Deactivated",
+    "invite": "Invite someone",
+    "email": "Email",
+    "role": "Role",
+    "takesSeat": "Takes a seat.",
+    "noSeat": "No seat.",
+    "billing": "Billing access",
+    "billingHint": "Can see usage and cost and manage the subscription. Combines with any role and takes no seat.",
+    "billingAlways": "Billing (owner)",
+    "sendInvite": "Send invite",
+    "joined": "joined {{date}}",
+    "roleOf": "Role of {{name}}",
+    "deactivate": "Deactivate",
+    "deactivateTitle": "Deactivate {{name}}",
+    "deactivateConfirm": "Deactivate {{name}}? Their access and API tokens are revoked, and so are their agents. Their name stays in the history.",
+    "errors": {
+      "guestLimit": "All free guest places are taken ({{count}} of {{limit}}, 5 per seat). Add a seat or deactivate a guest first.",
+      "alreadyMember": "That email is already a member or has an invite.",
+      "lastOwner": "A workspace needs at least one active owner. Make someone else owner first.",
+      "failed": "That didn't work. Try again."
+    }
   }
 }

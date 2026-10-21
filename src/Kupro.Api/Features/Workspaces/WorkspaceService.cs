@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Linq.Expressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Email;
 using Kupro.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Kupro.Api.Features.Workspaces;
@@ -31,20 +33,38 @@ public sealed record WorkspaceSummary(Guid Id, string Slug, string Name, Workspa
 /// <param name="HoursPerWeek">Capacity per person per week.</param>
 /// <param name="Role">Your role.</param>
 /// <param name="Seats">Active human owners and members (ADR-013).</param>
-public sealed record WorkspaceResponse(Guid Id, string Slug, string Name, decimal HoursPerWeek, WorkspaceRole Role, int Seats);
+/// <param name="Guests">Active guests and pending guest invites.</param>
+/// <param name="GuestLimit">Most guests the seats allow (5 per seat on hosted Kupro); null when uncapped.</param>
+/// <param name="CanManageBilling">Whether you have billing access: Owners, and members an Owner granted it.</param>
+public sealed record WorkspaceResponse(
+    Guid Id,
+    string Slug,
+    string Name,
+    decimal HoursPerWeek,
+    WorkspaceRole Role,
+    int Seats,
+    int Guests,
+    int? GuestLimit,
+    bool CanManageBilling);
 
 /// <param name="Email">Who to invite.</param>
 /// <param name="Role">Role they get on accepting.</param>
-public sealed record InviteMemberRequest([Required, EmailAddress, StringLength(320)] string Email, WorkspaceRole Role);
+/// <param name="CanManageBilling">Grant billing access (see usage and cost, manage the subscription).</param>
+public sealed record InviteMemberRequest(
+    [Required, EmailAddress, StringLength(320)] string Email,
+    WorkspaceRole Role,
+    bool? CanManageBilling = null);
 
-/// <param name="Role">New role.</param>
-public sealed record UpdateMemberRequest(WorkspaceRole Role);
+/// <param name="Role">New role; unchanged when omitted.</param>
+/// <param name="CanManageBilling">Grant or revoke billing access; unchanged when omitted. People only.</param>
+public sealed record UpdateMemberRequest(WorkspaceRole? Role = null, bool? CanManageBilling = null);
 
 /// <param name="Id">Member id.</param>
 /// <param name="Kind">Human or agent.</param>
 /// <param name="Name">Display name; the agent name for agents, the email for pending invites.</param>
 /// <param name="Email">Email for humans and invites.</param>
 /// <param name="Role">Workspace role.</param>
+/// <param name="CanManageBilling">Billing access granted by an Owner. Owners have billing access regardless.</param>
 /// <param name="Status">Invited, active or deactivated.</param>
 /// <param name="OwnerName">For agents: the person the agent acts for.</param>
 /// <param name="JoinedAt">When the member became active.</param>
@@ -54,6 +74,7 @@ public sealed record MemberResponse(
     string Name,
     string? Email,
     WorkspaceRole Role,
+    bool CanManageBilling,
     MemberStatus Status,
     string? OwnerName,
     DateTimeOffset? JoinedAt);
@@ -72,7 +93,8 @@ public enum WorkspaceAccessOutcome
     Deactivated,
 }
 
-public sealed record WorkspaceAccess(WorkspaceAccessOutcome Outcome, Guid WorkspaceId, Guid MemberId, WorkspaceRole Role)
+public sealed record WorkspaceAccess(
+    WorkspaceAccessOutcome Outcome, Guid WorkspaceId, Guid MemberId, WorkspaceRole Role, bool CanManageBilling = false)
 {
     public static readonly WorkspaceAccess NotFound = new(WorkspaceAccessOutcome.NotFound, Guid.Empty, Guid.Empty, default);
     public static readonly WorkspaceAccess Deactivated = new(WorkspaceAccessOutcome.Deactivated, Guid.Empty, Guid.Empty, default);
@@ -84,6 +106,20 @@ public enum MemberChangeResult
     NotFound,
     LastOwner,
     AlreadyMember,
+    GuestLimitReached,
+    BillingAccessHumansOnly,
+}
+
+/// <summary>Guests counted against the cap, and the cap, when a new guest is refused.</summary>
+public sealed record GuestLimit(int Guests, int Limit);
+
+/// <summary>Configuration section <c>Members</c>.</summary>
+public sealed class MembersOptions
+{
+    public const string Section = "Members";
+
+    /// <summary>Free guests allowed per seat (ADR-013): 5 on hosted Kupro. Unset: no cap (self-hosted).</summary>
+    public int? GuestsPerSeat { get; set; }
 }
 
 /// <summary>Workspaces, members, invites and seats (task 003). Owns the Workspace and Member entities.</summary>
@@ -91,9 +127,24 @@ public sealed class WorkspaceService(
     IDbContextFactory<KuproDbContext> dbFactory,
     WorkspaceContext workspace,
     IEmailSender email,
-    TimeProvider clock)
+    TimeProvider clock,
+    IOptions<MembersOptions> options)
 {
     public const decimal DefaultHoursPerWeek = 37m;
+
+    /// <summary>A seat (ADR-013): an active human Owner or Member.</summary>
+    private static readonly Expression<Func<Member, bool>> IsSeat = m =>
+        m.Kind == MemberKind.Human && m.Status == MemberStatus.Active
+        && (m.Role == WorkspaceRole.Owner || m.Role == WorkspaceRole.Member);
+
+    /// <summary>A guest under the cap (ADR-013): an active guest or a pending guest invite.</summary>
+    private static readonly Expression<Func<Member, bool>> IsGuest = m =>
+        m.Kind == MemberKind.Human && m.Role == WorkspaceRole.Guest
+        && (m.Status == MemberStatus.Active || m.Status == MemberStatus.Invited);
+
+    /// <summary>Billing access (ADR-013): Owners, and people an Owner granted it. Agents never have it.</summary>
+    public static bool HasBillingAccess(WorkspaceRole role, bool canManageBilling) =>
+        role == WorkspaceRole.Owner || canManageBilling;
 
     /// <summary>Decides whether the caller may act in the workspace and as whom. One query per request.</summary>
     public async Task<WorkspaceAccess> ResolveAccessAsync(
@@ -109,7 +160,7 @@ public sealed class WorkspaceService(
                 w.Id,
                 Human = members
                     .Where(m => m.WorkspaceId == w.Id && m.Kind == MemberKind.Human && m.UserId == userId)
-                    .Select(m => new { m.Id, m.Role, m.Status })
+                    .Select(m => new { m.Id, m.Role, m.Status, m.CanManageBilling })
                     .FirstOrDefault(),
                 Agent = members
                     .Where(m => m.WorkspaceId == w.Id && m.Kind == MemberKind.Agent && m.AgentName == agentName
@@ -132,7 +183,8 @@ public sealed class WorkspaceService(
 
         if (agentName is null)
         {
-            return new WorkspaceAccess(WorkspaceAccessOutcome.Allowed, row.Id, row.Human.Id, row.Human.Role);
+            return new WorkspaceAccess(WorkspaceAccessOutcome.Allowed, row.Id, row.Human.Id, row.Human.Role,
+                HasBillingAccess(row.Human.Role, row.Human.CanManageBilling));
         }
 
         if (row.Agent is null)
@@ -140,7 +192,7 @@ public sealed class WorkspaceService(
             return WorkspaceAccess.NotFound;
         }
 
-        // Agents never administer the workspace: they get their owner's role, capped at Member.
+        // Agents never administer the workspace: they get their owner's role, capped at Member, and no billing access.
         var agentRole = row.Human.Role > WorkspaceRole.Member ? WorkspaceRole.Member : row.Human.Role;
         return row.Agent.Status == MemberStatus.Active
             ? new WorkspaceAccess(WorkspaceAccessOutcome.Allowed, row.Id, row.Agent.Id, agentRole)
@@ -198,12 +250,12 @@ public sealed class WorkspaceService(
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var id = workspace.RequireWorkspaceId();
-        return await db.Workspaces.AsNoTracking()
+        var row = await db.Workspaces.AsNoTracking()
             .Where(w => w.Id == id)
-            .Select(w => new WorkspaceResponse(w.Id, w.Slug, w.Name, w.HoursPerWeek, workspace.Role, db.Members.Count(m =>
-                m.Kind == MemberKind.Human && m.Status == MemberStatus.Active
-                && (m.Role == WorkspaceRole.Owner || m.Role == WorkspaceRole.Member))))
+            .Select(w => new { w.Slug, w.Name, w.HoursPerWeek, Seats = db.Members.Count(IsSeat), Guests = db.Members.Count(IsGuest) })
             .SingleAsync(ct);
+        return new WorkspaceResponse(id, row.Slug, row.Name, row.HoursPerWeek, workspace.Role, row.Seats, row.Guests,
+            row.Seats * options.Value.GuestsPerSeat, workspace.CanManageBilling);
     }
 
     public async Task<WorkspaceResponse> UpdateAsync(UpdateWorkspaceRequest request, CancellationToken ct)
@@ -239,14 +291,18 @@ public sealed class WorkspaceService(
                     : x.User != null ? x.User.DisplayName : x.Member.InviteEmail!,
                 x.Member.Kind == MemberKind.Agent ? null : x.User != null ? x.User.Email : x.Member.InviteEmail,
                 x.Member.Role,
+                x.Member.CanManageBilling,
                 x.Member.Status,
                 x.Member.Kind == MemberKind.Agent && x.User != null ? x.User.DisplayName : null,
                 x.Member.JoinedAt))
             .ToListAsync(ct);
     }
 
-    /// <summary>Invites by email; the invitee joins when they accept. Sends the invite email after saving.</summary>
-    public async Task<(MemberChangeResult Result, MemberResponse? Member)> InviteAsync(
+    /// <summary>
+    /// Invites by email; the invitee joins when they accept. Sends the invite email after saving. A guest invite past
+    /// the guest cap is refused with the count and cap.
+    /// </summary>
+    public async Task<(MemberChangeResult Result, MemberResponse? Member, GuestLimit? Limit)> InviteAsync(
         InviteMemberRequest request, CancellationToken ct)
     {
         var inviteEmail = request.Email.Trim().ToLowerInvariant();
@@ -263,13 +319,19 @@ public sealed class WorkspaceService(
                     && db.Users.Any(u => u.Id == m.UserId && u.Email == inviteEmail)), ct);
             if (taken)
             {
-                return (MemberChangeResult.AlreadyMember, null);
+                return (MemberChangeResult.AlreadyMember, null, null);
             }
 
             invite = NewMember(workspaceId, MemberKind.Human, null, request.Role, MemberStatus.Invited, now);
             invite.InviteEmail = inviteEmail;
+            invite.CanManageBilling = request.CanManageBilling ?? false;
             db.Members.Add(invite);
-            await db.SaveChangesAsync(ct);
+            var limit = await SaveUnlessGuestLimitAsync(db, invite, request.Role == WorkspaceRole.Guest, accepting: false, ct);
+            if (limit is not null)
+            {
+                return (MemberChangeResult.GuestLimitReached, null, limit);
+            }
+
             workspaceName = await db.Workspaces.Where(w => w.Id == workspaceId).Select(w => w.Name).SingleAsync(ct);
         }
 
@@ -279,26 +341,41 @@ public sealed class WorkspaceService(
             $"Sign in to Kupro with {inviteEmail} to accept. Workspace: {workspace.Slug}."), ct);
 
         return (MemberChangeResult.Ok, new MemberResponse(
-            invite.Id, invite.Kind, inviteEmail, inviteEmail, invite.Role, invite.Status, null, null));
+            invite.Id, invite.Kind, inviteEmail, inviteEmail, invite.Role, invite.CanManageBilling, invite.Status, null, null),
+            null);
     }
 
-    public async Task<MemberChangeResult> UpdateMemberAsync(Guid memberId, UpdateMemberRequest request, CancellationToken ct)
+    /// <summary>
+    /// Changes a person's role or billing access. Demoting someone to Guest counts as a new guest under the cap.
+    /// </summary>
+    public async Task<(MemberChangeResult Result, GuestLimit? Limit)> UpdateMemberAsync(
+        Guid memberId, UpdateMemberRequest request, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var member = await db.Members.SingleOrDefaultAsync(m => m.Id == memberId && m.Kind == MemberKind.Human, ct);
+        var member = await db.Members.SingleOrDefaultAsync(m => m.Id == memberId, ct);
         if (member is null)
         {
-            return MemberChangeResult.NotFound;
+            return (MemberChangeResult.NotFound, null);
         }
 
-        if (member.Role == WorkspaceRole.Owner && request.Role != WorkspaceRole.Owner && await IsLastOwnerAsync(db, member, ct))
+        if (member.Kind == MemberKind.Agent)
         {
-            return MemberChangeResult.LastOwner;
+            // An agent's role follows its owner's, and billing access is for people only.
+            return (request.CanManageBilling is null ? MemberChangeResult.NotFound : MemberChangeResult.BillingAccessHumansOnly, null);
         }
 
-        member.Role = request.Role;
-        await db.SaveChangesAsync(ct);
-        return MemberChangeResult.Ok;
+        var role = request.Role ?? member.Role;
+        if (member.Role == WorkspaceRole.Owner && role != WorkspaceRole.Owner && await IsLastOwnerAsync(db, member, ct))
+        {
+            return (MemberChangeResult.LastOwner, null);
+        }
+
+        var becomesGuest = role == WorkspaceRole.Guest && member.Role != WorkspaceRole.Guest
+                           && member.Status != MemberStatus.Deactivated;
+        member.Role = role;
+        member.CanManageBilling = request.CanManageBilling ?? member.CanManageBilling;
+        var limit = await SaveUnlessGuestLimitAsync(db, member, becomesGuest, accepting: false, ct);
+        return limit is null ? (MemberChangeResult.Ok, null) : (MemberChangeResult.GuestLimitReached, limit);
     }
 
     /// <summary>
@@ -375,7 +452,9 @@ public sealed class WorkspaceService(
             .ToListAsync(ct);
     }
 
-    public async Task<WorkspaceSummary?> AcceptInviteAsync(Guid userId, Guid memberId, CancellationToken ct)
+    /// <summary>Joins the workspace. A guest invite is refused while the workspace is at its guest cap.</summary>
+    public async Task<(MemberChangeResult Result, WorkspaceSummary? Joined, GuestLimit? Limit)> AcceptInviteAsync(
+        Guid userId, Guid memberId, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var email = await VerifiedEmailAsync(db, userId, ct);
@@ -384,25 +463,30 @@ public sealed class WorkspaceService(
             .SingleOrDefaultAsync(m => m.Id == memberId && m.Status == MemberStatus.Invited && m.InviteEmail == email, ct);
         if (invite is null)
         {
-            return null;
+            return (MemberChangeResult.NotFound, null, null);
         }
 
         var alreadyMember = await db.Members.IgnoreQueryFilters([KuproDbContext.TenantFilter])
             .AnyAsync(m => m.WorkspaceId == invite.WorkspaceId && m.Kind == MemberKind.Human && m.UserId == userId, ct);
         if (alreadyMember)
         {
-            return null;
+            return (MemberChangeResult.NotFound, null, null);
         }
 
         invite.UserId = userId;
         invite.Status = MemberStatus.Active;
         invite.JoinedAt = clock.GetUtcNow();
         invite.InviteEmail = null;
-        await db.SaveChangesAsync(ct);
+        var limit = await SaveUnlessGuestLimitAsync(db, invite, invite.Role == WorkspaceRole.Guest, accepting: true, ct);
+        if (limit is not null)
+        {
+            return (MemberChangeResult.GuestLimitReached, null, limit);
+        }
 
-        return await db.Workspaces.Where(w => w.Id == invite.WorkspaceId)
+        var joined = await db.Workspaces.Where(w => w.Id == invite.WorkspaceId)
             .Select(w => new WorkspaceSummary(w.Id, w.Slug, w.Name, invite.Role))
             .SingleAsync(ct);
+        return (MemberChangeResult.Ok, joined, null);
     }
 
     /// <summary>
@@ -449,6 +533,50 @@ public sealed class WorkspaceService(
             .Where(m => m.Kind == MemberKind.Human && m.UserId == userId && m.Status == MemberStatus.Active && m.Role >= minimum)
             .Join(db.Workspaces.Where(w => w.Slug == slug), m => m.WorkspaceId, w => w.Id, (m, w) => (Guid?)w.Id)
             .SingleOrDefaultAsync(ct);
+
+    /// <summary>
+    /// Saves the pending changes, unless <paramref name="candidate"/> becomes a guest past the cap: then nothing is saved
+    /// and the count and cap are returned. Check and save run in one transaction under a per-workspace lock, so two
+    /// parallel invites can't both take the last place.
+    /// </summary>
+    private async Task<GuestLimit?> SaveUnlessGuestLimitAsync(
+        KuproDbContext db, Member candidate, bool becomesGuest, bool accepting, CancellationToken ct)
+    {
+        if (!becomesGuest || options.Value.GuestsPerSeat is not { } perSeat)
+        {
+            await db.SaveChangesAsync(ct);
+            return null;
+        }
+
+        // Retrying execution strategy: the transaction must run inside it as one retriable unit.
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({"guests:" + candidate.WorkspaceId}, 0))", ct);
+
+            // Accepting an invite runs outside a workspace route, so the workspace is named here, not by the filter.
+            var others = db.Members.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+                .Where(m => m.WorkspaceId == candidate.WorkspaceId && m.Id != candidate.Id);
+            var guests = others.Where(IsGuest);
+            if (accepting)
+            {
+                // Invites keep their place in line: past the cap, the earliest pending invites get in first.
+                guests = guests.Where(m => m.Status == MemberStatus.Active || m.CreatedAt < candidate.CreatedAt);
+            }
+
+            var limit = await others.CountAsync(IsSeat, ct) * perSeat;
+            var count = await guests.CountAsync(ct);
+            if (count >= limit)
+            {
+                return new GuestLimit(count, limit);
+            }
+
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return null;
+        });
+    }
 
     private static Task<string?> VerifiedEmailAsync(KuproDbContext db, Guid userId, CancellationToken ct) =>
         db.Users.Where(u => u.Id == userId && u.EmailVerified).Select(u => u.Email).SingleOrDefaultAsync(ct);

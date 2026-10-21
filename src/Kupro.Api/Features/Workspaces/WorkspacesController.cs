@@ -27,7 +27,7 @@ public sealed class WorkspacesController(WorkspaceService workspaces) : Controll
             ? StatusCode(StatusCodes.Status201Created, created)
             : this.Problem(StatusCodes.Status409Conflict, "slug_taken", $"The slug '{request.Slug}' is taken.");
 
-    /// <summary>Get a workspace, your role in it and its seat count.</summary>
+    /// <summary>Get a workspace, your role and billing access in it, its seat count and its guests against the cap.</summary>
     [HttpGet("{workspace}", Name = "getWorkspace")]
     public Task<WorkspaceResponse> Get(CancellationToken ct) => workspaces.GetAsync(ct);
 
@@ -48,7 +48,7 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
     [HttpGet(Name = "listMembers")]
     public Task<IReadOnlyList<MemberResponse>> List(CancellationToken ct) => workspaces.ListMembersAsync(ct);
 
-    /// <summary>Invite someone by email. They join when they accept.</summary>
+    /// <summary>Invite someone by email, optionally with billing access. They join when they accept.</summary>
     [HttpPost(Name = "inviteMember")]
     [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]
@@ -56,21 +56,28 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<MemberResponse>> Invite(InviteMemberRequest request, CancellationToken ct)
     {
-        var (result, member) = await workspaces.InviteAsync(request, ct);
-        return result == MemberChangeResult.Ok
-            ? StatusCode(StatusCodes.Status201Created, member)
-            : this.Problem(StatusCodes.Status409Conflict, "already_member", "That email is already a member or invited.");
+        var (result, member, limit) = await workspaces.InviteAsync(request, ct);
+        return result switch
+        {
+            MemberChangeResult.Ok => StatusCode(StatusCodes.Status201Created, member),
+            MemberChangeResult.GuestLimitReached => this.GuestLimitProblem(limit!),
+            _ => this.Problem(StatusCodes.Status409Conflict, "already_member", "That email is already a member or invited."),
+        };
     }
 
-    /// <summary>Change a member's role.</summary>
+    /// <summary>Change a member's role or billing access. Billing access is for people, not agents.</summary>
     [HttpPatch("{memberId:guid}", Name = "updateMember")]
     [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Update(Guid memberId, UpdateMemberRequest request, CancellationToken ct) =>
-        ToResult(await workspaces.UpdateMemberAsync(memberId, request, ct));
+    public async Task<IActionResult> Update(Guid memberId, UpdateMemberRequest request, CancellationToken ct)
+    {
+        var (result, limit) = await workspaces.UpdateMemberAsync(memberId, request, ct);
+        return result == MemberChangeResult.GuestLimitReached ? this.GuestLimitProblem(limit!) : ToResult(result);
+    }
 
     /// <summary>Deactivate a member: access and their tokens for this workspace are revoked; history keeps their name.</summary>
     [HttpPost("{memberId:guid}/deactivate", Name = "deactivateMember")]
@@ -87,6 +94,8 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
         MemberChangeResult.Ok => NoContent(),
         MemberChangeResult.LastOwner => this.Problem(StatusCodes.Status409Conflict, "last_owner",
             "A workspace needs at least one active owner."),
+        MemberChangeResult.BillingAccessHumansOnly => this.Problem(StatusCodes.Status400BadRequest,
+            "billing_access_humans_only", "Billing access is for people, not agents."),
         _ => this.Problem(StatusCodes.Status404NotFound, "member_not_found"),
     };
 }
@@ -108,8 +117,29 @@ public sealed class InvitesController(WorkspaceService workspaces) : ControllerB
     [NoAgentSurface(AgentSurface.Mcp, "Invites are addressed to people.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<WorkspaceSummary>> Accept(Guid memberId, CancellationToken ct) =>
-        await workspaces.AcceptInviteAsync(User.GetUserId(), memberId, ct) is { } joined
-            ? joined
-            : this.Problem(StatusCodes.Status404NotFound, "invite_not_found");
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<WorkspaceSummary>> Accept(Guid memberId, CancellationToken ct)
+    {
+        var (result, joined, limit) = await workspaces.AcceptInviteAsync(User.GetUserId(), memberId, ct);
+        return result switch
+        {
+            MemberChangeResult.Ok => joined!,
+            MemberChangeResult.GuestLimitReached => this.GuestLimitProblem(limit!),
+            _ => this.Problem(StatusCodes.Status404NotFound, "invite_not_found"),
+        };
+    }
+}
+
+internal static class GuestLimitProblems
+{
+    /// <summary>409 <c>guest_limit_reached</c> with <c>guests</c> and <c>guestLimit</c>, so clients can show both.</summary>
+    public static ObjectResult GuestLimitProblem(this ControllerBase controller, GuestLimit limit)
+    {
+        var result = controller.Problem(StatusCodes.Status409Conflict, "guest_limit_reached",
+            $"{limit.Guests} of {limit.Limit} free guests are taken. Add a seat, or deactivate a guest or a guest invite.");
+        var problem = (ProblemDetails)result.Value!;
+        problem.Extensions["guests"] = limit.Guests;
+        problem.Extensions["guestLimit"] = limit.Limit;
+        return result;
+    }
 }
