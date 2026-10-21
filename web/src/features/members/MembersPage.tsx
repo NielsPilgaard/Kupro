@@ -180,9 +180,9 @@ function MemberRow({ member, workspace, isOwner }: { member: MemberResponse; wor
 
   return (
     <li className="flex flex-col gap-1 border-b border-line py-2" data-testid="member-row">
-      <div className="flex min-h-[var(--row)] items-center gap-3">
+      <div className="flex min-h-[var(--row)] flex-wrap items-center gap-3">
         <Avatar member={member} />
-        <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex min-w-0 flex-1 basis-48 flex-col">
           <span className="truncate font-semibold">{member.name}</span>
           <span className="truncate text-sm text-mute">
             {human
