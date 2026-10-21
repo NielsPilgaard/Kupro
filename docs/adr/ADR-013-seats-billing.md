@@ -185,7 +185,7 @@ workspace leaving the agent on all day must not cost more than it pays.
     to the subscription and syncs the quantity the same way, unless the agreement fixes the seat count.
   - Webhooks (`invoice.*`, payment and subscription events) drive the read-only state for unpaid workspaces.
 - **IMP-008**: The billing-access flag, a `[BillingAccess]` guard, the guest cap (`Members:GuestsPerSeat`, 5 on
-  hosted, unset on self-hosted) and the members page are [task 018](../../tasks/018-members-billing-access.md).
+  hosted, unset on self-hosted) and the members page are [task 018](../../tasks/completed/018-members-billing-access.md).
   Task 017's usage view and budget emails use that guard.
 
 ## Related Decisions
