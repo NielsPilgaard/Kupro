@@ -25,8 +25,9 @@ jobs:
         with:
           global-json-file: global.json
 
+      # A cold-cache restore misattributes commands between tools (dotnet/sdk#53783); the retry hits the warm cache.
       - name: Restore tools
-        run: dotnet tool restore
+        run: dotnet tool restore || dotnet tool restore
 
       - name: Build (emits openapi/kupro.json)
         run: dotnet build Kupro.slnx -c Release
@@ -108,7 +109,8 @@ jobs:
         with:
           global-json-file: global.json
 
-      - run: dotnet tool restore
+      # Retry: dotnet/sdk#53783 (see the dotnet job). `||` works in bash and pwsh 7 alike.
+      - run: dotnet tool restore || dotnet tool restore
 
       - name: Publish native binary
         run: dotnet publish src/Kupro.Cli -c Release -r ${{ matrix.rid }} -o out
