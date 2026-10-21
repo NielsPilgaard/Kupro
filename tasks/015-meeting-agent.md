@@ -17,7 +17,7 @@ Listen to a meeting, propose ticket actions ("move FLOW-12 to next sprint"), and
 (default — every action waits for approval, grouped by ticket) and **full auto** (applies at once, undoable). Users
 will not trust this at first: suggest mode must prove itself before anyone turns on full auto.
 
-See [product.md](../docs/product.md) (After v1), [ADR-001](../docs/adr/ADR-001-agent-parity.md),
+See [product.md](../docs/product.md) (v1 scope), [ADR-001](../docs/adr/ADR-001-agent-parity.md),
 [ADR-006](../docs/adr/ADR-006-eu-vendor-policy.md).
 
 ## Prerequisite

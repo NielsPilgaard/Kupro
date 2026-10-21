@@ -12,12 +12,13 @@ purpose: 'Canonical source for product vision, target customer, principles and v
 ## TL;DR
 
 Danish, EU-sovereign, agent-first issue tracker and planner. Linear's speed, Jira's planning depth without the bloat,
-fully controllable by agents (CLI + MCP). First users: dev teams at Danish/EU startups and scaleups — and the author.
+fully controllable by agents (CLI + MCP), and a meeting agent that updates tickets while the team talks. First users: dev teams at Danish/EU startups and scaleups — and the author.
 Bootstrapped, built for fun and own use; sellable as SaaS, open-core AGPL.
 
 ## Pitch
 
-A European alternative to Jira, Azure DevOps, Linear, Trello and Monday. Everything a human can do in the UI, an agent
+A European alternative to Jira, Azure DevOps, Linear, Trello and Monday. Say it in standup and it's in the tracker: the
+meeting agent listens and proposes the ticket changes. Everything a human can do in the UI, an agent
 can do via CLI or MCP. Planning is a first-class citizen: the delivery plan lays out every project's epics, features
 and delivery dates over the year and shows whether the team you have can deliver it — and you create the work in it.
 
@@ -43,8 +44,12 @@ and delivery dates over the year and shows whether the team you have can deliver
 | Sprints | Time tracking |
 | List, board, delivery plan views | Dashboards / reports |
 | Search, command palette, keyboard-first | Per-project permissions |
-| Web, REST API, CLI, MCP | Built-in AI |
-| English + Danish UI ([ADR-011](adr/ADR-011-i18n.md)) | Self-hosting package |
+| Web, REST API, CLI, MCP; one-line CLI install, `kupro install mcp` ([ADR-018](adr/ADR-018-cli-distribution.md)) | AI beyond the meeting agent (chat, summaries, voice control) |
+| Meeting agent: suggest mode by default, full auto opt-in, within a monthly AI budget ([task 015](../tasks/015-meeting-agent.md), [ADR-013](adr/ADR-013-seats-billing.md)) | Self-hosting package |
+| Members page: roles, free guests, billing access ([ADR-013](adr/ADR-013-seats-billing.md)) | Billing (subscriptions, invoices) |
+| Workspace export: everything, at any time ([task 016](../tasks/completed/016-workspace-export.md)) | |
+| Public website: landing, pricing, legal pages ([ADR-017](adr/ADR-017-public-site.md)) | |
+| English + Danish UI ([ADR-011](adr/ADR-011-i18n.md)) | |
 
 ## Integrations
 
@@ -53,9 +58,7 @@ and delivery dates over the year and shows whether the team you have can deliver
 
 ## After v1
 
-- **AI in the room**: agent listens during meetings and updates tickets live; voice control of the UI
-  ("move FLOW-12 to next sprint"). Speech-to-text via EU vendor (syv.ai Hviske or Scaleway), LLM via EU vendor (e.g. Mistral).
-  Starts in suggest mode (every action approved per ticket) so teams see it work safely; full auto is opt-in.
-  Spec: [task 015](../tasks/015-meeting-agent.md).
+- Voice control of the UI outside meetings ("move KUP-12 to next sprint"), on the meeting agent's vendors
+  ([ADR-015](adr/ADR-015-meeting-agent-vendors.md)).
 - Self-hosting package (single compose file).
 - Webhooks, billing ([ADR-013](adr/ADR-013-seats-billing.md)), enterprise SSO (open-core, see [ADR-007](adr/ADR-007-licensing.md)).

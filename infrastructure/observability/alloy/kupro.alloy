@@ -72,7 +72,7 @@ prometheus.exporter.unix "host" {
 	set_collectors = ["cpu", "meminfo", "loadavg", "filesystem"]
 	// Only "/"; the default excludes overlay, which is exactly the root we want.
 	filesystem {
-		kp_types_exclude     = "^(tmpfs|proc|sysfs|devpts|mqueue|cgroup2?|nsfs)$"
+		fs_types_exclude     = "^(tmpfs|proc|sysfs|devpts|mqueue|cgroup2?|nsfs)$"
 		mount_points_exclude = "^/.+"
 	}
 }
