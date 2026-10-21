@@ -17,6 +17,7 @@ import { Avatar, Button } from '../../components/ui';
 import { useDate } from '../../lib/format';
 
 const roles: WorkspaceRole[] = ['owner', 'member', 'guest'];
+const inviteAction = 'invite';
 
 /** Problem details the API answers member changes with (`code` plus the guest cap's numbers). */
 type Problem = { code?: string; guests?: number; guestLimit?: number } | null;
@@ -34,6 +35,9 @@ export function MembersPage() {
   const agents = members?.filter((m) => m.kind === 'agent' && m.status === 'active') ?? [];
   const invited = people.filter((m) => m.status === 'invited');
   const deactivated = members?.filter((m) => m.status === 'deactivated') ?? [];
+  // Only the latest action's error shows, so an old one doesn't linger after other changes succeed.
+  const [lastAction, setLastAction] = useState<string | null>(null);
+  const list = { workspace, isOwner, lastAction, onAction: setLastAction };
 
   return (
     <>
@@ -49,15 +53,11 @@ export function MembersPage() {
             </span>
           </p>
         )}
-        {isOwner && <InviteForm workspace={workspace} />}
-        <MemberList title={t('members.people')} members={active} workspace={workspace} isOwner={isOwner} />
-        {agents.length > 0 && <MemberList title={t('members.agents')} members={agents} workspace={workspace} isOwner={isOwner} />}
-        {isOwner && invited.length > 0 && (
-          <MemberList title={t('members.invited')} members={invited} workspace={workspace} isOwner={isOwner} />
-        )}
-        {isOwner && deactivated.length > 0 && (
-          <MemberList title={t('members.deactivated')} members={deactivated} workspace={workspace} isOwner={isOwner} />
-        )}
+        {isOwner && <InviteForm workspace={workspace} showError={lastAction === inviteAction} onAction={() => setLastAction(inviteAction)} />}
+        <MemberList title={t('members.people')} members={active} {...list} />
+        {agents.length > 0 && <MemberList title={t('members.agents')} members={agents} {...list} />}
+        {isOwner && invited.length > 0 && <MemberList title={t('members.invited')} members={invited} {...list} />}
+        {isOwner && deactivated.length > 0 && <MemberList title={t('members.deactivated')} members={deactivated} {...list} />}
       </main>
     </>
   );
@@ -86,7 +86,7 @@ function errorText(t: ReturnType<typeof useTranslation>['t'], error: Problem) {
   }
 }
 
-function InviteForm({ workspace }: { workspace: string }) {
+function InviteForm({ workspace, showError, onAction }: { workspace: string; showError: boolean; onAction(): void }) {
   const { t } = useTranslation();
   const refresh = useRefresh(workspace);
   const [email, setEmail] = useState('');
@@ -106,7 +106,9 @@ function InviteForm({ workspace }: { workspace: string }) {
       className="flex flex-col gap-3 rounded-r2 border border-line p-4"
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
-        if (email.trim()) invite.mutate({ path: { workspace }, body: { email: email.trim(), role, canManageBilling: billing } });
+        if (!email.trim()) return;
+        onAction();
+        invite.mutate({ path: { workspace }, body: { email: email.trim(), role, canManageBilling: billing } });
       }}
     >
       <h2 className="text-lg font-semibold">{t('members.invite')}</h2>
@@ -141,7 +143,7 @@ function InviteForm({ workspace }: { workspace: string }) {
           <span className="text-sm text-mute">{t('members.billingHint')}</span>
         </span>
       </label>
-      {invite.isError && (
+      {showError && invite.isError && (
         <p role="alert" className="text-sm text-bad">
           {errorText(t, invite.error as Problem)}
         </p>
@@ -153,20 +155,22 @@ function InviteForm({ workspace }: { workspace: string }) {
   );
 }
 
-function MemberList(props: { title: string; members: MemberResponse[]; workspace: string; isOwner: boolean }) {
+type RowProps = { workspace: string; isOwner: boolean; lastAction: string | null; onAction(id: string): void };
+
+function MemberList({ title, members, ...row }: RowProps & { title: string; members: MemberResponse[] }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-lg font-semibold">{props.title}</h2>
+      <h2 className="text-lg font-semibold">{title}</h2>
       <ul className="flex flex-col">
-        {props.members.map((m) => (
-          <MemberRow key={m.id} member={m} workspace={props.workspace} isOwner={props.isOwner} />
+        {members.map((m) => (
+          <MemberRow key={m.id} member={m} {...row} />
         ))}
       </ul>
     </section>
   );
 }
 
-function MemberRow({ member, workspace, isOwner }: { member: MemberResponse; workspace: string; isOwner: boolean }) {
+function MemberRow({ member, workspace, isOwner, lastAction, onAction }: RowProps & { member: MemberResponse }) {
   const { t } = useTranslation();
   const date = useDate();
   const refresh = useRefresh(workspace);
@@ -176,7 +180,12 @@ function MemberRow({ member, workspace, isOwner }: { member: MemberResponse; wor
   const path = { workspace, memberId: member.id };
   const human = member.kind === 'human';
   const editable = isOwner && member.status !== 'deactivated';
-  const error = (update.error ?? deactivate.error) as Problem;
+  const error = lastAction === member.id ? ((update.error ?? deactivate.error) as Problem) : null;
+  const change = (body: { role?: WorkspaceRole; canManageBilling?: boolean }) => {
+    onAction(member.id);
+    deactivate.reset();
+    update.mutate({ path, body });
+  };
 
   return (
     <li className="flex flex-col gap-1 border-b border-line py-2" data-testid="member-row">
@@ -199,7 +208,7 @@ function MemberRow({ member, workspace, isOwner }: { member: MemberResponse; wor
           <select
             value={member.role}
             aria-label={t('members.roleOf', { name: member.name })}
-            onChange={(e) => update.mutate({ path, body: { role: e.target.value as WorkspaceRole } })}
+            onChange={(e) => change({ role: e.target.value as WorkspaceRole })}
             className="h-[var(--control)] rounded-r1 border border-line bg-panel px-2"
           >
             {roles.map((r) => (
@@ -211,7 +220,7 @@ function MemberRow({ member, workspace, isOwner }: { member: MemberResponse; wor
         ) : (
           <span className="text-sm">{t(`role.${member.role}`)}</span>
         )}
-        {human && <BillingCell member={member} editable={editable} onToggle={(on) => update.mutate({ path, body: { canManageBilling: on } })} />}
+        {human && <BillingCell member={member} editable={editable} onToggle={(on) => change({ canManageBilling: on })} />}
         {editable && (
           <Button variant="ghost" className="h-7 px-2 text-bad" onClick={() => setConfirming(true)}>
             {t('members.deactivate')}
@@ -224,7 +233,15 @@ function MemberRow({ member, workspace, isOwner }: { member: MemberResponse; wor
           <Button variant="ghost" onClick={() => setConfirming(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" disabled={deactivate.isPending} onClick={() => deactivate.mutate({ path })}>
+          <Button
+            variant="primary"
+            disabled={deactivate.isPending}
+            onClick={() => {
+              onAction(member.id);
+              update.reset();
+              deactivate.mutate({ path });
+            }}
+          >
             {t('members.deactivate')}
           </Button>
         </div>
