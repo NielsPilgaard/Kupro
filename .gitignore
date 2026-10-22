@@ -29,3 +29,6 @@ Thumbs.db
 
 # Astro
 .astro/
+
+# Private notes (owner checklists, never committed)
+notes/

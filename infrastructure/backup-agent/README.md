@@ -199,7 +199,7 @@ the marker on start). The Grafana "Backups" row shows the agent's metrics.
 The agent is infrastructure, so it's proven by breaking it on purpose rather than by unit tests. Skoleoverblikket's list
 (agent killed past the slot cap, wrong S3 key, container recreated with unpushed WAL, Postgres stopped, reaching the
 console from another container, a full restore with go-live and switch back) applies unchanged; run it again on a real
-server before the first external user ([manual steps](../../docs/manual-steps.md)).
+server before the first external user (a manual step).
 
 ## Known limits
 

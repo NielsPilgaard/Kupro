@@ -38,7 +38,7 @@ commands from nothing to an agent managing issues.
   - Token refresh under a file lock on the CLI config (ADR-018 IMP-001).
 - **Skill** (`src/Kupro.Cli/Skill/SKILL.md`, embedded resource):
   - Frontmatter `name: kupro`, a `description` that triggers on issues, tasks, sprints, the plan, and Kupro.
-  - Body: pick the workspace; search before creating; keys like `FLOW-12`; epic > feature > task, states, effort in
+  - Body: pick the workspace; search before creating; keys like `KUP-12`; epic > feature > task, states, effort in
     hours; one bulk call for an epic and its children (`parent: "#0"`); Markdown; comments; sprints and the plan;
     reviewing meeting proposals; the CLI with `--json` when MCP is not connected.
   - Test: every tool and command it names exists (ADR-018 IMP-002).
@@ -46,7 +46,7 @@ commands from nothing to an agent managing issues.
 - **Web**: a "Connect an agent" block on the settings page, above API tokens: the install one-liner for the visitor's
   OS, `kupro install mcp`, and the remote MCP URL for manual setups. All strings in the locale files.
 - **Site**: the agents section and the docs placeholder show the same two commands (copy in `site/src/i18n`).
-- **Ops**: public bucket and a write-only key for CI → [manual steps](../docs/manual-steps.md) and
+- **Ops**: public bucket and a write-only key for CI → a manual step and the
   [deploy runbook](../docs/runbooks/deploy.md).
 
 ## Acceptance criteria

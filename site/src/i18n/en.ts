@@ -1,5 +1,5 @@
 // English copy for the public site (ADR-017). Voice rules: docs/branding.md. Placeholders in [brackets] are filled
-// before launch (docs/manual-steps.md E2).
+// before launch (manual step E2).
 export const en = {
   meta: {
     lang: 'en',
@@ -39,7 +39,7 @@ export const en = {
     pause: 'Pause',
     speaker: 'Mette',
     quoteBefore: 'Login-fixet er i review nu, ',
-    quoteKey: 'FLOW-212',
+    quoteKey: 'KUP-212',
     quoteMiddle: '. Og ',
     quoteMark: 'VAT-feltet',
     quoteAfter: ' tager jeg i morgen.',
@@ -106,12 +106,12 @@ export const en = {
     title: 'One action, three ways in',
     sub: 'The web app, the CLI and the MCP server use the same API. If a person can do it, so can an agent you give a token to, and every change says who made it and how.',
     web: 'Web · Ctrl K',
-    paletteQuery: 'FLOW-12 sprint',
+    paletteQuery: 'KUP-12 sprint',
     paletteMove: 'Move to Sprint 25 (active)',
     paletteRemove: 'Remove from sprint',
     cli: 'CLI',
     mcp: 'MCP',
-    toast: 'moved FLOW-139 to In Review via MCP · 2s ago',
+    toast: 'moved KUP-139 to In Review via MCP · 2s ago',
   },
   eu: {
     eyebrow: 'European by default',

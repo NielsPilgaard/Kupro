@@ -134,5 +134,5 @@ Next:
      Remove the old ones when happy: docker volume ls | grep ${OLD.toLowerCase()}
   5. CLI users: config moves with the new name; run \`${name.toLowerCase()} login\` again.
   6. By hand: the name's meaning in docs/branding.md, the decision in docs/naming.md.
-  7. Outside the repo: rename the GitHub repo and local folder, update docs/manual-steps.md (domain, LinkedIn).${tokenPrefix ? '' : `
+  7. Outside the repo: rename the GitHub repo and local folder, update notes/manual-steps.md (domain, LinkedIn).${tokenPrefix ? '' : `
   8. API tokens keep their prefix. Pass --token-prefix <old>:<new> if the new name wants another one.`}`);

@@ -35,7 +35,7 @@ copy rules in [branding.md](../docs/branding.md). The look book in
   alerts, agents and guests, VAT, cancelling, non-profits, self-hosting).
 - **Legal**: privacy, terms, data processing (DPA), sub-processors, cookies, from the drafts. English first; the
   Danish pages say the Danish text follows and link to the English one until the lawyer-reviewed text exists
-  ([manual steps](../docs/manual-steps.md) E2).
+  (manual step E2).
 - **Container**: `site/Dockerfile` (Bun build, nginx runtime), long cache headers for hashed assets, 404 page.
 - **Aspire**: `site` resource; dev server locally, the Dockerfile in publish mode, on the apex domain.
 - **Domain split**: the app and API move to `app.<domain>`. Update the deploy runbook, the AppHost parameters' comments
