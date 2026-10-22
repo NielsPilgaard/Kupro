@@ -48,7 +48,7 @@ public sealed class MemberAccessTests(PostgresFixture postgres)
     {
         var (owner, workspace, ownerUser) = await NewWorkspaceAsync();
         await ReadAsync<ProjectResponse>(await owner.PostAsJsonAsync($"/api/v1/workspaces/{workspace.Slug}/projects",
-            new CreateProjectRequest("FLOW", "Flow"), Json.Options, Ct), HttpStatusCode.Created);
+            new CreateProjectRequest("KUP", "Kupro"), Json.Options, Ct), HttpStatusCode.Created);
         var (guest, _, guestUser) = await JoinAsync(owner, workspace.Slug, WorkspaceRole.Guest, billing: true);
         var (_, _, memberUser) = await JoinAsync(owner, workspace.Slug, WorkspaceRole.Member);
 
@@ -63,7 +63,7 @@ public sealed class MemberAccessTests(PostgresFixture postgres)
         detail.Guests.ShouldBe(1);
         detail.GuestLimit.ShouldBe(10);
         await ShouldBeProblemAsync(await guest.PostAsJsonAsync($"/api/v1/workspaces/{workspace.Slug}/issues",
-            new CreateIssueRequest("FLOW", "No"), Json.Options, Ct), HttpStatusCode.Forbidden, "insufficient_role");
+            new CreateIssueRequest("KUP", "No"), Json.Options, Ct), HttpStatusCode.Forbidden, "insufficient_role");
     }
 
     [Fact]

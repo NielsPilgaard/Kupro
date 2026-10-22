@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Kupro.Api.Features.Issues;
 
-/// <summary>Issues, addressed by key (<c>FLOW-12</c>). Mutations accept an <c>Idempotency-Key</c> header.</summary>
+/// <summary>Issues, addressed by key (<c>KUP-12</c>). Mutations accept an <c>Idempotency-Key</c> header.</summary>
 [ApiController]
 [Route("api/v1/workspaces/{workspace}/issues")]
 public sealed class IssuesController(IssueService issues) : ControllerBase

@@ -21,9 +21,9 @@ public sealed class CommentTests(PostgresFixture postgres) : ApiTestBase(postgre
     {
         await base.InitializeAsync();
         (_client, _workspace, _) = await NewWorkspaceAsync();
-        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("FLOW", "Kupro"), Json.Options, Ct),
+        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("KUP", "Kupro"), Json.Options, Ct),
             HttpStatusCode.Created);
-        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("FLOW", "Feed me"), Json.Options, Ct),
+        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("KUP", "Feed me"), Json.Options, Ct),
             HttpStatusCode.Created);
     }
 
@@ -31,9 +31,9 @@ public sealed class CommentTests(PostgresFixture postgres) : ApiTestBase(postgre
     public async Task Author_adds_edits_and_deletes_a_comment()
     {
         var comment = await ReadAsync<CommentResponse>(
-            await _client.PostAsJsonAsync($"{Ws}/issues/flow-1/comments", new CommentRequest("Looks **good**"), Json.Options, Ct),
+            await _client.PostAsJsonAsync($"{Ws}/issues/kup-1/comments", new CommentRequest("Looks **good**"), Json.Options, Ct),
             HttpStatusCode.Created);
-        comment.IssueKey.ShouldBe("FLOW-1");
+        comment.IssueKey.ShouldBe("KUP-1");
         comment.Author.Name.ShouldBe("Test User");
         comment.EditedAt.ShouldBeNull();
 
@@ -52,7 +52,7 @@ public sealed class CommentTests(PostgresFixture postgres) : ApiTestBase(postgre
         var agent = Factory.CreateBearerClient((await NewTokenAsync(_client,
             new("bot", ApiTokenKind.Agent, "review-bot", null, _workspace.Slug))).Secret);
         var byAgent = await ReadAsync<CommentResponse>(
-            await agent.PostAsJsonAsync($"{Ws}/issues/FLOW-1/comments", new CommentRequest("Reviewed by an agent."), Json.Options, Ct),
+            await agent.PostAsJsonAsync($"{Ws}/issues/KUP-1/comments", new CommentRequest("Reviewed by an agent."), Json.Options, Ct),
             HttpStatusCode.Created);
         byAgent.Author.Kind.ShouldBe(MemberKind.Agent);
 
@@ -66,9 +66,9 @@ public sealed class CommentTests(PostgresFixture postgres) : ApiTestBase(postgre
     [Fact]
     public async Task Feed_merges_history_and_comments_with_readable_values()
     {
-        (await _client.PatchAsJsonAsync($"{Ws}/issues/FLOW-1",
+        (await _client.PatchAsJsonAsync($"{Ws}/issues/KUP-1",
             new UpdateIssueRequest(State: IssueState.InProgress, Assignee: "me", Labels: ["ui"]), Json.Options, Ct)).EnsureSuccessStatusCode();
-        await _client.PostAsJsonAsync($"{Ws}/issues/FLOW-1/comments", new CommentRequest("On it."), Json.Options, Ct);
+        await _client.PostAsJsonAsync($"{Ws}/issues/KUP-1/comments", new CommentRequest("On it."), Json.Options, Ct);
 
         var feed = await FeedAsync();
 
@@ -85,11 +85,11 @@ public sealed class CommentTests(PostgresFixture postgres) : ApiTestBase(postgre
     public async Task Comments_on_missing_or_foreign_issues_are_not_found()
     {
         await ShouldBeProblemAsync(
-            await _client.PostAsJsonAsync($"{Ws}/issues/FLOW-99/comments", new CommentRequest("?"), Json.Options, Ct),
+            await _client.PostAsJsonAsync($"{Ws}/issues/KUP-99/comments", new CommentRequest("?"), Json.Options, Ct),
             HttpStatusCode.NotFound, "issue_not_found");
 
         var comment = await ReadAsync<CommentResponse>(
-            await _client.PostAsJsonAsync($"{Ws}/issues/FLOW-1/comments", new CommentRequest("mine"), Json.Options, Ct),
+            await _client.PostAsJsonAsync($"{Ws}/issues/KUP-1/comments", new CommentRequest("mine"), Json.Options, Ct),
             HttpStatusCode.Created);
         var (other, otherWorkspace, _) = await NewWorkspaceAsync("Other");
         await ShouldBeProblemAsync(
@@ -105,5 +105,5 @@ public sealed class CommentTests(PostgresFixture postgres) : ApiTestBase(postgre
             HttpStatusCode.ServiceUnavailable, "attachments_unavailable");
     }
 
-    private async Task<List<FeedItem>> FeedAsync() => await GetAsync<List<FeedItem>>(_client, $"{Ws}/issues/FLOW-1/activity");
+    private async Task<List<FeedItem>> FeedAsync() => await GetAsync<List<FeedItem>>(_client, $"{Ws}/issues/KUP-1/activity");
 }

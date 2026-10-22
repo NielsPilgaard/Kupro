@@ -32,14 +32,14 @@ var key = Environment.GetEnvironmentVariable("SCALEWAY_AI_KEY") is { Length: > 0
 
 IssueHint[] issues =
 [
-    new("FLOW-12", "Login fails with SSO on Safari", "inProgress", "Mette Hansen"),
-    new("FLOW-14", "Export workspace to JSON", "todo", "Jonas Nielsen"),
-    new("FLOW-15", "Dark mode for the board", "backlog", null),
-    new("FLOW-18", "Slow search on large workspaces", "inReview", "Ahmed Khan"),
-    new("FLOW-21", "Onboarding emails in Danish", "todo", "Sofie Larsen"),
-    new("FLOW-23", "Payment page crashes on mobile", "todo", null),
-    new("FLOW-27", "Rate limiting for the public API", "backlog", null),
-    new("FLOW-30", "Upgrade to .NET 10", "done", "Jonas Nielsen"),
+    new("KUP-12", "Login fails with SSO on Safari", "inProgress", "Mette Hansen"),
+    new("KUP-14", "Export workspace to JSON", "todo", "Jonas Nielsen"),
+    new("KUP-15", "Dark mode for the board", "backlog", null),
+    new("KUP-18", "Slow search on large workspaces", "inReview", "Ahmed Khan"),
+    new("KUP-21", "Onboarding emails in Danish", "todo", "Sofie Larsen"),
+    new("KUP-23", "Payment page crashes on mobile", "todo", null),
+    new("KUP-27", "Rate limiting for the public API", "backlog", null),
+    new("KUP-30", "Upgrade to .NET 10", "done", "Jonas Nielsen"),
 ];
 string[] members = ["Mette Hansen", "Jonas Nielsen", "Ahmed Khan", "Sofie Larsen", "Niels"];
 string[] sprints = ["Sprint 14 (current)", "Sprint 15 (next)"];
@@ -53,38 +53,38 @@ string[] next = ["next", "Sprint 15"]; string[] current = ["current", "Sprint 14
 Case[] cases =
 [
     // English
-    new("en-clear-sprint", "en", P, [], "Okay, let's move FLOW-12 to the next sprint.", [E(ops.Sprint, "FLOW-12", next)]),
-    new("en-clear-done", "en", S, [], "FLOW-18 is done, Ahmed merged it this morning.", [E(ops.State, "FLOW-18", "done")]),
+    new("en-clear-sprint", "en", P, [], "Okay, let's move KUP-12 to the next sprint.", [E(ops.Sprint, "KUP-12", next)]),
+    new("en-clear-done", "en", S, [], "KUP-18 is done, Ahmed merged it this morning.", [E(ops.State, "KUP-18", "done")]),
     new("en-future-noop", "en", S, [], "The Safari login thing, I'm still on it, should be ready for review by tomorrow.", []),
-    new("en-assign-by-title", "en", P, [], "Let's give the mobile payment crash to Jonas.", [E(ops.Assignee, "FLOW-23", "Jonas")]),
-    new("en-estimate-days", "en", R, [], "Dark mode, I'd say two days of work. Let's put that down.", [E(ops.Estimate, "FLOW-15", "16")]),
-    new("en-cancel", "en", P, [], "We don't need rate limiting before launch, let's just drop that ticket.", [E(ops.State, "FLOW-27", "canceled")]),
-    new("en-comment", "en", S, [], "Add a note on the search one: it's only slow above ten thousand issues.", [E(ops.Comment, "FLOW-18", "*")]),
+    new("en-assign-by-title", "en", P, [], "Let's give the mobile payment crash to Jonas.", [E(ops.Assignee, "KUP-23", "Jonas")]),
+    new("en-estimate-days", "en", R, [], "Dark mode, I'd say two days of work. Let's put that down.", [E(ops.Estimate, "KUP-15", "16")]),
+    new("en-cancel", "en", P, [], "We don't need rate limiting before launch, let's just drop that ticket.", [E(ops.State, "KUP-27", "canceled")]),
+    new("en-comment", "en", S, [], "Add a note on the search one: it's only slow above ten thousand issues.", [E(ops.Comment, "KUP-18", "*")]),
     new("en-create", "en", S, [], "We need a ticket for the CSV import failing on semicolons.", [E(ops.Create, "", "*")]),
     new("en-discussion-noop", "en", S, [], "Has anyone looked at why the build was red yesterday?", []),
-    new("en-anaphora", "en", S, ["We shipped the onboarding emails yesterday."], "So that one's done as well.", [E(ops.State, "FLOW-21", "done")]),
-    new("en-multi", "en", P, [], "Move dark mode into this sprint and give it to Sofie.", [E(ops.Sprint, "FLOW-15", current), E(ops.Assignee, "FLOW-15", "Sofie")]),
-    new("en-unassign", "en", S, [], "Ahmed is on holiday for two weeks, so take him off the search issue for now.", [E(ops.Assignee, "FLOW-18", "none")]),
-    new("en-stt-key", "en", S, [], "flow twenty one is done.", [E(ops.State, "FLOW-21", "done")]),
-    new("en-two-issues", "en", P, [], "Push the export and the onboarding emails to sprint 15.", [E(ops.Sprint, "FLOW-14", next), E(ops.Sprint, "FLOW-21", next)]),
-    new("en-negation-noop", "en", P, [], "No, don't move FLOW-12, leave it where it is.", []),
+    new("en-anaphora", "en", S, ["We shipped the onboarding emails yesterday."], "So that one's done as well.", [E(ops.State, "KUP-21", "done")]),
+    new("en-multi", "en", P, [], "Move dark mode into this sprint and give it to Sofie.", [E(ops.Sprint, "KUP-15", current), E(ops.Assignee, "KUP-15", "Sofie")]),
+    new("en-unassign", "en", S, [], "Ahmed is on holiday for two weeks, so take him off the search issue for now.", [E(ops.Assignee, "KUP-18", "none")]),
+    new("en-stt-key", "en", S, [], "kup twenty one is done.", [E(ops.State, "KUP-21", "done")]),
+    new("en-two-issues", "en", P, [], "Push the export and the onboarding emails to sprint 15.", [E(ops.Sprint, "KUP-14", next), E(ops.Sprint, "KUP-21", next)]),
+    new("en-negation-noop", "en", P, [], "No, don't move KUP-12, leave it where it is.", []),
     // Danish
-    new("da-clear-sprint", "da", P, [], "Okay, vi flytter FLOW-12 til næste sprint.", [E(ops.Sprint, "FLOW-12", next)]),
-    new("da-clear-done", "da", S, [], "FLOW-14 er færdig, den blev merget i går.", [E(ops.State, "FLOW-14", "done")]),
-    new("da-review-by-title", "da", S, [], "Login-fejlen på Safari, den er i review nu.", [E(ops.State, "FLOW-12", "inReview")]),
-    new("da-assign", "da", P, ["Kan Sofie tage betalingsfejlen på mobil?"], "Ja, det gør hun, giv den til hende.", [E(ops.Assignee, "FLOW-23", "Sofie")]),
-    new("da-estimate", "da", R, [], "Dark mode er nok en tre timers opgave, skriv det på.", [E(ops.Estimate, "FLOW-15", "3")]),
+    new("da-clear-sprint", "da", P, [], "Okay, vi flytter KUP-12 til næste sprint.", [E(ops.Sprint, "KUP-12", next)]),
+    new("da-clear-done", "da", S, [], "KUP-14 er færdig, den blev merget i går.", [E(ops.State, "KUP-14", "done")]),
+    new("da-review-by-title", "da", S, [], "Login-fejlen på Safari, den er i review nu.", [E(ops.State, "KUP-12", "inReview")]),
+    new("da-assign", "da", P, ["Kan Sofie tage betalingsfejlen på mobil?"], "Ja, det gør hun, giv den til hende.", [E(ops.Assignee, "KUP-23", "Sofie")]),
+    new("da-estimate", "da", R, [], "Dark mode er nok en tre timers opgave, skriv det på.", [E(ops.Estimate, "KUP-15", "3")]),
     new("da-create", "da", S, [], "Vi skal have en opgave om at CSV-importen fejler med semikolon.", [E(ops.Create, "", "*")]),
     new("da-question-noop", "da", S, [], "Hvad med eksporten, er der nogen der ved hvor langt den er?", []),
-    new("da-codeswitch-cancel", "da", P, [], "Den der rate limiting story, den skal vi bare cancel'e.", [E(ops.State, "FLOW-27", "canceled")]),
-    new("da-comment", "da", S, [], "Skriv en kommentar på søgningen: det er kun langsomt over ti tusind sager.", [E(ops.Comment, "FLOW-18", "*")]),
-    new("da-start", "da", S, ["Jonas, kan du starte på eksporten i dag?"], "Jo, jeg går i gang med den i dag.", [E(ops.State, "FLOW-14", "inProgress")]),
-    new("da-multi", "da", P, [], "Lad os tage dark mode ind i den her sprint og give den til Ahmed.", [E(ops.Sprint, "FLOW-15", current), E(ops.Assignee, "FLOW-15", "Ahmed")]),
-    new("da-stt-key", "da", S, [], "flow 12 er færdig nu.", [E(ops.State, "FLOW-12", "done")]),
+    new("da-codeswitch-cancel", "da", P, [], "Den der rate limiting story, den skal vi bare cancel'e.", [E(ops.State, "KUP-27", "canceled")]),
+    new("da-comment", "da", S, [], "Skriv en kommentar på søgningen: det er kun langsomt over ti tusind sager.", [E(ops.Comment, "KUP-18", "*")]),
+    new("da-start", "da", S, ["Jonas, kan du starte på eksporten i dag?"], "Jo, jeg går i gang med den i dag.", [E(ops.State, "KUP-14", "inProgress")]),
+    new("da-multi", "da", P, [], "Lad os tage dark mode ind i den her sprint og give den til Ahmed.", [E(ops.Sprint, "KUP-15", current), E(ops.Assignee, "KUP-15", "Ahmed")]),
+    new("da-stt-key", "da", S, [], "kup 12 er færdig nu.", [E(ops.State, "KUP-12", "done")]),
     new("da-discussion-noop", "da", R, [], "Jeg synes vi skal snakke om, om vi overhovedet skal have dark mode.", []),
-    new("da-unassign", "da", S, [], "Mette er syg resten af ugen, så tag hende af Safari-sagen.", [E(ops.Assignee, "FLOW-12", "none")]),
+    new("da-unassign", "da", S, [], "Mette er syg resten af ugen, så tag hende af Safari-sagen.", [E(ops.Assignee, "KUP-12", "none")]),
     // "sæt det på" could also mean "add it to the sprint"; a sprint guess here is a weak miss, not a dangerous one.
-    new("da-estimate-day", "da", R, [], "Betalingssiden, det er en dags arbejde, sæt det på.", [E(ops.Estimate, "FLOW-23", "8")]),
+    new("da-estimate-day", "da", R, [], "Betalingssiden, det er en dags arbejde, sæt det på.", [E(ops.Estimate, "KUP-23", "8")]),
 ];
 
 var titles = issues.ToDictionary(i => i.Key, i => i.Title);
@@ -93,7 +93,7 @@ string[] filler = ["Audit log retention setting", "Keyboard shortcut for new iss
     "Sprint burndown chart", "Bulk edit labels", "Markdown tables in comments", "Invite link expiry", "Board swimlanes by assignee",
     "CLI shell completion", "MCP tool for sprint planning", "Email digest of mentions", "Issue templates per project",
     "Rename a project key", "Search by label", "Time zone in due dates"];
-var hints = issues.Concat(Enumerable.Range(0, 52).Select(i => new IssueHint($"FLOW-{40 + i}",
+var hints = issues.Concat(Enumerable.Range(0, 52).Select(i => new IssueHint($"KUP-{40 + i}",
     $"{filler[i % filler.Length]}{(i >= filler.Length ? $" ({i / filler.Length + 1})" : "")}", i % 3 == 0 ? "todo" : "backlog", null)))
     .OrderBy(h => h.Key, StringComparer.Ordinal).ToList();
 

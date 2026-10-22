@@ -29,7 +29,7 @@ internal static class CommentCommands
 
     private static Command Activity()
     {
-        var key = new Argument<string>("key") { Description = "Issue key, e.g. FLOW-12." };
+        var key = new Argument<string>("key") { Description = "Issue key, e.g. KUP-12." };
         return new ApiCommand("activity", "Show an issue's history and comments.", "listIssueActivity") { key }.Handle(async (c, ct) =>
         {
             var items = await (await c.InWorkspaceAsync(ct)).Issues[c.Get(key)!].Activity.GetAsync(cancellationToken: ct) ?? [];

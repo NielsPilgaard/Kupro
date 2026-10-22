@@ -13,7 +13,7 @@ purpose: 'Implementation spec for task 015.'
 
 ## TL;DR
 
-Listen to a meeting, propose ticket actions ("move FLOW-12 to next sprint"), and apply them. Two modes: **suggest**
+Listen to a meeting, propose ticket actions ("move KUP-12 to next sprint"), and apply them. Two modes: **suggest**
 (default — every action waits for approval, grouped by ticket) and **full auto** (applies at once, undoable). Users
 will not trust this at first: suggest mode must prove itself before anyone turns on full auto.
 
@@ -79,10 +79,10 @@ See [product.md](../docs/product.md) (v1 scope), [ADR-001](../docs/adr/ADR-001-a
 
 ## Acceptance criteria
 
-- [x] In suggest mode, saying "move FLOW-12 to next sprint" in a meeting produces a proposal grouped under FLOW-12 that
+- [x] In suggest mode, saying "move KUP-12 to next sprint" in a meeting produces a proposal grouped under KUP-12 that
       shows the snippet and the diff, and changes nothing until approved.
 - [x] Approve, edit and reject work per proposal; "approve all" works per ticket.
-- [ ] In full auto, the same sentence moves FLOW-12 within 5 s of speech, and undo reverts it.
+- [ ] In full auto, the same sentence moves KUP-12 within 5 s of speech, and undo reverts it.
 - [x] In full auto, an ambiguous or low-confidence proposal waits for approval.
 - [x] Only admins can enable full auto; the toggle shows approval stats from suggest-mode history.
 - [x] Every agent change appears in the activity feed with actor, session and transcript snippet.

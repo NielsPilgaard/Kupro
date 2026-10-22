@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Kupro.Api.Features.Issues;
 
-/// <param name="Project">Project key, e.g. <c>FLOW</c>.</param>
+/// <param name="Project">Project key, e.g. <c>KUP</c>.</param>
 /// <param name="Title">One-line title.</param>
 /// <param name="Type">Epic, feature or task (default).</param>
 /// <param name="Description">Markdown.</param>
@@ -133,7 +133,7 @@ public sealed class IssueQuery
 {
     /// <summary>
     /// Search: free text (typo tolerant, English and Danish stemming) plus filters such as
-    /// <c>type:epic state:todo,inProgress assignee:me sprint:current label:bug project:FLOW parent:FLOW-1</c>.
+    /// <c>type:epic state:todo,inProgress assignee:me sprint:current label:bug project:KUP parent:KUP-1</c>.
     /// Combines with the other parameters by AND.
     /// </summary>
     [FromQuery(Name = "q"), StringLength(500)]

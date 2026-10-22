@@ -41,12 +41,12 @@ public sealed class WorkspaceTests(PostgresFixture postgres) : ApiTestBase(postg
     {
         var (alice, a, _) = await NewWorkspaceAsync("A");
         var (bob, b, _) = await NewWorkspaceAsync("B");
-        await CreateProjectAsync(alice, a.Slug, "FLOW", "Alice's flow");
-        await CreateProjectAsync(bob, b.Slug, "FLOW", "Bob's flow");
+        await CreateProjectAsync(alice, a.Slug, "KUP", "Alice's flow");
+        await CreateProjectAsync(bob, b.Slug, "KUP", "Bob's flow");
 
         await ShouldBeProblemAsync(await bob.GetAsync($"/api/v1/workspaces/{a.Slug}", Ct), HttpStatusCode.NotFound, "workspace_not_found");
         await ShouldBeProblemAsync(await bob.GetAsync($"/api/v1/workspaces/{a.Slug}/projects", Ct), HttpStatusCode.NotFound, "workspace_not_found");
-        await ShouldBeProblemAsync(await bob.GetAsync($"/api/v1/workspaces/{a.Slug}/projects/FLOW", Ct), HttpStatusCode.NotFound, "workspace_not_found");
+        await ShouldBeProblemAsync(await bob.GetAsync($"/api/v1/workspaces/{a.Slug}/projects/KUP", Ct), HttpStatusCode.NotFound, "workspace_not_found");
         await ShouldBeProblemAsync(await bob.GetAsync($"/api/v1/workspaces/{a.Slug}/members", Ct), HttpStatusCode.NotFound, "workspace_not_found");
 
         var aliceProjects = await GetAsync<List<ProjectResponse>>(alice, $"/api/v1/workspaces/{a.Slug}/projects");
@@ -79,10 +79,10 @@ public sealed class WorkspaceTests(PostgresFixture postgres) : ApiTestBase(postg
     public async Task Project_key_is_unique_per_workspace()
     {
         var (client, workspace, _) = await NewWorkspaceAsync();
-        await CreateProjectAsync(client, workspace.Slug, "FLOW", "First");
+        await CreateProjectAsync(client, workspace.Slug, "KUP", "First");
 
         var response = await client.PostAsJsonAsync(
-            $"/api/v1/workspaces/{workspace.Slug}/projects", new CreateProjectRequest("FLOW", "Second"), Json.Options, Ct);
+            $"/api/v1/workspaces/{workspace.Slug}/projects", new CreateProjectRequest("KUP", "Second"), Json.Options, Ct);
 
         await ShouldBeProblemAsync(response, HttpStatusCode.Conflict, "project_key_taken");
     }
@@ -91,12 +91,12 @@ public sealed class WorkspaceTests(PostgresFixture postgres) : ApiTestBase(postg
     public async Task Project_key_can_change_while_project_has_no_issues()
     {
         var (client, workspace, _) = await NewWorkspaceAsync();
-        await CreateProjectAsync(client, workspace.Slug, "FLW", "Flow");
+        await CreateProjectAsync(client, workspace.Slug, "KPR", "Kupro");
 
         var updated = await ReadAsync<ProjectResponse>(await client.PatchAsJsonAsync(
-            $"/api/v1/workspaces/{workspace.Slug}/projects/flw", new UpdateProjectRequest(Key: "FLOW"), Json.Options, Ct));
+            $"/api/v1/workspaces/{workspace.Slug}/projects/kpr", new UpdateProjectRequest(Key: "KUP"), Json.Options, Ct));
 
-        updated.Key.ShouldBe("FLOW");
+        updated.Key.ShouldBe("KUP");
     }
 
     [Fact]

@@ -65,7 +65,7 @@ public sealed partial class KuproTools(
     [McpServerTool(Name = "create_project"), Description("Create a project. key: 2-10 uppercase letters/digits, starting with a letter.")]
     [CoversOperations("createProject")]
     public async Task<ProjectResponse> CreateProject(
-        [Description("Project key, e.g. FLOW.")] string key,
+        [Description("Project key, e.g. KUP.")] string key,
         [Description("Project name.")] string name,
         [Description(WorkspaceHelp)] string? workspace = null,
         CancellationToken ct = default)
@@ -129,7 +129,7 @@ public sealed partial class KuproTools(
         return Unwrap(result);
     }
 
-    [McpServerTool(Name = "get_issue", ReadOnly = true), Description("One issue by key (e.g. FLOW-12): description, children, relations, labels, effort.")]
+    [McpServerTool(Name = "get_issue", ReadOnly = true), Description("One issue by key (e.g. KUP-12): description, children, relations, labels, effort.")]
     [CoversOperations("getIssue")]
     public async Task<IssueDetail> GetIssue([Description("Issue key.")] string key, [Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
     {

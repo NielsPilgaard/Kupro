@@ -31,9 +31,9 @@ public sealed class RealtimeTests(PostgresFixture postgres) : ApiTestBase(postgr
     {
         await base.InitializeAsync();
         (_client, _workspace, _user) = await NewWorkspaceAsync();
-        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("FLOW", "Kupro"), Json.Options, Ct),
+        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("KUP", "Kupro"), Json.Options, Ct),
             HttpStatusCode.Created);
-        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("FLOW", "Live"), Json.Options, Ct),
+        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("KUP", "Live"), Json.Options, Ct),
             HttpStatusCode.Created);
     }
 
@@ -56,7 +56,7 @@ public sealed class RealtimeTests(PostgresFixture postgres) : ApiTestBase(postgr
 
         var agent = Factory.CreateBearerClient((await NewTokenAsync(_client, new("cli", ApiTokenKind.Agent, "cli-bot", null, _workspace.Slug))).Secret);
         agent.DefaultRequestHeaders.Add("X-Kupro-Client", "cli");
-        (await agent.PatchAsJsonAsync($"{Ws}/issues/FLOW-1", new UpdateIssueRequest(State: IssueState.InProgress), Json.Options, Ct))
+        (await agent.PatchAsJsonAsync($"{Ws}/issues/KUP-1", new UpdateIssueRequest(State: IssueState.InProgress), Json.Options, Ct))
             .EnsureSuccessStatusCode();
 
         var change = await received.WaitAsync(Wait, Ct);
@@ -73,12 +73,12 @@ public sealed class RealtimeTests(PostgresFixture postgres) : ApiTestBase(postgr
         browser.On<ChangedEvent>("Changed", changes.Enqueue);
         await browser.InvokeAsync<bool>("Join", _workspace.Slug, Ct);
 
-        await _client.PostAsJsonAsync($"{Ws}/issues/FLOW-1/comments", new CommentRequest("hi"), Json.Options, Ct);
+        await _client.PostAsJsonAsync($"{Ws}/issues/KUP-1/comments", new CommentRequest("hi"), Json.Options, Ct);
         await _client.PostAsJsonAsync($"{Ws}/sprints",
-            new Api.Features.Sprints.CreateSprintRequest("FLOW", "S1", new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 16)), Json.Options, Ct);
+            new Api.Features.Sprints.CreateSprintRequest("KUP", "S1", new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 16)), Json.Options, Ct);
 
         await WaitUntilAsync(() => changes.Count >= 2);
-        changes.ShouldContain(c => c.Topic == ChangeTopic.Issue && c.IssueKey == "FLOW-1");
+        changes.ShouldContain(c => c.Topic == ChangeTopic.Issue && c.IssueKey == "KUP-1");
         changes.ShouldContain(c => c.Topic == ChangeTopic.Sprints);
     }
 
@@ -92,7 +92,7 @@ public sealed class RealtimeTests(PostgresFixture postgres) : ApiTestBase(postgr
 
         (await connection.InvokeAsync<bool>("Join", _workspace.Slug, Ct)).ShouldBeFalse();
         (await connection.InvokeAsync<bool>("Join", otherWorkspace.Slug, Ct)).ShouldBeTrue();
-        (await _client.PatchAsJsonAsync($"{Ws}/issues/FLOW-1", new UpdateIssueRequest(Title: "Moved"), Json.Options, Ct)).EnsureSuccessStatusCode();
+        (await _client.PatchAsJsonAsync($"{Ws}/issues/KUP-1", new UpdateIssueRequest(Title: "Moved"), Json.Options, Ct)).EnsureSuccessStatusCode();
 
         await Task.Delay(300, Ct);
         heard.ShouldBeFalse();

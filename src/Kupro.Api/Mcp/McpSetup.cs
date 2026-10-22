@@ -14,7 +14,7 @@ public static class McpSetup
 
     private const string Instructions =
         "Kupro is an issue tracker. Work happens in a workspace; issues live in projects and are addressed by key " +
-        "(FLOW-12). Types: epic > feature > task. States: backlog, todo, inProgress, inReview, done, canceled. " +
+        "(KUP-12). Types: epic > feature > task. States: backlog, todo, inProgress, inReview, done, canceled. " +
         "Effort is in hours. Start with list_workspaces and list_projects; use search_issues before creating duplicates.";
 
     public static IHostApplicationBuilder AddKuproMcp(this IHostApplicationBuilder builder)

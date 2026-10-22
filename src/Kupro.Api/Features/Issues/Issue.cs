@@ -51,7 +51,7 @@ public sealed class Issue : ITenantOwned
     public Guid ProjectId { get; set; }
     public int Number { get; set; }
 
-    /// <summary><c>FLOW-123</c>. Stable: project keys freeze once a project has issues.</summary>
+    /// <summary><c>KUP-123</c>. Stable: project keys freeze once a project has issues.</summary>
     public required string Key { get; set; }
 
     public IssueType Type { get; set; }

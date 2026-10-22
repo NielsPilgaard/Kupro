@@ -23,9 +23,9 @@ public sealed class AttachmentTests(PostgresFixture postgres, StorageFixture sto
     {
         await base.InitializeAsync();
         (_client, _workspace, _) = await NewWorkspaceAsync();
-        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("FLOW", "Kupro"), Json.Options, Ct),
+        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("KUP", "Kupro"), Json.Options, Ct),
             HttpStatusCode.Created);
-        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("FLOW", "Screenshot"), Json.Options, Ct),
+        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("KUP", "Screenshot"), Json.Options, Ct),
             HttpStatusCode.Created);
     }
 
@@ -38,9 +38,9 @@ public sealed class AttachmentTests(PostgresFixture postgres, StorageFixture sto
     [Fact]
     public async Task Upload_complete_and_download_round_trip()
     {
-        var upload = await CreateAsync("screen shot.png", "image/png", Png.Length, "flow-1");
+        var upload = await CreateAsync("screen shot.png", "image/png", Png.Length, "kup-1");
         upload.Attachment.Ready.ShouldBeFalse();
-        upload.Attachment.IssueKey.ShouldBe("FLOW-1");
+        upload.Attachment.IssueKey.ShouldBe("KUP-1");
         upload.Attachment.Markdown.ShouldBe($"![screen shot.png](attachment:{upload.Attachment.Id})");
 
         await PutAsync(upload.UploadUrl, Png, "image/png");

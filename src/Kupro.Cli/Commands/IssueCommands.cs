@@ -224,7 +224,7 @@ internal static class IssueCommands
 
     private static Command UpdateMany()
     {
-        var file = FileOption("JSON: { \"items\": [{ \"key\": \"FLOW-1\", \"changes\": UpdateIssueRequest }, ...] } (up to 100).");
+        var file = FileOption("JSON: { \"items\": [{ \"key\": \"KUP-1\", \"changes\": UpdateIssueRequest }, ...] } (up to 100).");
         return new ApiCommand("update-many", "Apply up to 100 updates from JSON, all-or-nothing.", "updateIssues") { file }
             .Handle(async (c, ct) =>
             {
@@ -268,7 +268,7 @@ internal static class IssueCommands
         var key = KeyArgument();
         var type = Cli.EnumArgument<RelationKind>("relation", "How the issue relates to the target");
         var target = new Argument<string>("target") { Description = "The other issue's key." };
-        return new ApiCommand("relate", "Relate two issues, e.g. `issue relate FLOW-1 blocks FLOW-2`.", "addIssueRelation")
+        return new ApiCommand("relate", "Relate two issues, e.g. `issue relate KUP-1 blocks KUP-2`.", "addIssueRelation")
             { key, type, target }.Handle(async (c, ct) =>
         {
             var relation = await (await c.InWorkspaceAsync(ct)).Issues[c.Get(key)].Relations.PostAsync(
@@ -288,7 +288,7 @@ internal static class IssueCommands
         });
     }
 
-    private static Argument<string> KeyArgument() => new("key") { Description = "Issue key, e.g. FLOW-12." };
+    private static Argument<string> KeyArgument() => new("key") { Description = "Issue key, e.g. KUP-12." };
 
     private static Option<string> FileOption(string description) =>
         new("--file", "-f") { Description = $"Path, or - for stdin. {description}", Required = true };

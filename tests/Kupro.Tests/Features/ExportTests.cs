@@ -38,17 +38,17 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
     {
         await base.InitializeAsync();
         (_client, _workspace, _owner) = await NewWorkspaceAsync("Kobber & Søn");
-        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("FLOW", "Kupro"), Json.Options, Ct),
+        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync($"{Ws}/projects", new CreateProjectRequest("KUP", "Kupro"), Json.Options, Ct),
             HttpStatusCode.Created);
         await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues",
-            new CreateIssueRequest("FLOW", "Rødgrød med fløde, \"quoted\", and a comma"), Json.Options, Ct), HttpStatusCode.Created);
-        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("FLOW", "=HYPERLINK(\"x\")"), Json.Options, Ct),
+            new CreateIssueRequest("KUP", "Rødgrød med fløde, \"quoted\", and a comma"), Json.Options, Ct), HttpStatusCode.Created);
+        await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync($"{Ws}/issues", new CreateIssueRequest("KUP", "=HYPERLINK(\"x\")"), Json.Options, Ct),
             HttpStatusCode.Created);
-        await ReadAsync<CommentResponse>(await _client.PostAsJsonAsync($"{Ws}/issues/FLOW-1/comments", new CommentRequest("Første kommentar\nmed to linjer"),
+        await ReadAsync<CommentResponse>(await _client.PostAsJsonAsync($"{Ws}/issues/KUP-1/comments", new CommentRequest("Første kommentar\nmed to linjer"),
             Json.Options, Ct), HttpStatusCode.Created);
 
         var upload = await ReadAsync<AttachmentUpload>(await _client.PostAsJsonAsync($"{Ws}/attachments",
-            new CreateAttachmentRequest("skærm.png", "image/png", Png.Length, "FLOW-1"), Json.Options, Ct), HttpStatusCode.Created);
+            new CreateAttachmentRequest("skærm.png", "image/png", Png.Length, "KUP-1"), Json.Options, Ct), HttpStatusCode.Created);
         using var content = new ByteArrayContent(Png);
         content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         (await _storage.PutAsync(upload.UploadUrl, content, Ct)).EnsureSuccessStatusCode();
@@ -94,11 +94,11 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
         var issues = await ReadEntryAsync(zip, "issues.csv", bom: true);
         var lines = issues.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
         lines[0].ShouldStartWith("key,type,title,state");
-        lines[1].ShouldStartWith("FLOW-1,task,\"Rødgrød med fløde, \"\"quoted\"\", and a comma\",");
-        lines[2].ShouldStartWith("FLOW-2,task,\"'=HYPERLINK(\"\"x\"\")\",", Case.Sensitive, "formulas are neutralised");
+        lines[1].ShouldStartWith("KUP-1,task,\"Rødgrød med fløde, \"\"quoted\"\", and a comma\",");
+        lines[2].ShouldStartWith("KUP-2,task,\"'=HYPERLINK(\"\"x\"\")\",", Case.Sensitive, "formulas are neutralised");
         (await ReadEntryAsync(zip, "comments.csv", bom: true)).ShouldContain("\"Første kommentar\nmed to linjer\"");
 
-        var file = zip.Entries.Single(e => e.FullName.StartsWith("attachments/FLOW-1/", StringComparison.Ordinal));
+        var file = zip.Entries.Single(e => e.FullName.StartsWith("attachments/KUP-1/", StringComparison.Ordinal));
         file.FullName.ShouldEndWith("-skærm.png");
         await using var bytes = await file.OpenAsync(Ct);
         using var copy = new MemoryStream();

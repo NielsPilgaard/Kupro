@@ -237,7 +237,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
 }
 
 /// <summary>
-/// Offline extractor for clear English and Danish commands ("move FLOW-12 to next sprint", "FLOW-3 er færdig"). Used
+/// Offline extractor for clear English and Danish commands ("move KUP-12 to next sprint", "KUP-3 er færdig"). Used
 /// when no LLM is configured, so dev, E2E and self-hosters without a model still get proposals.
 /// </summary>
 public sealed partial class KeywordProposalExtractor : IProposalExtractor

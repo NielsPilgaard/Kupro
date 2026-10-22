@@ -17,7 +17,7 @@ export interface RouterContext {
 }
 
 /**
- * `?issue=FLOW-12` opens the detail panel over whatever view is showing, so every issue view is linkable;
+ * `?issue=KUP-12` opens the detail panel over whatever view is showing, so every issue view is linkable;
  * `?meeting=<id>` opens the meeting agent's panel (task 015) the same way.
  */
 const withIssue = (search: Record<string, unknown>): { issue?: string; meeting?: string } => ({

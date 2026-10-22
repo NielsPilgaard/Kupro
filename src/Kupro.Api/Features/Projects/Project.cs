@@ -23,7 +23,7 @@ public sealed class Project : ITenantOwned
     public Guid Id { get; set; }
     public Guid WorkspaceId { get; set; }
 
-    /// <summary>Issue key prefix, e.g. <c>FLOW</c> in <c>FLOW-123</c>. Unique per workspace; frozen once issues exist.</summary>
+    /// <summary>Issue key prefix, e.g. <c>KUP</c> in <c>KUP-123</c>. Unique per workspace; frozen once issues exist.</summary>
     public required string Key { get; set; }
 
     public required string Name { get; set; }

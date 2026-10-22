@@ -957,7 +957,7 @@ public sealed partial class MeetingService(
             .ToList();
     }
 
-    /// <summary>"flow 12" and "flow-12" in speech become FLOW-12.</summary>
+    /// <summary>"kup 12" and "kup-12" in speech become KUP-12.</summary>
     private static string NormalizeKeys(string text, string projectKey) =>
         Regex.Replace(text, $@"\b{Regex.Escape(projectKey)}[\s-]?(\d+)\b", m => $"{projectKey}-{m.Groups[1].Value}",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));

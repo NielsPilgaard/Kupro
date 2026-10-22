@@ -15,7 +15,7 @@ public sealed class ProposalExtractorTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static readonly ExtractionContext Context = new("en", MeetingType.Standup,
-        [new IssueHint("FLOW-15", "Dark mode for the board", "backlog", null)], ["Sofie Larsen"], ["Sprint 15"], [], "Dark mode is two days.");
+        [new IssueHint("KUP-15", "Dark mode for the board", "backlog", null)], ["Sofie Larsen"], ["Sprint 15"], [], "Dark mode is two days.");
 
     [Fact]
     public async Task Request_caps_output_and_names_the_meeting_type()
@@ -53,7 +53,7 @@ public sealed class ProposalExtractorTests
     [Fact]
     public async Task Output_cut_off_at_the_token_cap_gives_no_proposals()
     {
-        var model = new FakeModel("""{"actions":[{"confidence":1,"issue":"FLOW-15","operation":"estimate","snippet":"two days","value":     """);
+        var model = new FakeModel("""{"actions":[{"confidence":1,"issue":"KUP-15","operation":"estimate","snippet":"two days","value":     """);
 
         (await Extractor(model).ExtractAsync(Context, Ct)).ShouldBeEmpty();
     }
@@ -61,7 +61,7 @@ public sealed class ProposalExtractorTests
     [Fact]
     public async Task Quoted_values_are_unwrapped()
     {
-        var model = new FakeModel("""{"actions":[{"confidence":0.9,"issue":"FLOW-15","operation":"state","snippet":"done","value":"\"done\""}]}""");
+        var model = new FakeModel("""{"actions":[{"confidence":0.9,"issue":"KUP-15","operation":"state","snippet":"done","value":"\"done\""}]}""");
 
         var action = (await Extractor(model).ExtractAsync(Context, Ct)).ShouldHaveSingleItem();
 

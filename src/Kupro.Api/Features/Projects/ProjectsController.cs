@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Kupro.Api.Features.Projects;
 
-/// <summary>Projects in a workspace. Addressed by key (<c>FLOW</c>).</summary>
+/// <summary>Projects in a workspace. Addressed by key (<c>KUP</c>).</summary>
 [ApiController]
 [Route("api/v1/workspaces/{workspace}/projects")]
 public sealed class ProjectsController(ProjectService projects) : ControllerBase

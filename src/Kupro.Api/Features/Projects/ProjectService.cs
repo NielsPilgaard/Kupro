@@ -7,7 +7,7 @@ using Npgsql;
 
 namespace Kupro.Api.Features.Projects;
 
-/// <param name="Key">Issue key prefix: 2-10 uppercase letters/digits starting with a letter, e.g. <c>FLOW</c>.</param>
+/// <param name="Key">Issue key prefix: 2-10 uppercase letters/digits starting with a letter, e.g. <c>KUP</c>.</param>
 /// <param name="Name">Project name.</param>
 /// <param name="Description">Optional Markdown description.</param>
 /// <param name="Color">Colour in lists and the delivery plan; picked automatically when omitted.</param>
@@ -110,7 +110,7 @@ public sealed class ProjectService(
 
         if (request.Key is { } newKey && newKey != project.Key)
         {
-            // Issue keys (FLOW-12) are permanent references in commits, docs and agent memory.
+            // Issue keys (KUP-12) are permanent references in commits, docs and agent memory.
             if (project.IssueCounter > 0)
             {
                 return (ProjectChangeResult.KeyLocked, null);

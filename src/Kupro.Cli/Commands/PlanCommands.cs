@@ -66,7 +66,7 @@ internal static class PlanCommands
 
         var steps = new Argument<string[]>("steps") { Description = "Steps like 3@2027-01 5@2027-07 (people@month). None clears." };
         steps.Arity = ArgumentArity.ZeroOrMore;
-        capacity.Subcommands.Add(new ApiCommand("set", "Replace a project's headcount steps, e.g. `capacity set FLOW 3@2027-01 5@2027-07`.",
+        capacity.Subcommands.Add(new ApiCommand("set", "Replace a project's headcount steps, e.g. `capacity set KUP 3@2027-01 5@2027-07`.",
             "setProjectCapacity") { key, steps }.Handle(async (c, ct) =>
         {
             var entries = (c.Get(steps) ?? []).Select(ParseStep).ToList();

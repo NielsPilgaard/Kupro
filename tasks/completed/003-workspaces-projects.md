@@ -14,7 +14,7 @@ See [ADR-009](../../docs/adr/ADR-009-multi-tenancy.md), [ADR-013](../../docs/adr
 
 ## Scope
 
-- Entities: Workspace, Member (kind: human/agent, role, status: invited/active/deactivated), Project (name, key e.g. `FLOW`).
+- Entities: Workspace, Member (kind: human/agent, role, status: invited/active/deactivated), Project (name, key e.g. `KUP`).
 - EF global query filter by workspace; cross-tenant leak tests.
 - Invite by email (sending stubbed/logged until email vendor chosen); invitee is `invited` until they accept.
 - Deactivate member (never delete): access and API tokens revoked, history and attribution kept.

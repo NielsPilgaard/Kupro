@@ -22,7 +22,7 @@ internal static class ProjectCommands
             await c.Out.ListAsync(projects, ["KEY", "ISSUES", "NAME"], p => [p.Key, p.IssueCount?.ToString(), p.Name]);
         }));
 
-        var key = new Argument<string>("key") { Description = "Project key, e.g. FLOW." };
+        var key = new Argument<string>("key") { Description = "Project key, e.g. KUP." };
         project.Subcommands.Add(new ApiCommand("get", "Show a project.", "getProject") { key }.Handle(async (c, ct) =>
         {
             var p = await (await c.InWorkspaceAsync(ct)).Projects[c.Get(key)].GetAsync(cancellationToken: ct);
