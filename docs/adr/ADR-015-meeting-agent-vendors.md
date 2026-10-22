@@ -97,7 +97,7 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
   transcription to Hviske (decision 4).
 - **IMP-006**: Extraction model spike, run 2026-10-15 to 2026-10-17 with typed samples (the IMP-001 recordings are
   still to come). 30 Danish and English utterances, including discussion that must produce nothing, issues named by
-  title, "that one", code-switching and keys as Whisper writes them ("flow 12"), through the production extractor
+  title, "that one", code-switching and keys as Whisper writes them ("kup 12"), through the production extractor
   against all 12 Scaleway chat models. Cost assumes 400 calls an hour and the production context of 60 issues
   (~2,000 input tokens per call).
 

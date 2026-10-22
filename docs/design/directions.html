@@ -447,29 +447,29 @@ const STR = {
  en:{inbox:'Inbox',my:'My issues',plan:'Delivery plan',sprints:'Sprints',projects:'Projects',issues:'Issues',list:'List',board:'Board',planTab:'Plan',
      search:'Search or run a command',newI:'New issue',agents:'2 agents working',
      st_backlog:'Backlog',st_todo:'Todo',st_progress:'In Progress',st_review:'In Review',st_done:'Done',st_canceled:'Canceled',
-     toast:'moved FLOW-139 to In Review via MCP',ago:'2s ago',cap:'Capacity',capSub:'people needed vs. available',noplan:'No dated work in 2027',
-     cmdq:'move FLOW-12 to next sprint',cmd1:'Move FLOW-12 to Sprint 24',cmd1s:'14–27 Oct',cmd2:'Open FLOW-12',cmd3:'Assign FLOW-12 to triage-agent',cmd4:'Change state of FLOW-12…',cli:'Same action from the CLI',
+     toast:'moved KUP-139 to In Review via MCP',ago:'2s ago',cap:'Capacity',capSub:'people needed vs. available',noplan:'No dated work in 2027',
+     cmdq:'move KUP-12 to next sprint',cmd1:'Move KUP-12 to Sprint 24',cmd1s:'14–27 Oct',cmd2:'Open KUP-12',cmd3:'Assign KUP-12 to triage-agent',cmd4:'Change state of KUP-12…',cli:'Same action from the CLI',
      hrs:'h',planTitle:'Delivery plan',year:'2027',people:'people',
      months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],ms1:'Launch',ms2:'Atlas GA', ppl:n=>`${n} people from Jan`},
  da:{inbox:'Indbakke',my:'Mine opgaver',plan:'Leveranceplan',sprints:'Sprints',projects:'Projekter',issues:'Opgaver',list:'Liste',board:'Tavle',planTab:'Plan',
      search:'Søg eller kør en kommando',newI:'Ny opgave',agents:'2 agenter arbejder',
      st_backlog:'Backlog',st_todo:'Klar',st_progress:'I gang',st_review:'Til review',st_done:'Færdig',st_canceled:'Annulleret',
-     toast:'flyttede FLOW-139 til Til review via MCP',ago:'for 2 sek. siden',cap:'Kapacitet',capSub:'behov vs. tilgængelige personer',noplan:'Intet dateret arbejde i 2027',
-     cmdq:'flyt FLOW-12 til næste sprint',cmd1:'Flyt FLOW-12 til Sprint 24',cmd1s:'14.–27. okt.',cmd2:'Åbn FLOW-12',cmd3:'Tildel FLOW-12 til triage-agent',cmd4:'Skift status på FLOW-12…',cli:'Samme handling fra CLI’en',
+     toast:'flyttede KUP-139 til Til review via MCP',ago:'for 2 sek. siden',cap:'Kapacitet',capSub:'behov vs. tilgængelige personer',noplan:'Intet dateret arbejde i 2027',
+     cmdq:'flyt KUP-12 til næste sprint',cmd1:'Flyt KUP-12 til Sprint 24',cmd1s:'14.–27. okt.',cmd2:'Åbn KUP-12',cmd3:'Tildel KUP-12 til triage-agent',cmd4:'Skift status på KUP-12…',cli:'Samme handling fra CLI’en',
      hrs:' t',planTitle:'Leveranceplan',year:'2027',people:'personer',
      months:['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'],ms1:'Lancering',ms2:'Atlas GA', ppl:n=>`${n} personer fra jan`},
 };
 
 const ISSUES = [
- {k:'FLOW-142',t:'Optimistic rollback when a state change is rejected',ty:'task',st:'progress',lb:['web'],h:8,who:'NG'},
- {k:'FLOW-128',t:'Delivery plan capacity band',ty:'feature',st:'progress',lb:['plan'],h:40,who:'MK'},
- {k:'FLOW-139',t:'MCP tool: move issue to sprint',ty:'task',st:'review',lb:['mcp'],h:5,who:'agent'},
- {k:'FLOW-120',t:'Self-serve workspaces',ty:'epic',st:'todo',lb:[],h:160,who:'NG'},
- {k:'FLOW-151',t:'Danish translations for issue detail',ty:'task',st:'todo',lb:['i18n'],h:3,who:'agent'},
- {k:'FLOW-147',t:'Command palette fuzzy ranking',ty:'task',st:'todo',lb:['web'],h:6,who:'SL'},
- {k:'FLOW-155',t:'Board drag jitters on Firefox',ty:'task',st:'backlog',lb:['bug','web'],h:2,who:null},
- {k:'FLOW-133',t:'CLI: kupro issue list --json',ty:'task',st:'done',lb:['cli'],h:4,who:'agent'},
- {k:'FLOW-131',t:'Keycloak token exchange for MCP',ty:'task',st:'done',lb:['auth'],h:12,who:'MK'},
+ {k:'KUP-142',t:'Optimistic rollback when a state change is rejected',ty:'task',st:'progress',lb:['web'],h:8,who:'NG'},
+ {k:'KUP-128',t:'Delivery plan capacity band',ty:'feature',st:'progress',lb:['plan'],h:40,who:'MK'},
+ {k:'KUP-139',t:'MCP tool: move issue to sprint',ty:'task',st:'review',lb:['mcp'],h:5,who:'agent'},
+ {k:'KUP-120',t:'Self-serve workspaces',ty:'epic',st:'todo',lb:[],h:160,who:'NG'},
+ {k:'KUP-151',t:'Danish translations for issue detail',ty:'task',st:'todo',lb:['i18n'],h:3,who:'agent'},
+ {k:'KUP-147',t:'Command palette fuzzy ranking',ty:'task',st:'todo',lb:['web'],h:6,who:'SL'},
+ {k:'KUP-155',t:'Board drag jitters on Firefox',ty:'task',st:'backlog',lb:['bug','web'],h:2,who:null},
+ {k:'KUP-133',t:'CLI: kupro issue list --json',ty:'task',st:'done',lb:['cli'],h:4,who:'agent'},
+ {k:'KUP-131',t:'Keycloak token exchange for MCP',ty:'task',st:'done',lb:['auth'],h:12,who:'MK'},
 ];
 const LABEL_C = {web:'var(--prog)',plan:'var(--accInk)',mcp:'var(--rev)',i18n:'var(--warn)',bug:'var(--bad)',cli:'var(--mute)',auth:'var(--ok)'};
 const AV_C = {NG:'#7A5C3E',MK:'#3E6A7A',SL:'#6A3E7A'};
@@ -600,7 +600,7 @@ function listView(o){
     const rows=ISSUES.filter(i=>i.st===st); if(!rows.length) return '';
     const sum=rows.reduce((a,i)=>a+i.h,0);
     return `<div class="mk-gh">${stIcon(st,o.status==='bar'||o.status==='pill'?'dot':o.status)}<b>${T('st_'+st)}</b><span class="c">${rows.length}</span><span class="h mono">${hrs(sum)}</span></div>`+
-      rows.map(i=>`<div class="mk-row ${i.k==='FLOW-142'?'sel':''} ${st==='done'?'done':''}" style="--stc:var(--s-${st})">
+      rows.map(i=>`<div class="mk-row ${i.k==='KUP-142'?'sel':''} ${st==='done'?'done':''}" style="--stc:var(--s-${st})">
         ${stIcon(st,o.status)}<span class="k mono">${key(i.k)}</span>${tyIcon(i.ty,o.types)}
         <span class="t">${tyTag(i.ty,o.types)}${esc(i.t)}</span>
         <span class="lbls">${i.lb.map(l=>`<span class="lb" style="--lc:${LABEL_C[l]}"><i></i>${l}</span>`).join('')}</span>
@@ -613,7 +613,7 @@ function boardView(o){
   return `<div class="mk-board">${cols.map(st=>{
     const cards=ISSUES.filter(i=>i.st===st);
     return `<div class="mk-col"><h5>${stIcon(st,o.status==='bar'||o.status==='pill'?'dot':o.status)}${T('st_'+st)} <span class="c">${cards.length}</span></h5>
-      ${cards.map(i=>`<div class="mk-card ${i.k==='FLOW-147'?'drag':''}" style="--stc:var(--s-${st})">
+      ${cards.map(i=>`<div class="mk-card ${i.k==='KUP-147'?'drag':''}" style="--stc:var(--s-${st})">
         <div class="hd">${tyIcon(i.ty,o.types)}<span class="mono">${key(i.k)}</span>${o.status==='pill'||o.status==='bar'?'':stIcon(st,o.status)}</div>
         <div>${tyTag(i.ty,o.types)}${esc(i.t)}</div>
         <div class="ft">${i.lb.map(l=>`<span class="lb" style="--lc:${LABEL_C[l]}"><i></i>${l}</span>`).join('')}<span class="e mono">${hrs(i.h)}</span>${av(i.who)}</div>
@@ -667,7 +667,7 @@ function cmdView(o){
       <li>${ic('me',15)}<span>${T('cmd3')}</span><kbd>A</kbd></li>
       <li>${stIcon('progress','ring')}<span>${T('cmd4')}</span><kbd>S</kbd></li>
     </ul>
-    <div class="cli">${T('cli')}: <code>kupro issue move FLOW-12 --sprint next</code></div>
+    <div class="cli">${T('cli')}: <code>kupro issue move KUP-12 --sprint next</code></div>
   </div>`;
 }
 
@@ -741,8 +741,8 @@ function renderStage(){
     <div class="note"><h3>Risk</h3><p>${d.risk}</p></div>
     <div class="note"><h3>Type</h3><div class="spec">
       <div class="d" style="font-family:${d.f.display},sans-serif;font-weight:${d.hw}">${d.word} æøå</div>
-      <div class="b" style="font-family:${d.f.ui},sans-serif">Flyt FLOW-12 til næste sprint. Leveranceplan for 2027.</div>
-      <div class="m" style="font-family:${d.f.mono},monospace">FLOW-142 · 8h · 4,5/3 personer</div>
+      <div class="b" style="font-family:${d.f.ui},sans-serif">Flyt KUP-12 til næste sprint. Leveranceplan for 2027.</div>
+      <div class="m" style="font-family:${d.f.mono},monospace">KUP-142 · 8h · 4,5/3 personer</div>
       <div class="m">${d.fn}</div></div></div>
     <div class="note"><h3>Tokens (${S.mode})</h3><div class="tok">${toks.map(t=>`<div><i style="background:${p[t]}"></i>${t} ${p[t].toLowerCase()}</div>`).join('')}</div></div>`;
 }

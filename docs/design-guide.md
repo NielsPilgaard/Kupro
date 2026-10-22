@@ -188,7 +188,7 @@ Structure and behaviour: [delivery-plan.md](delivery-plan.md). Visual rules:
 
 `Ctrl/Cmd K`. Centered, 540 px max, 44 px from the top, `--panel`, `--r2`, float shadow, dimmed backdrop. Query row
 (`md`) with search icon; results with icon, label, context (e.g. sprint dates) and the shortcut `kbd`; active item
-`--sel`. Footer on `--sunk` shows the equivalent CLI command (`kupro issue move FLOW-12 --sprint next`) — parity
+`--sel`. Footer on `--sunk` shows the equivalent CLI command (`kupro issue move KUP-12 --sprint next`) — parity
 made visible ([ADR-001](adr/ADR-001-agent-parity.md)).
 
 ### Buttons and inputs
@@ -203,7 +203,7 @@ made visible ([ADR-001](adr/ADR-001-agent-parity.md)).
 ### Toasts
 
 Bottom right, `--ink` ground with `--bg` text (inverted), `--r2`, `sm`. Format: `[avatar] actor action · time`.
-Agent actions name the surface: "triage-agent moved FLOW-139 to In Review via MCP · 2s ago". Undo link for
+Agent actions name the surface: "triage-agent moved KUP-139 to In Review via MCP · 2s ago". Undo link for
 destructive actions. Auto-dismiss 5 s; errors stay until dismissed.
 
 ### Icons

@@ -383,7 +383,7 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
 
           <div class="sec">
             <div class="sec-h"><span class="eyebrow">Meeting agent</span><h2>Say it in standup. It's in the tracker.</h2>
-              <p>Turn on the meeting agent and it suggests the changes people talk about: "FLOW-212 is done", "move the login bug to next sprint".
+              <p>Turn on the meeting agent and it suggests the changes people talk about: "KUP-212 is done", "move the login bug to next sprint".
                 You approve each one. Audio is never stored, and the transcript is deleted when the meeting ends.</p></div>
           </div>
 
@@ -462,14 +462,14 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
                 <div class="term-bar">zsh · ~/checkout</div>
 <pre><span class="p">$</span> kupro issue list --sprint active
 <span class="c">KEY       STATE        EST  TITLE</span>
-<span class="k">FLOW-212</span>  In Progress  3h   Retry failed MobilePay captures
-<span class="k">FLOW-218</span>  Todo         2h   Show VAT on invoice PDF
-<span class="p">$</span> kupro issue move FLOW-212 --state in-review
-<span class="g">Moved FLOW-212 to In Review</span> <span class="c">· 84 ms</span>
+<span class="k">KUP-212</span>  In Progress  3h   Retry failed MobilePay captures
+<span class="k">KUP-218</span>  Todo         2h   Show VAT on invoice PDF
+<span class="p">$</span> kupro issue move KUP-212 --state in-review
+<span class="g">Moved KUP-212 to In Review</span> <span class="c">· 84 ms</span>
 <span class="p">$</span> claude mcp add kupro -- kupro mcp
 <span class="c">Added stdio MCP server kupro</span></pre>
               </div>
-              <div class="toast"><span class="av-agent">&gt;_</span><span><b>triage-agent</b> moved FLOW-139 to In Review via MCP · 2s ago</span></div>
+              <div class="toast"><span class="av-agent">&gt;_</span><span><b>triage-agent</b> moved KUP-139 to In Review via MCP · 2s ago</span></div>
             </div>
           </div>
 
@@ -478,11 +478,11 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
               <p>The web app, the CLI and the MCP server call the same API. If a person can do it, so can an agent you give a token to.</p></div>
             <div class="parity">
               <div class="par"><span class="eyebrow">Web · Ctrl K</span>
-                <div class="palette"><div class="q">FLOW-12 sprint</div><div class="it on"><span>Move to Sprint 25 (active)</span><kbd>S</kbd></div><div class="it"><span>Remove from sprint</span></div></div></div>
-              <div class="par"><span class="eyebrow">CLI</span><code>kupro issue update FLOW-12 \
+                <div class="palette"><div class="q">KUP-12 sprint</div><div class="it on"><span>Move to Sprint 25 (active)</span><kbd>S</kbd></div><div class="it"><span>Remove from sprint</span></div></div></div>
+              <div class="par"><span class="eyebrow">CLI</span><code>kupro issue update KUP-12 \
   --sprint active</code></div>
               <div class="par"><span class="eyebrow">MCP</span><code>update_issues({ items: [{
-  key: "FLOW-12",
+  key: "KUP-12",
   changes: { sprint: "active" }
 }] })</code></div>
             </div>
@@ -500,7 +500,7 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
             <div class="grid3">
               <div class="feat"><span class="ico"><svg aria-hidden="true"><use href="#i-plan"/></svg></span><h3>Plan the year</h3><p>A delivery plan with capacity per month. Agents can read it too: "which epics are late in Q2?"</p></div>
               <div class="feat"><span class="ico"><svg aria-hidden="true"><use href="#i-mic"/></svg></span><h3>Meeting agent</h3><p>Listens in standup and suggests the changes people mention. Audio is not stored; transcripts go when the meeting ends.</p></div>
-              <div class="feat"><span class="ico"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span><h3>GitHub</h3><p>Put <span class="mono">FLOW-12</span> in a branch or PR and the issue links and moves on its own.</p></div>
+              <div class="feat"><span class="ico"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span><h3>GitHub</h3><p>Put <span class="mono">KUP-12</span> in a branch or PR and the issue links and moves on its own.</p></div>
             </div>
           </div>
 
@@ -548,14 +548,14 @@ table.calc td.n{text-align:right; font-family:var(--f-mono); font-variant-numeri
             </div>
             <div class="room">
               <div class="listen"><span class="dot" aria-hidden="true"></span><span><b>Listening</b> · Standup · Danish</span><span class="sp"></span><span class="btn sec sm">Pause</span></div>
-              <p class="utt"><b>Mette</b> · Login-fixet er i review nu, <mark>FLOW-212</mark>. Og <mark>VAT-feltet</mark> tager jeg i morgen.</p>
+              <p class="utt"><b>Mette</b> · Login-fixet er i review nu, <mark>KUP-212</mark>. Og <mark>VAT-feltet</mark> tager jeg i morgen.</p>
               <div class="prop">
-                <div class="prop-h"><svg class="ring" aria-hidden="true"><use href="#r-rev"/></svg><span class="key">FLOW-212</span><span>Fix login redirect loop</span><span class="conf">0.94</span></div>
+                <div class="prop-h"><svg class="ring" aria-hidden="true"><use href="#r-rev"/></svg><span class="key">KUP-212</span><span>Fix login redirect loop</span><span class="conf">0.94</span></div>
                 <div class="diff"><span class="chip"><svg class="ring" aria-hidden="true"><use href="#r-prog"/></svg>In Progress</span><span aria-hidden="true">→</span><span class="chip"><svg class="ring" aria-hidden="true"><use href="#r-rev"/></svg>In Review</span></div>
                 <div class="acts"><span class="btn pri sm">Approve</span><span class="btn sec sm">Edit</span><span class="btn ghost sm">Reject</span></div>
               </div>
               <div class="prop" style="box-shadow:none">
-                <div class="prop-h"><span class="key">FLOW-218</span><span>Show VAT on invoice PDF</span><span class="conf">0.81</span></div>
+                <div class="prop-h"><span class="key">KUP-218</span><span>Show VAT on invoice PDF</span><span class="conf">0.81</span></div>
                 <div class="diff"><span class="chip">Unassigned</span><span aria-hidden="true">→</span><span class="chip">Mette</span></div>
               </div>
             </div>

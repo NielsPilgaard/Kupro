@@ -40,7 +40,7 @@ and restraint, not symbols — the product is for EU teams too.
 Never: "KuPro", "KUPRO", "Kupro.app" in prose.
 
 The name comes from Latin *cuprum*, copper, spelled with a Nordic K: the material the whole identity is built on.
-Say it "KOO-pro". Chosen in Oct 2026 to replace the working name ([name search](naming.md)). Should it change again before go-live,
+Say it "KOO-pro". Chosen in Oct 2026 to replace the working name ([the name](naming.md)). Should it change again before go-live,
 `node scripts/rename-product.mjs <NewName>` renames it everywhere (paths, namespaces, realm, database, CLI, copy).
 Keep the name in one of the three forms above so the script catches it.
 
@@ -97,11 +97,11 @@ All three are open-licence (OFL) Google Fonts; self-host them, never load from G
 
 Write the way a calm, senior colleague talks: plain words, short sentences, active voice, no hype.
 
-1. **Say what happened, then what to do.** "Couldn't move FLOW-12: Sprint 24 is closed. Pick another sprint."
+1. **Say what happened, then what to do.** "Couldn't move KUP-12: Sprint 24 is closed. Pick another sprint."
 2. **Name things the way users do**: "sprint", "delivery plan", "capacity" — not "iteration entity" or "allocation config".
 3. **Buttons say the action**: "Move issue", "Create feature". Never "OK", "Submit", "Yes".
 4. **No exclamation marks, no emoji, no apologies, no "Oops".**
-5. **Agents are colleagues, not magic.** Attribute their actions plainly: "triage-agent moved FLOW-139 to In Review via MCP".
+5. **Agents are colleagues, not magic.** Attribute their actions plainly: "triage-agent moved KUP-139 to In Review via MCP".
    Never "AI-powered", "magically", "smart".
 6. **Danish is written Danish, not translated English.** Short, informal *du*-form, Danish punctuation and number
    formats (4,5 personer). Keep English loanwords devs actually use (backlog, sprint, review).
@@ -110,7 +110,7 @@ Write the way a calm, senior colleague talks: plain words, short sentences, acti
 |---|---|
 | Oops! Something went wrong 😕 | Couldn't save the description. Check your connection and try again. |
 | Successfully updated the issue! | Saved |
-| Are you sure you want to proceed? | Delete FLOW-12 and its 3 tasks? This can't be undone. |
+| Are you sure you want to proceed? | Delete KUP-12 and its 3 tasks? This can't be undone. |
 | Hov! Der skete en fejl | Kunne ikke gemme beskrivelsen. Tjek din forbindelse, og prøv igen. |
 
 ## Glossary

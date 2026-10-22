@@ -12,8 +12,8 @@ purpose: 'Canonical source for product vision, target customer, principles and v
 ## TL;DR
 
 Danish, EU-sovereign, agent-first issue tracker and planner. Linear's speed, Jira's planning depth without the bloat,
-fully controllable by agents (CLI + MCP), and a meeting agent that updates tickets while the team talks. First users: dev teams at Danish/EU startups and scaleups — and the author.
-Bootstrapped, built for fun and own use; sellable as SaaS, open-core AGPL.
+fully controllable by agents (CLI + MCP), and a meeting agent that updates tickets while the team talks. First users: dev teams at Danish/EU startups and scaleups — and the team building it.
+Bootstrapped; offered as SaaS, open-core AGPL.
 
 ## Pitch
 
