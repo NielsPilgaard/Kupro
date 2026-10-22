@@ -8,6 +8,24 @@ public static class OpenApiExtensions
     public static IServiceCollection AddKuproOpenApi(this IServiceCollection services) =>
         services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
         {
+            // XML-comment text joins lines with the OS newline; normalize so a Windows build matches CI's spec.
+            operation.Summary = Lf(operation.Summary);
+            operation.Description = Lf(operation.Description);
+            foreach (var parameter in operation.Parameters ?? [])
+            {
+                parameter.Description = Lf(parameter.Description);
+            }
+
+            foreach (var response in operation.Responses ?? [])
+            {
+                response.Value.Description = Lf(response.Value.Description);
+            }
+
+            if (operation.RequestBody is { } body)
+            {
+                body.Description = Lf(body.Description);
+            }
+
             if (context.Description.HttpMethod is not ("GET" or "HEAD"))
             {
                 operation.Parameters ??= [];
@@ -23,6 +41,12 @@ public static class OpenApiExtensions
             return Task.CompletedTask;
         }).AddSchemaTransformer((schema, _, _) =>
         {
+            schema.Description = Lf(schema.Description);
+            foreach (var property in schema.Properties?.Values ?? [])
+            {
+                property.Description = Lf(property.Description);
+            }
+
             // An optional enum query parameter (IssueQuery.Sort) would otherwise add null to the shared enum schema,
             // and every generated client would treat null as a valid value everywhere.
             if (schema.Enum is { Count: > 0 } values)
@@ -56,4 +80,6 @@ public static class OpenApiExtensions
             document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("bearer", document)] = [] }];
             return Task.CompletedTask;
         }));
+
+    private static string? Lf(string? text) => text?.ReplaceLineEndings("\n");
 }

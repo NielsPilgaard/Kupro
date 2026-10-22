@@ -1397,7 +1397,7 @@
         "tags": [
           "Plan"
         ],
-        "summary": "The delivery plan for a horizon: epics and features per project, per-month demand / supply / gap in hours and\r\npeople, milestones, dependencies and plan-health flags.",
+        "summary": "The delivery plan for a horizon: epics and features per project, per-month demand / supply / gap in hours and\npeople, milestones, dependencies and plan-health flags.",
         "operationId": "getPlan",
         "parameters": [
           {
@@ -2146,7 +2146,7 @@
         "tags": [
           "Meetings"
         ],
-        "summary": "Add what was said, as text: from a meeting tool, an agent or a person typing. Returns the proposals it produced;\r\nin full auto some may already be applied.",
+        "summary": "Add what was said, as text: from a meeting tool, an agent or a person typing. Returns the proposals it produced;\nin full auto some may already be applied.",
         "operationId": "addMeetingTranscript",
         "parameters": [
           {
@@ -2374,7 +2374,7 @@
         "tags": [
           "Meetings"
         ],
-        "summary": "Approve, edit or reject proposals, in order. Approving applies the change as the meeting agent. Each result\r\ncarries its own error; one failure doesn't stop the rest.",
+        "summary": "Approve, edit or reject proposals, in order. Approving applies the change as the meeting agent. Each result\ncarries its own error; one failure doesn't stop the rest.",
         "operationId": "reviewMeetingProposals",
         "parameters": [
           {
@@ -4538,7 +4538,7 @@
         "properties": {
           "project": {
             "type": "string",
-            "description": "Project key, e.g. `FLOW`."
+            "description": "Project key, e.g. `KUP`."
           },
           "title": {
             "type": "string",
@@ -4575,7 +4575,7 @@
               "null",
               "string"
             ],
-            "description": "Parent issue key: a feature or epic (tasks), or an epic (features). In a bulk create, `#i`\r\n    points to the i-th issue (0-based) earlier in the same request, so an epic and its children go in one call."
+            "description": "Parent issue key: a feature or epic (tasks), or an epic (features). In a bulk create, `#i`\n    points to the i-th issue (0-based) earlier in the same request, so an epic and its children go in one call."
           },
           "effort": {
             "type": [
@@ -4669,7 +4669,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "description": "Issue key prefix: 2-10 uppercase letters/digits starting with a letter, e.g. `FLOW`."
+            "description": "Issue key prefix: 2-10 uppercase letters/digits starting with a letter, e.g. `KUP`."
           },
           "name": {
             "type": "string",
@@ -4835,7 +4835,7 @@
             ]
           }
         },
-        "description": "One field change. Values are display-ready strings: enum names (`inProgress`), member names, issue keys,\r\nsprint names, ISO dates, comma-separated labels. Description changes carry no values.\r\nFor relations, `Field` is the relation type and `To` (added) or `From` (removed) the other issue."
+        "description": "One field change. Values are display-ready strings: enum names (`inProgress`), member names, issue keys,\nsprint names, ISO dates, comma-separated labels. Description changes carry no values.\nFor relations, `Field` is the relation type and `To` (added) or `From` (removed) the other issue."
       },
       "FeedItem": {
         "required": [
@@ -5890,7 +5890,7 @@
           },
           "countedEffort": {
             "type": "number",
-            "description": "Hours this card adds to demand: an epic's estimate only counts when none of its features\r\n    is estimated; a feature without its own estimate counts its tasks.",
+            "description": "Hours this card adds to demand: an epic's estimate only counts when none of its features\n    is estimated; a feature without its own estimate counts its tasks.",
             "format": "double"
           },
           "done": {
