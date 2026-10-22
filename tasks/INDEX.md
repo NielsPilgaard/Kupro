@@ -19,7 +19,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | Priority | Meaning |
 |---|---|
 | P0 | Critical path — nothing else can start without it |
-| P1 | v1 must-have: agent parity, speed, delivery plan, running in prod |
+| P1 | v1 must-have: agent parity, speed, delivery plan, meeting agent, running in prod |
 | P2 | v1 scope, not on the critical path |
 | P3 | After v1 — start only when v1 is in prod |
 
@@ -27,8 +27,9 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
+| 21 | [021 Backup and restore rehearsal (local)](021-backup-rehearsal.md) | P1 | 0 | — | Todo |
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
-| 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P3 | 2 | 004, 006, 010, 012 | In progress |
+| 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
 | 17 | [017 Meeting agent AI budget](017-meeting-agent-budget.md) | P1 | 2 | 015, 018 | Todo |
 | 19 | [019 Public website](019-public-site.md) | P1 | 1 | — | In progress |
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
@@ -60,6 +61,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 - **005, 006 before UI**: agent parity is principle #1 ([ADR-001](../docs/adr/ADR-001-agent-parity.md)); the CI parity test in 006 guards every later task.
 - **014 before UI**: budget enforced from the first endpoints, not retrofitted ([ADR-010](../docs/adr/ADR-010-performance-budget.md)).
 - **010 is P1** only because 011 (the differentiator) depends on it.
+- **015 is P1**: the meeting agent leads the public site ([ADR-017](../docs/adr/ADR-017-public-site.md)) and 017 depends on it.
 - **P2 tasks** are independent of each other and can run in parallel once their dependencies are Done.
 
 When adding a task: give it a row here with a priority, and move the row to Completed when its status becomes Done.

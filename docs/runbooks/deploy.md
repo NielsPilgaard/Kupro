@@ -188,6 +188,6 @@ These are not wired yet. Each one blocks or degrades production:
 
 | Gap | Effect | Fix |
 |---|---|---|
-| Restore not rehearsed in production | The backup agent is tested under `aspire run` only ([ADR-016](../adr/ADR-016-postgres-backups.md)). | One full restore through the console on the VPS before the first external user: restore, go live, switch back ([restore runbook](restore.md)), and log the measured time as the first manual drill. |
+| Restore not rehearsed in production | The backup agent is tested under `aspire run` only ([ADR-016](../adr/ADR-016-postgres-backups.md)). Local rehearsal: [task 021](../../tasks/021-backup-rehearsal.md). | One full restore through the console on the VPS before the first external user: restore, go live, switch back ([restore runbook](restore.md)), and log the measured time as the first manual drill. |
 | One backup location | The pgBackRest repo is in the same OVHcloud account as the VPS. | A second, off-site copy of the repo; not built. |
 | Realm drift | Keycloak imports the realm file only once, so later edits to it don't reach an existing realm. | Apply the same change in the admin console or with `kcadm.sh`; theme changes ship with the image. |
