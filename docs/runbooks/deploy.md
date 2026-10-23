@@ -22,6 +22,7 @@ purpose: 'Checklist for setting up and operating a Kupro production environment 
 - Postgres runs on external data volumes next to the backup agent ([ADR-016](../adr/ADR-016-postgres-backups.md)): create
   the volumes and the two backup buckets before the first deploy. Incidents: the [restore runbook](restore.md).
 - Several items in [Open gaps](#open-gaps) block the first external user.
+- Before DNS and TLS exist, rehearse the stack on any VPS with the [dry run](dry-run.md).
 
 ## Environment variables
 
@@ -59,7 +60,7 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `GRAFANA_PUBLIC_URL` | | `https://grafana.<domain>` | `grafana` | Links in alert emails. |
 | `GRAFANA_ADMIN_PASSWORD` | yes | long random | `grafana` | Applied **only on first start** (empty volume). Afterwards change it in the UI. |
 | `GRAFANA_SMTP_FROM` | | `alerts@<domain>` | `grafana` | Domain must be verified in Scaleway TEM (SPF/DKIM). |
-| `ALERT_EMAIL` | | `ops@<domain>` | `grafana` | Comma-separated for several recipients. |
+| `ALERT_EMAIL` | | `ops@<domain>` | `grafana` | Comma-separated for several recipients. Must not be empty, or Grafana's provisioning fails and it restarts in a loop. |
 | `API_PUBLIC_URL` | | `https://app.<domain>` | `api`, `keycloak` | No trailing slash. Audience of MCP tokens issued with a resource indicator, and the web client's redirect URI and origin in the realm. |
 | `SMTP_USER` | | Scaleway project id | `keycloak`, `grafana` | Scaleway TEM SMTP relay, `smtp.tem.scaleway.com:587`. |
 | `SMTP_PASSWORD` | yes | Scaleway API secret key | `keycloak`, `grafana` | Key needs TEM permissions only. |
