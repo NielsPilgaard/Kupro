@@ -22,7 +22,6 @@ purpose: 'Checklist for setting up and operating a Kupro production environment 
 - Postgres runs on external data volumes next to the backup agent ([ADR-016](../adr/ADR-016-postgres-backups.md)): create
   the volumes and the two backup buckets before the first deploy. Incidents: the [restore runbook](restore.md).
 - Several items in [Open gaps](#open-gaps) block the first external user.
-- Before DNS and TLS exist, rehearse the stack on any VPS with the [dry run](dry-run.md).
 
 ## Environment variables
 
@@ -61,10 +60,10 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `GRAFANA_ADMIN_PASSWORD` | yes | long random | `grafana` | Applied **only on first start** (empty volume). Afterwards change it in the UI. |
 | `GRAFANA_SMTP_FROM` | | `alerts@<domain>` | `grafana` | Domain must be verified in Scaleway TEM (SPF/DKIM). |
 | `ALERT_EMAIL` | | `ops@<domain>` | `grafana` | Comma-separated for several recipients. Must not be empty, or Grafana's provisioning fails and it restarts in a loop. |
-| `API_PUBLIC_URL` | | `https://app.<domain>` | `api`, `keycloak` | No trailing slash. Audience of MCP tokens issued with a resource indicator, and the web client's redirect URI and origin in the realm. |
-| `SMTP_USER` | | Scaleway project id | `keycloak`, `grafana` | Scaleway TEM SMTP relay, `smtp.tem.scaleway.com:587`. |
-| `SMTP_PASSWORD` | yes | Scaleway API secret key | `keycloak`, `grafana` | Key needs TEM permissions only. |
-| `KEYCLOAK_SMTP_FROM` | | `no-reply@<domain>` | `keycloak` | Sender of password reset and verification mails. Must not be empty, or the realm import fails. |
+| `API_PUBLIC_URL` | | `https://app.<domain>` | `api`, `keycloak` | No trailing slash. Audience of MCP tokens issued with a resource indicator, and the web client's redirect URI and origin in the realm (realm part: first start only, see [Realm drift](#open-gaps)). |
+| `SMTP_USER` | | Scaleway project id | `keycloak`, `grafana` | Scaleway TEM SMTP relay, `smtp.tem.scaleway.com:587`. Keycloak: first start only, see [Realm drift](#open-gaps). |
+| `SMTP_PASSWORD` | yes | Scaleway API secret key | `keycloak`, `grafana` | Key needs TEM permissions only. Keycloak: first start only; rotate it in the admin console too, see [Realm drift](#open-gaps). |
+| `KEYCLOAK_SMTP_FROM` | | `no-reply@<domain>` | `keycloak` | Sender of password reset and verification mails. Must not be empty, or the realm import fails. First start only, see [Realm drift](#open-gaps). |
 | `STORAGE_URL` | | `https://s3.gra.io.cloud.ovh.net` | `api` | OVHcloud Object Storage S3 endpoint for the bucket's region. Browsers upload to it directly. |
 | `STORAGE_REGION` | | `gra` | `api` | Must match the endpoint. |
 | `STORAGE_BUCKET` | | `kupro-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
@@ -191,4 +190,4 @@ These are not wired yet. Each one blocks or degrades production:
 |---|---|---|
 | Restore not rehearsed in production | The backup agent is tested under `aspire run` only ([ADR-016](../adr/ADR-016-postgres-backups.md)). Local rehearsal: [task 021](../../tasks/021-backup-rehearsal.md). | One full restore through the console on the VPS before the first external user: restore, go live, switch back ([restore runbook](restore.md)), and log the measured time as the first manual drill. |
 | One backup location | The pgBackRest repo is in the same OVHcloud account as the VPS. | A second, off-site copy of the repo; not built. |
-| Realm drift | Keycloak imports the realm file only once, so later edits to it don't reach an existing realm. | Apply the same change in the admin console or with `kcadm.sh`; theme changes ship with the image. |
+| Realm drift | Keycloak imports the realm file only once, so later edits to it, and later changes to the variables it reads (`API_PUBLIC_URL`, `SMTP_USER`, `SMTP_PASSWORD`, `KEYCLOAK_SMTP_FROM`), don't reach an existing realm. Keycloak has no SMTP setting of its own; the import fills the realm's SMTP settings from these variables. | Apply the same change in the admin console (Realm settings → Email for SMTP) or with `kcadm.sh`; theme changes ship with the image. |
