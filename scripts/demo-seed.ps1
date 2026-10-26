@@ -10,7 +10,9 @@
     today, so the plan and the sprint look current whenever it runs. Fails if the workspace slug already exists: pass
     another -Slug, or delete the old workspace in the app.
 
-    Then take the screenshots: KUPRO_SCREENSHOTS=1 bunx playwright test readme-screenshots (in tests/e2e).
+    For the README screenshots, sign the CLI in as other@kupro.local (password: other), which has no other workspaces,
+    so the sidebar shows only this one. Its UI language must be English (`kupro me update --language en`). Then, in
+    tests/e2e: KUPRO_SCREENSHOTS=1 KUPRO_USER=other@kupro.local KUPRO_PASSWORD=other bunx playwright test readme-screenshots
 .PARAMETER Slug
     Workspace slug. Default: lindholm.
 .PARAMETER Kupro
@@ -69,17 +71,17 @@ K capacity set PLAT "2@$(Month 0)" | Out-Null
 # Epics and features: (title, start offset in weeks, length in weeks, effort in hours) per feature.
 $roadmap = @(
     @{ Project = 'APP'; Epic = 'Offline-first driver app'; Features = @(
-            @('Offline route cache', -2, 6, 160), @('Sync conflict handling', 3, 5, 120), @('Background location', 7, 4, 90)) }
+            @('Offline route cache', -2, 6, 480), @('Sync conflict handling', 3, 5, 360), @('Background location', 7, 4, 260)) }
     @{ Project = 'APP'; Epic = 'Proof of delivery'; Features = @(
-            @('Photo and signature capture', 10, 6, 140), @('Damage reports', 15, 5, 100)) }
+            @('Photo and signature capture', 10, 6, 420), @('Damage reports', 15, 5, 300)) }
     @{ Project = 'WEB'; Epic = 'Self-service booking'; Features = @(
-            @('Quote calculator', -1, 5, 110), @('Booking flow', 4, 7, 180), @('Invoices and receipts', 11, 4, 80)) }
+            @('Quote calculator', -1, 5, 300), @('Booking flow', 4, 7, 600), @('Invoices and receipts', 11, 4, 220)) }
     @{ Project = 'WEB'; Epic = 'Live tracking'; Features = @(
-            @('Tracking page', 14, 6, 150), @('Delivery notifications', 19, 4, 70)) }
+            @('Tracking page', 16, 6, 420), @('Delivery notifications', 21, 4, 180)) }
     @{ Project = 'PLAT'; Epic = 'Routing engine v2'; Features = @(
-            @('Multi-stop optimisation', -3, 9, 220), @('Traffic-aware ETAs', 7, 8, 160)) }
+            @('Multi-stop optimisation', -3, 9, 520), @('Traffic-aware ETAs', 7, 8, 420)) }
     @{ Project = 'PLAT'; Epic = 'Carrier integrations'; Features = @(
-            @('PostNord API', 16, 5, 120), @('DHL Freight API', 20, 6, 130)) }
+            @('PostNord API', 16, 5, 300), @('DHL Freight API', 20, 6, 340)) }
 )
 
 $features = @{}
@@ -97,11 +99,11 @@ foreach ($e in $roadmap) {
 }
 
 # Cross-project dependencies, drawn as arrows on the plan.
-K issue relate $features['Multi-stop optimisation'] blocks $features['Offline route cache'] | Out-Null
+K issue relate $features['Multi-stop optimisation'] blocks $features['Background location'] | Out-Null
 K issue relate $features['Traffic-aware ETAs'] blocks $features['Tracking page'] | Out-Null
 
-K milestone create --name 'Pilot with 20 drivers' --date (Week 9 3) -p APP | Out-Null
-K milestone create --name 'Public launch' --date (Week 22 3) | Out-Null
+K milestone create --name 'Pilot' --date (Week 9 3) -p APP | Out-Null
+K milestone create --name 'Launch' --date (Week 29) | Out-Null
 
 # The APP board: an active two-week sprint with work in every column.
 $sprint = K sprint create -p APP --name "Sprint $([Globalization.ISOWeek]::GetWeekOfYear($monday))" `
