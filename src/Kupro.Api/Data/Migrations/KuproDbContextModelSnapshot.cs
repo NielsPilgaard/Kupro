@@ -551,6 +551,23 @@ namespace Kupro.Api.Data.Migrations
                     b.ToTable("labels", (string)null);
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingAgentSpend", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date")
+                        .HasColumnName("day");
+
+                    b.Property<decimal>("CostCents")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("cost_cents");
+
+                    b.HasKey("Day")
+                        .HasName("pk_meeting_agent_spend");
+
+                    b.ToTable("meeting_agent_spend", (string)null);
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingProposal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -767,6 +784,47 @@ namespace Kupro.Api.Data.Migrations
                         .HasName("pk_meeting_settings");
 
                     b.ToTable("meeting_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingUsage", b =>
+                {
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.Property<DateOnly>("Period")
+                        .HasColumnType("date")
+                        .HasColumnName("period");
+
+                    b.Property<double>("AudioSeconds")
+                        .HasColumnType("double precision")
+                        .HasColumnName("audio_seconds");
+
+                    b.Property<decimal>("CostCents")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("cost_cents");
+
+                    b.Property<long>("InputTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("input_tokens");
+
+                    b.Property<long>("OutputTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("output_tokens");
+
+                    b.Property<DateTimeOffset?>("Warned100At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("warned100at");
+
+                    b.Property<DateTimeOffset?>("Warned80At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("warned80at");
+
+                    b.HasKey("WorkspaceId", "Period")
+                        .HasName("pk_meeting_usage");
+
+                    b.ToTable("meeting_usage", (string)null);
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Meetings.TranscriptSegment", b =>
@@ -1536,6 +1594,16 @@ namespace Kupro.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_meeting_settings_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingUsage", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_meeting_usage_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Meetings.TranscriptSegment", b =>

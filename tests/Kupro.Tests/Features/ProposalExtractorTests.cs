@@ -55,7 +55,7 @@ public sealed class ProposalExtractorTests
     {
         var model = new FakeModel("""{"actions":[{"confidence":1,"issue":"KUP-15","operation":"estimate","snippet":"two days","value":     """);
 
-        (await Extractor(model).ExtractAsync(Context, Ct)).ShouldBeEmpty();
+        (await Extractor(model).ExtractAsync(Context, Ct)).Actions.ShouldBeEmpty();
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class ProposalExtractorTests
     {
         var model = new FakeModel("""{"actions":[{"confidence":0.9,"issue":"KUP-15","operation":"state","snippet":"done","value":"\"done\""}]}""");
 
-        var action = (await Extractor(model).ExtractAsync(Context, Ct)).ShouldHaveSingleItem();
+        var action = (await Extractor(model).ExtractAsync(Context, Ct)).Actions.ShouldHaveSingleItem();
 
         action.Operation.ShouldBe(ProposalOperation.State);
         action.Value.ShouldBe("done");
@@ -75,7 +75,52 @@ public sealed class ProposalExtractorTests
             Extraction = new ModelRoute { Endpoint = "https://llm.test/v1", Model = "test-model", ApiKey = "test" },
         }));
 
-    private sealed class FakeModel(string content) : HttpMessageHandler
+    [Fact]
+    public async Task Token_usage_comes_from_the_response_including_cached_input()
+    {
+        var model = new FakeModel("""{"actions":[]}""",
+            JsonNode.Parse("""{"prompt_tokens":1969,"completion_tokens":257,"prompt_tokens_details":{"cached_tokens":750}}"""));
+
+        var usage = (await Extractor(model).ExtractAsync(Context, Ct)).Usage.ShouldNotBeNull();
+
+        usage.ShouldBe(new ModelUsage(1969, 750, 257));
+    }
+
+    [Fact]
+    public async Task Without_usage_in_the_response_tokens_are_estimated_from_the_text()
+    {
+        var model = new FakeModel("""{"actions":[]}""");
+
+        var usage = (await Extractor(model).ExtractAsync(Context, Ct)).Usage.ShouldNotBeNull();
+
+        usage.InputTokens.ShouldBeGreaterThan(100);
+        usage.OutputTokens.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Audio_length_is_read_from_the_wav_header()
+    {
+        // 16 kHz mono 16-bit, the browser's format: 32,000 bytes a second. 1.5 s of silence.
+        var samples = 24_000;
+        var wav = new byte[44 + samples * 2];
+        Encoding.ASCII.GetBytes("RIFF").CopyTo(wav, 0);
+        BitConverter.GetBytes(36 + samples * 2).CopyTo(wav, 4);
+        Encoding.ASCII.GetBytes("WAVEfmt ").CopyTo(wav, 8);
+        BitConverter.GetBytes(16).CopyTo(wav, 16);
+        BitConverter.GetBytes((short)1).CopyTo(wav, 20);
+        BitConverter.GetBytes((short)1).CopyTo(wav, 22);
+        BitConverter.GetBytes(16_000).CopyTo(wav, 24);
+        BitConverter.GetBytes(32_000).CopyTo(wav, 28);
+        BitConverter.GetBytes((short)2).CopyTo(wav, 32);
+        BitConverter.GetBytes((short)16).CopyTo(wav, 34);
+        Encoding.ASCII.GetBytes("data").CopyTo(wav, 36);
+        BitConverter.GetBytes(samples * 2).CopyTo(wav, 40);
+
+        Wav.Seconds(wav).ShouldBe(1.5);
+        Wav.Seconds(new byte[64_000]).ShouldBe(2, "no header: the browser's byte rate");
+    }
+
+    private sealed class FakeModel(string content, JsonNode? usage = null) : HttpMessageHandler
     {
         public JsonNode? Request { get; private set; }
 
@@ -85,6 +130,7 @@ public sealed class ProposalExtractorTests
             var completion = new JsonObject
             {
                 ["choices"] = new JsonArray { new JsonObject { ["message"] = new JsonObject { ["content"] = content } } },
+                ["usage"] = usage,
             };
             return new HttpResponseMessage(HttpStatusCode.OK)
             {

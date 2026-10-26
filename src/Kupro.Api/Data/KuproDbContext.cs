@@ -48,6 +48,8 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     public DbSet<TranscriptSegment> TranscriptSegments => Set<TranscriptSegment>();
     public DbSet<MeetingProposal> MeetingProposals => Set<MeetingProposal>();
     public DbSet<MeetingSettings> MeetingSettings => Set<MeetingSettings>();
+    public DbSet<MeetingUsage> MeetingUsage => Set<MeetingUsage>();
+    public DbSet<MeetingAgentSpend> MeetingAgentSpend => Set<MeetingAgentSpend>();
     public DbSet<WorkspaceExport> WorkspaceExports => Set<WorkspaceExport>();
 
     /// <summary>

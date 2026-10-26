@@ -305,9 +305,21 @@ public sealed class MeetingTests(PostgresFixture postgres) : ApiTestBase(postgre
         (await GetAsync<List<TranscriptSegmentResponse>>(_client, $"{Ws}/meetings/{meeting.Id}/transcript")).ShouldHaveSingleItem();
     }
 
+    [Fact]
+    public async Task Without_a_budget_there_are_no_limits()
+    {
+        var meeting = await StartAsync();
+
+        var heard = await SayAsync(meeting, "KUP-1 is done.");
+
+        heard.Extractor.ShouldBe(ExtractorKind.Keyword, "no model in tests");
+        heard.BudgetSpent.ShouldBeFalse();
+        (await GetAsync<MeetingSettingsResponse>(_client, $"{Ws}/meeting-settings")).Usage.ShouldBeNull();
+    }
+
     private sealed class FailingExtractor : IProposalExtractor
     {
-        public Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct) =>
+        public Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct) =>
             throw new HttpRequestException("model vendor unavailable");
     }
 

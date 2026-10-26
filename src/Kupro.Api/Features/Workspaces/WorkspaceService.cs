@@ -135,7 +135,7 @@ public sealed class WorkspaceService(
     public const decimal DefaultHoursPerWeek = 37m;
 
     /// <summary>A seat (ADR-013): an active human Owner or Member.</summary>
-    private static readonly Expression<Func<Member, bool>> IsSeat = m =>
+    internal static readonly Expression<Func<Member, bool>> IsSeat = m =>
         m.Kind == MemberKind.Human && m.Status == MemberStatus.Active
         && (m.Role == WorkspaceRole.Owner || m.Role == WorkspaceRole.Member);
 

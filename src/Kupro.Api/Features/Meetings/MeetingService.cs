@@ -28,6 +28,7 @@ public sealed partial class MeetingService(
     CommentService comments,
     IProposalExtractor extractor,
     ISpeechToText speech,
+    MeetingBudget budget,
     RealtimeEvents realtime,
     TimeProvider clock,
     ILogger<MeetingService> logger)
@@ -40,6 +41,9 @@ public sealed partial class MeetingService(
     private const int RecentSegments = 6;
     private const int MaxCandidates = 3;
     private const int IssueHintLimit = 60;
+
+    /// <summary>A meeting live longer than this is ended: a forgotten browser tab can't spend all day (ADR-013 guards).</summary>
+    public static readonly TimeSpan MaxDuration = TimeSpan.FromHours(3);
 
     /// <summary>How far back an open proposal counts as the same one heard again, e.g. by a second microphone.</summary>
     private static readonly TimeSpan DuplicateWindow = TimeSpan.FromMinutes(2);
@@ -184,6 +188,11 @@ public sealed partial class MeetingService(
                 return NotLive();
             }
 
+            if (await TimeLimitAsync(meeting, ct) is { } tooLong)
+            {
+                return tooLong;
+            }
+
             language = meeting.Language;
         }
 
@@ -192,8 +201,18 @@ public sealed partial class MeetingService(
             return new IssueError("transcription_unavailable", $"No speech-to-text model is configured for '{language}'.");
         }
 
-        var text = await speech.TranscribeAsync(wav, language, ct);
-        return string.IsNullOrWhiteSpace(text) ? new TranscriptResult("", []) : await AddTranscriptAsync(id, new TranscriptRequest(text), ct);
+        // Speech has no free fallback, so a spent budget stops the microphone (ADR-013); text still works.
+        if (await budget.CheckAsync(ct) != BudgetState.Available)
+        {
+            return new IssueError("meeting_budget_spent",
+                "This workspace's meeting hours are used up for this month. Typed text still gets proposals from keyword matching.");
+        }
+
+        var transcription = await speech.TranscribeAsync(wav, language, ct);
+        await budget.RecordAudioAsync(transcription.AudioSeconds, language, ct);
+        return string.IsNullOrWhiteSpace(transcription.Text)
+            ? new TranscriptResult("", [], ExtractorKind.Keyword, BudgetSpent: false)
+            : await AddTranscriptAsync(id, new TranscriptRequest(transcription.Text), ct);
     }
 
     /// <summary>
@@ -214,6 +233,11 @@ public sealed partial class MeetingService(
             return NotLive();
         }
 
+        if (await TimeLimitAsync(meeting, ct) is { } tooLong)
+        {
+            return tooLong;
+        }
+
         var projectKey = await db.Projects.Where(p => p.Id == meeting.ProjectId).Select(p => p.Key).SingleAsync(ct);
         var text = NormalizeKeys(request.Text.Trim(), projectKey);
         var recent = await db.TranscriptSegments.AsNoTracking().Where(t => t.SessionId == id)
@@ -231,7 +255,7 @@ public sealed partial class MeetingService(
         };
 
         var context = await ContextAsync(db, meeting, recent, text, ct);
-        var extracted = await ExtractAsync(context, ct);
+        var (extracted, kind, spent) = await ExtractAsync(context, ct);
         var heard = new List<MeetingProposal>();
         foreach (var action in extracted)
         {
@@ -276,7 +300,7 @@ public sealed partial class MeetingService(
 
         await db.SaveChangesAsync(ct);
         await realtime.ChangedAsync(ChangeTopic.Meetings);
-        return new TranscriptResult(text, await ProposalsAsync(db, proposals, ct));
+        return new TranscriptResult(text, await ProposalsAsync(db, proposals, ct), kind, spent);
     }
 
     // ---------------------------------------------------------------- proposals
@@ -410,8 +434,11 @@ public sealed partial class MeetingService(
         var stats = Enum.GetValues<ProposalOperation>()
             .Select(op => decided.FirstOrDefault(s => s.Operation == op) ?? new OperationStats(op, 0, 0, 0, 0)).ToList();
         return new MeetingSettingsResponse(settings.DefaultMode, settings.FullAutoEnabled, settings.FullAutoOperations,
-            settings.TranscriptRetentionDays, stats);
+            settings.TranscriptRetentionDays, stats, await budget.UsageAsync(ct));
     }
+
+    /// <summary>This month's meeting hours; null when the server sets no AI budget.</summary>
+    public Task<MeetingUsageResponse?> UsageAsync(CancellationToken ct) => budget.UsageAsync(ct);
 
     /// <summary>Owners only (controller). Creating issues never applies without approval, so it can't be allowed.</summary>
     public async Task<IssueResult<MeetingSettingsResponse>> UpdateSettingsAsync(UpdateMeetingSettingsRequest request, CancellationToken ct)
@@ -443,6 +470,16 @@ public sealed partial class MeetingService(
         }
 
         return await GetSettingsAsync(ct);
+    }
+
+    /// <summary>Ends meetings live longer than <see cref="MaxDuration"/>, in every workspace. Background job.</summary>
+    public static Task<int> EndOverlongMeetingsAsync(KuproDbContext db, DateTimeOffset now, CancellationToken ct)
+    {
+        var startedBefore = now - MaxDuration;
+        // System job across all tenants: no request workspace exists, and each meeting is judged on its own start time.
+        return db.Meetings.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+            .Where(m => m.State != MeetingState.Ended && m.StartedAt < startedBefore)
+            .ExecuteUpdateAsync(m => m.SetProperty(x => x.State, MeetingState.Ended).SetProperty(x => x.EndedAt, now), ct);
     }
 
     /// <summary>
@@ -806,20 +843,45 @@ public sealed partial class MeetingService(
 
     /// <summary>
     /// The model vendor down or too slow must not lose what was said: the utterance is kept and proposals come from
-    /// keyword matching instead (ADR-015 IMP-007).
+    /// keyword matching instead (ADR-015 IMP-007). So does a spent AI budget: the feature gets less clever, it never
+    /// disappears (ADR-013). Every model call's tokens are metered.
     /// </summary>
-    private async Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct)
+    private async Task<(IReadOnlyList<ExtractedAction> Actions, ExtractorKind Kind, bool Spent)> ExtractAsync(
+        ExtractionContext context, CancellationToken ct)
     {
+        if (await budget.CheckAsync(ct) != BudgetState.Available)
+        {
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, true);
+        }
+
         try
         {
-            return await extractor.ExtractAsync(context, ct);
+            var extraction = await extractor.ExtractAsync(context, ct);
+            if (extraction.Usage is { } usage)
+            {
+                await budget.RecordTokensAsync(usage, context.Language, ct);
+            }
+
+            return (extraction.Actions, extraction.Usage is null ? ExtractorKind.Keyword : ExtractorKind.Model, false);
         }
         catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException
             || (ex is OperationCanceledException && !ct.IsCancellationRequested))
         {
             LogExtractorFailed(logger, ex);
-            return await Keywords.ExtractAsync(context, ct);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
         }
+    }
+
+    /// <summary>Ends a meeting live past <see cref="MaxDuration"/>; the hourly job catches the ones nobody talks in.</summary>
+    private async Task<IssueError?> TimeLimitAsync(MeetingSession meeting, CancellationToken ct)
+    {
+        if (clock.GetUtcNow() - meeting.StartedAt <= MaxDuration)
+        {
+            return null;
+        }
+
+        await UpdateAsync(meeting.Id, new UpdateMeetingRequest(State: MeetingState.Ended), ct);
+        return new IssueError("meeting_time_limit", $"Meetings end after {MaxDuration.TotalHours:0} hours. Start a new one to keep listening.");
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Proposal extractor failed; fell back to keyword matching")]

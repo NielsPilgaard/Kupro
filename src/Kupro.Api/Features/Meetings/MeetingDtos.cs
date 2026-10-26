@@ -69,9 +69,21 @@ public sealed record ProposalResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? AppliedAt);
 
+public enum ExtractorKind
+{
+    /// <summary>The language model read the utterance.</summary>
+    Model,
+
+    /// <summary>Keyword matching: no model is set up, the model failed, or the AI budget is used up (task 017).</summary>
+    Keyword,
+}
+
 /// <summary>What a transcript chunk produced.</summary>
 /// <param name="Text">The text added to the transcript (the transcription, for audio).</param>
-public sealed record TranscriptResult(string Text, IReadOnlyList<ProposalResponse> Proposals);
+/// <param name="Extractor">What turned it into proposals. <c>keyword</c> finds only clear commands.</param>
+/// <param name="BudgetSpent">The workspace's meeting hours are used up (or the server-wide daily limit is reached), so
+/// keyword matching was used.</param>
+public sealed record TranscriptResult(string Text, IReadOnlyList<ProposalResponse> Proposals, ExtractorKind Extractor, bool BudgetSpent);
 
 public enum ReviewDecision
 {
@@ -104,12 +116,14 @@ public sealed record OperationStats(ProposalOperation Operation, int Decided, in
 /// <param name="FullAutoOperations">Operations full auto applies without approval.</param>
 /// <param name="TranscriptRetentionDays">Days transcripts and snippets are kept; 0 means until the meeting ends.</param>
 /// <param name="Stats">Suggest-mode history per operation.</param>
+/// <param name="Usage">This month's meeting hours; null when the server sets no AI budget (self-hosted).</param>
 public sealed record MeetingSettingsResponse(
     MeetingMode DefaultMode,
     bool FullAutoEnabled,
     IReadOnlyList<ProposalOperation> FullAutoOperations,
     int TranscriptRetentionDays,
-    IReadOnlyList<OperationStats> Stats);
+    IReadOnlyList<OperationStats> Stats,
+    MeetingUsageResponse? Usage);
 
 /// <param name="FullAutoEnabled">Allow full auto in this workspace.</param>
 /// <param name="FullAutoOperations">Operations full auto may apply. Creating issues always waits for approval.</param>
