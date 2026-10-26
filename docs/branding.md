@@ -55,6 +55,12 @@ middle bar in verdigris: the piece of work currently in flow.
 | [kupro-mark-dark.svg](design/brand/kupro-mark-dark.svg) | Dark backgrounds, tinted sidebar |
 | [kupro-mark-mono.svg](design/brand/kupro-mark-mono.svg) | Single colour (`currentColor`): docs, CLI banners, print |
 | [favicon.svg](design/brand/favicon.svg) | Browser tab; follows OS light/dark |
+| [kupro-lockup.svg](design/brand/kupro-lockup.svg) · [dark](design/brand/kupro-lockup-dark.svg) · [mono](design/brand/kupro-lockup-mono.svg) | Mark + wordmark, text outlined (no font needed): slides, press, partner pages |
+
+Raster files are rendered from the mark by `bun scripts/brand-images.ts`, never drawn by hand: `favicon.ico` and the
+app icons (listed in `manifest.json`) in `web/public/` and `site/public/`, the site's social cards (`og-image.png`,
+`og-image-da.png`, headline from the hero copy), Keycloak's login favicon, and the GitHub
+[social preview](images/social-preview.png). Rerun it after changing the mark, palette or hero headline.
 
 Geometry (viewBox `0 0 32 32`, bar height 5, radius 2.5): `(3, 6.5, w17)`, `(9, 13.5, w20)`, `(5, 20.5, w12)`.
 
