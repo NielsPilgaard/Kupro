@@ -14,5 +14,9 @@ export default defineConfig({
   },
   server: { port: Number(process.env.PORT ?? 4321) },
   // tokens.css lives in web/ (one palette for app and site).
-  vite: { server: { fs: { allow: ['..'] } } },
+  // Fonts stay files: the CSP (headers.conf) has font-src 'self', which blocks fonts Vite would inline as data: URIs.
+  vite: {
+    server: { fs: { allow: ['..'] } },
+    build: { assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined) },
+  },
 });
