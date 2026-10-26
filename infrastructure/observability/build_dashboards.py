@@ -574,6 +574,33 @@ rhythm = ts("Requests per hour by caller", [loki(cnt(AUTHED, "1h", by=["Caller"]
             desc="When people and agents work. Useful for picking deploy windows; agents may run at night.")
 rhythm["interval"] = "1h"
 U.append(rhythm)
+y += 7
+
+# The meeting agent's AI spend (task 017, ADR-013): counters from MeetingAgentMetrics in the API, euro at the rates
+# configured per model route. "refused" counts model calls the budget or the daily ceiling turned away.
+SPEND = f'kupro_meeting_agent_spend_total{{{JOB}}}'
+REFUSED = f'kupro_meeting_agent_refused_total{{{JOB}}}'
+U.append(row("Meeting agent spend (ADR-013 budget, task 017)", y)); y += 1
+spend_day = ts("Spend per day (€)", [prom(f'sum by (seam) (increase({SPEND}[1d]))', legend="{{seam}}")],
+               0, y, w=12, h=8, unit="currencyEUR", stack=True,
+               desc="Speech-to-text and proposal extraction, at the configured rates; each point is the 24 hours "
+                    "before it. The daily ceiling (MeetingAgent:Budget:DailyCeilingEuro) applies to the sum, per "
+                    "Copenhagen day.")
+U += [
+    spend_day,
+    table("Top workspaces by spend (selected range)",
+          [prom(f'topk(10, sum by (workspace) (increase({SPEND}[$__range])))', instant=True)],
+          12, y, w=6, h=8, sort="Value",
+          desc="Workspace slug. A workspace near its hours shows in the app's meeting panel; its billing people get "
+               "the 80 % and 100 % emails.",
+          transformations=[{"id": "organize", "options": {"excludeByName": {"Time": True},
+                                                          "renameByName": {"workspace": "Workspace", "Value": "€"}}}]),
+    stat("Refused model calls", [prom(f'sum by (reason) (increase({REFUSED}[$__range]))', instant=True, legend="{{reason}}")],
+         18, y, w=6, h=8, decimals=0,
+         desc="budget: a workspace's hours were used up, so audio was refused and text got keyword proposals. "
+              "ceiling: the server-wide daily ceiling stopped every workspace."),
+]
+y += 8
 
 usage = dashboard("kupro-usage", "Kupro – Usage",
                   "Requests by feature area and caller (web/MCP session, API token, agent token), from the request log in Loki.",
@@ -755,6 +782,16 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "kupro-api", "folder"
         "backed up: WAL piles up in Postgres until the replication slot is dropped (4 GB). Check the container "
         "(`docker ps -a | grep backup-agent`, `docker logs`) and redeploy.",
         health, backup_status_age, no_data="Alerting", exec_err="Alerting"),
+    rule("kupro-meeting-agent-ceiling", "Kupro meeting agent daily ceiling reached", "C", [
+        q_prom("A", f'sum(increase({REFUSED[:-1]}, reason="ceiling"}}[10m]))', 600),
+        q_reduce("B", "A"),
+        q_threshold("C", "B", "gt", 0),
+    ], "0s", "warning",
+        "The meeting agent hit the server-wide daily spending ceiling.",
+        "Every workspace's microphone is off and typed text gets keyword proposals until midnight (Copenhagen). "
+        "Check 'Top workspaces by spend' for one workspace running up the bill. If the day is just busy, raise "
+        "DailyCeilingEuro in src/Kupro.AppHost/MeetingAgent.cs and deploy.",
+        usage, spend_day),
 ]}]}
 
 for name, d in [("health", health), ("usage", usage), ("errors", errors)]:

@@ -12,9 +12,9 @@ compose from `aspire publish`. Everything here is mounted read-only; Grafana pro
 | `loki.yaml`, `tempo.yaml`, `prometheus.yaml` | Single-node storage, 30-day retention, usage reporting off |
 | `grafana/provisioning/datasources/` | Prometheus, Loki, Tempo with fixed uids `prometheus`, `loki`, `tempo`, trace ↔ log links |
 | `grafana/provisioning/alerting/notifications.yaml` | Email contact point and default notification policy |
-| `grafana/provisioning/alerting/alert-rules.json` | Alert rules: API down, errors logged, restart loop, latency budget breached, disk, Postgres, Keycloak, backups (generated) |
+| `grafana/provisioning/alerting/alert-rules.json` | Alert rules: API down, errors logged, restart loop, latency budget breached, disk, Postgres, Keycloak, backups, meeting agent daily ceiling (generated) |
 | `grafana/dashboards/health.json` | Service health: up/down, requests, 5xx rate, latency vs the ADR-010 budget (cold vs warm, requests over budget and their traces), endpoints table, runtime and DB pool (generated) |
-| `grafana/dashboards/usage.json` | Usage: requests per feature area and caller (session / token / agent), agent share, errors and slowest request per area, weekly rhythm (generated) |
+| `grafana/dashboards/usage.json` | Usage: requests per feature area and caller (session / token / agent), agent share, errors and slowest request per area, weekly rhythm, meeting agent spend per day and top workspaces (generated) |
 | `grafana/dashboards/errors.json` | Errors & logs: exceptions, distinct errors, error and warning logs, startups and migrations, log volume (generated) |
 | `build_dashboards.py` | Generates the dashboards and alert rules |
 
