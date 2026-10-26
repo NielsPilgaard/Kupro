@@ -223,7 +223,7 @@ public sealed class RestoreService(
         var restore = await pgBackRest.RestoreAsync(spare, target.Arguments, job.Log, cancellationToken);
         if (!restore.Ok)
         {
-            return new JobOutcome(false, $"pgbackrest restore failed: {restore.Tail(2)}");
+            return new JobOutcome(false, $"pgbackrest restore failed: {restore.Reason(2)}");
         }
 
         job.Log("Starting a temporary Postgres on the spare, replaying WAL…");

@@ -45,7 +45,10 @@ builder.Services.AddScoped<ExportService>();
 builder.Services.AddSingleton<ExportSignal>();
 builder.Services.AddHostedService<ExportJob>();
 builder.Services.AddScoped<RealtimeEvents>();
+builder.Services.AddSingleton<WorkspaceConnections>();
 builder.Services.AddScoped<MeetingService>();
+builder.Services.AddScoped<MeetingBudget>();
+builder.Services.AddSingleton<MeetingAgentMetrics>();
 builder.Services.AddHostedService<MeetingRetentionJob>();
 // Meeting agent vendors (ADR-015): OpenAI-compatible endpoints routed per language; without an extraction model the
 // offline keyword extractor proposes clear commands.

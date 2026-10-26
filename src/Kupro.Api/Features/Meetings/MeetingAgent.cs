@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -37,9 +38,19 @@ public sealed record ExtractionContext(
 /// <param name="IssueReference">Issue key, or the words used for it ("the login bug"); empty for a new issue.</param>
 public sealed record ExtractedAction(ProposalOperation Operation, string IssueReference, string? Value, double Confidence, string Snippet);
 
+/// <summary>Tokens one model call used, from the response's <c>usage</c> (task 017).</summary>
+/// <param name="CachedInputTokens">Part of <paramref name="InputTokens"/> the vendor served from its prompt cache.</param>
+public sealed record ModelUsage(long InputTokens, long CachedInputTokens, long OutputTokens);
+
+/// <param name="Usage">Null when no model was called (keyword matching), so nothing is metered.</param>
+public sealed record Extraction(IReadOnlyList<ExtractedAction> Actions, ModelUsage? Usage);
+
+/// <param name="AudioSeconds">Length of the audio sent, which the vendor bills.</param>
+public sealed record Transcription(string Text, double AudioSeconds);
+
 public interface IProposalExtractor
 {
-    Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct);
+    Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct);
 }
 
 public interface ISpeechToText
@@ -47,7 +58,7 @@ public interface ISpeechToText
     /// <summary>False when no model is configured for the language; the browser then can't stream audio.</summary>
     bool Supports(string language);
 
-    Task<string> TranscribeAsync(Stream wav, string language, CancellationToken ct);
+    Task<Transcription> TranscribeAsync(Stream wav, string language, CancellationToken ct);
 }
 
 /// <summary>
@@ -60,6 +71,25 @@ public sealed class MeetingAgentOptions
 
     public ModelRoute Transcription { get; set; } = new();
     public ModelRoute Extraction { get; set; } = new();
+
+    /// <summary>Monthly AI budget per workspace (ADR-013, task 017). Not set means no limits, as for self-hosters.</summary>
+    public MeetingBudgetOptions? Budget { get; set; }
+}
+
+/// <summary>
+/// The allowance in meeting hours and what one hour is worth. Usage is metered in euro at each route's rates, so the
+/// margin holds whatever the mix of speech and typed text (ADR-013).
+/// </summary>
+public sealed class MeetingBudgetOptions
+{
+    /// <summary>Hours per seat a month, pooled across the workspace.</summary>
+    public decimal HoursPerSeat { get; set; } = 2;
+
+    /// <summary>Euro value of one meeting hour, which turns hours into a budget (the pricing calculator's hour cost).</summary>
+    public decimal EuroPerHour { get; set; }
+
+    /// <summary>Server-wide spend per day (Copenhagen) after which every workspace falls back as if over budget.</summary>
+    public decimal? DailyCeilingEuro { get; set; }
 }
 
 public sealed class ModelRoute
@@ -73,6 +103,20 @@ public sealed class ModelRoute
     /// <summary>Chat only: <c>low</c>, <c>medium</c> or <c>high</c> for a reasoning model; unset sends nothing.</summary>
     public string? ReasoningEffort { get; set; }
 
+    // The vendor's rates for this route's model (task 017): a model change is a config change, rates included.
+
+    /// <summary>Transcription: euro per minute of audio.</summary>
+    public decimal? EuroPerAudioMinute { get; set; }
+
+    /// <summary>Extraction: euro per million input tokens.</summary>
+    public decimal? EuroPerMillionInputTokens { get; set; }
+
+    /// <summary>Extraction: euro per million cached input tokens; unset means the input rate.</summary>
+    public decimal? EuroPerMillionCachedInputTokens { get; set; }
+
+    /// <summary>Extraction: euro per million output tokens.</summary>
+    public decimal? EuroPerMillionOutputTokens { get; set; }
+
     public Dictionary<string, ModelRoute> Languages { get; set; } = [];
 
     public ModelRoute For(string language) =>
@@ -83,6 +127,10 @@ public sealed class ModelRoute
                 Model = route.Model ?? Model,
                 ApiKey = route.ApiKey ?? ApiKey,
                 ReasoningEffort = route.ReasoningEffort ?? ReasoningEffort,
+                EuroPerAudioMinute = route.EuroPerAudioMinute ?? EuroPerAudioMinute,
+                EuroPerMillionInputTokens = route.EuroPerMillionInputTokens ?? EuroPerMillionInputTokens,
+                EuroPerMillionCachedInputTokens = route.EuroPerMillionCachedInputTokens ?? EuroPerMillionCachedInputTokens,
+                EuroPerMillionOutputTokens = route.EuroPerMillionOutputTokens ?? EuroPerMillionOutputTokens,
             }
             : this;
 
@@ -96,12 +144,17 @@ public sealed class OpenAiSpeechToText(HttpClient http, IOptions<MeetingAgentOpt
 {
     public bool Supports(string language) => options.Value.Transcription.For(language).IsConfigured;
 
-    public async Task<string> TranscribeAsync(Stream wav, string language, CancellationToken ct)
+    public async Task<Transcription> TranscribeAsync(Stream wav, string language, CancellationToken ct)
     {
         var route = options.Value.Transcription.For(language);
+        // Under 2 MB (the endpoint's limit): buffered so its length can be metered before it goes out.
+        using var audio = new MemoryStream();
+        await wav.CopyToAsync(audio, ct);
+        var seconds = Wav.Seconds(audio.GetBuffer().AsSpan(0, (int)audio.Length));
+        audio.Position = 0;
         using var form = new MultipartFormDataContent
         {
-            { new StreamContent(wav) { Headers = { ContentType = new MediaTypeHeaderValue("audio/wav") } }, "file", "utterance.wav" },
+            { new StreamContent(audio) { Headers = { ContentType = new MediaTypeHeaderValue("audio/wav") } }, "file", "utterance.wav" },
             { new StringContent(route.Model!), "model" },
             { new StringContent(language), "language" },
             { new StringContent("json"), "response_format" },
@@ -111,7 +164,48 @@ public sealed class OpenAiSpeechToText(HttpClient http, IOptions<MeetingAgentOpt
         using var response = await http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonObject>(ct);
-        return body?["text"]?.GetValue<string>().Trim() ?? "";
+        return new Transcription(body?["text"]?.GetValue<string>().Trim() ?? "", seconds);
+    }
+}
+
+/// <summary>Length of a PCM WAV from its header, for metering (task 017).</summary>
+public static class Wav
+{
+    /// <summary>The browser's format (16 kHz mono 16-bit, 32,000 bytes a second) when the header can't be read.</summary>
+    private const int DefaultByteRate = 32_000;
+
+    public static double Seconds(ReadOnlySpan<byte> wav)
+    {
+        var byteRate = 0;
+        var dataBytes = -1L;
+        if (wav.Length >= 12 && wav[..4].SequenceEqual("RIFF"u8) && wav[8..12].SequenceEqual("WAVE"u8))
+        {
+            // Walk the chunks: "fmt " carries the byte rate, "data" the samples.
+            for (var offset = 12; offset + 8 <= wav.Length;)
+            {
+                var id = wav.Slice(offset, 4);
+                var size = BinaryPrimitives.ReadUInt32LittleEndian(wav.Slice(offset + 4, 4));
+                if (id.SequenceEqual("fmt "u8) && offset + 20 <= wav.Length)
+                {
+                    byteRate = (int)BinaryPrimitives.ReadUInt32LittleEndian(wav.Slice(offset + 16, 4));
+                }
+                else if (id.SequenceEqual("data"u8))
+                {
+                    dataBytes = Math.Min(size, wav.Length - offset - 8);
+                    break;
+                }
+
+                var next = offset + 8L + size + (size & 1);
+                if (next > wav.Length)
+                {
+                    break;
+                }
+
+                offset = (int)next;
+            }
+        }
+
+        return (double)(dataBytes >= 0 ? dataBytes : wav.Length) / (byteRate > 0 ? byteRate : DefaultByteRate);
     }
 }
 
@@ -154,9 +248,10 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         }
         """)!;
 
-    public async Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct)
+    public async Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct)
     {
         var route = options.Value.Extraction.For(context.Language);
+        var user = JsonSerializer.Serialize(context, Json);
         var payload = new JsonObject
         {
             ["model"] = route.Model,
@@ -165,7 +260,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
             ["messages"] = new JsonArray
             {
                 new JsonObject { ["role"] = "system", ["content"] = Prompt },
-                new JsonObject { ["role"] = "user", ["content"] = JsonSerializer.Serialize(context, Json) },
+                new JsonObject { ["role"] = "user", ["content"] = user },
             },
             ["response_format"] = new JsonObject
             {
@@ -187,12 +282,13 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         response.EnsureSuccessStatusCode();
         var completion = await response.Content.ReadFromJsonAsync<JsonObject>(ct);
         var content = completion?["choices"]?[0]?["message"]?["content"]?.GetValue<string>();
+        var usage = Usage(completion?["usage"], Prompt.Length + user.Length, content?.Length ?? 0);
         if (content is null || Parse(content)?["actions"] is not JsonArray actions)
         {
-            return [];
+            return new Extraction([], usage);
         }
 
-        return actions.OfType<JsonObject>()
+        return new Extraction(actions.OfType<JsonObject>()
             .Select(a => (Op: Enum.TryParse<ProposalOperation>(a["operation"]?.GetValue<string>(), true, out var op) ? op : (ProposalOperation?)null, A: a))
             .Where(x => x.Op is not null)
             .Select(x => new ExtractedAction(
@@ -201,8 +297,25 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
                 x.A["value"]?.GetValue<string>().Trim().Trim('"'),
                 Math.Clamp(x.A["confidence"]?.GetValue<double>() ?? 0, 0, 1),
                 x.A["snippet"]?.GetValue<string>() ?? ""))
-            .ToList();
+            .ToList(), usage);
     }
+
+    /// <summary>
+    /// The response's token counts. Without them (not every OpenAI-compatible vendor sends <c>usage</c>), an estimate
+    /// at four characters a token, so the budget still moves.
+    /// </summary>
+    private static ModelUsage Usage(JsonNode? usage, int promptChars, int outputChars)
+    {
+        long? Read(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var n) ? n : null;
+        var input = Read(usage?["prompt_tokens"]);
+        var output = Read(usage?["completion_tokens"]);
+        var cached = Read(usage?["prompt_tokens_details"]?["cached_tokens"]) ?? 0;
+        return input is null || output is null
+            ? new ModelUsage(promptChars / CharsPerToken, 0, Math.Max(outputChars / CharsPerToken, 1))
+            : new ModelUsage(input.Value, Math.Min(cached, input.Value), output.Value);
+    }
+
+    private const int CharsPerToken = 4;
 
     /// <summary>Null when the output was cut off at <see cref="MaxTokens"/>: no proposals rather than a failed transcript.</summary>
     private static JsonNode? Parse(string content)
@@ -259,7 +372,7 @@ public sealed partial class KeywordProposalExtractor : IProposalExtractor
         (ProposalOperation.CreateIssue, Rule(@"\b(?:create|add|open|opret|lav|tilføj)\s+(?:a\s+|an\s+|en\s+)?(?:new\s+|ny\s+)?(?:issue|task|ticket|bug|story|opgave|sag|fejl)\s+(?:for|to|about|om|til|:)\s*(?<v>[^.!?\n]+)")),
     ];
 
-    public Task<IReadOnlyList<ExtractedAction>> ExtractAsync(ExtractionContext context, CancellationToken ct)
+    public Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct)
     {
         var actions = new List<ExtractedAction>();
         foreach (var (op, pattern) in Rules)
@@ -278,7 +391,8 @@ public sealed partial class KeywordProposalExtractor : IProposalExtractor
             }
         }
 
-        return Task.FromResult<IReadOnlyList<ExtractedAction>>(actions);
+        // No model, so nothing to meter.
+        return Task.FromResult(new Extraction(actions, Usage: null));
     }
 
     private static string? Value(ProposalOperation op, Match m)

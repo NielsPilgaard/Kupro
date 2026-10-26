@@ -37,7 +37,7 @@ internal sealed class WorkspaceExportConfiguration : IEntityTypeConfiguration<Wo
     {
         builder.ToTable("workspace_exports");
         builder.HasOne<Workspace>().WithMany().HasForeignKey(e => e.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Member>().WithMany().HasForeignKey(e => e.RequestedById).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(e => e.RequestedById).OnDelete(DeleteBehavior.Restrict);
         builder.Property(e => e.State).HasConversion<string>().HasMaxLength(16);
         builder.HasIndex(e => new { e.WorkspaceId, e.CreatedAt });
         builder.HasIndex(e => e.State);

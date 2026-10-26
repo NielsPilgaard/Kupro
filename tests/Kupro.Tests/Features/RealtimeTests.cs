@@ -99,6 +99,29 @@ public sealed class RealtimeTests(PostgresFixture postgres) : ApiTestBase(postgr
     }
 
     [Fact]
+    public async Task Deactivated_members_stop_hearing_without_reconnecting()
+    {
+        var colleague = TestUser.New("Ida");
+        using var ida = Factory.CreateUserClient(colleague);
+        var invite = await ReadAsync<MemberResponse>(await _client.PostAsJsonAsync($"{Ws}/members",
+            new InviteMemberRequest(colleague.Email, WorkspaceRole.Member), Json.Options, Ct), HttpStatusCode.Created);
+        await ReadAsync<WorkspaceSummary>(await ida.PostAsync($"/api/v1/invites/{invite.Id}/accept", null, Ct));
+        var connection = await ConnectAsync(KuproApiFactory.CreateJwt(colleague));
+        var heard = 0;
+        connection.On<IssuesEvent>("Issues", _ => Interlocked.Increment(ref heard));
+        (await connection.InvokeAsync<bool>("Join", _workspace.Slug, Ct)).ShouldBeTrue();
+        (await _client.PatchAsJsonAsync($"{Ws}/issues/KUP-1", new UpdateIssueRequest(Title: "Heard"), Json.Options, Ct)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(() => heard == 1);
+
+        (await _client.PostAsync($"{Ws}/members/{invite.Id}/deactivate", null, Ct)).EnsureSuccessStatusCode();
+        (await _client.PatchAsJsonAsync($"{Ws}/issues/KUP-1", new UpdateIssueRequest(Title: "Unheard"), Json.Options, Ct)).EnsureSuccessStatusCode();
+
+        await Task.Delay(300, Ct);
+        heard.ShouldBe(1);
+        (await connection.InvokeAsync<bool>("Join", _workspace.Slug, Ct)).ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task Connecting_needs_a_token()
     {
         var connection = Build(null);

@@ -154,6 +154,18 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         (await CallAsync(mcp, "get_issue", new() { ["key"] = "MCP-1" })).GetProperty("state").GetString().ShouldBe("backlog");
     }
 
+    [Fact]
+    public async Task Agent_cannot_reach_another_workspace()
+    {
+        var (_, theirs, _) = await NewWorkspaceAsync("Theirs");
+        await using var mcp = await ConnectAsync();
+
+        var result = await mcp.CallToolAsync("search_issues", new Dictionary<string, object?> { ["workspace"] = theirs.Slug }, cancellationToken: Ct);
+
+        result.IsError.ShouldBe(true);
+        result.Content.OfType<TextContentBlock>().Single().Text.ShouldContain("workspace_not_found");
+    }
+
     private async Task<McpClient> ConnectAsync()
     {
         var http = Factory.CreateClient();

@@ -146,9 +146,9 @@ internal sealed class MeetingConfiguration :
     public void Configure(EntityTypeBuilder<MeetingSession> builder)
     {
         builder.ToTable("meetings");
-        builder.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Member>().WithMany().HasForeignKey(m => m.StartedById).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Member>().WithMany().HasForeignKey(m => m.AgentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Project>().WithMany().HasWorkspaceForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(m => m.StartedById).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(m => m.AgentId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(m => m.Type).HasConversion<string>().HasMaxLength(16);
         builder.Property(m => m.Mode).HasConversion<string>().HasMaxLength(16);
         builder.Property(m => m.State).HasConversion<string>().HasMaxLength(16);
@@ -159,7 +159,7 @@ internal sealed class MeetingConfiguration :
     public void Configure(EntityTypeBuilder<TranscriptSegment> builder)
     {
         builder.ToTable("transcript_segments");
-        builder.HasOne<MeetingSession>().WithMany().HasForeignKey(t => t.SessionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<MeetingSession>().WithMany().HasWorkspaceForeignKey(t => t.SessionId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(t => t.Text).HasMaxLength(4000);
         builder.HasIndex(t => new { t.SessionId, t.CreatedAt });
         builder.HasIndex(t => t.CreatedAt);
@@ -168,9 +168,9 @@ internal sealed class MeetingConfiguration :
     public void Configure(EntityTypeBuilder<MeetingProposal> builder)
     {
         builder.ToTable("meeting_proposals");
-        builder.HasOne<MeetingSession>().WithMany().HasForeignKey(p => p.SessionId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<TranscriptSegment>().WithMany().HasForeignKey(p => p.SegmentId).OnDelete(DeleteBehavior.SetNull);
-        builder.HasOne<Issue>().WithMany().HasForeignKey(p => p.IssueId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<MeetingSession>().WithMany().HasWorkspaceForeignKey(p => p.SessionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<TranscriptSegment>().WithMany().HasWorkspaceForeignKey(p => p.SegmentId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(p => p.IssueId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(p => p.Operation).HasConversion<string>().HasMaxLength(16);
         builder.Property(p => p.Status).HasConversion<string>().HasMaxLength(16);
         builder.Property(p => p.Value).HasMaxLength(4000);

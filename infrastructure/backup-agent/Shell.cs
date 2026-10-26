@@ -7,6 +7,23 @@ public sealed record ShellResult(int ExitCode, IReadOnlyList<string> Output)
     public bool Ok => ExitCode == 0;
 
     public string Tail(int lines = 5) => string.Join('\n', Output.TakeLast(lines));
+
+    /// <summary>
+    /// Why the command failed, for the console and the status: pgBackRest's <c>ERROR: [nnn]: …</c> line, plus the
+    /// store's error code when an S3 error carries one. Otherwise the last lines. An S3 error ends in the request and
+    /// response headers, so its tail alone says nothing (rehearsal, task 021).
+    /// </summary>
+    public string Reason(int lines = 2)
+    {
+        var error = Output.LastOrDefault(l => l.StartsWith("ERROR: [", StringComparison.Ordinal));
+        if (error is null)
+        {
+            return Tail(lines);
+        }
+
+        var code = Output.FirstOrDefault(l => l.Contains("error-code:", StringComparison.OrdinalIgnoreCase) || l.Contains("<Code>", StringComparison.Ordinal));
+        return code is null ? error.Trim() : $"{error.Trim()} {code.Trim()}";
+    }
 }
 
 /// <summary>Runs pgBackRest, pg_ctl and friends. Arguments are passed as a list, never through a shell.</summary>

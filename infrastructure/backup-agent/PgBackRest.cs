@@ -124,10 +124,26 @@ public sealed class PgBackRest(IOptions<AgentOptions> options, DataVolumes volum
         var info = await RunAsync([QuickTimeout, "--output=json", "--log-level-console=error", "info"], null, cancellationToken);
         if (!info.Ok)
         {
-            return RepoSnapshot.Empty with { ReadAt = DateTimeOffset.UtcNow, Error = info.Tail(3) };
+            return RepoSnapshot.Empty with { ReadAt = DateTimeOffset.UtcNow, Error = info.Reason(3) };
         }
 
-        var (stanzaOk, error, backups) = ParseInfo(string.Join('\n', info.Output));
+        var json = string.Join('\n', info.Output);
+        bool stanzaOk;
+        string? error;
+        List<RepoBackup> backups;
+        try
+        {
+            (stanzaOk, error, backups) = ParseInfo(json);
+        }
+        catch (JsonException)
+        {
+            // A wrong cipher pass decrypts the info files to binary, which pgBackRest copies into its JSON unescaped.
+            // Throwing here would fail every status tick, so the agent would go silent instead of unhealthy.
+            var formatError = json.IndexOf("[FormatError]", StringComparison.Ordinal);
+            var message = formatError < 0 ? "pgbackrest info returned output that isn't JSON" : json[formatError..].Split(["\\n", "\n", "\""], StringSplitOptions.None)[0];
+            return RepoSnapshot.Empty with { ReadAt = DateTimeOffset.UtcNow, Error = Explain(message, encrypted: formatError >= 0) };
+        }
+
         var segments = new List<RepoSegment>();
         var ls = await RunAsync([QuickTimeout, "--output=json", "--recurse", "--log-level-console=error", "repo-ls", $"archive/{_options.Stanza}"], null, cancellationToken);
         if (ls.Ok)
@@ -136,7 +152,7 @@ public sealed class PgBackRest(IOptions<AgentOptions> options, DataVolumes volum
         }
         else
         {
-            error ??= ls.Tail(3);
+            error ??= ls.Reason(3);
         }
 
         return new RepoSnapshot(DateTimeOffset.UtcNow, stanzaOk, error, backups, segments, Ranges(backups, segments));
@@ -178,7 +194,36 @@ public sealed class PgBackRest(IOptions<AgentOptions> options, DataVolumes volum
         }
 
         // Code 2 is "no valid backups": the stanza exists but is empty.
-        return (code is 0 or 2, code is 0 or 2 ? null : message, backups);
+        return (code is 0 or 2, code is 0 or 2 ? null : InfoError(stanza, message), backups);
+    }
+
+    /// <summary>
+    /// The stanza's status message is only "other" when the repo fails; the reason is on the repo. A wrong cipher pass
+    /// decrypts the info files to garbage, which pgBackRest reports as a FormatError with binary in it and a hint about
+    /// stanza-create, so say what it most likely is (rehearsal, task 021).
+    /// </summary>
+    private static string? InfoError(JsonElement stanza, string? message)
+    {
+        var repoMessage = stanza.TryGetProperty("repo", out var repos)
+            ? repos.EnumerateArray()
+                .Select(r => r.TryGetProperty("status", out var s) && s.TryGetProperty("message", out var m) ? m.GetString() : null)
+                .FirstOrDefault(m => !string.IsNullOrWhiteSpace(m))
+            : null;
+        if (repoMessage is null)
+        {
+            return message;
+        }
+
+        var encrypted = stanza.TryGetProperty("cipher", out var cipher) && cipher.GetString() is { } c && c != "none";
+        return Explain(repoMessage, encrypted);
+    }
+
+    private static string Explain(string message, bool encrypted)
+    {
+        var firstLine = message.Split('\n')[0].Trim();
+        return encrypted && message.Contains("FormatError", StringComparison.Ordinal)
+            ? $"Can't read the repo's info files. Most likely a wrong cipher pass (PGBACKREST_REPO1_CIPHER_PASS). pgBackRest: {firstLine}"
+            : firstLine;
     }
 
     private static List<RepoSegment> ParseSegments(string json)

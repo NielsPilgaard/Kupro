@@ -123,14 +123,11 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_activity");
 
-                    b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_activity_actor_id");
+                    b.HasIndex("WorkspaceId", "ActorId")
+                        .HasDatabaseName("ix_activity_workspace_id_actor_id");
 
-                    b.HasIndex("IssueId")
-                        .HasDatabaseName("ix_activity_issue_id");
-
-                    b.HasIndex("ProposalId")
-                        .HasDatabaseName("ix_activity_proposal_id");
+                    b.HasIndex("WorkspaceId", "ProposalId")
+                        .HasDatabaseName("ix_activity_workspace_id_proposal_id");
 
                     b.HasIndex("WorkspaceId", "IssueId", "CreatedAt")
                         .HasDatabaseName("ix_activity_workspace_id_issue_id_created_at");
@@ -184,14 +181,11 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_attachments");
 
-                    b.HasIndex("IssueId")
-                        .HasDatabaseName("ix_attachments_issue_id");
-
-                    b.HasIndex("UploadedById")
-                        .HasDatabaseName("ix_attachments_uploaded_by_id");
-
                     b.HasIndex("WorkspaceId", "IssueId")
                         .HasDatabaseName("ix_attachments_workspace_id_issue_id");
+
+                    b.HasIndex("WorkspaceId", "UploadedById")
+                        .HasDatabaseName("ix_attachments_workspace_id_uploaded_by_id");
 
                     b.ToTable("attachments", (string)null);
                 });
@@ -242,14 +236,11 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_comments");
 
-                    b.HasIndex("AuthorId")
-                        .HasDatabaseName("ix_comments_author_id");
+                    b.HasIndex("WorkspaceId", "AuthorId")
+                        .HasDatabaseName("ix_comments_workspace_id_author_id");
 
-                    b.HasIndex("IssueId")
-                        .HasDatabaseName("ix_comments_issue_id");
-
-                    b.HasIndex("ProposalId")
-                        .HasDatabaseName("ix_comments_proposal_id");
+                    b.HasIndex("WorkspaceId", "ProposalId")
+                        .HasDatabaseName("ix_comments_workspace_id_proposal_id");
 
                     b.HasIndex("WorkspaceId", "IssueId", "CreatedAt")
                         .HasDatabaseName("ix_comments_workspace_id_issue_id_created_at");
@@ -293,14 +284,14 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_workspace_exports");
 
-                    b.HasIndex("RequestedById")
-                        .HasDatabaseName("ix_workspace_exports_requested_by_id");
-
                     b.HasIndex("State")
                         .HasDatabaseName("ix_workspace_exports_state");
 
                     b.HasIndex("WorkspaceId", "CreatedAt")
                         .HasDatabaseName("ix_workspace_exports_workspace_id_created_at");
+
+                    b.HasIndex("WorkspaceId", "RequestedById")
+                        .HasDatabaseName("ix_workspace_exports_workspace_id_requested_by_id");
 
                     b.ToTable("workspace_exports", (string)null);
                 });
@@ -409,22 +400,13 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_issues");
 
-                    b.HasIndex("AssigneeId")
-                        .HasDatabaseName("ix_issues_assignee_id");
-
-                    b.HasIndex("CreatedById")
-                        .HasDatabaseName("ix_issues_created_by_id");
-
-                    b.HasIndex("ParentId")
-                        .HasDatabaseName("ix_issues_parent_id");
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_issues_workspace_id_id");
 
                     b.HasIndex("SearchVector")
                         .HasDatabaseName("ix_issues_search_vector");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
-
-                    b.HasIndex("SprintId")
-                        .HasDatabaseName("ix_issues_sprint_id");
 
                     b.HasIndex("ProjectId", "Number")
                         .IsUnique()
@@ -432,6 +414,9 @@ namespace Kupro.Api.Data.Migrations
 
                     b.HasIndex("WorkspaceId", "AssigneeId")
                         .HasDatabaseName("ix_issues_workspace_id_assignee_id");
+
+                    b.HasIndex("WorkspaceId", "CreatedById")
+                        .HasDatabaseName("ix_issues_workspace_id_created_by_id");
 
                     b.HasIndex("WorkspaceId", "Key")
                         .IsUnique()
@@ -472,8 +457,8 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("IssueId", "LabelId")
                         .HasName("pk_issue_labels");
 
-                    b.HasIndex("LabelId")
-                        .HasDatabaseName("ix_issue_labels_label_id");
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_issue_labels_workspace_id_issue_id");
 
                     b.HasIndex("WorkspaceId", "LabelId")
                         .HasDatabaseName("ix_issue_labels_workspace_id_label_id");
@@ -513,8 +498,8 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_issue_relations");
 
-                    b.HasIndex("TargetId")
-                        .HasDatabaseName("ix_issue_relations_target_id");
+                    b.HasIndex("WorkspaceId", "SourceId")
+                        .HasDatabaseName("ix_issue_relations_workspace_id_source_id");
 
                     b.HasIndex("WorkspaceId", "TargetId")
                         .HasDatabaseName("ix_issue_relations_workspace_id_target_id");
@@ -556,11 +541,31 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_labels");
 
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_labels_workspace_id_id");
+
                     b.HasIndex("WorkspaceId", "Name")
                         .IsUnique()
                         .HasDatabaseName("ix_labels_workspace_id_name");
 
                     b.ToTable("labels", (string)null);
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingAgentSpend", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date")
+                        .HasColumnName("day");
+
+                    b.Property<decimal>("CostCents")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("cost_cents");
+
+                    b.HasKey("Day")
+                        .HasName("pk_meeting_agent_spend");
+
+                    b.ToTable("meeting_agent_spend", (string)null);
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingProposal", b =>
@@ -653,17 +658,23 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_meeting_proposals");
 
-                    b.HasIndex("IssueId")
-                        .HasDatabaseName("ix_meeting_proposals_issue_id");
-
-                    b.HasIndex("SegmentId")
-                        .HasDatabaseName("ix_meeting_proposals_segment_id");
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_meeting_proposals_workspace_id_id");
 
                     b.HasIndex("SessionId", "CreatedAt")
                         .HasDatabaseName("ix_meeting_proposals_session_id_created_at");
 
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_meeting_proposals_workspace_id_issue_id");
+
                     b.HasIndex("WorkspaceId", "Operation")
                         .HasDatabaseName("ix_meeting_proposals_workspace_id_operation");
+
+                    b.HasIndex("WorkspaceId", "SegmentId")
+                        .HasDatabaseName("ix_meeting_proposals_workspace_id_segment_id");
+
+                    b.HasIndex("WorkspaceId", "SessionId")
+                        .HasDatabaseName("ix_meeting_proposals_workspace_id_session_id");
 
                     b.ToTable("meeting_proposals", (string)null);
                 });
@@ -726,17 +737,20 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_meetings");
 
-                    b.HasIndex("AgentId")
-                        .HasDatabaseName("ix_meetings_agent_id");
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_meetings_workspace_id_id");
 
-                    b.HasIndex("ProjectId")
-                        .HasDatabaseName("ix_meetings_project_id");
+                    b.HasIndex("WorkspaceId", "AgentId")
+                        .HasDatabaseName("ix_meetings_workspace_id_agent_id");
 
-                    b.HasIndex("StartedById")
-                        .HasDatabaseName("ix_meetings_started_by_id");
+                    b.HasIndex("WorkspaceId", "ProjectId")
+                        .HasDatabaseName("ix_meetings_workspace_id_project_id");
 
                     b.HasIndex("WorkspaceId", "StartedAt")
                         .HasDatabaseName("ix_meetings_workspace_id_started_at");
+
+                    b.HasIndex("WorkspaceId", "StartedById")
+                        .HasDatabaseName("ix_meetings_workspace_id_started_by_id");
 
                     b.ToTable("meetings", (string)null);
                 });
@@ -772,6 +786,47 @@ namespace Kupro.Api.Data.Migrations
                     b.ToTable("meeting_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingUsage", b =>
+                {
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.Property<DateOnly>("Period")
+                        .HasColumnType("date")
+                        .HasColumnName("period");
+
+                    b.Property<double>("AudioSeconds")
+                        .HasColumnType("double precision")
+                        .HasColumnName("audio_seconds");
+
+                    b.Property<decimal>("CostCents")
+                        .HasPrecision(14, 4)
+                        .HasColumnType("numeric(14,4)")
+                        .HasColumnName("cost_cents");
+
+                    b.Property<long>("InputTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("input_tokens");
+
+                    b.Property<long>("OutputTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("output_tokens");
+
+                    b.Property<DateTimeOffset?>("Warned100At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("warned100at");
+
+                    b.Property<DateTimeOffset?>("Warned80At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("warned80at");
+
+                    b.HasKey("WorkspaceId", "Period")
+                        .HasName("pk_meeting_usage");
+
+                    b.ToTable("meeting_usage", (string)null);
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Meetings.TranscriptSegment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -804,11 +859,17 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_transcript_segments");
 
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_transcript_segments_workspace_id_id");
+
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_transcript_segments_created_at");
 
                     b.HasIndex("SessionId", "CreatedAt")
                         .HasDatabaseName("ix_transcript_segments_session_id_created_at");
+
+                    b.HasIndex("WorkspaceId", "SessionId")
+                        .HasDatabaseName("ix_transcript_segments_workspace_id_session_id");
 
                     b.ToTable("transcript_segments", (string)null);
                 });
@@ -845,11 +906,11 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_milestones");
 
-                    b.HasIndex("ProjectId")
-                        .HasDatabaseName("ix_milestones_project_id");
-
                     b.HasIndex("WorkspaceId", "Date")
                         .HasDatabaseName("ix_milestones_workspace_id_date");
+
+                    b.HasIndex("WorkspaceId", "ProjectId")
+                        .HasDatabaseName("ix_milestones_workspace_id_project_id");
 
                     b.ToTable("milestones", (string)null);
                 });
@@ -937,6 +998,9 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_projects");
 
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_projects_workspace_id_id");
+
                     b.HasIndex("WorkspaceId", "Key")
                         .IsUnique()
                         .HasDatabaseName("ix_projects_workspace_id_key");
@@ -994,6 +1058,9 @@ namespace Kupro.Api.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_sprints");
+
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_sprints_workspace_id_id");
 
                     b.HasIndex("ProjectId")
                         .IsUnique()
@@ -1198,6 +1265,9 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_members");
 
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_members_workspace_id_id");
+
                     b.HasIndex("InviteEmail")
                         .HasDatabaseName("ix_members_invite_email")
                         .HasFilter("status = 'Invited'");
@@ -1278,162 +1348,180 @@ namespace Kupro.Api.Data.Migrations
                 {
                     b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
                         .WithMany()
-                        .HasForeignKey("ActorId")
+                        .HasForeignKey("WorkspaceId", "ActorId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_activity_members_actor_id");
+                        .HasConstraintName("fk_activity_members_workspace_id_actor_id");
 
                     b.HasOne("Kupro.Api.Features.Issues.Issue", null)
                         .WithMany()
-                        .HasForeignKey("IssueId")
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_activity_issues_issue_id");
+                        .HasConstraintName("fk_activity_issues_workspace_id_issue_id");
 
                     b.HasOne("Kupro.Api.Features.Meetings.MeetingProposal", null)
                         .WithMany()
-                        .HasForeignKey("ProposalId")
+                        .HasForeignKey("WorkspaceId", "ProposalId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_activity_meeting_proposals_proposal_id");
+                        .HasConstraintName("fk_activity_meeting_proposals_workspace_id_proposal_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Attachments.Attachment", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
-                        .WithMany()
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_attachments_issues_issue_id");
-
-                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
-                        .WithMany()
-                        .HasForeignKey("UploadedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_attachments_members_uploaded_by_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_attachments_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attachments_issues_workspace_id_issue_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "UploadedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_attachments_members_workspace_id_uploaded_by_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Comments.Comment", b =>
                 {
                     b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
                         .WithMany()
-                        .HasForeignKey("AuthorId")
+                        .HasForeignKey("WorkspaceId", "AuthorId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_comments_members_author_id");
+                        .HasConstraintName("fk_comments_members_workspace_id_author_id");
 
                     b.HasOne("Kupro.Api.Features.Issues.Issue", null)
                         .WithMany()
-                        .HasForeignKey("IssueId")
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_comments_issues_issue_id");
+                        .HasConstraintName("fk_comments_issues_workspace_id_issue_id");
 
                     b.HasOne("Kupro.Api.Features.Meetings.MeetingProposal", null)
                         .WithMany()
-                        .HasForeignKey("ProposalId")
+                        .HasForeignKey("WorkspaceId", "ProposalId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_comments_meeting_proposals_proposal_id");
+                        .HasConstraintName("fk_comments_meeting_proposals_workspace_id_proposal_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Exports.WorkspaceExport", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
-                        .WithMany()
-                        .HasForeignKey("RequestedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_workspace_exports_members_requested_by_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_workspace_exports_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "RequestedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workspace_exports_members_workspace_id_requested_by_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Issues.Issue", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
-                        .WithMany()
-                        .HasForeignKey("AssigneeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_issues_members_assignee_id");
-
-                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_issues_members_created_by_id");
-
-                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
-                        .WithMany()
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_issues_issues_parent_id");
-
-                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_issues_projects_project_id");
-
-                    b.HasOne("Kupro.Api.Features.Sprints.Sprint", null)
-                        .WithMany()
-                        .HasForeignKey("SprintId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_issues_sprints_sprint_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_issues_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "AssigneeId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issues_members_workspace_id_assignee_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CreatedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issues_members_workspace_id_created_by_id");
+
+                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ParentId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issues_issues_workspace_id_parent_id");
+
+                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ProjectId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issues_projects_workspace_id_project_id");
+
+                    b.HasOne("Kupro.Api.Features.Sprints.Sprint", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "SprintId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_issues_sprints_workspace_id_sprint_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Issues.IssueLabel", b =>
                 {
                     b.HasOne("Kupro.Api.Features.Issues.Issue", null)
                         .WithMany("Labels")
-                        .HasForeignKey("IssueId")
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_issue_labels_issues_issue_id");
+                        .HasConstraintName("fk_issue_labels_issues_workspace_id_issue_id");
 
                     b.HasOne("Kupro.Api.Features.Issues.Label", null)
                         .WithMany()
-                        .HasForeignKey("LabelId")
+                        .HasForeignKey("WorkspaceId", "LabelId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_issue_labels_labels_label_id");
+                        .HasConstraintName("fk_issue_labels_labels_workspace_id_label_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Issues.IssueRelation", b =>
                 {
                     b.HasOne("Kupro.Api.Features.Issues.Issue", null)
                         .WithMany()
-                        .HasForeignKey("SourceId")
+                        .HasForeignKey("WorkspaceId", "SourceId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_issue_relations_issues_source_id");
+                        .HasConstraintName("fk_issue_relations_issues_workspace_id_source_id");
 
                     b.HasOne("Kupro.Api.Features.Issues.Issue", null)
                         .WithMany()
-                        .HasForeignKey("TargetId")
+                        .HasForeignKey("WorkspaceId", "TargetId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_issue_relations_issues_target_id");
+                        .HasConstraintName("fk_issue_relations_issues_workspace_id_target_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Issues.Label", b =>
@@ -1450,46 +1538,52 @@ namespace Kupro.Api.Data.Migrations
                 {
                     b.HasOne("Kupro.Api.Features.Issues.Issue", null)
                         .WithMany()
-                        .HasForeignKey("IssueId")
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_meeting_proposals_issues_issue_id");
+                        .HasConstraintName("fk_meeting_proposals_issues_workspace_id_issue_id");
 
                     b.HasOne("Kupro.Api.Features.Meetings.TranscriptSegment", null)
                         .WithMany()
-                        .HasForeignKey("SegmentId")
+                        .HasForeignKey("WorkspaceId", "SegmentId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_meeting_proposals_transcript_segments_segment_id");
+                        .HasConstraintName("fk_meeting_proposals_transcript_segments_workspace_id_segment_");
 
                     b.HasOne("Kupro.Api.Features.Meetings.MeetingSession", null)
                         .WithMany()
-                        .HasForeignKey("SessionId")
+                        .HasForeignKey("WorkspaceId", "SessionId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_meeting_proposals_meetings_session_id");
+                        .HasConstraintName("fk_meeting_proposals_meetings_workspace_id_session_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingSession", b =>
                 {
                     b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
                         .WithMany()
-                        .HasForeignKey("AgentId")
+                        .HasForeignKey("WorkspaceId", "AgentId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_meetings_members_agent_id");
+                        .HasConstraintName("fk_meetings_members_workspace_id_agent_id");
 
                     b.HasOne("Kupro.Api.Features.Projects.Project", null)
                         .WithMany()
-                        .HasForeignKey("ProjectId")
+                        .HasForeignKey("WorkspaceId", "ProjectId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_meetings_projects_project_id");
+                        .HasConstraintName("fk_meetings_projects_workspace_id_project_id");
 
                     b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
                         .WithMany()
-                        .HasForeignKey("StartedById")
+                        .HasForeignKey("WorkspaceId", "StartedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_meetings_members_started_by_id");
+                        .HasConstraintName("fk_meetings_members_workspace_id_started_by_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingSettings", b =>
@@ -1502,47 +1596,60 @@ namespace Kupro.Api.Data.Migrations
                         .HasConstraintName("fk_meeting_settings_workspaces_workspace_id");
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Meetings.MeetingUsage", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_meeting_usage_workspaces_workspace_id");
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Meetings.TranscriptSegment", b =>
                 {
                     b.HasOne("Kupro.Api.Features.Meetings.MeetingSession", null)
                         .WithMany()
-                        .HasForeignKey("SessionId")
+                        .HasForeignKey("WorkspaceId", "SessionId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_transcript_segments_meetings_session_id");
+                        .HasConstraintName("fk_transcript_segments_meetings_workspace_id_session_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Plan.Milestone", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_milestones_projects_project_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_milestones_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ProjectId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_milestones_projects_workspace_id_project_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Plan.ProjectCapacity", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_project_capacity_projects_project_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_project_capacity_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ProjectId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_capacity_projects_workspace_id_project_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Projects.Project", b =>
@@ -1557,19 +1664,20 @@ namespace Kupro.Api.Data.Migrations
 
             modelBuilder.Entity("Kupro.Api.Features.Sprints.Sprint", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_sprints_projects_project_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_sprints_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ProjectId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sprints_projects_workspace_id_project_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Tokens.ApiToken", b =>

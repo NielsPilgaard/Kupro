@@ -23,7 +23,9 @@ const HEADER_W = 132;
 const LANE_H = 26;
 const BAND_H = 40;
 const PAD = 8;
-const MONTH_HEADER_H = 28;
+const MONTH_ROW_H = 28;
+// Milestone labels get their own strip under the month names, so they never cover them.
+const MILESTONE_ROW_H = 20;
 
 type Override = { key: string; startDate: string; dueDate: string };
 type Draft = { project: string; startDate: string; dueDate: string };
@@ -82,6 +84,7 @@ export function PlanPage() {
   });
 
   const months = useMemo(() => (plan ? monthsBetween(plan.from, plan.to) : []), [plan]);
+  const headerH = MONTH_ROW_H + (plan?.milestones.length ? MILESTONE_ROW_H : 0);
   const t2 = useMemo(() => timeline(months.length ? months : ['2027-01-01'], monthWidth), [months, monthWidth]);
 
   const layout = useCallback(
@@ -128,12 +131,12 @@ export function PlanPage() {
   const rows = useMemo(
     () =>
       (view?.projects ?? []).reduce<{ key: string; top: number; height: number }[]>((acc, p) => {
-        const top = acc.length ? acc[acc.length - 1]!.top + acc[acc.length - 1]!.height : MONTH_HEADER_H;
+        const top = acc.length ? acc[acc.length - 1]!.top + acc[acc.length - 1]!.height : headerH;
         return [...acc, { key: p.key, top, height: PAD * 2 + p.laneCount * LANE_H + BAND_H }];
       }, []),
-    [view],
+    [view, headerH],
   );
-  const totalHeight = (rows.at(-1)?.top ?? MONTH_HEADER_H) + (rows.at(-1)?.height ?? 0) + BAND_H + PAD * 2;
+  const totalHeight = (rows.at(-1)?.top ?? headerH) + (rows.at(-1)?.height ?? 0) + BAND_H + PAD * 2;
 
   const cardPos = useMemo(() => {
     const pos = new Map<string, { x1: number; x2: number; y: number }>();
@@ -177,7 +180,7 @@ export function PlanPage() {
         {isPending && <p className="p-8 text-center text-mute">{t('common.loading')}</p>}
         {plan && view && (
           <div className="relative" style={{ width: HEADER_W + t2.width, height: totalHeight }}>
-            <MonthHeader months={months} monthWidth={monthWidth} zoom={zoom} />
+            <MonthHeader months={months} monthWidth={monthWidth} zoom={zoom} height={headerH} />
             {view.projects.map((p, i) => (
               <ProjectRow
                 key={p.key}
@@ -197,14 +200,14 @@ export function PlanPage() {
                 onOpen={onOpen}
               />
             ))}
-            <TotalsRow top={rows.at(-1) ? rows.at(-1)!.top + rows.at(-1)!.height : MONTH_HEADER_H} months={view.totals} monthWidth={monthWidth} />
+            <TotalsRow top={rows.at(-1) ? rows.at(-1)!.top + rows.at(-1)!.height : headerH} months={view.totals} monthWidth={monthWidth} />
             {plan.milestones.map((m) => (
               <div
                 key={m.id}
                 className="pointer-events-none absolute top-0 z-30 border-l-[1.5px] border-dashed border-acc-ink"
                 style={{ left: HEADER_W + t2.x(m.date), height: totalHeight }}
               >
-                <span className="absolute top-1 left-1 text-xs font-bold whitespace-nowrap text-acc-ink">
+                <span className="absolute left-1 text-xs leading-5 font-bold whitespace-nowrap text-acc-ink" style={{ top: MONTH_ROW_H }}>
                   {m.name}
                   {m.projectKey ? ` · ${m.projectKey}` : ''}
                 </span>
@@ -279,11 +282,11 @@ function Toolbar({ workspace, plan, onHorizon }: { workspace: string; plan?: Pla
   );
 }
 
-function MonthHeader({ months, monthWidth, zoom }: { months: string[]; monthWidth: number; zoom: Zoom }) {
+function MonthHeader({ months, monthWidth, zoom, height }: { months: string[]; monthWidth: number; zoom: Zoom; height: number }) {
   const { i18n } = useTranslation();
   const format = new Intl.DateTimeFormat(i18n.language, { month: zoom === 'year' ? 'narrow' : 'short', year: zoom === 'month' ? 'numeric' : undefined, timeZone: 'UTC' });
   return (
-    <div className="sticky top-0 z-20 flex border-b border-line bg-bg" style={{ height: MONTH_HEADER_H }}>
+    <div className="sticky top-0 z-20 flex border-b border-line bg-bg" style={{ height }}>
       <div className="sticky left-0 z-10 shrink-0 bg-bg" style={{ width: HEADER_W }} />
       {months.map((m) => (
         <div key={m} className="shrink-0 truncate border-l border-line/70 px-1.5 text-xs leading-7 text-mute uppercase" style={{ width: monthWidth }}>

@@ -104,6 +104,8 @@ flowchart LR
 - [Backups.cs](../../src/Kupro.AppHost/Backups.cs) in the AppHost runs Postgres and the agent under `aspire run`
   (Silo stands in for both buckets) and publishes them into [deploy/docker-compose.yaml](../../deploy/docker-compose.yaml).
 - [scripts/backup-console.ps1](../../scripts/backup-console.ps1) opens the tunnel, reads the access link and opens the browser.
+- [scripts/backup-rehearsal.ps1](../../scripts/backup-rehearsal.ps1) breaks the agent and restores on a local
+  production-style stack ([Rehearsals](#rehearsals)).
 - [scripts/infra-image-tags.sh](../../scripts/infra-image-tags.sh) derives the Postgres and agent image tags from their
   sources; CI publishes an image only when its tag is new, and CD deploys those tags, so a normal deploy leaves the
   database container alone.
@@ -196,10 +198,56 @@ The slot cap is 256 MB and the WAL switch and status run every minute, so lost-s
 To go live with a restore: **Go live** in the console, then restart `postgres` in the dashboard (its entrypoint reads
 the marker on start). The Grafana "Backups" row shows the agent's metrics.
 
-The agent is infrastructure, so it's proven by breaking it on purpose rather than by unit tests. Skoleoverblikket's list
-(agent killed past the slot cap, wrong S3 key, container recreated with unpushed WAL, Postgres stopped, reaching the
-console from another container, a full restore with go-live and switch back) applies unchanged; run it again on a real
-server before the first external user (a manual step).
+The agent is infrastructure, so it's proven by breaking it on purpose rather than by unit tests: see
+[Rehearsals](#rehearsals).
+
+## Rehearsals
+
+[scripts/backup-rehearsal.ps1](../../scripts/backup-rehearsal.ps1) breaks the agent on purpose and restores, on the
+stack closest to production: the generated [deploy/docker-compose.yaml](../../deploy/docker-compose.yaml) plus
+[scripts/backup-rehearsal/compose.yaml](../../scripts/backup-rehearsal/compose.yaml), which adds Silo for the buckets,
+an nginx that stands in for elmah.io's heartbeats, host ports one hundred above the dev stack's, and the external data
+volumes under `kupro-rehearsal-*` names. Keycloak's database is in the cluster here, so its checks run too.
+
+```powershell
+pwsh scripts/backup-rehearsal.ps1            # all cases, from a clean stack, about 20 minutes
+pwsh scripts/backup-rehearsal.ps1 -Cases 6 -SkipBuild -Keep   # one case, keep the stack to click through
+```
+
+It builds the images, seeds two workspaces through the API (projects, issues, comments, an attachment), runs the
+cases, logs the restore time as a manual drill on the console's Drills page, prints pass/fail per case and exits 1 on a
+failure. Each case states what it expects before it runs:
+
+| # | Case | Expected |
+|---|---|---|
+| 1 | Agent stopped past the slot cap | Postgres drops the slot and keeps running; gap in the status, WAL heartbeat fails; new slot, gap closed by a full backup |
+| 2 | Wrong S3 key | Unhealthy with the 403, WAL and backup heartbeats fail, health metric 2, a manual backup fails, the app keeps working |
+| 3 | Agent recreated with WAL not pushed | The WAL waits on `wal-receive`, the new container pushes it, no gap |
+| 4 | Postgres stopped and started | Status shows it down; streaming resumes on the same slot, no gap |
+| 5 | Console from a container on the app network | Never the console: no route by name, 401 without the key by IP or host port |
+| 6 | Point-in-time restore before a mass delete | All checks pass, deleted issues back after go-live and a restart, full backup on the new timeline; switch back works |
+| 7 | Lost server ([restore runbook](../../docs/runbooks/restore.md) §10) | New empty volumes, a lone agent restores the newest point, the stack starts on it with all data |
+| 8 | Wrong cipher pass | Nothing to restore, the Restore page names the cipher pass, a restore request is refused, status unhealthy |
+
+What the script can't do: click. With `-Keep`, open the console link and the app (`http://localhost:5280`,
+`dev@kupro.local` / `dev`) and look at the Restore page summary, the checklist and the attachment on `WEB-1`.
+
+| Date | Where | Cases | Result | Cluster | Restore time |
+|---|---|---|---|---|---|
+| 2026-10-25 | Local compose stack (Docker Desktop) | 1–8 | 8/8 passed (19 min) | 52 MB | PITR: restore 5 s + go-live restart 30 s. Lost server: restore 26 s + stack start 36 s |
+
+Found and fixed by the first rehearsal (task 021):
+
+- A wrong cipher pass failed every status tick: pgBackRest copies the garbage it decrypts into its JSON unescaped, so
+  the agent sent no status, metrics or WAL heartbeat. It now reports the repo as unreadable and names the cipher pass.
+- Failure messages showed the tail of pgBackRest's output, which for an S3 error is response headers. They now show the
+  `ERROR: [nnn]` line and the store's error code.
+- The restore runbook's lost-VPS `docker run` lacked `Agent__VolumeNamePrefix`, so the console named the volumes
+  `pgdata-a`/`-b`.
+
+The script only drives its own local stack: it builds, deletes and recreates volumes, so it never runs against a real
+server. On the VPS, before the first external user, a person runs case 6 by hand through the console (a manual step,
+[restore runbook](../../docs/runbooks/restore.md)), against the real buckets and the real restore time.
 
 ## Known limits
 
@@ -208,3 +256,9 @@ server before the first external user (a manual step).
 - Attachments aren't covered, only the database.
 - The console has no login. Shell access to the server is the identity: the access link is only readable with `docker exec`.
 - Restore time grows with cluster size, and the weekly drill shows by how much. Watch its RTO trend.
+- A WAL gap the agent closes within a minute (new slot, quick full backup) reaches the WAL heartbeat and History but
+  not Grafana: it heals before the next metrics export. Points inside the gap stay unrestorable; the Backups page lists
+  every gap.
+- On Docker Desktop, a container on another network reaches the agent by IP and through `host.docker.internal` (the
+  rehearsal's case 5). Only the access key keeps it out there (401). Docker on Linux isolates bridge networks, but that
+  is not tested on the VPS yet.

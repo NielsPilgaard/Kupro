@@ -106,6 +106,23 @@ export async function startMicrophone(events: MicrophoneEvents): Promise<Microph
   };
 }
 
+/** A microphone left on in an empty room pauses the meeting after this long without speech (ADR-013 guards). */
+export const SILENCE_PAUSE_MS = 10 * 60_000;
+
+/** Calls `onSilent` once when `heard()` hasn't been called for `ms`. */
+export function silenceTimer(ms: number, onSilent: () => void) {
+  let timer = setTimeout(onSilent, ms);
+  return {
+    heard() {
+      clearTimeout(timer);
+      timer = setTimeout(onSilent, ms);
+    },
+    stop() {
+      clearTimeout(timer);
+    },
+  };
+}
+
 /** Energy VAD with an adaptive noise floor. Exported for tests. */
 export class UtteranceDetector {
   private readonly windowSize: number;

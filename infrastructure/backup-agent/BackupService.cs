@@ -22,7 +22,7 @@ public sealed class BackupService(
         var result = await pgBackRest.BackupAsync(type, job.Log, cancellationToken);
         if (!result.Ok)
         {
-            return await FailAsync(type, $"pgbackrest backup failed: {result.Tail(2)}", cancellationToken);
+            return await FailAsync(type, $"pgbackrest backup failed: {result.Reason(2)}", cancellationToken);
         }
 
         var snapshot = await repo.RefreshAsync(cancellationToken);
@@ -46,7 +46,7 @@ public sealed class BackupService(
         var expire = await pgBackRest.ExpireAsync(job.Log, cancellationToken);
         if (!expire.Ok)
         {
-            job.Log($"expire failed: {expire.Tail(2)}");
+            job.Log($"expire failed: {expire.Reason(2)}");
         }
 
         snapshot = await repo.RefreshAsync(cancellationToken);
@@ -79,7 +79,7 @@ public sealed class BackupService(
 
         // The backup succeeded even when expire didn't: the Degraded heartbeat and the retention check
         // report that. A failed job would make the scheduler re-run the full backup every hour.
-        return new JobOutcome(true, expire.Ok ? summary : $"{summary} expire failed: {expire.Tail(2)}", new { backup.Label, type, backup.DatabaseBytes, backup.RepoBytes, backup.DurationSeconds, reason, expireOk = expire.Ok });
+        return new JobOutcome(true, expire.Ok ? summary : $"{summary} expire failed: {expire.Reason(2)}", new { backup.Label, type, backup.DatabaseBytes, backup.RepoBytes, backup.DurationSeconds, reason, expireOk = expire.Ok });
     }
 
     private async Task<bool> WaitForSegmentAsync(string segmentName, CancellationToken cancellationToken)
@@ -127,7 +127,7 @@ public sealed class BackupService(
     {
         var stopwatch = Stopwatch.StartNew();
         var result = await pgBackRest.VerifyAsync(job.Log, cancellationToken);
-        var summary = result.Ok ? "All backups and WAL read and decrypted" : $"verify failed: {result.Tail(3)}";
+        var summary = result.Ok ? "All backups and WAL read and decrypted" : $"verify failed: {result.Reason(3)}";
         state.Update(s => s.LastVerify = new VerifyResult(DateTimeOffset.UtcNow, result.Ok, summary));
         await heartbeats.SendAsync(Heartbeats.Kind.Verify, result.Ok ? Health.Healthy : Health.Unhealthy, summary, stopwatch.Elapsed, cancellationToken);
         return new JobOutcome(result.Ok, summary);
@@ -179,7 +179,7 @@ public sealed class BackupService(
             var restore = await pgBackRest.RestoreAsync(dataDirectory, targetArguments, job.Log, cancellationToken);
             if (!restore.Ok)
             {
-                return await DrillFailedAsync($"pgbackrest restore failed: {restore.Tail(2)}", total.Elapsed, cancellationToken);
+                return await DrillFailedAsync($"pgbackrest restore failed: {restore.Reason(2)}", total.Elapsed, cancellationToken);
             }
 
             var restoreSeconds = restoreWatch.Elapsed.TotalSeconds;

@@ -68,13 +68,24 @@ export function useSay() {
   });
 }
 
-/** One utterance of browser audio (WAV); the server transcribes it and proposes like for text. */
-export function useSendAudio(workspace: string, id: string) {
+/**
+ * One utterance of browser audio (WAV); the server transcribes it and proposes like for text. `onStop` runs when the
+ * server won't take more audio: the meeting hours are used up (task 017) or the meeting hit its time limit.
+ */
+export function useSendAudio(workspace: string, id: string, onStop: () => void) {
   const refresh = useRefresh();
+  const failed = useFailed();
   const m = useMutation({
     ...addMeetingAudioMutation(),
     onSuccess: refresh,
-    onError: useFailed(),
+    onError: (error) => {
+      const code = (error as { code?: string } | null)?.code;
+      if (code === 'meeting_budget_spent' || code === 'meeting_time_limit' || code === 'meeting_not_live') {
+        onStop();
+        refresh();
+      }
+      failed(error);
+    },
   });
   // The endpoint reads the raw request body (browser-only, not in the generated types), so the Blob goes as-is.
   return (wav: Blob) =>

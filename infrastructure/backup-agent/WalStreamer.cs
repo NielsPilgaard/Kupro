@@ -119,7 +119,7 @@ public sealed class WalStreamer(
                 var result = await pgBackRest.StanzaCreateAsync(null, cancellationToken);
                 _stanzaReady = result.Ok;
                 _stanzaRetryAt = DateTimeOffset.UtcNow + TimeSpan.FromMinutes(5);
-                wal.Set(s => s with { StanzaReady = _stanzaReady, Problem = _stanzaReady ? null : $"Repo unreachable (stanza-create): {result.Tail(2)}" });
+                wal.Set(s => s with { StanzaReady = _stanzaReady, Problem = _stanzaReady ? null : $"Repo unreachable (stanza-create): {result.Reason(2)}" });
             }
 
             if (await CheckIdentityAsync(server, cancellationToken))
@@ -306,13 +306,13 @@ public sealed class WalStreamer(
             if (!result.Ok && Wal.PartialName().IsMatch(name))
             {
                 // A partial never blocks the segments after it; it's retried next tick and shows in the log.
-                logger.LogWarning("archive-push of partial {Name} failed: {Error}", name, result.Tail(2));
+                logger.LogWarning("archive-push of partial {Name} failed: {Error}", name, result.Reason(2));
                 continue;
             }
 
             if (!result.Ok)
             {
-                var error = result.Tail(2);
+                var error = result.Reason(2);
                 wal.Set(s => s with { PushError = error, PushFailingSince = s.PushFailingSince ?? DateTimeOffset.UtcNow });
                 logger.LogWarning("archive-push {Name} failed: {Error}", name, error);
                 return;

@@ -169,7 +169,7 @@ workspace leaving the agent on all day must not cost more than it pays.
 - **IMP-002**: Deactivating a member revokes their API tokens ([ADR-005](ADR-005-auth-keycloak.md)), and their agent tokens with them.
 - **IMP-003**: Member count index: `(workspace_id, kind, status)`.
 - **IMP-004**: Billing task is written once OQ-2 and OQ-3 are resolved; it is not part of v1.
-- **IMP-005**: The AI budget, meters and guards are [task 017](../../tasks/017-meeting-agent-budget.md). Until billing
+- **IMP-005**: The AI budget, meters and guards are [task 017](../../tasks/completed/017-meeting-agent-budget.md). Until billing
   exists, every workspace gets the paid allowance for its active human Owners and Members, and a Scaleway billing alert
   is the outer brake.
 - **IMP-006**: `Member.LastActiveAt`, set where a request's member is resolved (an agent token sets it for the human

@@ -7,6 +7,7 @@ Instructions for AI coding agents working on this repository.
 **Kupro** — Danish, EU-sovereign, agent-first issue tracker and planner. Product intent: [docs/product.md](docs/product.md).
 All technical decisions: [docs/adr/INDEX.md](docs/adr/INDEX.md). Work is specified in numbered `tasks/*.md`; priority and build order: [tasks/INDEX.md](tasks/INDEX.md).
 UI rules: [docs/design-guide.md](docs/design-guide.md); brand, voice, EN/DA glossary: [docs/branding.md](docs/branding.md).
+Contributor workflow (PRs, CLA, checks): [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - **Backend**: .NET 10, ASP.NET Core plain controllers, EF Core + PostgreSQL ([ADR-002](docs/adr/ADR-002-backend-stack.md))
 - **Frontend**: React + TS + Vite SPA, TanStack Query/Router ([ADR-003](docs/adr/ADR-003-frontend-stack.md))

@@ -108,6 +108,10 @@ internal static class MeetingCommands
                 var result = await (await c.InWorkspaceAsync(ct)).Meetings[await MeetingIdAsync(c, meeting, ct)].Transcript
                     .PostAsync(new TranscriptRequest { Text = string.Join(' ', c.Get(text)!) }, cancellationToken: ct);
                 await c.Out.ListAsync(result!.Proposals ?? [], ProposalHeaders, ProposalRow);
+                if (result.BudgetSpent == true)
+                {
+                    await c.Out.MessageAsync("Meeting hours are used up this month: keyword matching made these proposals, so only clear commands count.");
+                }
             });
     }
 
@@ -207,6 +211,9 @@ internal static class MeetingCommands
                 await c.Out.ItemAsync(s!, ("Default mode", Cli.Dashed(s!.DefaultMode.ToString()!)),
                     ("Full auto", s.FullAutoEnabled == true ? $"on for {string.Join(", ", (s.FullAutoOperations ?? []).Select(x => Cli.Dashed(x.ToString()!)))}" : "off"),
                     ("Transcripts kept", s.TranscriptRetentionDays is 0 or null ? "until the meeting ends" : $"{s.TranscriptRetentionDays} days"),
+                    ("Meeting hours", s.Usage is { } u
+                        ? $"{u.HoursUsed?.ToString("0.#", CultureInfo.InvariantCulture)} of {u.HoursIncluded?.ToString("0.#", CultureInfo.InvariantCulture)} used, resets {u.ResetsOn}{(u.Spent == true ? " (used up: microphone off, keyword proposals only)" : "")}"
+                        : "no limit"),
                     ("Approved unchanged", string.Join(", ", (s.Stats ?? []).Where(x => x.Decided > 0)
                         .Select(x => $"{Cli.Dashed(x.Operation.ToString()!)} {x.ApprovedUnchanged}/{x.Decided}"))));
             });

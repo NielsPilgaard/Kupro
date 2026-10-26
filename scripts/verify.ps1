@@ -12,13 +12,16 @@
     Skip all dotnet steps (format, build, tests).
 .PARAMETER SkipDocs
     Skip the ryni check (broken Markdown links, SKILL.md metadata).
+.PARAMETER FormatAll
+    Run dotnet format on the whole solution before the build, not only on files the build reports.
 #>
 param(
     [switch]$NoFix,
     [switch]$SkipTests,
     [switch]$SkipWeb,
     [switch]$SkipDotnet,
-    [switch]$SkipDocs
+    [switch]$SkipDocs,
+    [switch]$FormatAll
 )
 
 $ErrorActionPreference = 'Continue'
@@ -34,18 +37,22 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 function Step([string]$name, [scriptblock]$body) {
     Write-Host "`n==> $name" -ForegroundColor Cyan
     $global:LASTEXITCODE = 0
+    $timer = [Diagnostics.Stopwatch]::StartNew()
     $output = (& $body 2>&1 | Out-String).TrimEnd()
     $exit = $LASTEXITCODE
+    $took = Took $timer
     if ($exit -ne 0) {
         $script:Errors += "FAIL [$name]`n$output"
-        $script:StepResults += @{ Name = $name; Pass = $false }
+        $script:StepResults += @{ Name = $name; Pass = $false; Took = $took }
         Write-Host $output
-        Write-Host "FAIL: $name" -ForegroundColor Red
+        Write-Host "FAIL: $name ($took)" -ForegroundColor Red
     } else {
-        $script:StepResults += @{ Name = $name; Pass = $true }
-        Write-Host "PASS: $name" -ForegroundColor Green
+        $script:StepResults += @{ Name = $name; Pass = $true; Took = $took }
+        Write-Host "PASS: $name ($took)" -ForegroundColor Green
     }
 }
+
+function Took([Diagnostics.Stopwatch]$timer) { '{0:N0}s' -f $timer.Elapsed.TotalSeconds }
 
 function Skip([string]$name, [string]$reason) {
     Write-Host "`n==> $name" -ForegroundColor Cyan
@@ -120,29 +127,31 @@ if (-not $SkipWeb) {
 # ── .NET ────────────────────────────────────────────────────────────────────
 
 if (-not $SkipDotnet) {
-    if ($NoFix) {
-        Step "dotnet format" {
-            Set-Location $RepoRoot
-            dotnet format $Solution --verify-no-changes
-        }
-    } else {
-        Write-Host "`n==> dotnet format (auto-fix)" -ForegroundColor Cyan
-        Set-Location $RepoRoot
-        dotnet format $Solution > $null 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            $script:Errors += "FAIL [dotnet format]`n(output suppressed — run with -NoFix to see violations)"
-            $script:StepResults += @{ Name = "dotnet format"; Pass = $false }
-            Write-Host "FAIL: dotnet format" -ForegroundColor Red
+    # dotnet format needs 15–30 s to load the solution, even for one file. The build already enforces everything it
+    # checks (analyzers, code style, IDE0055 formatting, IDE1006 naming), so format runs only to fix what the build
+    # reports, on just those files, followed by one rebuild. -FormatAll runs it on the whole solution first.
+    if ($FormatAll) {
+        if ($NoFix) {
+            Step "dotnet format" { Set-Location $RepoRoot; dotnet format $Solution --verify-no-changes }
         } else {
-            $script:StepResults += @{ Name = "dotnet format"; Pass = $true }
-            Write-Host "PASS: dotnet format" -ForegroundColor Green
+            Step "dotnet format (auto-fix)" { Set-Location $RepoRoot; dotnet format $Solution }
         }
     }
 
     # TreatWarningsAsErrors + analyzers + EnforceCodeStyleInBuild come from Directory.Build.props.
     Step "dotnet build" {
         Set-Location $RepoRoot
-        dotnet build $Solution --configuration Release -p:CI=true
+        $out = dotnet build $Solution --configuration Release -p:CI=true 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0 -and -not $NoFix) {
+            $files = @([regex]::Matches($out, '(?m)^\s*(\S.*?\.cs)\(\d+,\d+\): error (?:IDE|CA)\d+') |
+                ForEach-Object { [IO.Path]::GetRelativePath($RepoRoot, $_.Groups[1].Value) } | Sort-Object -Unique)
+            if ($files.Count -gt 0) {
+                Write-Host "dotnet format: fixing $($files -join ', '), then rebuilding" -ForegroundColor Yellow
+                dotnet format $Solution --include @files > $null 2>&1
+                $out = dotnet build $Solution --configuration Release -p:CI=true 2>&1 | Out-String
+            }
+        }
+        $out
     }
 
     if ($SkipTests) {
@@ -204,9 +213,9 @@ foreach ($r in $StepResults) {
     if ($null -eq $r.Pass) {
         Write-Host "  SKIP  $($r.Name) ($($r.Reason))" -ForegroundColor Yellow
     } elseif ($r.Pass) {
-        Write-Host "  PASS  $($r.Name)" -ForegroundColor Green
+        Write-Host "  PASS  $($r.Name) ($($r.Took))" -ForegroundColor Green
     } else {
-        Write-Host "  FAIL  $($r.Name)" -ForegroundColor Red
+        Write-Host "  FAIL  $($r.Name) ($($r.Took))" -ForegroundColor Red
     }
 }
 

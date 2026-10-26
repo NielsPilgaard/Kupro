@@ -137,7 +137,7 @@ public sealed class ProjectService(
     {
         var last = await db.Database.SqlQuery<int>($"""
             UPDATE projects SET issue_counter = issue_counter + {count}
-            WHERE id = {projectId}
+            WHERE id = {projectId} AND workspace_id = {db.CurrentWorkspaceId}
             RETURNING issue_counter AS "Value"
             """).ToListAsync(ct);
         return last.Single();

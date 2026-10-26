@@ -55,6 +55,8 @@ dotnet_diagnostic.CA1848.severity = none # LoggerMessage delegates: not worth it
 dotnet_diagnostic.CA2007.severity = none # ConfigureAwait: no sync context in ASP.NET Core
 dotnet_diagnostic.CA1515.severity = none # public types in app assemblies are fine
 dotnet_diagnostic.IDE0005.severity = warning # unused usings
+dotnet_diagnostic.IDE0055.severity = warning # formatting
+dotnet_diagnostic.IDE1006.severity = warning # naming rules above
 
 [{src,tests}/**/Migrations/*.cs]
 generated_code = true

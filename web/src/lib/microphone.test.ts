@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { encodeWav, resample, startMicrophone, UtteranceDetector } from './microphone';
+import { encodeWav, resample, silenceTimer, SILENCE_PAUSE_MS, startMicrophone, UtteranceDetector } from './microphone';
 
 const RATE = 48_000;
 const block = (amplitude: number) => Float32Array.from({ length: 128 }, (_, i) => amplitude * Math.sin(i / 3));
@@ -130,5 +130,32 @@ describe('startMicrophone call audio', () => {
 
     expect(onEnded).toHaveBeenCalledOnce();
     expect(sources[1]!.disconnect).toHaveBeenCalled();
+  });
+});
+
+describe('silenceTimer', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('fires once after 10 minutes without speech, and speech restarts the wait', () => {
+    const onSilent = vi.fn();
+    const timer = silenceTimer(SILENCE_PAUSE_MS, onSilent);
+
+    vi.advanceTimersByTime(9 * 60_000);
+    timer.heard();
+    vi.advanceTimersByTime(9 * 60_000);
+    expect(onSilent).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(60_000);
+    expect(onSilent).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(SILENCE_PAUSE_MS);
+    expect(onSilent).toHaveBeenCalledOnce();
+  });
+
+  it('does nothing once stopped', () => {
+    const onSilent = vi.fn();
+    silenceTimer(SILENCE_PAUSE_MS, onSilent).stop();
+    vi.advanceTimersByTime(SILENCE_PAUSE_MS * 2);
+    expect(onSilent).not.toHaveBeenCalled();
   });
 });

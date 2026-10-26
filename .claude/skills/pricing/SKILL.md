@@ -54,7 +54,7 @@ The spike needs the Scaleway key (`SCALEWAY_AI_KEY` or the AppHost user-secrets)
 | Hours per seat | ADR-013 TL;DR and "**Allowance**"; index.html Monthly tier "per seat/mo, pooled" and the note under the cost table; task 017 "hours per seat a month" and the "≈ 3.5 of N hours" panel example (team × hours) |
 | Cost per meeting hour | index.html cost-basis table (three rows plus the team row); ADR-013 "**Allowance**" history line; ADR-015 IMP-006 table (language model only) and NEG-004 multiple |
 | € per seat / per trial at most | index.html note under the cost table; ADR-013 "**Allowance**" |
-| Runtime config (once task 017 ships) | `MeetingAgent:Budget` in the API's appsettings: hours per seat, trial hours, euro per hour, rates per route |
+| Runtime config | Constants in `src/Kupro.AppHost/MeetingAgent.cs`: hours per seat, euro per hour (the calculator's hour cost), daily ceiling, and each model route's rates (they become `MeetingAgent__Budget__*` and `MeetingAgent__{Transcription\|Extraction}__EuroPer*`). Trial hours come with billing |
 
 ## Rules
 
