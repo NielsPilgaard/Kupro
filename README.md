@@ -1,62 +1,112 @@
-# Kupro
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/design/brand/kupro-mark-dark.svg">
+    <img src="docs/design/brand/kupro-mark.svg" width="72" height="72" alt="Kupro">
+  </picture>
+</p>
 
-A Danish, EU-sovereign, agent-first issue tracker and planner — an alternative to Jira, Azure DevOps, Linear, Trello and Monday.
+<h1 align="center">Kupro</h1>
 
-- **Agent-first**: everything in the UI is also available via REST, CLI and MCP.
-- **Fast**: every action < 500 ms p99; the UI feels instant.
-- **Simple**: features are cut before they cause confusion.
-- **Sovereign**: European vendors and infrastructure only.
-- **Planning that works**: a high-level delivery plan across all projects — features, delivery dates, dependencies, and whether you have the people to deliver it.
+<p align="center">
+  An issue tracker and delivery planner that agents can drive as well as people can.<br>
+  Fast, simple, and built in Denmark on European infrastructure.
+</p>
+
+<p align="center">
+  <a href="https://github.com/NielsPilgaard/Kupro/actions/workflows/ci.yml"><img src="https://github.com/NielsPilgaard/Kupro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/board-dark.png">
+  <img src="docs/images/board-light.png" alt="A sprint board in Kupro with issues in Todo, In Progress, In Review and Done">
+</picture>
+
+## Why Kupro
+
+An alternative to Jira, Azure DevOps, Linear, Trello and Monday, for teams that want:
+
+- **Agents as teammates.** Everything you can do in the UI, an agent can do through the REST API, the `kupro` CLI or
+  MCP. A CI test fails when one of them falls behind.
+- **Speed.** Every action answers in under 500 ms at p99, and the UI updates before the server replies.
+- **Planning that works.** The delivery plan shows every project's epics and features over the year, the
+  dependencies between them, and whether the people you have can deliver it.
+- **A meeting agent** (in progress). Start it in standup; it listens and proposes the ticket changes it hears. You
+  approve them, or let it apply them directly.
+- **Simplicity.** One fixed workflow, effort in hours, no custom-field sprawl. Features are cut before they confuse.
+- **Sovereignty.** Every vendor that touches your data is European ([vendor register](docs/adr/ADR-006-eu-vendor-policy.md#vendor-register)).
+  English and Danish UI.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/plan-dark.png">
+  <img src="docs/images/plan-light.png" alt="The delivery plan: epics and features per project over eight months, with dependencies, milestones and a capacity bar per month">
+</picture>
 
 ## Quickstart
 
 Prerequisites: [.NET 10 SDK](https://dot.net), [Bun](https://bun.sh) 1.4, Docker.
 
-1. `dotnet tool restore` — installs the pinned Aspire CLI (and `dotnet-ef`).
-2. `dotnet aspire run` — starts Postgres, Keycloak, API, SPA and the Aspire dashboard (URL printed in the terminal).
-3. Open the `web` URL from the dashboard. Dev login: `dev@kupro.local` / `dev`. Keycloak's mails (password reset)
-   land in Mailpit at http://localhost:8125.
+```sh
+dotnet tool restore   # installs the pinned Aspire CLI and dotnet-ef
+dotnet aspire run     # starts Postgres, Keycloak, the API, the web app and the Aspire dashboard
+```
+
+Open the `web` URL from the dashboard (the terminal prints its address) and sign in as `dev@kupro.local` / `dev`.
+Keycloak's emails, such as password resets, land in Mailpit at http://localhost:8125.
 
 Keycloak imports the realm only into an empty `kupro-keycloak-data` volume. To pick up realm file changes, remove
 that volume; the dev users keep their ids, so existing dev data stays linked.
 
-Production-style stack: `dotnet aspire deploy` builds the images and runs the generated
-[deploy/docker-compose.yaml](deploy/docker-compose.yaml) locally.
+Want something to look at? [`scripts/demo-seed.ps1`](scripts/demo-seed.ps1) creates the workspace from the
+screenshots above through the CLI.
 
 ## Connect an agent
 
-Everything in the UI is also in the REST API, the `kupro` CLI and the MCP server ([ADR-001](docs/adr/ADR-001-agent-parity.md)).
-
 ```sh
 kupro login                                   # device flow in the browser; or: kupro token set kp_pat_...
-kupro issue list --state todo                 # tables at a terminal, JSON when piped or with --json
-claude mcp add kupro -- kupro mcp         # MCP over stdio with the CLI's credentials
-# Remote MCP with an agent token (OAuth sign-in also works: omit --header)
+kupro issue list --state todo                 # tables in a terminal, JSON when piped or with --json
+claude mcp add kupro -- kupro mcp             # MCP over stdio with the CLI's credentials
+
+# Remote MCP with an agent token (or omit --header to sign in with OAuth)
 claude mcp add --transport http kupro http://localhost:5239/mcp --header "Authorization: Bearer kp_agent_..."
 ```
 
-End-to-end tests (needs the stack running): `cd tests/e2e && bun install && bunx playwright test`.
+Any MCP client works; Claude Code is just the example. Parity between the UI, API, CLI and MCP is a project rule
+([ADR-001](docs/adr/ADR-001-agent-parity.md)).
+
+## Self-hosting
+
+Kupro is AGPL-3.0, so you can run it yourself. The production stack is the generated
+[deploy/docker-compose.yaml](deploy/docker-compose.yaml): Postgres with continuous backups, Keycloak, the API, the web
+app and a Grafana-based observability stack. The [deploy runbook](docs/runbooks/deploy.md) describes how we run it on
+a single VPS; adapt it to your setup. `dotnet aspire deploy` runs the same stack locally.
+
+There are no releases, support or upgrade guarantees yet. The meeting agent and outgoing email need API keys from
+their EU vendors ([ADR-015](docs/adr/ADR-015-meeting-agent-vendors.md)). A hosted version is planned.
 
 ## Repo layout
 
 | Path | What |
 |---|---|
-| `src/Kupro.AppHost` | Aspire topology (dev + compose publish) |
-| `src/Kupro.Api` | REST API, feature services, EF Core |
-| `src/Kupro.Cli` | `kupro` CLI |
+| `src/Kupro.AppHost` | Aspire topology for local dev and the production compose file |
+| `src/Kupro.Api` | REST API, MCP server, feature services, EF Core |
+| `src/Kupro.Cli` | The `kupro` CLI |
 | `web/` | React SPA (Bun, Vite); API client generated from `openapi/kupro.json` |
-| `deploy/` | Generated by `aspire publish -o deploy` — don't hand-edit |
-| `tests/` | xUnit + Testcontainers; `tests/e2e` Playwright |
+| `site/` | Public website (Astro) |
+| `infrastructure/` | Keycloak theme, backup agent, observability config |
+| `deploy/` | Generated by `aspire publish -o deploy`; don't edit by hand |
+| `tests/` | xUnit + Testcontainers integration tests; Playwright end-to-end tests in `tests/e2e` |
+| `docs/` | [Product](docs/product.md), [architecture decisions](docs/adr/INDEX.md), [design guide](docs/design-guide.md), runbooks |
+| `tasks/` | Numbered task specs; build order in [tasks/INDEX.md](tasks/INDEX.md) |
 
-## Docs
+## Contributing
 
-- [Product vision & scope](docs/product.md)
-- [Delivery plan view design](docs/delivery-plan.md)
-- [Design guide](docs/design-guide.md) · [Branding](docs/branding.md)
-- [Architecture decisions](docs/adr/INDEX.md)
-- [Tasks](tasks/)
-- [Agent instructions](AGENTS.md)
+Bug reports, ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first: it covers setup, the
+project rules, the checks to run and the [CLA](CLA.md). Report security issues privately ([SECURITY.md](SECURITY.md)).
+Everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-AGPL-3.0 (open-core) — see [ADR-007](docs/adr/ADR-007-licensing.md).
+Copyright (C) 2026 Pilgaard Development.
+
+Kupro is free software under the [GNU Affero General Public License v3.0](LICENSE). If you run a modified version as
+a network service, you must offer its source code to the users of that service.

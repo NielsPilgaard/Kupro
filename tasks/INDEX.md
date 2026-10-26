@@ -31,6 +31,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
 | 19 | [019 Public website](019-public-site.md) | P1 | 1 | — | In progress |
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
+| 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 
 ## Completed
 
