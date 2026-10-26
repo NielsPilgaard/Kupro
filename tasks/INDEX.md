@@ -29,7 +29,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
-| 17 | [017 Meeting agent AI budget](017-meeting-agent-budget.md) | P1 | 2 | 015, 018 | Todo |
 | 19 | [019 Public website](019-public-site.md) | P1 | 1 | — | In progress |
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
 
@@ -54,6 +53,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | [016 Workspace export](completed/016-workspace-export.md) | 1 | Done |
 | [018 Members page and billing access](completed/018-members-billing-access.md) | 1 | Done |
 | [021 Backup and restore rehearsal (local)](completed/021-backup-rehearsal.md) | 0 | Done |
+| [017 Meeting agent AI budget](completed/017-meeting-agent-budget.md) | 2 | Done |
 
 ## Rationale
 
