@@ -34,8 +34,11 @@ internal static class ExportWriter
         typeof(Attachment), typeof(MeetingSession), typeof(TranscriptSegment), typeof(MeetingProposal), typeof(MeetingSettings),
     };
 
-    /// <summary>Tenant-owned tables left out on purpose: the export records themselves.</summary>
-    public static readonly IReadOnlySet<Type> NotExported = new HashSet<Type> { typeof(WorkspaceExport) };
+    /// <summary>
+    /// Tenant-owned tables left out on purpose: the export records themselves, and the meeting agent's cost ledger
+    /// (billing metering, not workspace content).
+    /// </summary>
+    public static readonly IReadOnlySet<Type> NotExported = new HashSet<Type> { typeof(WorkspaceExport), typeof(MeetingUsage) };
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
