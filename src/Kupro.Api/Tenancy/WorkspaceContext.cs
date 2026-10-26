@@ -71,5 +71,13 @@ public sealed class WorkspaceContext
     }
 
     /// <summary>For background work and tests that act inside one workspace without an HTTP request.</summary>
-    public void SetForSystem(Guid workspaceId) => WorkspaceId = workspaceId;
+    public void SetForSystem(Guid workspaceId)
+    {
+        if (WorkspaceId is not null)
+        {
+            throw new InvalidOperationException("Workspace already resolved for this request.");
+        }
+
+        WorkspaceId = workspaceId;
+    }
 }

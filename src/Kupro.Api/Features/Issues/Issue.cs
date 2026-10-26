@@ -119,12 +119,12 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
     public void Configure(EntityTypeBuilder<Issue> builder)
     {
         builder.HasOne<Workspace>().WithMany().HasForeignKey(i => i.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Project>().WithMany().HasForeignKey(i => i.ProjectId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Member>().WithMany().HasForeignKey(i => i.AssigneeId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Member>().WithMany().HasForeignKey(i => i.CreatedById).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Issue>().WithMany().HasForeignKey(i => i.ParentId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Sprint>().WithMany().HasForeignKey(i => i.SprintId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasMany(i => i.Labels).WithOne().HasForeignKey(l => l.IssueId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Project>().WithMany().HasWorkspaceForeignKey(i => i.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(i => i.AssigneeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(i => i.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(i => i.ParentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Sprint>().WithMany().HasWorkspaceForeignKey(i => i.SprintId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(i => i.Labels).WithOne().HasWorkspaceForeignKey(l => l.IssueId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(i => i.Key).HasMaxLength(24);
         builder.Property(i => i.Title).HasMaxLength(500);
@@ -175,7 +175,7 @@ internal sealed class IssueLabelConfiguration : IEntityTypeConfiguration<IssueLa
     public void Configure(EntityTypeBuilder<IssueLabel> builder)
     {
         builder.HasKey(l => new { l.IssueId, l.LabelId });
-        builder.HasOne<Label>().WithMany().HasForeignKey(l => l.LabelId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Label>().WithMany().HasWorkspaceForeignKey(l => l.LabelId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(l => new { l.WorkspaceId, l.LabelId });
     }
 }
@@ -184,8 +184,8 @@ internal sealed class IssueRelationConfiguration : IEntityTypeConfiguration<Issu
 {
     public void Configure(EntityTypeBuilder<IssueRelation> builder)
     {
-        builder.HasOne<Issue>().WithMany().HasForeignKey(r => r.SourceId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Issue>().WithMany().HasForeignKey(r => r.TargetId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(r => r.SourceId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(r => r.TargetId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(r => r.Type).HasConversion<string>().HasMaxLength(16);
         builder.HasIndex(r => new { r.SourceId, r.TargetId, r.Type }).IsUnique();
         builder.HasIndex(r => new { r.WorkspaceId, r.TargetId });

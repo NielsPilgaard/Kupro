@@ -39,7 +39,7 @@ public interface IWorkspaceClient
 /// Postgres LISTEN/NOTIFY.
 /// </summary>
 [Authorize]
-public sealed class WorkspaceHub(WorkspaceService workspaces) : Hub<IWorkspaceClient>
+public sealed class WorkspaceHub(WorkspaceService workspaces, WorkspaceConnections connections) : Hub<IWorkspaceClient>
 {
     public const string Path = "/api/v1/realtime";
     private const string JoinedKey = "workspace";
@@ -64,6 +64,13 @@ public sealed class WorkspaceHub(WorkspaceService workspaces) : Hub<IWorkspaceCl
 
         await Groups.AddToGroupAsync(Context.ConnectionId, Group(access.WorkspaceId), Context.ConnectionAborted);
         Context.Items[JoinedKey] = access.WorkspaceId;
+        connections.Joined(Context.ConnectionId, access.WorkspaceId, user.GetUserId(), user.GetAgentName());
         return true;
+    }
+
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        connections.Left(Context.ConnectionId);
+        return base.OnDisconnectedAsync(exception);
     }
 }

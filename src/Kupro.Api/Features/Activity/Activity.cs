@@ -51,12 +51,12 @@ internal sealed class ActivityEntryConfiguration : IEntityTypeConfiguration<Acti
     public void Configure(EntityTypeBuilder<ActivityEntry> builder)
     {
         builder.ToTable("activity");
-        builder.HasOne<Issue>().WithMany().HasForeignKey(a => a.IssueId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Member>().WithMany().HasForeignKey(a => a.ActorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(a => a.IssueId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(a => a.ActorId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(a => a.Via).HasConversion<string>().HasMaxLength(8);
         builder.Property(a => a.Kind).HasMaxLength(32);
         builder.Property(a => a.Data).HasColumnType("jsonb");
-        builder.HasOne<MeetingProposal>().WithMany().HasForeignKey(a => a.ProposalId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<MeetingProposal>().WithMany().HasWorkspaceForeignKey(a => a.ProposalId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(a => new { a.WorkspaceId, a.IssueId, a.CreatedAt });
     }
 }

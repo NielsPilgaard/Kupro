@@ -35,7 +35,7 @@ internal sealed class MilestoneConfiguration : IEntityTypeConfiguration<Mileston
     public void Configure(EntityTypeBuilder<Milestone> builder)
     {
         builder.HasOne<Workspace>().WithMany().HasForeignKey(m => m.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Project>().WithMany().HasForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Project>().WithMany().HasWorkspaceForeignKey(m => m.ProjectId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(m => m.Name).HasMaxLength(100);
         builder.HasIndex(m => new { m.WorkspaceId, m.Date });
     }
@@ -47,7 +47,7 @@ internal sealed class ProjectCapacityConfiguration : IEntityTypeConfiguration<Pr
     {
         builder.ToTable("project_capacity");
         builder.HasOne<Workspace>().WithMany().HasForeignKey(c => c.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Project>().WithMany().HasForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Project>().WithMany().HasWorkspaceForeignKey(c => c.ProjectId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(c => c.People).HasPrecision(6, 2);
         builder.HasIndex(c => new { c.ProjectId, c.FromMonth }).IsUnique();
         builder.HasIndex(c => new { c.WorkspaceId, c.ProjectId });

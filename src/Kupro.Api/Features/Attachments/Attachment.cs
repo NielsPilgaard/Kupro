@@ -36,8 +36,8 @@ internal sealed class AttachmentConfiguration : IEntityTypeConfiguration<Attachm
     public void Configure(EntityTypeBuilder<Attachment> builder)
     {
         builder.HasOne<Workspace>().WithMany().HasForeignKey(a => a.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Issue>().WithMany().HasForeignKey(a => a.IssueId).OnDelete(DeleteBehavior.SetNull);
-        builder.HasOne<Member>().WithMany().HasForeignKey(a => a.UploadedById).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(a => a.IssueId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(a => a.UploadedById).OnDelete(DeleteBehavior.Restrict);
         builder.Property(a => a.FileName).HasMaxLength(200);
         builder.Property(a => a.ContentType).HasMaxLength(100);
         builder.HasIndex(a => new { a.WorkspaceId, a.IssueId });

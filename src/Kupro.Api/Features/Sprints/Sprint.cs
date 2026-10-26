@@ -33,7 +33,7 @@ internal sealed class SprintConfiguration : IEntityTypeConfiguration<Sprint>
     public void Configure(EntityTypeBuilder<Sprint> builder)
     {
         builder.HasOne<Workspace>().WithMany().HasForeignKey(s => s.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Project>().WithMany().HasForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Project>().WithMany().HasWorkspaceForeignKey(s => s.ProjectId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(s => s.Name).HasMaxLength(100);
         builder.Property(s => s.Goal).HasMaxLength(1000);
         builder.Property(s => s.State).HasConversion<string>().HasMaxLength(16);

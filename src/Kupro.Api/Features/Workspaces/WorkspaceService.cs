@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Email;
+using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -128,7 +129,8 @@ public sealed class WorkspaceService(
     WorkspaceContext workspace,
     IEmailSender email,
     TimeProvider clock,
-    IOptions<MembersOptions> options)
+    IOptions<MembersOptions> options,
+    WorkspaceConnections connections)
 {
     public const decimal DefaultHoursPerWeek = 37m;
 
@@ -409,6 +411,12 @@ public sealed class WorkspaceService(
             await DeactivateWithTokensAsync(db, member, now, ct);
             await tx.CommitAsync(ct);
         });
+
+        if (member.UserId is { } userId)
+        {
+            await connections.EvictAsync(member.WorkspaceId, userId, member.Kind == MemberKind.Agent ? member.AgentName : null);
+        }
+
         return MemberChangeResult.Ok;
     }
 

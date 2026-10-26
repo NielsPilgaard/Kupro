@@ -31,10 +31,10 @@ internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
 {
     public void Configure(EntityTypeBuilder<Comment> builder)
     {
-        builder.HasOne<Issue>().WithMany().HasForeignKey(c => c.IssueId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<Member>().WithMany().HasForeignKey(c => c.AuthorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(c => c.IssueId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(c => c.AuthorId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(c => c.Via).HasConversion<string>().HasMaxLength(8);
-        builder.HasOne<MeetingProposal>().WithMany().HasForeignKey(c => c.ProposalId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<MeetingProposal>().WithMany().HasWorkspaceForeignKey(c => c.ProposalId).OnDelete(DeleteBehavior.SetNull);
         builder.Property(c => c.Body).HasMaxLength(CommentRequest.MaxBody);
         builder.HasIndex(c => new { c.WorkspaceId, c.IssueId, c.CreatedAt });
     }
