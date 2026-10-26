@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest something Kupro should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Kupro cuts features before they cause confusion ([product principles](https://github.com/NielsPilgaard/Kupro/blob/main/docs/product.md#principles-in-priority-order)).
+        The most useful requests describe the problem, not only the solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How you imagine it working, in the UI and for agents (CLI/MCP).
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds
+      description: What you do today instead.
