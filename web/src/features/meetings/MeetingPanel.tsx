@@ -5,7 +5,14 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { listSprintsOptions, listWorkspacesOptions } from '../../api/gen/@tanstack/react-query.gen';
-import type { IssueState, MeetingResponse, MeetingSettingsResponse, ProposalOperation, ProposalResponse } from '../../api/gen/types.gen';
+import type {
+  IssueState,
+  MeetingResponse,
+  MeetingSettingsResponse,
+  MeetingUsageResponse,
+  ProposalOperation,
+  ProposalResponse,
+} from '../../api/gen/types.gen';
 import { useMembers } from '../../api/issues';
 import {
   useMeeting,
@@ -20,7 +27,8 @@ import {
 } from '../../api/meetings';
 import { Button, StatusRing } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
-import { canCaptureCallAudio, startMicrophone, type Microphone } from '../../lib/microphone';
+import { useDate } from '../../lib/format';
+import { canCaptureCallAudio, SILENCE_PAUSE_MS, silenceTimer, startMicrophone, type Microphone } from '../../lib/microphone';
 
 const states: IssueState[] = ['backlog', 'todo', 'inProgress', 'inReview', 'done', 'canceled'];
 
@@ -109,7 +117,7 @@ function MeetingBody({ workspace, meeting }: { workspace: string; meeting: Meeti
       </div>
 
       {meeting.state === 'ended' ? <Summary meeting={meeting} /> : <ModeBar workspace={workspace} meeting={meeting} />}
-      {meeting.state === 'live' && <Listen workspace={workspace} meeting={meeting} />}
+      {meeting.state === 'live' && <Listen workspace={workspace} meeting={meeting} usage={settings?.usage} />}
       {meeting.state !== 'ended' && settings && (
         <p className="text-xs text-mute">
           {settings.transcriptRetentionDays > 0
@@ -117,6 +125,7 @@ function MeetingBody({ workspace, meeting }: { workspace: string; meeting: Meeti
             : t('meeting.privacy')}
         </p>
       )}
+      {meeting.state !== 'ended' && settings?.usage && <Usage usage={settings.usage} />}
 
       <section aria-label={t('meeting.pending')} className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold text-mute">{t('meeting.pendingCount', { count: pending.length })}</h3>
@@ -195,40 +204,82 @@ function TrustStats({ settings }: { settings: MeetingSettingsResponse }) {
   );
 }
 
-function Listen({ workspace, meeting }: { workspace: string; meeting: MeetingResponse }) {
+/** "≈ 3.5 of 12 hours used this month" (task 017), for everyone in the meeting. */
+function Usage({ usage }: { usage: MeetingUsageResponse }) {
+  const { t, i18n } = useTranslation();
+  const number = new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 });
+  return (
+    <p className="text-xs text-mute">
+      {t('meeting.usage', { used: number.format(usage.hoursUsed), included: number.format(usage.hoursIncluded) })}
+    </p>
+  );
+}
+
+function Listen({ workspace, meeting, usage }: { workspace: string; meeting: MeetingResponse; usage?: MeetingUsageResponse | null }) {
   const { t } = useTranslation();
   const toast = useToast();
+  const date = useDate();
   const say = useSay();
-  const sendAudio = useSendAudio(workspace, meeting.id);
+  const update = useUpdateMeeting(workspace, meeting.id);
   const [text, setText] = useState('');
   const [speaking, setSpeaking] = useState(false);
   const [mic, setMic] = useState<Microphone | null>(null);
   const [callAudio, setCallAudio] = useState(false);
   const micRef = useRef<Microphone | null>(null);
+  const silenceRef = useRef<ReturnType<typeof silenceTimer> | null>(null);
+
+  const stopMic = () => {
+    micRef.current?.stop();
+    micRef.current = null;
+    silenceRef.current?.stop();
+    silenceRef.current = null;
+    setMic(null);
+    setSpeaking(false);
+    setCallAudio(false);
+  };
+  // The server refuses audio once the meeting hours are used up: the microphone goes off, typing still works.
+  const sendAudio = useSendAudio(workspace, meeting.id, stopMic);
 
   // Turning the panel or the meeting off releases the microphone.
-  useEffect(() => () => micRef.current?.stop(), []);
+  useEffect(
+    () => () => {
+      micRef.current?.stop();
+      silenceRef.current?.stop();
+    },
+    [],
+  );
 
   const toggleMic = async () => {
     if (mic) {
-      mic.stop();
-      micRef.current = null;
-      setMic(null);
-      setSpeaking(false);
-      setCallAudio(false);
+      stopMic();
       return;
     }
+    // Nobody speaking for 10 minutes means the room emptied: pause instead of listening (and paying) all day.
+    const silence = silenceTimer(SILENCE_PAUSE_MS, () => {
+      stopMic();
+      update({ state: 'paused' });
+      toast.info(t('meeting.pausedSilence'));
+    });
     try {
       const started = await startMicrophone({
-        onUtterance: sendAudio,
-        onSpeaking: setSpeaking,
+        onUtterance: (wav) => {
+          silence.heard();
+          sendAudio(wav);
+        },
+        onSpeaking: (now) => {
+          if (now) silence.heard();
+          setSpeaking(now);
+        },
       });
       micRef.current = started;
+      silenceRef.current = silence;
       setMic(started);
     } catch {
+      silence.stop();
       toast.error(t('meeting.micDenied'));
     }
   };
+  const spent = usage?.spent ?? false;
 
   const toggleCallAudio = async () => {
     if (!mic) return;
@@ -254,12 +305,18 @@ function Listen({ workspace, meeting }: { workspace: string; meeting: MeetingRes
   return (
     <div className="flex flex-col gap-2">
       {meeting.canTranscribe && (
-        <Button variant={mic ? 'primary' : 'secondary'} onClick={() => void toggleMic()} aria-pressed={!!mic}>
+        <Button
+          variant={mic ? 'primary' : 'secondary'}
+          onClick={() => void toggleMic()}
+          aria-pressed={!!mic}
+          disabled={spent && !mic}
+        >
           {mic ? <MicOff size={14} strokeWidth={1.5} aria-hidden="true" /> : <Mic size={14} strokeWidth={1.5} aria-hidden="true" />}
           {mic ? t('meeting.micOff') : t('meeting.micOn')}
           {mic && <span className="text-xs opacity-80">{speaking ? t('meeting.hearing') : t('meeting.listening')}</span>}
         </Button>
       )}
+      {meeting.canTranscribe && spent && usage && <p className="text-xs text-mute">{t('meeting.budgetSpent', { date: date(usage.resetsOn) })}</p>}
       {mic && canCaptureCallAudio() && (
         <>
           <Button variant={callAudio ? 'primary' : 'secondary'} onClick={() => void toggleCallAudio()} aria-pressed={callAudio}>
