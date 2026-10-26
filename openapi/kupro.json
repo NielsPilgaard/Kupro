@@ -4811,6 +4811,12 @@
           "failed"
         ]
       },
+      "ExtractorKind": {
+        "enum": [
+          "model",
+          "keyword"
+        ]
+      },
       "FeedChange": {
         "required": [
           "field",
@@ -5550,7 +5556,8 @@
           "fullAutoEnabled",
           "fullAutoOperations",
           "transcriptRetentionDays",
-          "stats"
+          "stats",
+          "usage"
         ],
         "type": "object",
         "properties": {
@@ -5578,6 +5585,17 @@
               "$ref": "#/components/schemas/OperationStats"
             },
             "description": "Suggest-mode history per operation."
+          },
+          "usage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "This month's meeting hours; null when the server sets no AI budget (self-hosted).",
+                "$ref": "#/components/schemas/MeetingUsageResponse"
+              }
+            ]
           }
         }
       },
@@ -5595,6 +5613,36 @@
           "refinement",
           "other"
         ]
+      },
+      "MeetingUsageResponse": {
+        "required": [
+          "hoursUsed",
+          "hoursIncluded",
+          "resetsOn",
+          "spent"
+        ],
+        "type": "object",
+        "properties": {
+          "hoursUsed": {
+            "type": "number",
+            "description": "Meeting hours used this month: what was spent, in hours at the configured hour value.",
+            "format": "double"
+          },
+          "hoursIncluded": {
+            "type": "number",
+            "description": "Hours per seat times seats, pooled.",
+            "format": "double"
+          },
+          "resetsOn": {
+            "type": "string",
+            "description": "The first of next month, when the hours reset.",
+            "format": "date"
+          },
+          "spent": {
+            "type": "boolean",
+            "description": "True when the hours are used up or the server-wide daily ceiling is reached: the microphone is\n    off and typed text gets keyword proposals."
+          }
+        }
       },
       "MemberKind": {
         "enum": [
@@ -6597,7 +6645,9 @@
       "TranscriptResult": {
         "required": [
           "text",
-          "proposals"
+          "proposals",
+          "extractor",
+          "budgetSpent"
         ],
         "type": "object",
         "properties": {
@@ -6610,6 +6660,14 @@
             "items": {
               "$ref": "#/components/schemas/ProposalResponse"
             }
+          },
+          "extractor": {
+            "description": "What turned it into proposals. `keyword` finds only clear commands.",
+            "$ref": "#/components/schemas/ExtractorKind"
+          },
+          "budgetSpent": {
+            "type": "boolean",
+            "description": "The workspace's meeting hours are used up (or the server-wide daily limit is reached), so\n    keyword matching was used."
           }
         },
         "description": "What a transcript chunk produced."
