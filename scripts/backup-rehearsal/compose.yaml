@@ -1,0 +1,91 @@
+# Backup rehearsal stack (task 021): the production compose file plus what a developer machine lacks. Driven by
+# scripts/backup-rehearsal.ps1; by hand:
+#
+#   docker compose -p kupro-rehearsal -f deploy/docker-compose.yaml -f scripts/backup-rehearsal/compose.yaml \
+#     --env-file scripts/backup-rehearsal/rehearsal.env up -d
+#
+# - Silo stands in for both backup buckets and the attachments bucket (as under `aspire run`).
+# - A ping receiver stands in for elmah.io: the agent pings it (Heartbeats__Provider=Ping), and its access log shows
+#   which heartbeats went out and which failed.
+# - Host ports one hundred above the dev stack's (app 5280, Keycloak 8280, Silo 8290, console 9290), so it runs next
+#   to `aspire run`. The web image is built with Keycloak on :8280; the realm allows the SPA on API_PUBLIC_URL.
+# - The data volumes stay external, as in production, but under rehearsal names, so they never touch the dev stack's
+#   kupro-* volumes. The script creates them (deploy runbook, "Backups") and removes them at the end.
+services:
+  silo:
+    image: "pgsty/silo:RELEASE.2026-09-16T00-00-00Z"
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: "kupro"
+      MINIO_ROOT_PASSWORD: "${SILO_PASSWORD}"
+      MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:5280"
+    ports:
+      - "8290:9000"
+    volumes:
+      - type: "volume"
+        target: "/data"
+        source: "rehearsal-silo-data"
+    networks:
+      - "aspire"
+      - "backup"
+    restart: "unless-stopped"
+  silo-buckets:
+    image: "pgsty/silo:RELEASE.2026-09-16T00-00-00Z"
+    entrypoint: ["sh", "-c"]
+    command:
+      - "until mcli alias set local http://silo:9000 kupro $$SILO_PASSWORD; do sleep 1; done && mcli mb --ignore-existing local/pgbackrest local/kupro-ops local/kupro"
+    environment:
+      SILO_PASSWORD: "${SILO_PASSWORD}"
+    depends_on:
+      silo:
+        condition: "service_started"
+    networks:
+      - "backup"
+  heartbeats:
+    image: "nginx:1.29-alpine"
+    command: ["sh", "-c", "printf 'server { listen 80; access_log /dev/stdout; location / { return 200; } }' > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+    networks:
+      - "backup"
+  postgres:
+    # Small slot cap so case 1 (agent stopped past the cap) needs minutes of WAL, not 4 GB; less memory than the VPS.
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "max_slot_wal_keep_size=96MB",
+      "-c", "shared_buffers=128MB", "-c", "effective_cache_size=512MB"]
+  keycloak:
+    ports:
+      - "8280:8080"
+    # The image holds the realm only; the rehearsal signs in as the dev user. Relative paths resolve from deploy/,
+    # the first file's folder.
+    volumes:
+      - ../src/Kupro.AppHost/Realms/kupro-users-0.json:/opt/keycloak/data/import/kupro-users-0.json:ro
+  api:
+    environment:
+      Storage__CreateBucket: "true"
+    # Presigned attachment URLs name host.docker.internal, so the script, the browser and the API reach the same Silo.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  web:
+    ports:
+      - "5280:80"
+  backup-agent:
+    environment:
+      Agent__VolumeNamePrefix: "kupro-rehearsal-pgdata-"
+      # Silo speaks plain HTTP on 9000 (pgBackRest's default is HTTPS on 443).
+      PGBACKREST_REPO1_STORAGE_PORT: "9000"
+      Heartbeats__Provider: "Ping"
+      # Fast cadence, as under `aspire run`, so RPO and status changes show within minutes.
+      Agent__WalSwitchInterval: "00:01:00"
+      Agent__StatusInterval: "00:01:00"
+      Agent__SlotWarnBytes: "50331648"
+volumes:
+  kupro-pgdata-a:
+    name: "kupro-rehearsal-pgdata-a"
+  kupro-pgdata-b:
+    name: "kupro-rehearsal-pgdata-b"
+  kupro-pg-control:
+    name: "kupro-rehearsal-pg-control"
+  kupro-wal-receive:
+    name: "kupro-rehearsal-wal-receive"
+  kupro-backup-agent-state:
+    name: "kupro-rehearsal-backup-agent-state"
+  rehearsal-silo-data:
+    driver: "local"

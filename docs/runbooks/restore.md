@@ -21,7 +21,9 @@ Never delete a `kupro-pgdata-*`, `kupro-pg-control` or `kupro-wal-receive` volum
 `docker compose down -v`. They are the database.
 
 How it works: [ADR-016](../adr/ADR-016-postgres-backups.md) and the
-[agent README](../../infrastructure/backup-agent/README.md). Variables: [deploy runbook](deploy.md).
+[agent README](../../infrastructure/backup-agent/README.md). Variables: [deploy runbook](deploy.md). §3–§4, §8–§10
+are rehearsed by `scripts/backup-rehearsal.ps1` (agent README,
+[Rehearsals](../../infrastructure/backup-agent/README.md#rehearsals)).
 
 ## 1. Open the console (step 1 of every incident)
 
@@ -158,6 +160,10 @@ backup before it.
 then the agent pauses and Postgres holds up to 4 GB more in the slot, then §8. Fix the endpoint or keys in Dokploy
 (`BACKUP_S3_*`) and redeploy. Everything waiting is pushed, oldest first, with no gap.
 
+A wrong key shows as `403 (Forbidden)` in the overview's issues. A wrong `BACKUP_CIPHER_PASS` shows on the Restore
+page as "Most likely a wrong cipher pass" and nothing is offered for restore; the fix is the same: correct the value
+from the password manager and redeploy.
+
 ## 10. The VPS is gone
 
 The agent image restores without anything from the old box. On a new VPS with Docker:
@@ -168,14 +174,17 @@ docker run -d --name backup-agent -p 127.0.0.1:9090:9090 \
   --label com.docker.compose.service=backup-agent \
   -v kupro-pgdata-a:/pgdata/a -v kupro-pgdata-b:/pgdata/b \
   -v kupro-pg-control:/pg-control \
+  -e Agent__VolumeNamePrefix=kupro-pgdata- \
   --env-file agent.env \
   ghcr.io/<owner>/kupro-backup-agent:<tag>
 ```
 
 `agent.env` holds the values from the password manager: `PGBACKREST_REPO1_S3_ENDPOINT`, `_S3_REGION`, `_S3_BUCKET`,
 `_S3_KEY`, `_S3_KEY_SECRET`, `_CIPHER_PASS`, and `OpsBucket__ServiceUrl`, `__BucketName`, `__AccessKey`,
-`__SecretKey`. Open the console (§1); it shows Postgres as down, which is right, and treats `kupro-pgdata-a` as
-live, so the wizard restores into `kupro-pgdata-b`. Restore, click Go live (it writes `b` to the marker), stop and
+`__SecretKey`. Without the `Agent__VolumeNamePrefix` line the console names the volumes `pgdata-a`/`-b` and asks
+you to type those. Open the console (§1, or `docker exec backup-agent cat /var/lib/backup-agent/console-link` and a
+tunnel); it shows Postgres as down, which is right, and treats `kupro-pgdata-a` as live, so the wizard restores into
+`kupro-pgdata-b`. The checks against live are skipped, also right. Restore, click Go live (it writes `b` to the marker), stop and
 remove this container, then install Dokploy and deploy the compose app as in the [deploy runbook](deploy.md). Postgres
 starts on `kupro-pgdata-b`. Without the cipher pass the backups are unreadable.
 
