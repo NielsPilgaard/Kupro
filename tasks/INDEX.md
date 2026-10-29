@@ -32,6 +32,11 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 19 | [019 Public website](019-public-site.md) | P1 | 1 | — | In progress |
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
+| 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 013, 016 | Todo |
+| 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
+| 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | Todo |
+| 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | Todo |
+| 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
 
 ## Completed
 
@@ -63,6 +68,9 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 - **014 before UI**: budget enforced from the first endpoints, not retrofitted ([ADR-010](../docs/adr/ADR-010-performance-budget.md)).
 - **010 is P1** only because 011 (the differentiator) depends on it.
 - **015 is P1**: the meeting agent leads the public site ([ADR-017](../docs/adr/ADR-017-public-site.md)) and 017 depends on it.
+- **Import is P1** ([ADR-019](../docs/adr/ADR-019-import.md)): teams with history in another tool don't switch
+  without it. 023 waits for 013 so imports are tested against production storage and jobs; Jira and Azure DevOps
+  (024, 025) are the largest switcher pools. Linear, Trello and the rest (026, 027) are P2.
 - **P2 tasks** are independent of each other and can run in parallel once their dependencies are Done.
 
 When adding a task: give it a row here with a priority, and move the row to Completed when its status becomes Done.

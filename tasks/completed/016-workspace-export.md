@@ -56,5 +56,5 @@ end-of-processing clause lean on it. Built: one ZIP per export, built in the bac
 
 ## Out of scope
 
-- Import (from Kupro, Linear or Jira): separate task.
+- Import (from Kupro, Linear or Jira): [ADR-019](../../docs/adr/ADR-019-import.md), [task 023](../023-import-framework.md).
 - A per-person export of one user's data across workspaces (GDPR Art. 15): handled by email to the privacy address until volume says otherwise.
