@@ -23,7 +23,8 @@ task adds `AzureDevOpsConnector` for Boards on Azure DevOps Services and Server,
 ### Access
 
 - **Services**: `https://dev.azure.com/<org>` (and legacy `https://<org>.visualstudio.com`); **Server**:
-  `https://<server>/<collection>`. PAT with **Work Items (Read)**, Basic auth with an empty user.
+  `https://<server>/<collection>`. PAT with **Work Items (Read)** and **Project and Team (Read)**
+  (Describe lists projects), Basic auth with an empty user.
 - API version: 7.1 on Services. On Server, probe and fall back to the highest the server supports (6.0 for Server 2020).
 - `kupro import azure-devops --url <collection> --local` for on-prem servers.
 

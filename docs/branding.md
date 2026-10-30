@@ -60,7 +60,9 @@ middle bar in verdigris: the piece of work currently in flow.
 Raster files are rendered from the mark by `bun scripts/brand-images.ts`, never drawn by hand: `favicon.ico` and the
 app icons (listed in `manifest.json`) in `web/public/` and `site/public/`, the site's social cards (`og-image.png`,
 `og-image-da.png`, headline from the hero copy), Keycloak's login favicon, and the GitHub
-[social preview](images/social-preview.png). Rerun it after changing the mark, palette or hero headline.
+[social preview](images/social-preview.png). The script keeps its own copy of the mark geometry and palette and does
+not read the SVGs above: after changing the mark or palette, edit the constants in the script too, then rerun it (a
+headline change only needs the rerun).
 
 Geometry (viewBox `0 0 32 32`, bar height 5, radius 2.5): `(3, 6.5, w17)`, `(9, 13.5, w20)`, `(5, 20.5, w12)`.
 

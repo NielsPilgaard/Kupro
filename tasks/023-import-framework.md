@@ -71,8 +71,9 @@ then only add a connector, a markup converter and default mappings.
 - **Auto-sync**: an hourly scheduler for imports with the flag on; turns itself off after 30 days with no change on
   either side and emails the owner (EN/DA).
 - **Undo** (until Finish): deletes everything the import created, listed per entity in `imported_item`. Warns with the
-  list of issues edited in Kupro since. **Finish**: stops auto-sync, deletes the token, keeps aliases and history.
-  Tokens are also deleted after 90 days without a run.
+  list of issues edited in Kupro since. Refused, with the list, while native comments, attachments, relations or child
+  issues reference imported issues ([ADR-019](../docs/adr/ADR-019-import.md)). **Finish**: stops auto-sync, deletes
+  the token, keeps aliases and history. Tokens are also deleted after 90 days without a run.
 
 ### Issue feed and lookups
 
@@ -129,7 +130,8 @@ then only add a connector, a markup converter and default mappings.
       within budget.
 - [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
 - [ ] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
-- [ ] Undo removes everything the import created and nothing else. Finish deletes the token (checked in the DB).
+- [ ] Undo removes everything the import created and nothing else; it is refused while native records reference
+  imported issues. Finish deletes the token (checked in the DB).
 - [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
 - [ ] A Danish CSV in Windows-1252 keeps æøå.
 

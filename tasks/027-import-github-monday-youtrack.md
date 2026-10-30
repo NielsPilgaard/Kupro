@@ -20,7 +20,9 @@ connectors that can ship one at a time: each is a separate PR.
 
 ### GitHub Issues
 
-- Access: fine-grained PAT with Issues (read) and Metadata (read); GitHub Enterprise Server by base URL.
+- Access: fine-grained PAT with Issues (read) and Metadata (read), plus organization Projects (read) when a
+  Projects (v2) board is mapped. Fine-grained PATs can't read user-owned projects, so those need a classic PAT with
+  `read:project`. GitHub Enterprise Server by base URL.
 - Repository → project (owner picks the key); issue number kept (`#89` → `API-89`), `owner/repo#89` and the URL as
   aliases, so the Git integration ([product.md](../docs/product.md)) resolves old references. Pull requests are skipped.
 - Issue types (org-level) → type map; sub-issues → hierarchy with fit; without types, top-level issues with

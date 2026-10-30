@@ -143,6 +143,8 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
 - New source comments and changes are appended. An item deleted in the source is left alone and flagged in the report.
 - **Undo import** deletes what the import created: issues, comments, attachments, labels and milestones it made, and
   placeholders nothing else references. Offered until Finish, with a warning listing issues edited in Kupro since.
+  Undo is blocked while native records (comments, attachments, relations, child issues created in Kupro) reference
+  imported issues; the refusal lists them, so the owner moves or deletes them first and nothing native is lost.
 
 ### Who and where
 
