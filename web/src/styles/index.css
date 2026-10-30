@@ -53,6 +53,9 @@
   --text-2xl: 28px;
   --text-2xl--line-height: 32px;
 
+  /* Large monitors: shell and form pages step up here (tokens.css bumps --sidebar/--nav-item at the same width). */
+  --breakpoint-3xl: 120rem;
+
   --radius-r1: var(--r1);
   --radius-r2: var(--r2);
 

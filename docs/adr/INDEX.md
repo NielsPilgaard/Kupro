@@ -27,3 +27,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Postgres backups, WAL streaming, restore console, A/B data volumes, drills | [ADR-016](ADR-016-postgres-backups.md) | Accepted |
 | Public website: Astro static site, EN/DA, domain split (site on apex, app on `app.`) | [ADR-017](ADR-017-public-site.md) | Accepted |
 | CLI distribution (install script, binaries in Object Storage), `kupro install mcp`, the Kupro agent skill | [ADR-018](ADR-018-cli-distribution.md) | Accepted |
+| Import from other trackers: re-runnable one-way import, snapshot format, mapping, placeholder members, key aliases, changelog replay | [ADR-019](ADR-019-import.md) | Accepted |

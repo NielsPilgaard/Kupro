@@ -63,7 +63,8 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
   const { data: workspaces } = useQuery(listWorkspacesOptions());
   const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
   const current = workspaces?.find((w) => w.slug === workspace);
-  const nav = 'flex h-[var(--nav-item)] items-center gap-2 rounded-r1 px-2 text-side-ink hover:bg-side-sel';
+  const nav =
+    'flex h-[var(--nav-item)] items-center gap-2 rounded-r1 px-2 text-side-ink hover:bg-side-sel 3xl:gap-2.5 3xl:text-md 3xl:[&>svg]:size-[18px]';
   const active = { className: 'bg-side-sel font-semibold' };
 
   return (
@@ -71,7 +72,7 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
       aria-label={t('nav.label')}
       className={`flex shrink-0 flex-col gap-4 bg-side p-2 text-side-ink transition-[width] duration-[var(--dur-1)] ${collapsed ? 'w-[52px]' : 'w-[var(--sidebar)]'} max-sm:hidden`}
     >
-      <div className="flex h-9 items-center gap-2 px-1">
+      <div className="flex h-9 items-center gap-2 px-1 3xl:h-10 3xl:text-md">
         <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
           <rect x="3" y="6.5" width="17" height="5" rx="2.5" className="fill-side-ink" />
           <rect x="9" y="13.5" width="20" height="5" rx="2.5" className="fill-acc" />
@@ -116,7 +117,9 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto">
-        {!collapsed && <div className="px-2 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60">{t('nav.projects')}</div>}
+        {!collapsed && (
+          <div className="px-2 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60 3xl:text-sm">{t('nav.projects')}</div>
+        )}
         {projects?.map((p) => (
           <Link
             key={p.id}

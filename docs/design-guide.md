@@ -92,6 +92,8 @@ Mono for issue keys, hours, dates and numbers in columns, with `tabular-nums`.
   toasts), `full` for labels and avatars.
 - **Density**: comfortable — `--row` 34 px (list rows, group headers), nav items 28 px, topbar 48 px, buttons 30 px.
   Compact (28 px rows, 12.5 px text) is a later per-user setting; build with `--row`, never hard-coded heights.
+- **Large screens**: from `3xl` (1920 px) the sidebar widens (`--sidebar` 252 px, `--nav-item` 34 px, `md` text);
+  centred form pages (onboarding, new project) step up from `2xl`. Lists and boards keep their density.
 - **Elevation**: borders, not shadows, for resting surfaces. Shadow only on things that float: popovers and the palette
   (`0 24px 60px -12px rgb(0 0 0 / .45)`), toasts, a card being dragged.
 

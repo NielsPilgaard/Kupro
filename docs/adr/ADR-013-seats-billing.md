@@ -25,6 +25,7 @@ description: >-
   **Custom** for large organisations ("get in touch with your requirements"), set up by hand in Alunta.
 - Idle seats (no activity in 30 days) are flagged, and owners are told before a yearly renewal so they can deactivate them.
 - Members have a status (`invited` / `active` / `deactivated`) from task 003, so seat counting needs no migration later.
+  Imports add `placeholder` (no login, no seat).
 - No free plan: a 30-day trial of everything, then paid seats. The workspace is read-only (exportable) until it subscribes.
 - Meeting agent: in the trial and the paid plan. Monthly AI budget per workspace (2 h per seat pooled, 2 h for the
   whole trial); when spent, the microphone stops and typed text uses keyword matching. No customer API keys on hosted.
@@ -75,6 +76,8 @@ running a fleet of agents.
   - `invited`: no seat until the invite is accepted.
   - `active`: counts as a seat.
   - `deactivated`: no access and no seat, but history and attribution are kept. Members are deactivated, never deleted.
+  - `placeholder`: a person from an imported tracker, with no login and no seat, outside the guest cap. It holds
+    their history until they are invited or merged into a member ([ADR-019](ADR-019-import.md)).
 - **Trial, no free plan** (decided 2026-10-15): a new workspace gets 30 days of the full product, meeting agent
   included, with no card, for any number of people. Then it subscribes for the seats it has at that point.
   Unpaid, it turns read-only (export still works, task 016) and is deleted 30 days later, with emails before each step.
@@ -196,3 +199,4 @@ workspace leaving the agent on all day must not cost more than it pays.
 - [ADR-008](ADR-008-work-item-model.md) — agents as members
 - [ADR-009](ADR-009-multi-tenancy.md) — workspace as tenant and billing unit
 - [ADR-015](ADR-015-meeting-agent-vendors.md) — the speech and LLM vendors the AI budget pays for
+- [ADR-019](ADR-019-import.md) — placeholder members from imports

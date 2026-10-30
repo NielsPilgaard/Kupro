@@ -74,9 +74,11 @@ without a check. Agents also need things humans don't: machine-readable output, 
 - **IMP-002**: CLI output: table for TTY, JSON when `--json` or stdout is not a TTY.
 - **IMP-003**: Tool budget: 22 tools after the meeting agent (task 015) added `meeting` and `review_proposals`, enforced
   by the MCP test. A new feature extends an existing tool's actions or consolidates before the budget grows.
+  Import adds a read-only `imports` tool (23, [ADR-019](ADR-019-import.md)).
 
 ## Related Decisions
 
 - [ADR-002](ADR-002-backend-stack.md) — controllers and services
 - [ADR-005](ADR-005-auth-keycloak.md) — tokens for CLI and MCP
 - [ADR-018](ADR-018-cli-distribution.md) — how the CLI is installed and MCP is set up
+- [ADR-019](ADR-019-import.md) — import surfaces, MCP read-only

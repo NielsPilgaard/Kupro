@@ -21,6 +21,16 @@ const c = t(locale);
 const alt = other(locale);
 const site = Astro.site ?? new URL('http://localhost:4321');
 const url = (l: Locale) => (page ? new URL(path(l, page), site).href : undefined);
+// Social card per language, drawn by scripts/brand-images.ts. Scrapers need absolute URLs.
+const ogImage = new URL(locale === 'da' ? '/og-image-da.png' : '/og-image.png', site).href;
+const ogLocale: Record<Locale, string> = { en: 'en_GB', da: 'da_DK' };
+const organization = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: c.meta.siteName,
+  url: new URL('/', site).href,
+  logo: new URL('/icon-512.png', site).href,
+};
 ---
 
 <!doctype html>
@@ -30,7 +40,14 @@ const url = (l: Locale) => (page ? new URL(path(l, page), site).href : undefined
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    {/* Browser chrome follows the page ground (Kalk / Nat in docs/branding.md); meta tags can't read CSS tokens. */}
+    <meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0F1514" media="(prefers-color-scheme: dark)" />
+    {!page && <meta name="robots" content="noindex" />}
     {
       page && (
         <>
@@ -41,9 +58,19 @@ const url = (l: Locale) => (page ? new URL(path(l, page), site).href : undefined
         </>
       )
     }
+    <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     {description && <meta property="og:description" content={description} />}
     <meta property="og:site_name" content={c.meta.siteName} />
+    {page && <meta property="og:url" content={url(locale)} />}
+    <meta property="og:locale" content={ogLocale[locale]} />
+    <meta property="og:locale:alternate" content={ogLocale[alt]} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={c.meta.ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    {page === 'home' && <script type="application/ld+json" is:inline set:html={JSON.stringify(organization)} />}
   </head>
   <body>
     <Icons />

@@ -11,6 +11,8 @@ export const da: Copy = {
     pricingTitle: 'Priser · Kupro',
     pricingDescription: '69 kr. pr. person om måneden eller 690 kr. om året. 30 dages gratis prøveperiode med mødeagenten. Intet kort.',
     notFoundTitle: 'Siden findes ikke · Kupro',
+    ogDetail: 'Issue tracker og planlægger. Hurtig, bygget til tastaturet og hostet i EU.',
+    ogImageAlt: 'Kupro: Sig det til standup. Så står det i trackeren.',
   },
   nav: {
     label: 'Hovedmenu',
