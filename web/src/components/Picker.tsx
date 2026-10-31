@@ -117,6 +117,8 @@ export function Picker({
         onClick={() => setOpen(!open)}
         className={`group flex max-w-full items-center gap-1.5 rounded-r1 text-left transition-colors duration-[var(--dur-1)] ${className}`}
       >
+        {/* Chips can stand without a visible field name; screen readers still hear "Status: In progress". */}
+        <span className="sr-only">{label}: </span>
         {children}
         {shortcut && (
           <span className="opacity-0 group-hover:opacity-100">
