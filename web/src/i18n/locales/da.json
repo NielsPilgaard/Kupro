@@ -124,6 +124,13 @@
     "loadFailed": "Opgaverne kunne ikke indlæses.",
     "relationFailed": "Relationen kunne ikke tilføjes. Tjek opgavenøglen."
   },
+  "picker": {
+    "move": "flyt",
+    "choose": "vælg",
+    "type": "Skift type…",
+    "sprint": "Flyt til sprint…",
+    "relation": "Relationstype…"
+  },
   "palette": {
     "title": "Kommandopalet",
     "empty": "Ingen resultater.",

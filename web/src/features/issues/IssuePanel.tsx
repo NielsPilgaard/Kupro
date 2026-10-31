@@ -1,18 +1,26 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { X } from 'lucide-react';
+import { Ban, ChevronDown, Copy, IterationCw, Link2, OctagonAlert, Tag, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { addIssueRelationMutation, getIssueQueryKey, listIssueActivityQueryKey, listSprintsOptions, removeIssueRelationMutation } from '../../api/gen/@tanstack/react-query.gen';
+import {
+  addIssueRelationMutation,
+  getIssueQueryKey,
+  listIssueActivityQueryKey,
+  listLabelsOptions,
+  listSprintsOptions,
+  removeIssueRelationMutation,
+} from '../../api/gen/@tanstack/react-query.gen';
 import type { IssueDetail, IssueType, RelationKind, UpdateIssueRequest } from '../../api/gen/types.gen';
 import { useMarkdownUpload } from '../../api/attachments';
-import { useIssue, useUpdateIssue } from '../../api/issues';
+import { useIssue, useMembers, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
-import { Avatar, Button, Kbd, LabelPill, PriorityIcon, StatusRing, TypeTag } from '../../components/ui';
+import { Picker, type PickerOption } from '../../components/Picker';
+import { Avatar, Button, Kbd, LabelPill, PriorityIcon, StatusRing, TypeIcon, TypeTag } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
 import { useHours } from '../../lib/format';
-import { types } from '../../lib/issues';
+import { priorities, states, types } from '../../lib/issues';
 import { useShortcuts } from '../../lib/shortcuts';
 import { ActivityFeed } from './ActivityFeed';
 import { RichMarkdown } from './RichMarkdown';
@@ -71,16 +79,35 @@ function IssueBody({
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description ?? '');
   const upload = useMarkdownUpload(workspace, issue.key, setDescription);
+  const { data: members } = useMembers(workspace);
+  const [picker, setPicker] = useState<PalettePage | null>(null);
+  const { data: labels } = useQuery({ ...listLabelsOptions({ path: { workspace } }), enabled: picker === 'label' });
 
-  const pick = (page: PalettePage) => () => {
-    ui.setActiveKey(issue.key);
-    ui.openPalette(page);
-  };
+  // S/A/P/L open the pickers here instead of the palette while this issue is the active one.
+  const { activeKey, setPickerOverride } = ui;
+  useEffect(() => {
+    setPickerOverride((page) => {
+      if (activeKey !== issue.key || page === 'root') return false;
+      setPicker(page);
+      return true;
+    });
+    return () => setPickerOverride(null);
+  }, [activeKey, issue.key, setPickerOverride]);
+  const controlled = (page: PalettePage) => ({ open: picker === page, onOpenChange: (o: boolean) => setPicker(o ? page : null) });
+
+  // A person answers for the work, so only humans are offered; an existing agent assignee stays visible.
+  const assignees: PickerOption[] = [
+    { value: NONE, label: t('issue.unassigned'), icon: <Avatar member={null} size={20} /> },
+    ...(members ?? [])
+      .filter((m) => m.status === 'active' && (m.kind === 'human' || m.id === issue.assignee?.id))
+      .map((m) => ({ value: m.id, label: m.name, icon: <Avatar member={{ id: m.id, name: m.name, kind: m.kind }} size={20} /> })),
+  ];
+  const labelNames = [...new Set([...issue.labels, ...(labels ?? []).map((l) => l.name)])];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4">
       <div className="flex items-start gap-2">
-        <button type="button" onClick={pick('state')} className="mt-1.5 rounded-full" aria-label={t('issue.changeState')}>
+        <button type="button" onClick={() => setPicker('state')} className="mt-1.5 rounded-full" aria-label={t('issue.changeState')}>
           <StatusRing state={issue.state} />
         </button>
         <textarea
@@ -101,38 +128,76 @@ function IssueBody({
 
       <dl className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
         <Field label={t('issue.state')}>
-          <PickerButton onClick={pick('state')} shortcut="S">
+          <Picker
+            {...controlled('state')}
+            label={t('issue.state')}
+            placeholder={t('palette.placeholder.state')}
+            shortcut="S"
+            options={states.map((x, i) => ({ value: x, label: t(`state.${x}`), icon: <StatusRing state={x} />, key: String(i + 1) }))}
+            selected={[issue.state]}
+            onPick={(v) => save({ state: v as IssueDetail['state'] })}
+          >
             <StatusRing state={issue.state} /> {t(`state.${issue.state}`)}
-          </PickerButton>
+          </Picker>
         </Field>
         <Field label={t('issue.priority')}>
-          <PickerButton onClick={pick('priority')} shortcut="P">
+          <Picker
+            {...controlled('priority')}
+            label={t('issue.priority')}
+            placeholder={t('palette.placeholder.priority')}
+            shortcut="P"
+            options={priorities.map((x, i) => ({ value: x, label: t(`priority.${x}`), icon: <PriorityIcon priority={x} />, key: String((i + 1) % 5) }))}
+            selected={[issue.priority]}
+            onPick={(v) => save({ priority: v as IssueDetail['priority'] })}
+          >
             <PriorityIcon priority={issue.priority} /> {t(`priority.${issue.priority}`)}
-          </PickerButton>
+          </Picker>
         </Field>
         <Field label={t('issue.assignee')}>
-          <PickerButton onClick={pick('assign')} shortcut="A">
+          <Picker
+            {...controlled('assign')}
+            label={t('issue.assignee')}
+            placeholder={t('palette.placeholder.assign')}
+            shortcut="A"
+            options={assignees}
+            selected={[issue.assignee?.id ?? NONE]}
+            onPick={(v) => save(v === NONE ? { clear: ['assignee'] } : { assignee: v })}
+          >
             <Avatar member={issue.assignee} size={18} /> {issue.assignee?.name ?? t('issue.unassigned')}
-          </PickerButton>
+          </Picker>
         </Field>
         <Field label={t('issue.labels')}>
-          <PickerButton onClick={pick('label')} shortcut="L">
-            {issue.labels.length === 0 ? <span className="text-mute">{t('issue.noLabels')}</span> : issue.labels.map((l) => <LabelPill key={l} name={l} />)}
-          </PickerButton>
+          <Picker
+            {...controlled('label')}
+            multi
+            label={t('issue.labels')}
+            placeholder={t('palette.placeholder.label')}
+            shortcut="L"
+            options={labelNames.map((name) => ({ value: name, label: name, icon: <LabelDot name={name} /> }))}
+            selected={issue.labels}
+            onPick={(v) => save(issue.labels.includes(v) ? { removeLabels: [v] } : { addLabels: [v] })}
+            onCreate={(name) => save({ addLabels: [name] })}
+          >
+            {issue.labels.length === 0 ? (
+              <>
+                <Tag size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />
+                <span className="text-mute">{t('issue.noLabels')}</span>
+              </>
+            ) : (
+              issue.labels.map((l) => <LabelPill key={l} name={l} />)
+            )}
+          </Picker>
         </Field>
         <Field label={t('issue.type')}>
-          <select
-            value={issue.type}
-            aria-label={t('issue.type')}
-            onChange={(e) => save({ type: e.target.value as IssueType })}
-            className="h-7 rounded-r1 border border-line bg-panel px-1"
+          <Picker
+            label={t('issue.type')}
+            placeholder={t('picker.type')}
+            options={types.map((x) => ({ value: x, label: t(`type.${x}`), icon: <TypeIcon type={x} /> }))}
+            selected={[issue.type]}
+            onPick={(v) => save({ type: v as IssueType })}
           >
-            {types.map((type) => (
-              <option key={type} value={type}>
-                {t(`type.${type}`)}
-              </option>
-            ))}
-          </select>
+            <TypeIcon type={issue.type} /> {t(`type.${issue.type}`)}
+          </Picker>
         </Field>
         <Field label={t('issue.effort')}>
           <span className="flex items-center gap-2">
@@ -225,23 +290,47 @@ function IssueBody({
 function SprintSelect({ workspace, issue, onChange }: { workspace: string; issue: IssueDetail; onChange(id: string | null): void }) {
   const { t } = useTranslation();
   const { data: sprints } = useQuery(listSprintsOptions({ path: { workspace }, query: { project: issue.projectKey, state: ['planned', 'active'] } }));
+  const current = sprints?.find((s) => s.id === issue.sprintId);
   return (
-    <select
-      value={issue.sprintId ?? ''}
-      aria-label={t('issue.sprint')}
-      onChange={(e) => onChange(e.target.value || null)}
-      className="h-7 max-w-full rounded-r1 border border-line bg-panel px-1"
+    <Picker
+      label={t('issue.sprint')}
+      placeholder={t('picker.sprint')}
+      options={[
+        { value: NONE, label: t('issue.noSprint'), icon: <SprintIcon /> },
+        ...(sprints ?? []).map((s) => ({
+          value: s.id,
+          label: s.name,
+          icon: <SprintIcon active={s.state === 'active'} />,
+          hint: s.state === 'active' ? t('sprint.active') : undefined,
+        })),
+      ]}
+      selected={[issue.sprintId ?? NONE]}
+      onPick={(v) => onChange(v === NONE ? null : v)}
     >
-      <option value="">{t('issue.noSprint')}</option>
-      {sprints?.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.name}
-          {s.state === 'active' ? ` (${t('sprint.active')})` : ''}
-        </option>
-      ))}
-    </select>
+      <SprintIcon active={current?.state === 'active'} />
+      {current ? current.name : <span className="text-mute">{t('issue.noSprint')}</span>}
+    </Picker>
   );
 }
+
+/** Option value for "none" (unassigned, no sprint): cmdk needs a non-empty value. */
+const NONE = 'none';
+
+function LabelDot({ name }: { name: string }) {
+  return <span className={`size-2 rounded-full ${name === 'bug' ? 'bg-bad' : 'bg-mute'}`} />;
+}
+
+function SprintIcon({ active = false }: { active?: boolean }) {
+  return <IterationCw size={14} strokeWidth={1.5} aria-hidden="true" className={active ? 'text-acc-ink' : 'text-mute'} />;
+}
+
+const relationIcon: Record<RelationKind, ReactNode> = {
+  blocks: <OctagonAlert size={14} strokeWidth={1.5} aria-hidden="true" className="text-bad" />,
+  blockedBy: <Ban size={14} strokeWidth={1.5} aria-hidden="true" className="text-warn" />,
+  relates: <Link2 size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />,
+  duplicates: <Copy size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />,
+  duplicatedBy: <Copy size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />,
+};
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -249,17 +338,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <dt className="text-sm text-mute">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </>
-  );
-}
-
-function PickerButton({ onClick, shortcut, children }: { onClick(): void; shortcut: string; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className="group flex h-7 max-w-full items-center gap-1.5 rounded-r1 px-1.5 hover:bg-sel">
-      {children}
-      <span className="opacity-0 group-hover:opacity-100">
-        <Kbd>{shortcut}</Kbd>
-      </span>
-    </button>
   );
 }
 
@@ -275,7 +353,7 @@ function NumberInput({ value, label, onCommit }: { value: number | null; label: 
         const parsed = text.trim() === '' ? null : Number(text.replace(',', '.'));
         if (parsed !== value && (parsed === null || !Number.isNaN(parsed))) onCommit(parsed);
       }}
-      className="h-7 w-20 rounded-r1 border border-line bg-panel px-2 font-mono tabular-nums"
+      className="h-7 w-20 rounded-r1 bg-sunk px-2 font-mono tabular-nums hover:bg-sel"
     />
   );
 }
@@ -287,7 +365,7 @@ function DateInput({ value, label, onCommit }: { value: string | null; label: st
       aria-label={label}
       defaultValue={value ?? ''}
       onBlur={(e) => e.target.value !== (value ?? '') && onCommit(e.target.value || null)}
-      className="h-7 rounded-r1 border border-line bg-panel px-1 font-mono text-sm"
+      className="h-7 rounded-r1 bg-sunk px-2 font-mono text-sm hover:bg-sel"
     />
   );
 }
@@ -335,7 +413,10 @@ function Relations({ workspace, issue }: { workspace: string; issue: IssueDetail
       <h3 className="text-sm font-semibold text-mute">{t('issue.relations')}</h3>
       {issue.relations.map((r) => (
         <div key={r.id} className="group flex items-center gap-2">
-          <span className="w-28 shrink-0 text-sm text-mute">{t(`relation.${r.type}`)}</span>
+          <span className="flex w-28 shrink-0 items-center gap-1.5 text-sm text-mute">
+            {relationIcon[r.type]}
+            {t(`relation.${r.type}`)}
+          </span>
           <IssueLink issueRef={r.issue} />
           <button
             type="button"
@@ -354,19 +435,23 @@ function Relations({ workspace, issue }: { workspace: string; issue: IssueDetail
           if (target.trim()) add.mutate({ path: { workspace, key: issue.key }, body: { type: kind, target: target.trim() } });
         }}
       >
-        <select value={kind} onChange={(e) => setKind(e.target.value as RelationKind)} aria-label={t('issue.relationType')} className="h-7 rounded-r1 border border-line bg-panel px-1 text-sm">
-          {relationKinds.map((k) => (
-            <option key={k} value={k}>
-              {t(`relation.${k}`)}
-            </option>
-          ))}
-        </select>
+        <Picker
+          label={t('issue.relationType')}
+          placeholder={t('picker.relation')}
+          options={relationKinds.map((k) => ({ value: k, label: t(`relation.${k}`), icon: relationIcon[k] }))}
+          selected={[kind]}
+          onPick={(v) => setKind(v as RelationKind)}
+        >
+          {relationIcon[kind]}
+          {t(`relation.${kind}`)}
+          <ChevronDown size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />
+        </Picker>
         <input
           value={target}
           onChange={(e) => setTarget(e.target.value)}
           placeholder={t('issue.relationTarget')}
           aria-label={t('issue.relationTarget')}
-          className="h-7 w-32 rounded-r1 border border-line bg-panel px-2 font-mono text-sm uppercase"
+          className="h-7 w-32 rounded-r1 bg-sunk px-2 font-mono text-sm uppercase hover:bg-sel"
         />
         <Button type="submit" className="h-7 px-2 text-sm" disabled={!target.trim()}>
           {t('issue.addRelation')}

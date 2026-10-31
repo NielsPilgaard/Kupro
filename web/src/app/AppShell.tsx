@@ -13,7 +13,7 @@ import { IssuePanel } from '../features/issues/IssuePanel';
 import { MeetingPanel } from '../features/meetings/MeetingPanel';
 import { useShortcuts } from '../lib/shortcuts';
 import { projectColorClass } from '../lib/issues';
-import { useUi } from './UiContext';
+import { useUi, type PalettePage } from './UiContext';
 
 /** Sidebar 212 px + topbar 48 px + scrolling content; the shell itself never scrolls (design guide). */
 export function AppShell() {
@@ -30,14 +30,16 @@ export function AppShell() {
     if (me && me.locale !== i18n.language) void i18n.changeLanguage(me.locale);
   }, [me, i18n]);
 
+  const pickFor = (page: PalettePage) => ui.activeKey && !ui.pickerOverride?.(page) && ui.openPalette(page);
+
   useShortcuts({
     'mod+k': () => ui.openPalette(),
     c: () => (ui.createOverride ? ui.createOverride() : ui.setCreateOpen(true)),
     '[': () => ui.toggleSidebar(),
-    s: () => ui.activeKey && ui.openPalette('state'),
-    a: () => ui.activeKey && ui.openPalette('assign'),
-    p: () => ui.activeKey && ui.openPalette('priority'),
-    l: () => ui.activeKey && ui.openPalette('label'),
+    s: () => pickFor('state'),
+    a: () => pickFor('assign'),
+    p: () => pickFor('priority'),
+    l: () => pickFor('label'),
     escape: () => {
       if (search.issue) void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: undefined }) });
     },
