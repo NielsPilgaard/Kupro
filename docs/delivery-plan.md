@@ -12,9 +12,10 @@ purpose: 'Canonical requirements and open questions for the delivery plan view.'
 
 ## TL;DR
 
-A portfolio timeline, not a person scheduler. Rows are **projects**, cards are **epics and features** with start and
-target dates, overlaid with **milestones** and **cross-project dependencies**, over a horizon of months to a year
-("our 10 projects in 2027"). A **capacity band** compares the effort the plan demands per month with the people
+A portfolio timeline, not a person scheduler: when features are worked on and delivered, with their estimates. Rows
+are **projects › epics › features**, each a bar from start to target date, overlaid with **milestones**, over a horizon
+of months to a year ("our 10 projects in 2027"). Two modes: the **overview** across projects and teams, and **one
+epic in focus** for planning that epic. A **capacity band** compares the effort the plan demands per month with the people
 available, so the team can see when it must hire, where it has spare hands, and whether delivery dates are realistic.
 Built from the same issues as everything else.
 
@@ -36,20 +37,24 @@ is the board and sprints ([ADR-008](adr/ADR-008-work-item-model.md)).
 
 1. Does each project have a plan for the horizon — which projects have nothing (or only undated work) for 2027?
 2. When does each project deliver, and which features land when?
-3. What depends on what across projects, and what slips if X slips?
+3. Which features make up an epic, and do they fit inside its dates?
 4. Per month/quarter: how much effort does the plan demand vs. how many people we have — where are we short (hire)
    and where do we have spare capacity?
 5. Is a delivery date realistic given the effort and the people allocated?
 
 ## Requirements (v1)
 
-- **Rows**: one per project (default), selectable set of projects; optionally grouped by epic within a project.
+- **Rows**: a project row (name, capacity, health, capacity band), then one row per epic, then that epic's features,
+  each on its own row. Features without an epic sit under "No epic". Epics fold to their own bar; "collapse all" gives
+  the epic-level overview for cross-team planning. Selectable set of projects.
+- **Epic focus**: pick one epic (`?epic=KEY`): only that epic and its features, with a summary (dates, features done,
+  effort). For planning one epic or project.
 - **Cards**: epics and features as bars spanning start → target date. Tasks never appear. Card shows title, state,
-  effort, progress (done children / total).
+  effort, progress (done children / total). An undated card keeps its row; drag on the row to date it.
 - **Horizon & zoom**: month / quarter / year; default = rest of current year + next year. Smooth horizontal scroll.
 - **Milestones**: dated markers, workspace-wide (e.g. "Launch", "Fiscal year end") or per project ("Atlas GA").
-- **Dependencies**: "blocks" links between cards, including across projects; violated ones (blocker ends after
-  dependent starts) highlighted.
+- **Dependencies**: not drawn. Cross-epic blocks are rare and the plan is about when, not what waits on what; a card
+  that starts before its blocker ends gets a small warning mark. Relations live on the issue.
 - **Capacity band**: per month, **demand** (card effort in hours, spread evenly over each card's span) vs. **supply**
   (project capacity, see [ADR-008](adr/ADR-008-work-item-model.md) Planning). Shown as people: "needs 4.5, has 3".
   Colour deficits. Per project and workspace total. No double counting: an epic's own estimate only counts when none
@@ -57,8 +62,8 @@ is the board and sprints ([ADR-008](adr/ADR-008-work-item-model.md)).
 - **Capacity editing**: set people per project from a month onward, right in the row header ("3 from Jan, 5 from Jul").
 - **Plan health**: flag projects with no dated work in the horizon, cards without effort, cards without dates,
   target dates past their milestone.
-- **Create inline**: drag on empty space in a project row → new feature (or epic) with dates prefilled; type title,
-  Enter. Keyboard: select row + month, press `C`.
+- **Create inline**: drag on empty space in a project row → new epic, in an epic row → new feature under it, dates
+  prefilled; type title, Enter. Keyboard: select row + month, press `C`.
 - **Edit inline**: drag to move, drag edges to change dates, drag between rows to move project. Capacity band updates
   live. Optimistic, < 100 ms feel.
 - **No plan entity**: the view is a pure reflection of issues. Selected projects and horizon live in the URL.
@@ -79,17 +84,17 @@ is the board and sprints ([ADR-008](adr/ADR-008-work-item-model.md)).
   [ADR-008](adr/ADR-008-work-item-model.md).
 - **OQ-2**: Supply → **people per project, from a month onward**; workspace total = sum. See ADR-008 Planning.
 - **OQ-4**: Plan entity → **none**; the view is a reflection of issues.
-- **OQ-6**: Rows → **projects only**; no team entity.
+- **OQ-6**: Rows → **projects › epics › features**; no team entity (2026-10-31, was projects only).
 - **OQ-3**: Demand spreading → **even spread over the card's days** (task 011). Front/back-loaded profiles later.
 - **OQ-5**: What-if scenarios → **later**; v1 is edit-in-place.
-- **OQ-7**: Rendering → **DOM cards + one SVG layer for dependency curves**; 500 cards drag at 60 fps (task 011).
+- **OQ-7**: Rendering → **DOM rows and cards**; 500 cards drag at 60 fps (task 011). Dependency curves dropped
+  2026-10-31: they read as noise and the case is rare.
 - **OQ-8**: Build vs. library → **custom build**.
 
 ## Not in v1 yet
 
 - Dragging a card to another project row (an issue's project is fixed in the API today).
 - "Target date past its milestone" health flag.
-- Grouping rows by epic within a project.
 
 ## Related
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { ChevronDown, ChevronRight, Crosshair, Layers } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,28 +10,74 @@ import {
   getPlanQueryKey,
   updateIssueMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
-import type { PlanCard, PlanMonth, PlanProject, PlanResponse } from '../../api/gen/types.gen';
+import type { IssueType, PlanCard, PlanMonth, PlanProject, PlanResponse } from '../../api/gen/types.gen';
 import { Topbar } from '../../app/AppShell';
 import { useUi } from '../../app/UiContext';
-import { Button } from '../../components/ui';
+import { Picker } from '../../components/Picker';
+import { Button, StatusRing } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
+import { useHours } from '../../lib/format';
 import { CapacityEditor } from './CapacityEditor';
-import { dayOf, isoOf, lanes, lastDayOf, monthsBetween, monthsFor, sumMonths, timeline } from './demand';
+import { dayOf, isoOf, lastDayOf, monthsBetween, monthsFor, sumMonths, timeline } from './demand';
 
 export type Zoom = 'month' | 'quarter' | 'year';
 const monthWidths: Record<Zoom, number> = { month: 160, quarter: 72, year: 34 };
-const HEADER_W = 132;
-const LANE_H = 26;
+const LABEL_W = 300;
+const ROW_H = 30;
+const PROJECT_H = 76;
 const BAND_H = 40;
 const PAD = 8;
 const MONTH_ROW_H = 28;
 // Milestone labels get their own strip under the month names, so they never cover them.
 const MILESTONE_ROW_H = 20;
+/** Picker value for "all epics": cmdk needs a non-empty value. */
+const ALL = 'all';
 
 type Override = { key: string; startDate: string; dueDate: string };
-type Draft = { project: string; startDate: string; dueDate: string };
+type Draft = { project: string; parent: string | null; type: IssueType; startDate: string; dueDate: string; top: number };
+type ProjectView = PlanProject & { months: PlanMonth[] };
 
-/** Delivery plan v1 (docs/delivery-plan.md): projects × months, cards, capacity band, milestones, dependencies. */
+/** One line of the plan: a project (with its capacity band), an epic, the "no epic" group, or a feature. */
+type Row =
+  | { kind: 'project'; key: string; project: ProjectView }
+  | { kind: 'epic'; key: string; project: ProjectView; card: PlanCard; open: boolean; count: number }
+  | { kind: 'loose'; key: string; project: ProjectView; open: boolean; count: number }
+  | { kind: 'feature'; key: string; project: ProjectView; card: PlanCard };
+
+const byStart = (a: PlanCard, b: PlanCard) => (a.startDate ?? '9999').localeCompare(b.startDate ?? '9999') || a.key.localeCompare(b.key);
+
+/** Projects › epics › features. Focus keeps one epic, always open; folded epics show their bar only. */
+function buildRows(projects: ProjectView[], focus: string | null, folded: Set<string>): Row[] {
+  const rows: Row[] = [];
+  for (const p of projects) {
+    const allEpics = p.cards.filter((c) => c.type === 'epic');
+    const epics = allEpics.filter((c) => !focus || c.key === focus).sort(byStart);
+    if (focus && epics.length === 0) continue;
+    rows.push({ kind: 'project', key: p.key, project: p });
+    const features = p.cards.filter((c) => c.type === 'feature').sort(byStart);
+    for (const epic of epics) {
+      const children = features.filter((f) => f.parentKey === epic.key);
+      const open = !!focus || !folded.has(epic.key);
+      rows.push({ kind: 'epic', key: epic.key, project: p, card: epic, open, count: children.length });
+      if (open) rows.push(...children.map((card) => ({ kind: 'feature' as const, key: card.key, project: p, card })));
+    }
+    if (focus) continue;
+    const epicKeys = new Set(allEpics.map((e) => e.key));
+    const loose = features.filter((f) => !f.parentKey || !epicKeys.has(f.parentKey));
+    if (loose.length) {
+      const key = `${p.key}:loose`;
+      const open = !folded.has(key);
+      rows.push({ kind: 'loose', key, project: p, open, count: loose.length });
+      if (open) rows.push(...loose.map((card) => ({ kind: 'feature' as const, key: card.key, project: p, card })));
+    }
+  }
+  return rows;
+}
+
+/**
+ * Delivery plan (docs/delivery-plan.md): projects › epics › features over months, capacity band per project,
+ * milestones. `?epic=KEY` focuses one epic for epic planning; without it, the plan is the cross-team overview.
+ */
 export function PlanPage() {
   const { t } = useTranslation();
   const ui = useUi();
@@ -38,7 +85,7 @@ export function PlanPage() {
   const toast = useToast();
   const navigate = useNavigate();
   const { workspace } = useParams({ strict: false }) as { workspace: string };
-  const search = useSearch({ strict: false }) as { from?: string; to?: string; zoom?: Zoom; project?: string };
+  const search = useSearch({ strict: false }) as { from?: string; to?: string; zoom?: Zoom; project?: string; epic?: string };
   const zoom = search.zoom ?? 'quarter';
   const monthWidth = monthWidths[zoom];
   const query = {
@@ -51,7 +98,8 @@ export function PlanPage() {
 
   const [override, setOverride] = useState<Override | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [cell, setCell] = useState<{ project: string; month: string } | null>(null);
+  const [cell, setCell] = useState<{ row: string; month: string; draft: Omit<Draft, 'startDate' | 'dueDate'> } | null>(null);
+  const [folded, setFolded] = useState<Set<string>>(new Set());
 
   const update = useMutation({
     ...updateIssueMutation(),
@@ -84,23 +132,18 @@ export function PlanPage() {
   });
 
   const months = useMemo(() => (plan ? monthsBetween(plan.from, plan.to) : []), [plan]);
-  const headerH = MONTH_ROW_H + (plan?.milestones.length ? MILESTONE_ROW_H : 0);
   const t2 = useMemo(() => timeline(months.length ? months : ['2027-01-01'], monthWidth), [months, monthWidth]);
 
-  const layout = useCallback(
-    (p: PlanProject, cards: PlanCard[], hoursPerWeek: number) => {
-      const packed = lanes(cards);
-      return { ...p, cards, lane: packed.lane, laneCount: packed.count, months: monthsFor(months, cards, p.capacity, hoursPerWeek) };
-    },
-    [months],
+  const base = useMemo(
+    () => (plan ? plan.projects.map((p) => ({ ...p, months: monthsFor(months, p.cards, p.capacity, plan.hoursPerWeek) })) : []),
+    [plan, months],
   );
-  const base = useMemo(() => (plan ? plan.projects.map((p) => layout(p, p.cards, plan.hoursPerWeek)) : []), [plan, layout]);
 
-  // Live while dragging: only the dragged card's project is recomputed (lanes kept, so rows don't jump), the rest
-  // keep their objects so memoised rows skip rendering; the total is re-summed.
+  // Live while dragging: only the dragged card's project is recomputed, the rest keep their objects so memoised rows
+  // skip rendering; the total is re-summed.
   const view = useMemo(() => {
     if (!plan) return null;
-    const projects = override
+    const projects: ProjectView[] = override
       ? base.map((p) => {
           if (!p.cards.some((c) => c.key === override.key)) return p;
           const cards = p.cards.map((c) => (c.key === override.key ? { ...c, ...override } : c));
@@ -109,6 +152,21 @@ export function PlanPage() {
       : base;
     return { projects, totals: sumMonths(projects.map((p) => p.months), months, plan.hoursPerWeek) };
   }, [plan, base, override, months]);
+
+  const epics = useMemo(() => base.flatMap((p) => p.cards.filter((c) => c.type === 'epic').map((c) => ({ card: c, project: p }))), [base]);
+  const focus = search.epic && epics.some((e) => e.card.key === search.epic) ? search.epic : null;
+  const focused = epics.find((e) => e.card.key === focus);
+
+  const rows = useMemo(() => (view ? buildRows(view.projects, focus, folded) : []), [view, focus, folded]);
+  const milestones = (plan?.milestones ?? []).filter((m) => !focused || !m.projectKey || m.projectKey === focused.project.key);
+  const headerH = MONTH_ROW_H + (milestones.length ? MILESTONE_ROW_H : 0);
+  const tops: number[] = [];
+  let rowsEnd = headerH;
+  for (const row of rows) {
+    tops.push(rowsEnd);
+    rowsEnd += heightOf(row);
+  }
+  const totalHeight = rowsEnd + (focus ? 0 : BAND_H + PAD * 2);
 
   const mutateUpdate = update.mutate;
   const onCommit = useCallback(
@@ -119,41 +177,34 @@ export function PlanPage() {
     (key: string) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: key }) }),
     [navigate],
   );
-  const onSelectMonth = useCallback((project: string, month: string) => setCell({ project, month }), []);
+  const onToggle = useCallback(
+    (key: string) =>
+      setFolded((prev) => {
+        const next = new Set(prev);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      }),
+    [],
+  );
+  const setSearch = useCallback(
+    (patch: Record<string, string | undefined>) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) }),
+    [navigate],
+  );
+  const onFocus = useCallback((epic: string | undefined) => setSearch({ epic }), [setSearch]);
+  const onSelectMonth = useCallback(
+    (row: string, month: string, draft: Omit<Draft, 'startDate' | 'dueDate'>) => setCell({ row, month, draft }),
+    [],
+  );
 
   // C with a selected month cell creates there; otherwise C keeps opening the issue dialog.
   const { setCreateOverride } = ui;
   useEffect(() => {
-    setCreateOverride(cell ? () => setDraft({ project: cell.project, startDate: cell.month, dueDate: lastDayOf(cell.month) }) : null);
+    setCreateOverride(cell ? () => setDraft({ ...cell.draft, startDate: cell.month, dueDate: lastDayOf(cell.month) }) : null);
     return () => setCreateOverride(null);
   }, [cell, setCreateOverride]);
 
-  const rows = useMemo(
-    () =>
-      (view?.projects ?? []).reduce<{ key: string; top: number; height: number }[]>((acc, p) => {
-        const top = acc.length ? acc[acc.length - 1]!.top + acc[acc.length - 1]!.height : headerH;
-        return [...acc, { key: p.key, top, height: PAD * 2 + p.laneCount * LANE_H + BAND_H }];
-      }, []),
-    [view, headerH],
-  );
-  const totalHeight = (rows.at(-1)?.top ?? headerH) + (rows.at(-1)?.height ?? 0) + BAND_H + PAD * 2;
-
-  const cardPos = useMemo(() => {
-    const pos = new Map<string, { x1: number; x2: number; y: number }>();
-    view?.projects.forEach((p, i) => {
-      for (const c of p.cards) {
-        if (!c.startDate || !c.dueDate) continue;
-        const y = rows[i]!.top + PAD + (p.lane.get(c.key) ?? 0) * LANE_H + 10;
-        pos.set(c.key, { x1: HEADER_W + t2.x(c.startDate), x2: HEADER_W + t2.xEnd(c.dueDate), y });
-      }
-    });
-    return pos;
-  }, [view, rows, t2]);
-
   const violated = useMemo(() => new Set(plan?.dependencies.filter((d) => d.violated).map((d) => d.blocked)), [plan]);
-
-  const setSearch = (patch: Record<string, string | undefined>) =>
-    void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) });
+  const foldable = rows.filter((r) => r.kind === 'epic' || r.kind === 'loose').map((r) => r.key);
 
   const zoomTabs = (
     <div role="tablist" aria-label={t('plan.zoom')} className="flex rounded-r1 bg-sunk p-0.5">
@@ -174,38 +225,51 @@ export function PlanPage() {
 
   return (
     <>
-      <Topbar crumbs={[t('plan.title')]} tabs={zoomTabs} />
-      <Toolbar workspace={workspace} plan={plan} onHorizon={(from, to) => setSearch({ from, to })} />
+      <Topbar crumbs={focused ? [t('plan.title'), focused.card.title] : [t('plan.title')]} tabs={zoomTabs} />
+      <Toolbar
+        workspace={workspace}
+        plan={plan}
+        epics={epics}
+        focus={focus}
+        onFocus={onFocus}
+        allFolded={!focus && foldable.length > 0 && foldable.every((k) => folded.has(k))}
+        onFoldAll={(fold) => setFolded(fold ? new Set(epics.map((e) => e.card.key).concat(base.map((p) => `${p.key}:loose`))) : new Set())}
+        onHorizon={(from, to) => setSearch({ from, to })}
+      />
+      {focused && <EpicSummary epic={focused.card} features={focused.project.cards.filter((c) => c.parentKey === focused.card.key)} />}
       <main className="relative min-h-0 flex-1 overflow-auto" aria-label={t('plan.title')}>
         {isPending && <p className="p-8 text-center text-mute">{t('common.loading')}</p>}
         {plan && view && (
-          <div className="relative" style={{ width: HEADER_W + t2.width, height: totalHeight }}>
+          <div className="relative" style={{ width: LABEL_W + t2.width, height: totalHeight }}>
             <MonthHeader months={months} monthWidth={monthWidth} zoom={zoom} height={headerH} />
-            {view.projects.map((p, i) => (
-              <ProjectRow
-                key={p.key}
+            {rows.map((row, i) => (
+              <PlanRow
+                key={row.key}
                 workspace={workspace}
-                project={p}
-                top={rows[i]!.top}
-                height={rows[i]!.height}
+                row={row}
+                card={row.kind === 'epic' || row.kind === 'feature' ? row.card : undefined}
+                top={tops[i]!}
                 months={months}
                 monthWidth={monthWidth}
                 timeline={t2}
-                violated={violated}
-                selectedMonth={cell?.project === p.key ? cell.month : null}
+                late={row.kind === 'epic' || row.kind === 'feature' ? violated.has(row.card.key) : false}
+                focused={!!focus}
+                selectedMonth={cell?.row === row.key ? cell.month : null}
                 onSelectMonth={onSelectMonth}
                 onDraft={setDraft}
                 onDrag={setOverride}
                 onCommit={onCommit}
                 onOpen={onOpen}
+                onToggle={onToggle}
+                onFocus={onFocus}
               />
             ))}
-            <TotalsRow top={rows.at(-1) ? rows.at(-1)!.top + rows.at(-1)!.height : headerH} months={view.totals} monthWidth={monthWidth} />
-            {plan.milestones.map((m) => (
+            {!focus && <TotalsRow top={rowsEnd} months={view.totals} monthWidth={monthWidth} />}
+            {milestones.map((m) => (
               <div
                 key={m.id}
                 className="pointer-events-none absolute top-0 z-30 border-l-[1.5px] border-dashed border-acc-ink"
-                style={{ left: HEADER_W + t2.x(m.date), height: totalHeight }}
+                style={{ left: LABEL_W + t2.x(m.date), height: totalHeight }}
               >
                 <span className="absolute left-1 text-xs leading-5 font-bold whitespace-nowrap text-acc-ink" style={{ top: MONTH_ROW_H }}>
                   {m.name}
@@ -213,16 +277,18 @@ export function PlanPage() {
                 </span>
               </div>
             ))}
-            <Dependencies dependencies={plan.dependencies} positions={cardPos} width={HEADER_W + t2.width} height={totalHeight} />
             {draft && (
               <DraftInput
                 draft={draft}
-                left={HEADER_W + t2.x(draft.startDate)}
-                width={Math.max(120, t2.xEnd(draft.dueDate) - t2.x(draft.startDate))}
-                top={rows.find((r) => r.key === draft.project)!.top + PAD}
+                left={LABEL_W + t2.x(draft.startDate)}
+                width={Math.max(160, t2.xEnd(draft.dueDate) - t2.x(draft.startDate))}
+                top={draft.top}
                 onCancel={() => setDraft(null)}
                 onSubmit={(title) => {
-                  create.mutate({ path: { workspace }, body: { project: draft.project, title, type: 'feature', state: 'backlog', startDate: draft.startDate, dueDate: draft.dueDate } });
+                  create.mutate({
+                    path: { workspace },
+                    body: { project: draft.project, parent: draft.parent, title, type: draft.type, state: 'backlog', startDate: draft.startDate, dueDate: draft.dueDate },
+                  });
                   setDraft(null);
                 }}
               />
@@ -241,7 +307,259 @@ export function PlanPage() {
   );
 }
 
-function Toolbar({ workspace, plan, onHorizon }: { workspace: string; plan?: PlanResponse; onHorizon(from: string, to: string): void }) {
+const heightOf = (row: Row) => (row.kind === 'project' ? PROJECT_H : ROW_H);
+
+/** Epic planning header: dates, features done, effort counted for the epic and its features. */
+function EpicSummary({ epic, features }: { epic: PlanCard; features: PlanCard[] }) {
+  const { t, i18n } = useTranslation();
+  const hours = useHours();
+  const date = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const done = features.filter((f) => f.state === 'done').length;
+  const effort = epic.countedEffort + features.reduce((s, f) => s + f.countedEffort, 0);
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-line bg-panel px-4 py-2.5">
+      <span className="flex items-center gap-2 font-semibold">
+        <StatusRing state={epic.state} />
+        <span className="font-mono text-sm font-normal text-mute">{epic.key}</span>
+        {epic.title}
+      </span>
+      <span className="text-mute">
+        {epic.startDate && epic.dueDate ? `${date.format(new Date(epic.startDate))} → ${date.format(new Date(epic.dueDate))}` : t('plan.noDates')}
+      </span>
+      <span>{t('plan.featuresDone', { done, total: features.length })}</span>
+      <span className="font-mono tabular-nums">{hours(effort)}</span>
+    </div>
+  );
+}
+
+function MonthHeader({ months, monthWidth, zoom, height }: { months: string[]; monthWidth: number; zoom: Zoom; height: number }) {
+  const { t, i18n } = useTranslation();
+  const format = new Intl.DateTimeFormat(i18n.language, { month: zoom === 'year' ? 'narrow' : 'short', year: zoom === 'month' ? 'numeric' : undefined, timeZone: 'UTC' });
+  return (
+    <div className="sticky top-0 z-20 flex border-b border-line bg-bg" style={{ height }}>
+      <div className="sticky left-0 z-10 flex shrink-0 items-start border-r border-line bg-bg px-3 text-xs leading-7 text-mute uppercase" style={{ width: LABEL_W }}>
+        {t('plan.tree')}
+      </div>
+      {months.map((m) => (
+        <div key={m} className="shrink-0 truncate border-l border-line/70 px-1.5 text-xs leading-7 text-mute uppercase" style={{ width: monthWidth }}>
+          {format.format(new Date(m))}
+          {m.endsWith('-01-01') && zoom !== 'month' ? ` ${m.slice(0, 4)}` : ''}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface RowProps {
+  workspace: string;
+  row: Row;
+  /** The row's card, passed on its own so a row re-renders only when its own card changes. */
+  card?: PlanCard;
+  top: number;
+  months: string[];
+  monthWidth: number;
+  timeline: ReturnType<typeof timeline>;
+  late: boolean;
+  focused: boolean;
+  selectedMonth: string | null;
+  onSelectMonth(row: string, month: string, draft: Omit<Draft, 'startDate' | 'dueDate'>): void;
+  onDraft(draft: Draft | null): void;
+  onDrag(o: Override | null): void;
+  onCommit(key: string, startDate: string, dueDate: string): void;
+  onOpen(key: string): void;
+  onToggle(key: string): void;
+  onFocus(epic: string | undefined): void;
+}
+
+/**
+ * Label column plus a month track. Dragging on a project row drafts an epic, on an epic row a feature under it; on an
+ * undated card's row it sets the card's dates. A click without a drag selects the month for C.
+ */
+const PlanRow = memo(function PlanRow(props: RowProps) {
+  const { t } = useTranslation();
+  const hours = useHours();
+  const { row, card, top, timeline: tl, monthWidth } = props;
+  const [creating, setCreating] = useState<{ x0: number; x1: number } | null>(null);
+  const p = row.project;
+  const height = heightOf(row);
+  const dated = !!card?.startDate && !!card.dueDate;
+  const draft: Omit<Draft, 'startDate' | 'dueDate'> | null =
+    row.kind === 'project'
+      ? { project: p.key, parent: null, type: 'epic', top: top + PAD }
+      : row.kind === 'epic'
+        ? { project: p.key, parent: row.card.key, type: 'feature', top: top + (ROW_H - 20) / 2 }
+        : null;
+  const canDate = !!card && !dated;
+
+  function onTrackPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget || e.button !== 0 || (!draft && !canDate)) return;
+    const x0 = e.nativeEvent.offsetX;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setCreating({ x0, x1: x0 });
+  }
+
+  const label =
+    row.kind === 'project' ? (
+      <div className="flex flex-col gap-1">
+        <span className="flex min-w-0 items-center gap-1.5 font-semibold">
+          <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: `var(--proj-${p.color})` }} aria-hidden="true" />
+          <span className="truncate" title={p.name}>
+            {p.name}
+          </span>
+        </span>
+        <CapacityEditor workspace={props.workspace} projectKey={p.key} capacity={p.capacity} />
+        {(p.health.cardsWithoutDates > 0 || p.health.cardsWithoutEffort > 0) && (
+          <span className="text-xs text-warn italic">
+            {p.health.cardsWithoutDates > 0 && t('plan.undated', { count: p.health.cardsWithoutDates })}
+            {p.health.cardsWithoutDates > 0 && p.health.cardsWithoutEffort > 0 && ' · '}
+            {p.health.cardsWithoutEffort > 0 && t('plan.noEffort', { count: p.health.cardsWithoutEffort })}
+          </span>
+        )}
+      </div>
+    ) : row.kind === 'epic' || row.kind === 'loose' ? (
+      <div className="group flex min-w-0 flex-1 items-center gap-1.5">
+        {props.focused ? (
+          <Layers size={14} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-rev" />
+        ) : (
+          <button
+            type="button"
+            onClick={() => props.onToggle(row.key)}
+            aria-expanded={row.open}
+            aria-label={t(row.open ? 'plan.fold' : 'plan.unfold')}
+            className="shrink-0 rounded-r1 p-0.5 text-mute hover:bg-sel hover:text-ink"
+          >
+            {row.open ? <ChevronDown size={14} strokeWidth={1.5} /> : <ChevronRight size={14} strokeWidth={1.5} />}
+          </button>
+        )}
+        {row.kind === 'epic' ? (
+          <button type="button" onClick={() => props.onOpen(row.card.key)} className="flex min-w-0 items-center gap-1.5 text-left font-semibold hover:underline">
+            <span className="font-mono text-sm font-normal text-mute">{row.card.key}</span>
+            <span className="truncate">{row.card.title}</span>
+          </button>
+        ) : (
+          <span className="truncate text-mute italic">{t('plan.noEpic')}</span>
+        )}
+        <span className="ml-auto shrink-0 font-mono text-xs text-mute tabular-nums">{row.count}</span>
+        {row.kind === 'epic' && !props.focused && (
+          <button
+            type="button"
+            onClick={() => props.onFocus(row.card.key)}
+            aria-label={t('plan.focusEpic', { key: row.card.key })}
+            title={t('plan.focusEpic', { key: row.card.key })}
+            className="shrink-0 rounded-r1 p-0.5 text-mute opacity-0 group-hover:opacity-100 hover:bg-sel hover:text-ink focus:opacity-100"
+          >
+            <Crosshair size={14} strokeWidth={1.5} />
+          </button>
+        )}
+      </div>
+    ) : (
+      <button type="button" onClick={() => props.onOpen(row.card.key)} className="flex min-w-0 flex-1 items-center gap-1.5 pl-6 text-left hover:underline">
+        <StatusRing state={row.card.state} />
+        <span className="font-mono text-sm text-mute">{row.card.key}</span>
+        <span className="truncate">{row.card.title}</span>
+        <span className="ml-auto shrink-0 font-mono text-xs text-mute tabular-nums">{row.card.effort ? hours(row.card.effort) : ''}</span>
+      </button>
+    );
+
+  return (
+    <div
+      className={`absolute left-0 flex border-b ${row.kind === 'project' ? 'border-line bg-sunk/60' : 'border-line/40'}`}
+      style={{ top, height, width: LABEL_W + tl.width }}
+    >
+      <div
+        className={`sticky left-0 z-10 flex shrink-0 border-r border-line px-3 ${row.kind === 'project' ? 'items-start bg-sunk py-2' : 'items-center bg-panel'}`}
+        style={{ width: LABEL_W }}
+      >
+        {label}
+      </div>
+      <div
+        className={`relative shrink-0 ${draft || canDate ? 'cursor-crosshair' : ''}`}
+        style={{
+          width: tl.width,
+          backgroundImage: `repeating-linear-gradient(to right, color-mix(in srgb, var(--line) 70%, transparent) 0 1px, transparent 1px ${monthWidth}px)`,
+        }}
+        onPointerDown={onTrackPointerDown}
+        onPointerMove={(e) => creating && setCreating({ ...creating, x1: e.nativeEvent.offsetX })}
+        onPointerUp={(e) => {
+          if (!creating) return;
+          const a = Math.min(creating.x0, creating.x1);
+          const b = Math.max(creating.x0, creating.x1);
+          setCreating(null);
+          e.currentTarget.releasePointerCapture(e.pointerId);
+          if (canDate) {
+            if (b - a >= 6) props.onCommit(card.key, tl.dateAt(a), tl.dateAt(b));
+          } else if (draft && b - a < 6) {
+            props.onSelectMonth(row.key, props.months[Math.floor(a / monthWidth)]!, draft);
+          } else if (draft) {
+            props.onDraft({ ...draft, startDate: tl.dateAt(a), dueDate: tl.dateAt(b) });
+          }
+        }}
+        data-row={row.key}
+      >
+        {props.selectedMonth && (
+          <div
+            className="pointer-events-none absolute inset-y-0 bg-sel"
+            style={{ left: tl.x(props.selectedMonth), width: monthWidth }}
+            aria-label={t('plan.selectedMonth')}
+          />
+        )}
+        {row.kind === 'project' && p.health.noDatedWork && (
+          <span className="pointer-events-none absolute top-2 left-3 flex items-center gap-1.5 text-sm text-warn italic">
+            <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-warn text-[9px] font-bold text-on-acc not-italic">!</span>
+            {t('plan.noDatedWork')}
+          </span>
+        )}
+        {canDate && !creating && <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-mute italic">{t('plan.dragToDate')}</span>}
+        {creating && (
+          <div
+            className="pointer-events-none absolute h-5 rounded-r1 border-[1.5px] border-dashed border-acc-ink bg-sel"
+            style={{ left: Math.min(creating.x0, creating.x1), width: Math.abs(creating.x1 - creating.x0), top: row.kind === 'project' ? PAD : (ROW_H - 20) / 2 }}
+          />
+        )}
+        {card && dated && (
+          <Card
+            card={card}
+            color={p.color}
+            left={tl.x(card.startDate!)}
+            width={tl.xEnd(card.dueDate!) - tl.x(card.startDate!)}
+            top={(ROW_H - 20) / 2}
+            violated={props.late}
+            timeline={tl}
+            onDrag={props.onDrag}
+            onCommit={props.onCommit}
+            onOpen={props.onOpen}
+          />
+        )}
+        {row.kind === 'project' && <CapacityBand months={p.months} monthWidth={monthWidth} top={height - BAND_H - 2} />}
+      </div>
+    </div>
+  );
+}, sameRowProps);
+
+/** Rows are rebuilt on every drag frame; a row only re-renders when what it shows changed (one project's rows). */
+function sameRowProps(a: RowProps, b: RowProps) {
+  const { row: ra, ...restA } = a;
+  const { row: rb, ...restB } = b;
+  const sameRow =
+    ra.kind === rb.kind &&
+    ra.key === rb.key &&
+    (ra.kind === 'project' ? ra.project === rb.project : ra.project.color === rb.project.color) &&
+    ('open' in ra && 'open' in rb ? ra.open === rb.open && ra.count === rb.count : true);
+  return sameRow && (Object.keys(restA) as (keyof typeof restA)[]).every((k) => restA[k] === restB[k]);
+}
+
+interface ToolbarProps {
+  workspace: string;
+  plan?: PlanResponse;
+  epics: { card: PlanCard; project: ProjectView }[];
+  focus: string | null;
+  onFocus(epic: string | undefined): void;
+  allFolded: boolean;
+  onFoldAll(fold: boolean): void;
+  onHorizon(from: string, to: string): void;
+}
+
+function Toolbar({ workspace, plan, epics, focus, onFocus, allFolded, onFoldAll, onHorizon }: ToolbarProps) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [name, setName] = useState('');
@@ -255,8 +573,34 @@ function Toolbar({ workspace, plan, onHorizon }: { workspace: string; plan?: Pla
   });
   if (!plan) return null;
   const field = 'h-7 rounded-r1 border border-line bg-panel px-2 font-mono text-sm';
+  const current = epics.find((e) => e.card.key === focus)?.card;
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2 text-sm">
+      <Picker
+        label={t('plan.focus')}
+        placeholder={t('plan.focusPlaceholder')}
+        options={[
+          { value: ALL, label: t('plan.allEpics'), icon: <Layers size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" /> },
+          ...epics.map(({ card, project }) => ({
+            value: card.key,
+            label: card.title,
+            hint: card.key,
+            group: project.name,
+            icon: <span className="size-2.5 rounded-[2px]" style={{ background: `var(--proj-${project.color})` }} />,
+          })),
+        ]}
+        selected={[focus ?? ALL]}
+        onPick={(v) => onFocus(v === ALL ? undefined : v)}
+      >
+        <Crosshair size={14} strokeWidth={1.5} aria-hidden="true" className={focus ? 'text-acc-ink' : 'text-mute'} />
+        <span className="max-w-60 truncate">{current ? current.title : t('plan.allEpics')}</span>
+        <ChevronDown size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />
+      </Picker>
+      {!focus && (
+        <Button variant="ghost" className="h-7 px-2" onClick={() => onFoldAll(!allFolded)}>
+          {t(allFolded ? 'plan.unfoldAll' : 'plan.foldAll')}
+        </Button>
+      )}
       <label className="flex items-center gap-1.5">
         {t('plan.from')}
         <input type="month" className={field} value={plan.from.slice(0, 7)} onChange={(e) => e.target.value && onHorizon(e.target.value, plan.to.slice(0, 7))} />
@@ -281,134 +625,6 @@ function Toolbar({ workspace, plan, onHorizon }: { workspace: string; plan?: Pla
     </div>
   );
 }
-
-function MonthHeader({ months, monthWidth, zoom, height }: { months: string[]; monthWidth: number; zoom: Zoom; height: number }) {
-  const { i18n } = useTranslation();
-  const format = new Intl.DateTimeFormat(i18n.language, { month: zoom === 'year' ? 'narrow' : 'short', year: zoom === 'month' ? 'numeric' : undefined, timeZone: 'UTC' });
-  return (
-    <div className="sticky top-0 z-20 flex border-b border-line bg-bg" style={{ height }}>
-      <div className="sticky left-0 z-10 shrink-0 bg-bg" style={{ width: HEADER_W }} />
-      {months.map((m) => (
-        <div key={m} className="shrink-0 truncate border-l border-line/70 px-1.5 text-xs leading-7 text-mute uppercase" style={{ width: monthWidth }}>
-          {format.format(new Date(m))}
-          {m.endsWith('-01-01') && zoom !== 'month' ? ` ${m.slice(0, 4)}` : ''}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-interface RowProps {
-  workspace: string;
-  project: PlanProject & { lane: Map<string, number>; laneCount: number };
-  top: number;
-  height: number;
-  months: string[];
-  monthWidth: number;
-  timeline: ReturnType<typeof timeline>;
-  violated: Set<string>;
-  selectedMonth: string | null;
-  onSelectMonth(project: string, month: string): void;
-  onDraft(draft: Draft | null): void;
-  onDrag(o: Override | null): void;
-  onCommit(key: string, startDate: string, dueDate: string): void;
-  onOpen(key: string): void;
-}
-
-const ProjectRow = memo(function ProjectRow(props: RowProps) {
-  const { t } = useTranslation();
-  const { project: p, top, height, timeline: tl, monthWidth } = props;
-  const [creating, setCreating] = useState<{ x0: number; x1: number } | null>(null);
-  const undated = p.cards.filter((c) => !c.startDate || !c.dueDate).length;
-
-  function onTrackPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    if (e.target !== e.currentTarget || e.button !== 0) return;
-    const x0 = e.nativeEvent.offsetX;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setCreating({ x0, x1: x0 });
-  }
-
-  return (
-    <div className="absolute left-0 flex border-b border-line" style={{ top, height, width: HEADER_W + tl.width }}>
-      <div className="sticky left-0 z-10 flex shrink-0 flex-col gap-1 border-r border-line bg-panel p-2" style={{ width: HEADER_W }}>
-        <span className="flex min-w-0 items-center gap-1.5 font-semibold">
-          <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: `var(--proj-${p.color})` }} aria-hidden="true" />
-          <span className="truncate" title={p.name}>
-            {p.name}
-          </span>
-        </span>
-        <CapacityEditor workspace={props.workspace} projectKey={p.key} capacity={p.capacity} />
-        {(p.health.cardsWithoutDates > 0 || p.health.cardsWithoutEffort > 0) && (
-          <span className="text-xs text-warn italic">
-            {p.health.cardsWithoutDates > 0 && t('plan.undated', { count: undated })}
-            {p.health.cardsWithoutDates > 0 && p.health.cardsWithoutEffort > 0 && ' · '}
-            {p.health.cardsWithoutEffort > 0 && t('plan.noEffort', { count: p.health.cardsWithoutEffort })}
-          </span>
-        )}
-      </div>
-      <div
-        className="relative shrink-0 cursor-crosshair"
-        style={{
-          width: tl.width,
-          backgroundImage: `repeating-linear-gradient(to right, color-mix(in srgb, var(--line) 70%, transparent) 0 1px, transparent 1px ${monthWidth}px)`,
-        }}
-        onPointerDown={onTrackPointerDown}
-        onPointerMove={(e) => creating && setCreating({ ...creating, x1: e.nativeEvent.offsetX })}
-        onPointerUp={(e) => {
-          if (!creating) return;
-          const a = Math.min(creating.x0, creating.x1);
-          const b = Math.max(creating.x0, creating.x1);
-          setCreating(null);
-          if (b - a < 6) {
-            props.onSelectMonth(p.key, props.months[Math.floor(a / monthWidth)]!);
-          } else {
-            props.onDraft({ project: p.key, startDate: tl.dateAt(a), dueDate: tl.dateAt(b) });
-          }
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        }}
-        data-project={p.key}
-      >
-        {props.selectedMonth && (
-          <div
-            className="pointer-events-none absolute inset-y-0 bg-sel"
-            style={{ left: tl.x(props.selectedMonth), width: monthWidth }}
-            aria-label={t('plan.selectedMonth')}
-          />
-        )}
-        {p.health.noDatedWork && (
-          <span className="pointer-events-none absolute top-3 left-3 flex items-center gap-1.5 text-sm text-warn italic">
-            <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-warn text-[9px] font-bold text-on-acc not-italic">!</span>
-            {t('plan.noDatedWork')}
-          </span>
-        )}
-        {creating && (
-          <div
-            className="pointer-events-none absolute h-5 rounded-r1 border-[1.5px] border-dashed border-acc-ink bg-sel"
-            style={{ left: Math.min(creating.x0, creating.x1), width: Math.abs(creating.x1 - creating.x0), top: PAD }}
-          />
-        )}
-        {p.cards.map((card) =>
-          card.startDate && card.dueDate ? (
-            <Card
-              key={card.key}
-              card={card}
-              color={p.color}
-              left={tl.x(card.startDate)}
-              width={tl.xEnd(card.dueDate) - tl.x(card.startDate)}
-              top={PAD + (p.lane.get(card.key) ?? 0) * LANE_H}
-              violated={props.violated.has(card.key)}
-              timeline={tl}
-              onDrag={props.onDrag}
-              onCommit={props.onCommit}
-              onOpen={props.onOpen}
-            />
-          ) : null,
-        )}
-        <CapacityBand months={p.months} monthWidth={monthWidth} top={height - BAND_H - 2} />
-      </div>
-    </div>
-  );
-});
 
 interface CardProps {
   card: PlanCard;
@@ -526,7 +742,7 @@ function TotalsRow({ top, months, monthWidth }: { top: number; months: PlanMonth
   const short = months.filter((m) => (m.gapPeople ?? 0) > 0.005).length;
   return (
     <div className="absolute left-0 flex border-t-2 border-line bg-sunk" style={{ top, height: BAND_H + PAD * 2 }}>
-      <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-center gap-0.5 bg-sunk px-2" style={{ width: HEADER_W }}>
+      <div className="sticky left-0 z-10 flex shrink-0 flex-col justify-center gap-0.5 bg-sunk px-2" style={{ width: LABEL_W }}>
         <span className="font-semibold">{t('plan.total')}</span>
         <span className={`text-xs ${short ? 'text-bad' : 'text-mute'}`}>{short ? t('plan.shortMonths', { count: short }) : t('plan.covered')}</span>
       </div>
@@ -534,39 +750,6 @@ function TotalsRow({ top, months, monthWidth }: { top: number; months: PlanMonth
         <CapacityBand months={months} monthWidth={monthWidth} top={PAD + 2} label={t('plan.total')} />
       </div>
     </div>
-  );
-}
-
-function Dependencies({
-  dependencies,
-  positions,
-  width,
-  height,
-}: {
-  dependencies: PlanResponse['dependencies'];
-  positions: Map<string, { x1: number; x2: number; y: number }>;
-  width: number;
-  height: number;
-}) {
-  return (
-    <svg className="pointer-events-none absolute top-0 left-0" width={width} height={height} aria-hidden="true">
-      {dependencies.map((d) => {
-        const a = positions.get(d.blocker);
-        const b = positions.get(d.blocked);
-        if (!a || !b) return null;
-        const mid = Math.max(24, Math.abs(b.x1 - a.x2) / 2);
-        return (
-          <path
-            key={`${d.blocker}-${d.blocked}`}
-            d={`M ${a.x2} ${a.y} C ${a.x2 + mid} ${a.y}, ${b.x1 - mid} ${b.y}, ${b.x1} ${b.y}`}
-            fill="none"
-            strokeWidth="1.5"
-            className={d.violated ? 'stroke-bad' : 'stroke-mute'}
-            strokeDasharray={d.violated ? '4 3' : undefined}
-          />
-        );
-      })}
-    </svg>
   );
 }
 
@@ -588,8 +771,8 @@ function DraftInput({ draft, left, width, top, onCancel, onSubmit }: { draft: Dr
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && onCancel()}
         onBlur={() => !title.trim() && onCancel()}
-        placeholder={t('plan.newFeature', { from: draft.startDate, to: draft.dueDate })}
-        aria-label={t('plan.newFeatureLabel')}
+        placeholder={t(draft.type === 'epic' ? 'plan.newEpic' : 'plan.newFeature', { from: draft.startDate, to: draft.dueDate })}
+        aria-label={t(draft.type === 'epic' ? 'plan.newEpicLabel' : 'plan.newFeatureLabel')}
         className="h-6 w-full rounded-r1 border-[1.5px] border-acc-ink bg-panel px-1.5 text-sm shadow-float"
       />
     </form>
