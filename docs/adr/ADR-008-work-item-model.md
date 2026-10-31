@@ -54,8 +54,8 @@ dependencies to be first-class. Types make top-level work (epics) easy to find.
 
 ### Sprints
 
-Per project, fixed start/end, one active at a time. Unfinished issues roll to next sprint on close (prompted).
-Sprint view = board filtered by sprint. Simple burndown later.
+Per project, fixed start/end, one active at a time. Sprint view = board filtered by sprint. Closing, carry-over and
+burndown: [ADR-020](ADR-020-sprint-close-burndown.md).
 
 ### Planning
 
@@ -98,3 +98,4 @@ Supply per month = people × hours per week × weeks in month. No per-person cap
 - [ADR-009](ADR-009-multi-tenancy.md) — every entity carries `workspace_id`
 - [ADR-013](ADR-013-seats-billing.md) — whether agent members count as seats
 - [ADR-019](ADR-019-import.md) — how imports from deeper or looser models fit this one
+- [ADR-020](ADR-020-sprint-close-burndown.md) — sprint close outcomes, split carry-over, burndown
