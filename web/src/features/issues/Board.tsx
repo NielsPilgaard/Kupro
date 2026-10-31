@@ -93,7 +93,7 @@ function Column({ state, items }: { state: IssueState; items: IssueSummary[] }) 
       ref={setNodeRef}
       aria-label={t(`state.${state}`)}
       data-state={state}
-      className={`flex min-h-0 w-72 shrink-0 flex-col gap-2 rounded-r2 p-2 ${isOver ? 'bg-sel' : 'bg-sunk'}`}
+      className={`flex min-h-0 min-w-64 flex-1 basis-0 flex-col gap-2 rounded-r2 p-2 3xl:text-md ${isOver ? 'bg-sel' : 'bg-sunk'}`}
     >
       <h2 className="flex items-center gap-2 px-1 py-1 font-semibold">
         <StatusRing state={state} />
