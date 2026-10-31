@@ -133,11 +133,16 @@ Mechanics of i18n: [ADR-011](adr/ADR-011-i18n.md). Domain definitions: [ADR-008]
 | Issue | Opgave | Generic word for any work item |
 | Epic / Feature / Task | Epic / Feature / Task | Type names stay English (also in CLI/MCP) |
 | Backlog · Todo · In Progress · In Review · Done · Canceled | Backlog · Klar · I gang · Til review · Færdig · Annulleret | Fixed workflow |
-| Sprint | Sprint | |
+| Sprint | Sprint | Neuter: et sprint, sprintet, sprintets |
 | Delivery plan | Leveranceplan | |
 | Milestone | Milepæl | |
 | Capacity | Kapacitet | "needs 4.5, has 3" → "behov 4,5, har 3" |
 | Effort (hours) | Estimat (timer) | Unit: `h` / `t` |
+| Close sprint · Sprint report | Afslut sprint · Sprintrapport | The close review page; read-only report after close |
+| Carry · Split · Carried | Overfør · Del · Overført | Close outcomes |
+| Split from · Continued in | Delt fra · Fortsat i | Links between a split original and its continuation |
+| Burndown · Scope · Remaining · Ideal | Burndown · Omfang · Resterende · Ideel | Chart terms |
+| At start · Added · Completed | Ved start · Tilføjet · Udført | Sprint summary |
 | Assignee | Ansvarlig | |
 | Agent | Agent | |
 | Owner · Member · Guest | Ejer · Medlem · Gæst | Workspace roles. Guest is described as "Can view and comment. Free." |
