@@ -280,9 +280,9 @@ public sealed class IssueService(
                 return parentError with { Detail = where + parentError.Detail };
             }
 
-            if (r.Assignee is not null && !assignees.ContainsKey(r.Assignee))
+            if (r.Assignee is not null && AssigneeError(assignees, r.Assignee, where) is { } assigneeError)
             {
-                return new IssueError("assignee_not_found", $"{where}No active member {r.Assignee}.");
+                return assigneeError;
             }
 
             if (r.StartDate > r.DueDate)
@@ -328,7 +328,7 @@ public sealed class IssueService(
                 Description = r.Description,
                 State = r.State,
                 Priority = r.Priority,
-                AssigneeId = r.Assignee is null ? null : assignees[r.Assignee],
+                AssigneeId = r.Assignee is null ? null : assignees[r.Assignee].Id,
                 ParentId = r.Parent is null ? null
                     : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
                     : parents[NormalizeKey(r.Parent)].Id,
@@ -464,13 +464,13 @@ public sealed class IssueService(
             if (c.Assignee is not null || clear.Contains(IssueField.Assignee))
             {
                 Guid? assigneeId = null;
-                if (!clear.Contains(IssueField.Assignee) && !assignees.TryGetValue(c.Assignee!, out var resolved))
+                if (!clear.Contains(IssueField.Assignee) && AssigneeError(assignees, c.Assignee!, where) is { } assigneeError)
                 {
-                    return new IssueError("assignee_not_found", $"{where}No active member {c.Assignee}.");
+                    return assigneeError;
                 }
                 else if (!clear.Contains(IssueField.Assignee))
                 {
-                    assigneeId = assignees[c.Assignee!];
+                    assigneeId = assignees[c.Assignee!].Id;
                 }
 
                 if (assigneeId != issue.AssigneeId)
@@ -767,17 +767,24 @@ public sealed class IssueService(
     private Guid? ResolveMemberShorthand(string value) =>
         value == Me ? workspace.MemberId : Guid.TryParse(value, out var id) ? id : null;
 
-    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member id; unknown values are left out.</summary>
-    private async Task<Dictionary<string, Guid>> ResolveAssigneesAsync(
+    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member; unknown values are left out.</summary>
+    private async Task<Dictionary<string, (Guid Id, MemberKind Kind)>> ResolveAssigneesAsync(
         KuproDbContext db, IEnumerable<string?> values, CancellationToken ct)
     {
         var wanted = values.OfType<string>().Distinct()
             .Select(v => (Value: v, Id: ResolveMemberShorthand(v))).Where(x => x.Id is not null).ToList();
         var ids = wanted.Select(x => x.Id!.Value).Distinct().ToList();
         var active = await db.Members.Where(m => ids.Contains(m.Id) && m.Status == MemberStatus.Active)
-            .Select(m => m.Id).ToListAsync(ct);
-        return wanted.Where(x => active.Contains(x.Id!.Value)).ToDictionary(x => x.Value, x => x.Id!.Value);
+            .ToDictionaryAsync(m => m.Id, m => m.Kind, ct);
+        return wanted.Where(x => active.ContainsKey(x.Id!.Value))
+            .ToDictionary(x => x.Value, x => (x.Id!.Value, active[x.Id!.Value]));
     }
+
+    /// <summary>The assignee answers for the work, so it must be a person (ADR-008); agents act through activity instead.</summary>
+    private static IssueError? AssigneeError(Dictionary<string, (Guid Id, MemberKind Kind)> assignees, string value, string where) =>
+        !assignees.TryGetValue(value, out var member) ? new IssueError("assignee_not_found", $"{where}No active member {value}.")
+        : member.Kind == MemberKind.Agent ? new IssueError("assignee_not_human", $"{where}Agents can't be assignees; assign the person responsible.")
+        : null;
 
     /// <summary>Applies label replace/add/remove; returns the change for the activity log, or null if unchanged.</summary>
     private async Task<FieldChange?> ApplyLabelsAsync(

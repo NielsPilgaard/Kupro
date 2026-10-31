@@ -95,11 +95,10 @@ function IssueBody({
   }, [activeKey, issue.key, setPickerOverride]);
   const controlled = (page: PalettePage) => ({ open: picker === page, onOpenChange: (o: boolean) => setPicker(o ? page : null) });
 
-  // A person answers for the work, so only humans are offered; an existing agent assignee stays visible.
   const assignees: PickerOption[] = [
     { value: NONE, label: t('issue.unassigned'), icon: <Avatar member={null} size={20} /> },
     ...(members ?? [])
-      .filter((m) => m.status === 'active' && (m.kind === 'human' || m.id === issue.assignee?.id))
+      .filter((m) => m.status === 'active' && m.kind === 'human')
       .map((m) => ({ value: m.id, label: m.name, icon: <Avatar member={{ id: m.id, name: m.name, kind: m.kind }} size={20} /> })),
   ];
   const labelNames = [...new Set([...issue.labels, ...(labels ?? []).map((l) => l.name)])];

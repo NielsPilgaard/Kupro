@@ -21,7 +21,7 @@ description: >-
   continuation issue gets the hours left and moves on. Delivered work counts where it happened; the total is kept.
 - An append-only **sprint ledger** (scope and remaining deltas per issue and assignee) is written in the same
   transaction as every change to an issue in an active sprint. Burndown, per-assignee burndown and the report read it.
-- Days are Europe/Copenhagen days. Per-assignee views include agents, are visible to every member, and show no ranking.
+- Days are Europe/Copenhagen days. Per-assignee views are visible to every member and show no ranking.
 
 ## Status
 
@@ -73,7 +73,7 @@ entry, never updated or deleted. Canceled issues leave scope; In Review is still
   Close kinds are left out of the lines (they would drop remaining to zero) and feed the outcome summary instead;
   a split's done hours are a normal `completed` row on close day.
 - Ideal line: baseline scope to 0 over the sprint's weekdays. No holidays.
-- Per assignee: the same sums grouped by assignee, plus "Unassigned". Agent members are shown like people.
+- Per assignee: the same sums grouped by assignee, plus "Unassigned". Assignees are always people ([ADR-008](ADR-008-work-item-model.md)).
 
 ### Who sees what
 

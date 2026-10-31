@@ -4568,7 +4568,7 @@
               "null",
               "string"
             ],
-            "description": "Member id, or `me`."
+            "description": "Member id of a person, or `me`. Agents can't be assignees."
           },
           "parent": {
             "type": [
@@ -6759,7 +6759,7 @@
               "null",
               "string"
             ],
-            "description": "Member id, or `me`."
+            "description": "Member id of a person, or `me`. Agents can't be assignees."
           },
           "parent": {
             "type": [

@@ -55,7 +55,7 @@ Agents get the same review, close plan and burndown through CLI and MCP.
   canceled, completion %), unfinished issues (key, title, state, assignee, effort, has children), completed issues
   (splits marked with their continuation key), open target sprints. Works for active and closed sprints.
 - `GET /sprints/{id}/burndown?by=assignee`: per day (Europe/Copenhagen) `scope` and `remaining`, the ideal line, and,
-  with `by=assignee`, the same series per assignee (member id, name, kind human/agent; null = unassigned).
+  with `by=assignee`, the same series per assignee (member id, name; null = unassigned).
 - Both are single grouped SQL queries over `sprint_ledger` + one issue projection; no per-issue queries.
 - Issue detail: "Split from KUP-12" / "Continued in KUP-31" line from the `split_from` / `split_into` activity.
 
@@ -110,7 +110,7 @@ answer "close sprint 14, split what's in review at half its effort".
       parent's roll-up total is unchanged; both issues show the split link.
 - [ ] Old `close` call with only `moveUnfinishedTo` behaves as in task 010.
 - [ ] Burndown matches a hand-computed fixture: mid-sprint add, effort change, reassignment, reopen, cancel, split.
-- [ ] Per-assignee series sum to the team series; agents and unassigned shown.
+- [ ] Per-assignee series sum to the team series; unassigned shown.
 - [ ] Test fails if an `IssueService` write path changes sprint, effort, state or assignee of an issue in an active
       sprint without ledger rows (ADR-020 IMP-002).
 - [ ] Review and burndown on a 300-issue sprint with 5 000 ledger rows inside the ADR-010 budget (perf test, task 014).

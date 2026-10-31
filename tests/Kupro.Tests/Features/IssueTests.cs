@@ -270,13 +270,30 @@ public sealed class IssueTests(PostgresFixture postgres) : ApiTestBase(postgres)
         using var agent = Factory.CreateBearerClient(token.Secret);
         agent.DefaultRequestHeaders.Add("X-Kupro-Client", "mcp");
 
-        var issue = await ReadAsync<IssueDetail>(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Triaged", Assignee: "me"), Json.Options, Ct),
+        var issue = await ReadAsync<IssueDetail>(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Triaged"), Json.Options, Ct),
             HttpStatusCode.Created);
 
         issue.CreatedBy.Kind.ShouldBe(MemberKind.Agent);
         issue.CreatedBy.Name.ShouldBe("triage-agent");
-        issue.Assignee!.Name.ShouldBe("triage-agent");
         (await ActivityAsync(issue.Id)).ShouldHaveSingleItem().Via.ShouldBe(Surface.Mcp);
+    }
+
+    [Fact]
+    public async Task Agents_cannot_be_assignees()
+    {
+        var token = await NewTokenAsync(_client, new("bot", ApiTokenKind.Agent, "triage-agent", null, _workspace.Slug));
+        using var agent = Factory.CreateBearerClient(token.Secret);
+        var issue = await CreateAsync(new("KUP", "Needs an owner"));
+
+        await ShouldBeProblemAsync(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Self-assigned", Assignee: "me"), Json.Options, Ct),
+            HttpStatusCode.BadRequest, "assignee_not_human");
+        await ShouldBeProblemAsync(await agent.PatchAsJsonAsync($"{Issues}/{issue.Key}", new UpdateIssueRequest(Assignee: "me"), Json.Options, Ct),
+            HttpStatusCode.BadRequest, "assignee_not_human");
+
+        var mine = await ReadAsync<IssueDetail>(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Mine to own"), Json.Options, Ct),
+            HttpStatusCode.Created);
+        await ShouldBeProblemAsync(await _client.PatchAsJsonAsync($"{Issues}/{mine.Key}", new UpdateIssueRequest(Assignee: mine.CreatedBy.Id.ToString()), Json.Options, Ct),
+            HttpStatusCode.BadRequest, "assignee_not_human");
     }
 
     [Fact]

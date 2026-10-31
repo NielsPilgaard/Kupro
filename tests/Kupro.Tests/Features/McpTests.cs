@@ -49,7 +49,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
             ["issues"] = new object[]
             {
                 new { project = "MCP", title = "Epic from agent", type = "epic" },
-                new { project = "MCP", title = "Task from agent", parent = "#0", labels = new[] { "bug" }, assignee = "me" },
+                new { project = "MCP", title = "Task from agent", parent = "#0", labels = new[] { "bug" } },
             },
         });
         created.EnumerateArray().Select(i => i.GetProperty("key").GetString()).ShouldBe(["MCP-1", "MCP-2"]);
@@ -62,7 +62,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         var page = await CallAsync(mcp, "search_issues", new() { ["label"] = "bug" });
         var only = page.GetProperty("items").EnumerateArray().ShouldHaveSingleItem();
-        only.GetProperty("assignee").GetProperty("name").GetString().ShouldBe("claude");
+        (!only.TryGetProperty("assignee", out var assignee) || assignee.ValueKind == System.Text.Json.JsonValueKind.Null).ShouldBeTrue();
     }
 
     [Fact]

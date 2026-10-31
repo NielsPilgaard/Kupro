@@ -156,7 +156,7 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
               <option value="">{t('issue.unassigned')}</option>
               <option value="me">{t('issue.me')}</option>
               {members
-                ?.filter((m) => m.status === 'active')
+                ?.filter((m) => m.status === 'active' && m.kind === 'human')
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}

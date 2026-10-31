@@ -24,7 +24,7 @@ purpose: 'Canonical source for UI tokens and component rules; every web UI chang
    transition may delay showing the new state.
 2. **Calm density.** Show a lot, shout little. One accent element per view; colour is for state, not decoration.
 3. **Keyboard first.** Every action has a palette entry; frequent ones a single-key shortcut, shown as a `kbd` hint.
-4. **Agents are visible.** Agent assignees and agent actions look different from humans, and say which surface they used.
+4. **Agents are visible.** Agent actions look different from humans, and say which surface they used.
 5. **Shape + colour + text.** State, type and warnings are always readable without colour (WCAG 1.4.1).
 
 ## Tokens
