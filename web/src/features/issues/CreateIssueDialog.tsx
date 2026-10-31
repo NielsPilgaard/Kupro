@@ -84,6 +84,11 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
       aria-label={t('issue.new')}
       onClose={() => ui.setCreateOpen(false)}
       onKeyDown={(e) => {
+        // The shell's global Esc handler prevents the default, which would swallow the dialog's own cancel.
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          ui.setCreateOpen(false);
+        }
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           submit();
