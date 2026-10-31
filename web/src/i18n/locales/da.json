@@ -114,6 +114,13 @@
     "emptyProject": "Ingen opgaver endnu. Tryk C for at oprette en.",
     "emptyMine": "Du har ingen opgaver, {{name}}.",
     "sprint": "Sprint",
+    "subtasks": "Underopgaver",
+    "noSubtasks": "Ingen underopgaver.",
+    "childrenDone": "{{done}} af {{total}} færdige",
+    "planning": "Planlægning",
+    "sections": "Sektioner",
+    "widen": "Gør panelet bredere",
+    "narrow": "Gør panelet smallere",
     "noSprint": "Ingen sprint"
   },
   "errors": {

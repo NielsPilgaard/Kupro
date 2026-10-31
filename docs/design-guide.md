@@ -121,7 +121,10 @@ transitions drop to 0 ms.
 - **Topbar**: breadcrumb (`Project / Issues`), segmented view tabs (List · Board · Plan), search field showing the
   `Ctrl K` hint, one primary button ("New issue", `C`). One primary button per view, max.
 - **Content** owns scrolling; the shell never scrolls. Sticky group headers in lists, sticky month header in the plan.
-- **Issue detail** opens as a right-hand panel (min 480 px) over list/board, full page on narrow screens.
+- **Issue detail** opens as a right-hand panel (min 480 px) over list/board, full page on narrow screens. At 560 px:
+  title, a row of property chips (status, priority, assignee, labels, type), a planning strip (sprint, dates,
+  estimate) and tabs (description, subtasks, relations, activity). From `3xl`, or widened from its header, it grows to
+  ~920 px: content on the left, every property in a 288 px rail on the right, no tabs.
 
 ## Components
 

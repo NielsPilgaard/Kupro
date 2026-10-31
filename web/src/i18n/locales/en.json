@@ -114,6 +114,13 @@
     "emptyProject": "No issues yet. Press C to create one.",
     "emptyMine": "Nothing assigned to you, {{name}}.",
     "sprint": "Sprint",
+    "subtasks": "Subtasks",
+    "noSubtasks": "No subtasks.",
+    "childrenDone": "{{done}} of {{total}} done",
+    "planning": "Planning",
+    "sections": "Sections",
+    "widen": "Widen panel",
+    "narrow": "Narrow panel",
     "noSprint": "No sprint"
   },
   "errors": {
