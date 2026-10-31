@@ -124,6 +124,13 @@
     "loadFailed": "Opgaverne kunne ikke indlæses.",
     "relationFailed": "Relationen kunne ikke tilføjes. Tjek opgavenøglen."
   },
+  "myIssues": {
+    "open": "Åbne",
+    "dueSoon": "Frist inden 7 dage",
+    "overdue": "{{count}} over frist",
+    "remaining": "Estimat tilbage",
+    "recentlyDone": "Færdige, sidste 14 dage"
+  },
   "picker": {
     "move": "flyt",
     "choose": "vælg",

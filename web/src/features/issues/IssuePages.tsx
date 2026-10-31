@@ -9,6 +9,7 @@ import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
 import { Board } from './Board';
 import { IssueList } from './IssueList';
+import { MyIssues } from './MyIssues';
 
 export type View = 'list' | 'board';
 
@@ -88,7 +89,7 @@ export function MyIssuesPage() {
         {isPending ? (
           <p className="p-8 text-center text-mute">{t('common.loading')}</p>
         ) : (
-          <IssueList issues={data?.items ?? []} emptyText={t('issue.emptyMine', { name: me?.displayName })} />
+          <MyIssues workspace={workspace} issues={data?.items ?? []} emptyText={t('issue.emptyMine', { name: me?.displayName })} />
         )}
       </main>
     </>
