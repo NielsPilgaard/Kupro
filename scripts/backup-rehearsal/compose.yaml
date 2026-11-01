@@ -42,7 +42,7 @@ services:
     networks:
       - "backup"
   heartbeats:
-    image: "nginx:1.29-alpine"
+    image: "nginx:1.31-alpine"
     command: ["sh", "-c", "printf 'server { listen 80; access_log /dev/stdout; location / { return 200; } }' > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
     networks:
       - "backup"
