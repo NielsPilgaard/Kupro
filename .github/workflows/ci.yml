@@ -191,7 +191,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infrastructure/keycloak/Dockerfile
@@ -235,7 +235,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         if: steps.missing.outputs.postgres == 'true'
         with:
           context: infrastructure/postgres
@@ -244,7 +244,7 @@ jobs:
           cache-from: type=gha,scope=postgres
           cache-to: type=gha,scope=postgres,mode=max
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         if: steps.missing.outputs.agent == 'true'
         with:
           context: .
@@ -277,7 +277,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: web/Dockerfile
@@ -312,7 +312,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: site/Dockerfile
