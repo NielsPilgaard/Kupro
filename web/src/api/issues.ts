@@ -99,15 +99,17 @@ export function mapList(list: IssueList, map: (items: IssueSummary[]) => IssueSu
   return 'pages' in list ? { ...list, pages: list.pages.map((p) => ({ ...p, items: map(p.items) })) } : { ...list, items: map(list.items) };
 }
 
-/** Snapshot of every cached issue list plus one detail, for rollback. */
+/** Snapshot of the workspace's cached issue lists plus one detail, for rollback. */
 type Snapshot = { lists: [QueryKey, IssueList | undefined][]; detail?: IssueDetail; detailKey: readonly unknown[] };
 
 async function snapshot(qc: QueryClient, workspace: string, key: string): Promise<Snapshot> {
   const detailKey = getIssueQueryKey({ path: { workspace, key } });
-  await qc.cancelQueries({ predicate: isIssueList });
+  // Issue keys repeat across workspaces, so another workspace's lists must not be patched.
+  const inWorkspace = (q: Query) => isIssueList(q) && (q.queryKey[0] as { path?: { workspace?: string } }).path?.workspace === workspace;
+  await qc.cancelQueries({ predicate: inWorkspace });
   await qc.cancelQueries({ queryKey: detailKey });
   return {
-    lists: qc.getQueriesData<IssueList>({ predicate: isIssueList }),
+    lists: qc.getQueriesData<IssueList>({ predicate: inWorkspace }),
     detail: qc.getQueryData<IssueDetail>(detailKey),
     detailKey,
   };

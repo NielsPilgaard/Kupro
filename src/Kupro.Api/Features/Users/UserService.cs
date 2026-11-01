@@ -39,8 +39,9 @@ public sealed class UserService(IDbContextFactory<KuproDbContext> dbFactory, IMe
     /// </summary>
     public async Task<Guid> EnsureUserAsync(ExternalIdentity identity, CancellationToken ct)
     {
-        // A trusted, verified login must reach the upsert even when an unverified login cached the user first.
-        var cacheKey = "user:" + identity.ExternalId + (identity.EmailTrusted && identity.EmailVerified ? ":verified" : "");
+        // A trusted login must reach the upsert even when an untrusted (or unverified) login cached the user first.
+        var trust = identity.EmailTrusted ? (identity.EmailVerified ? ":verified" : ":trusted") : "";
+        var cacheKey = "user:" + identity.ExternalId + trust;
         if (cache.TryGetValue(cacheKey, out Guid cached))
         {
             return cached;

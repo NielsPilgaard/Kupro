@@ -199,11 +199,17 @@ export function PlanPage() {
   // C with a selected month cell creates there; otherwise C keeps opening the issue dialog. A cell whose row is no
   // longer shown (focus changed, epic folded) is ignored.
   const selected = cell && rows.some((r) => r.key === cell.row) ? cell : null;
+  // The cell's draft top is relative to its row: folding an earlier epic moves the row after the click.
+  const selectedTop = selected ? tops[rows.findIndex((r) => r.key === selected.row)]! : 0;
   const { setCreateOverride } = ui;
   useEffect(() => {
-    setCreateOverride(selected ? () => setDraft({ ...selected.draft, startDate: selected.month, dueDate: lastDayOf(selected.month) }) : null);
+    setCreateOverride(
+      selected
+        ? () => setDraft({ ...selected.draft, top: selectedTop + selected.draft.top, startDate: selected.month, dueDate: lastDayOf(selected.month) })
+        : null,
+    );
     return () => setCreateOverride(null);
-  }, [selected, setCreateOverride]);
+  }, [selected, selectedTop, setCreateOverride]);
 
   const violated = useMemo(() => new Set(plan?.dependencies.filter((d) => d.violated).map((d) => d.blocked)), [plan]);
   const foldable = rows.filter((r) => r.kind === 'epic' || r.kind === 'loose').map((r) => r.key);
@@ -364,6 +370,7 @@ interface RowProps {
   late: boolean;
   focused: boolean;
   selectedMonth: string | null;
+  /** The draft's top is relative to the row. */
   onSelectMonth(row: string, month: string, draft: Omit<Draft, 'startDate' | 'dueDate'>): void;
   onDraft(draft: Draft | null): void;
   onDrag(o: Override | null): void;
@@ -491,7 +498,7 @@ const PlanRow = memo(function PlanRow(props: RowProps) {
           if (canDate) {
             if (b - a >= 6) props.onCommit(card.key, tl.dateAt(a), tl.dateAt(b));
           } else if (draft && b - a < 6) {
-            props.onSelectMonth(row.key, props.months[Math.floor(a / monthWidth)]!, draft);
+            props.onSelectMonth(row.key, props.months[Math.floor(a / monthWidth)]!, { ...draft, top: draft.top - top });
           } else if (draft) {
             props.onDraft({ ...draft, startDate: tl.dateAt(a), dueDate: tl.dateAt(b) });
           }

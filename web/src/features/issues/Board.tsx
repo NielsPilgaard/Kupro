@@ -29,10 +29,13 @@ import { boardStates, compareRank } from '../../lib/issues';
 const columnId = (state: IssueState) => `column:${state}`;
 
 /** The droppable under the pointer wins. Corners alone let the card's own slot beat a tall empty column it was dropped
- *  into; corners stay the fallback for the gaps between columns and for the keyboard sensor (no pointer). */
+ *  into; corners stay the fallback for the gaps between columns and for the keyboard sensor (no pointer). A card beats
+ *  its column, which would otherwise mean "drop at the end". */
 const collisionDetection: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
-  return hits.length > 0 ? hits : closestCorners(args);
+  if (hits.length === 0) return closestCorners(args);
+  const isColumn = (id: unknown) => String(id).startsWith('column:');
+  return [...hits.filter((h) => !isColumn(h.id)), ...hits.filter((h) => isColumn(h.id))];
 };
 
 /**

@@ -26,12 +26,13 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
   const navigate = useNavigate();
   const query: IssueFilters = { ...filters, sort: 'priority' };
   // One row is enough to tell an empty project from groups that are still loading.
-  const { data: probe } = useIssues(workspace, { ...filters, limit: 1 });
+  const { data: probe, isError } = useIssues(workspace, { ...filters, limit: 1 });
 
   const open = (key: string) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: key }) });
+  // Read from the cache at key time: the groups own their queries.
+  const loaded = () => states.flatMap((state) => loadedStateIssues(qc, workspace, query, state).sort(byPriority));
   const step = (delta: number) => {
-    // Read from the cache at key time: the groups own their queries.
-    const flat = states.flatMap((state) => loadedStateIssues(qc, workspace, query, state).sort(byPriority));
+    const flat = loaded();
     if (flat.length === 0) return;
     const index = flat.findIndex((i) => i.key === ui.activeKey);
     const next = flat[Math.min(flat.length - 1, Math.max(0, index + delta))] ?? flat[0]!;
@@ -43,7 +44,8 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
     k: () => step(-1),
     arrowdown: () => step(1),
     arrowup: () => step(-1),
-    enter: () => ui.activeKey && open(ui.activeKey),
+    // The active key can be left over from another view; only open it if this list shows it.
+    enter: () => ui.activeKey && loaded().some((i) => i.key === ui.activeKey) && open(ui.activeKey),
   });
 
   const activeRow = useRef<HTMLButtonElement | null>(null);
@@ -52,6 +54,9 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
     activeRow.current?.scrollIntoView({ block: 'nearest' });
   }, [ui.activeKey]);
 
+  if (isError) {
+    return <p className="p-8 text-center text-bad">{t('errors.loadFailed')}</p>;
+  }
   if (probe?.items.length === 0) {
     return <p className="p-8 text-center text-mute">{emptyText}</p>;
   }
@@ -96,7 +101,7 @@ function Group({
   const pages = useStateIssues(workspace, query, state);
   // A realtime update changes a row's state in place; it leaves this group at once and joins its new one on refetch.
   const items = listItems(pages.data).filter((i) => i.state === state).sort(byPriority);
-  if (items.length === 0) return null;
+  if (items.length === 0 && !pages.isError) return null;
   const more = pages.hasNextPage ? '+' : '';
   return (
     <section aria-label={t(`state.${state}`)}>

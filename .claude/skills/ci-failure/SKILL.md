@@ -59,11 +59,15 @@ gh run download <run-id> -n stack-logs -D <scratch-dir>/stack        # postgres/
 Compare the failing commit with the last green run of the same workflow:
 
 ```bash
-gh run view <run-id> --json workflowName,headSha   # the failing run's workflow and commit
+gh run view <run-id> --json workflowName,headSha,displayTitle   # the failing run's workflow, commit and title
 gh run list --workflow="<workflowName>" --limit 10
 git diff --stat <last-green-sha> <failing-sha>
 git log --oneline <last-green-sha>..<failing-sha>
 ```
+
+For Staging, `headSha` is main's head when the run started, not the commit it tested. The tested commit is the SHA at
+the end of `displayTitle` (the CI run's `head_sha`); if the title is cut off, take `headSha` from the triggering CI
+run instead.
 
 A test added or changed in that range that fails on first run is usually a wrong test, not a regression. Read the code it exercises before changing either.
 

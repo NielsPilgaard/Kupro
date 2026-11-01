@@ -119,7 +119,14 @@ function IssueBody({
   const save = (body: UpdateIssueRequest) => update.mutate({ path: { workspace, key: issue.key }, body });
   const [title, setTitle] = useState(issue.title);
   // Held here, not in Description: crossing the wide breakpoint remounts Description, and a draft must survive that.
-  const [description, setDescription] = useState(issue.description ?? '');
+  const remoteDescription = issue.description ?? '';
+  const [description, setDescription] = useState(remoteDescription);
+  // A remote change replaces an untouched draft, so a blur without edits cannot save the old text over it.
+  const [draftBase, setDraftBase] = useState(remoteDescription);
+  if (remoteDescription !== draftBase) {
+    setDraftBase(remoteDescription);
+    if (description === draftBase) setDescription(remoteDescription);
+  }
   const [chosenTab, setTab] = useState<Tab>('description');
   // E edits the description, so it has to be the visible tab.
   const tab = editing ? 'description' : chosenTab;

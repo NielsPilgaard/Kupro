@@ -302,66 +302,77 @@ public sealed class IssueService(
             }
         }
 
-        var numbers = new Dictionary<Guid, int>();
-        foreach (var group in requests.GroupBy(r => projects[r.Project.ToUpperInvariant()]))
-        {
-            var last = await ProjectService.AllocateIssueNumbersAsync(db, group.Key, group.Count(), ct);
-            numbers[group.Key] = last - group.Count();
-        }
-
-        // New issues go on top of their column (project + state), in request order, so they are on its first page.
-        var ranks = new Dictionary<(Guid, IssueState), double>();
-        foreach (var group in requests.GroupBy(r => (projects[r.Project.ToUpperInvariant()], r.State)))
-        {
-            var (projectId, state) = group.Key;
-            var top = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MinAsync(i => (double?)i.Rank, ct) ?? 0;
-            ranks[group.Key] = top - group.Count() - 1;
-        }
-
-        var now = clock.GetUtcNow();
         var created = new List<Issue>(requests.Count);
-        foreach (var (r, index) in requests.Select((r, i) => (r, i)))
+        // Retrying execution strategy: the transaction must run inside it as one retriable unit. The counter update locks
+        // each project row (in id order, so two batches cannot deadlock) until commit: concurrent creates in a column then
+        // read each other's top rank, and a failed save burns no issue numbers.
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            var projectKey = r.Project.ToUpperInvariant();
-            var projectId = projects[projectKey];
-            var number = ++numbers[projectId];
-            var issue = new Issue
+            db.ChangeTracker.Clear();
+            created.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            var numbers = new Dictionary<Guid, int>();
+            foreach (var group in requests.GroupBy(r => projects[r.Project.ToUpperInvariant()]).OrderBy(g => g.Key))
             {
-                Id = Guid.CreateVersion7(),
-                WorkspaceId = workspace.RequireWorkspaceId(),
-                ProjectId = projectId,
-                Number = number,
-                Key = $"{projectKey}-{number}",
-                Type = r.Type,
-                Title = r.Title.Trim(),
-                Description = r.Description,
-                State = r.State,
-                Priority = r.Priority,
-                AssigneeId = r.Assignee is null ? null : assignees[r.Assignee].Id,
-                ParentId = r.Parent is null ? null
-                    : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
-                    : parents[NormalizeKey(r.Parent)].Id,
-                Effort = r.Effort,
-                StartDate = r.StartDate,
-                DueDate = r.DueDate,
-                Rank = ++ranks[(projectId, r.State)],
-                SprintId = sprintIds[index],
-                CreatedById = workspace.MemberId,
-                CreatedAt = now,
-                UpdatedAt = now,
-                CompletedAt = IsClosed(r.State) ? now : null,
-            };
-            foreach (var labelId in await labels.ResolveAsync(db, r.Labels ?? [], ct))
-            {
-                issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+                var last = await ProjectService.AllocateIssueNumbersAsync(db, group.Key, group.Count(), ct);
+                numbers[group.Key] = last - group.Count();
             }
 
-            db.Issues.Add(issue);
-            activity.Record(db, issue.Id, "created");
-            created.Add(issue);
-        }
+            // New issues go on top of their column (project + state), in request order, so they are on its first page.
+            var ranks = new Dictionary<(Guid, IssueState), double>();
+            foreach (var group in requests.GroupBy(r => (projects[r.Project.ToUpperInvariant()], r.State)))
+            {
+                var (projectId, state) = group.Key;
+                var top = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MinAsync(i => (double?)i.Rank, ct) ?? 0;
+                ranks[group.Key] = top - group.Count() - 1;
+            }
 
-        await db.SaveChangesAsync(ct);
+            var now = clock.GetUtcNow();
+            foreach (var (r, index) in requests.Select((r, i) => (r, i)))
+            {
+                var projectKey = r.Project.ToUpperInvariant();
+                var projectId = projects[projectKey];
+                var number = ++numbers[projectId];
+                var issue = new Issue
+                {
+                    Id = Guid.CreateVersion7(),
+                    WorkspaceId = workspace.RequireWorkspaceId(),
+                    ProjectId = projectId,
+                    Number = number,
+                    Key = $"{projectKey}-{number}",
+                    Type = r.Type,
+                    Title = r.Title.Trim(),
+                    Description = r.Description,
+                    State = r.State,
+                    Priority = r.Priority,
+                    AssigneeId = r.Assignee is null ? null : assignees[r.Assignee].Id,
+                    ParentId = r.Parent is null ? null
+                        : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
+                        : parents[NormalizeKey(r.Parent)].Id,
+                    Effort = r.Effort,
+                    StartDate = r.StartDate,
+                    DueDate = r.DueDate,
+                    Rank = ++ranks[(projectId, r.State)],
+                    SprintId = sprintIds[index],
+                    CreatedById = workspace.MemberId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    CompletedAt = IsClosed(r.State) ? now : null,
+                };
+                foreach (var labelId in await labels.ResolveAsync(db, r.Labels ?? [], ct))
+                {
+                    issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+                }
+
+                db.Issues.Add(issue);
+                activity.Record(db, issue.Id, "created");
+                created.Add(issue);
+            }
+
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        });
 
         var ids = created.Select(i => i.Id).ToList();
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
