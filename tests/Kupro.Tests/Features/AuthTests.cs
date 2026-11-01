@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Kupro.Api.Features.Tokens;
 using Kupro.Api.Features.Users;
+using Kupro.Api.Features.Workspaces;
 using Kupro.Tests.Infrastructure;
 
 namespace Kupro.Tests.Features;
@@ -94,6 +95,56 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Workspace_scoped_token_cannot_act_for_the_whole_account()
+    {
+        var (human, workspace, _) = await NewWorkspaceAsync();
+        await NewWorkspaceInAsync(human);
+        var scoped = await NewTokenAsync(human, new("ci", ApiTokenKind.Personal, null, 7, workspace.Slug));
+        using var viaToken = Factory.CreateBearerClient(scoped.Secret);
+
+        var mine = await viaToken.GetFromJsonAsync<List<WorkspaceSummary>>("/api/v1/workspaces", Json.Options, Ct);
+        mine.ShouldNotBeNull().ShouldHaveSingleItem().Slug.ShouldBe(workspace.Slug);
+        (await viaToken.PostAsJsonAsync("/api/v1/tokens", new CreateApiTokenRequest("x", ApiTokenKind.Personal), Json.Options, Ct))
+            .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await viaToken.GetAsync("/api/v1/tokens", Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await viaToken.GetAsync("/api/v1/invites", Ct)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await viaToken.PostAsJsonAsync("/api/v1/workspaces", new CreateWorkspaceRequest("x", "w-" + Guid.NewGuid().ToString("N")[..12]), Json.Options, Ct))
+            .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Token_cannot_create_a_token_that_outlives_it()
+    {
+        using var human = Factory.CreateUserClient(TestUser.New());
+        var expiring = await NewTokenAsync(human, new("ci", ApiTokenKind.Personal, null, 7));
+        using var viaToken = Factory.CreateBearerClient(expiring.Secret);
+
+        await ShouldBeProblemAsync(await viaToken.PostAsJsonAsync(
+                "/api/v1/tokens", new CreateApiTokenRequest("forever", ApiTokenKind.Personal), Json.Options, Ct),
+            HttpStatusCode.Forbidden, "token_outlives_caller");
+        await ShouldBeProblemAsync(await viaToken.PostAsJsonAsync(
+                "/api/v1/tokens", new CreateApiTokenRequest("longer", ApiTokenKind.Personal, null, 30), Json.Options, Ct),
+            HttpStatusCode.Forbidden, "token_outlives_caller");
+        await NewTokenAsync(viaToken, new("shorter", ApiTokenKind.Personal, null, 1));
+    }
+
+    [Fact]
+    public async Task Email_from_a_client_that_is_not_ours_does_not_open_invites()
+    {
+        var (owner, workspace, _) = await NewWorkspaceAsync();
+        var invitee = TestUser.New("Ida");
+        var invite = await ReadAsync<MemberResponse>(await owner.PostAsJsonAsync($"/api/v1/workspaces/{workspace.Slug}/members",
+            new InviteMemberRequest(invitee.Email, WorkspaceRole.Member), Json.Options, Ct), HttpStatusCode.Created);
+
+        // Another account whose self-registered client claims Ida's email as verified.
+        using var forger = Factory.CreateUserClient(TestUser.New() with { Email = invitee.Email }, clientId: "dcr-client");
+
+        (await forger.GetFromJsonAsync<List<InviteResponse>>("/api/v1/invites", Json.Options, Ct)).ShouldNotBeNull().ShouldBeEmpty();
+        await ShouldBeProblemAsync(await forger.PostAsync($"/api/v1/invites/{invite.Id}/accept", null, Ct),
+            HttpStatusCode.NotFound, "invite_not_found");
+    }
+
+    [Fact]
     public async Task Cannot_revoke_another_users_token()
     {
         using var owner = Factory.CreateUserClient(TestUser.New());
@@ -138,4 +189,9 @@ public sealed class AuthTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var me = await response.Content.ReadFromJsonAsync<MeResponse>(Json.Options, Ct);
         me!.Locale.ShouldBe("da");
     }
+
+    private static async Task NewWorkspaceInAsync(HttpClient client) =>
+        (await client.PostAsJsonAsync("/api/v1/workspaces",
+            new CreateWorkspaceRequest("Other", "w-" + Guid.NewGuid().ToString("N")[..12]), Json.Options, Ct))
+            .StatusCode.ShouldBe(HttpStatusCode.Created);
 }

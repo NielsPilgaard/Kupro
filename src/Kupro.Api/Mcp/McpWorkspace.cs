@@ -22,6 +22,8 @@ public sealed class McpWorkspace(
 
     public string? AgentName => http.HttpContext?.User.GetAgentName();
 
+    public Guid? TokenWorkspaceId => http.HttpContext?.User.GetTokenWorkspaceId();
+
     /// <summary>
     /// Resolves the workspace (argument, else the token's workspace, else the user's only workspace) and enforces the
     /// minimum role. Throws an <see cref="McpException"/> the client sees as a tool error.
@@ -57,7 +59,7 @@ public sealed class McpWorkspace(
             return await db.Workspaces.Where(w => w.Id == id).Select(w => w.Slug).SingleAsync(ct);
         }
 
-        var mine = await workspaces.ListMineAsync(userId, ct);
+        var mine = await workspaces.ListMineAsync(userId, null, ct);
         return mine.Count == 1
             ? mine[0].Slug
             : throw new McpException(mine.Count == 0

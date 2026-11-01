@@ -18,9 +18,18 @@ public static class AuthExtensions
 
     private const string SelectorScheme = "Kupro";
 
+    /// <summary>
+    /// Realm clients whose tokens carry the user's real email. Anyone can register another client (anonymous DCR for
+    /// MCP), and its mappers could claim any email (ADR-005 IMP-006).
+    /// </summary>
+    private static readonly HashSet<string> FirstPartyClients = ["web", "cli", "mcp"];
+
     public static class Policies
     {
-        /// <summary>A human session or personal token, not an agent token.</summary>
+        /// <summary>
+        /// A human session or personal token for the whole account: not an agent token, and not a token limited to one
+        /// workspace (ADR-005 IMP-007).
+        /// </summary>
         public const string Human = "human";
     }
 
@@ -67,7 +76,8 @@ public static class AuthExtensions
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
             .AddPolicy(Policies.Human, policy => policy
                 .RequireAuthenticatedUser()
-                .RequireAssertion(context => !context.User.HasClaim(c => c.Type == KuproClaims.AgentName)));
+                .RequireAssertion(context => !context.User.HasClaim(c =>
+                    c.Type is KuproClaims.AgentName or KuproClaims.WorkspaceId)));
 
         builder.Services.AddScoped<UserService>();
         builder.Services.AddScoped<ApiTokenService>();
@@ -119,13 +129,15 @@ public static class AuthExtensions
         }
 
         var username = principal.FindFirstValue("preferred_username") ?? subject;
+        var firstParty = principal.FindFirstValue("azp") is { } azp && FirstPartyClients.Contains(azp);
         var identity = new ExternalIdentity(
             subject,
             principal.FindFirstValue("email") ?? username,
-            string.Equals(principal.FindFirstValue("email_verified"), "true", StringComparison.OrdinalIgnoreCase),
+            firstParty && string.Equals(principal.FindFirstValue("email_verified"), "true", StringComparison.OrdinalIgnoreCase),
             principal.FindFirstValue("name") ?? username,
             // Keycloak only sends a locale once the user picked one; otherwise the browser's language decides.
-            principal.FindFirstValue("locale") ?? PreferredLanguage(context.HttpContext.Request));
+            principal.FindFirstValue("locale") ?? PreferredLanguage(context.HttpContext.Request),
+            firstParty);
 
         var users = context.HttpContext.RequestServices.GetRequiredService<UserService>();
         Guid userId;

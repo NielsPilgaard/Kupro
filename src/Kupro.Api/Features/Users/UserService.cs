@@ -6,8 +6,9 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Kupro.Api.Features.Users;
 
 /// <summary>Identity claims from Keycloak used to provision or refresh a <see cref="User"/>.</summary>
+/// <param name="EmailTrusted">The token comes from one of our own clients, so its email may replace the stored one.</param>
 public sealed record ExternalIdentity(
-    string ExternalId, string Email, bool EmailVerified, string DisplayName, string? Locale);
+    string ExternalId, string Email, bool EmailVerified, string DisplayName, string? Locale, bool EmailTrusted);
 
 /// <param name="Id">Kupro user id.</param>
 /// <param name="Email">Login email.</param>
@@ -52,12 +53,15 @@ public sealed class UserService(IDbContextFactory<KuproDbContext> dbFactory, IMe
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Upsert: concurrent first requests from the same new user must not race into a unique violation.
+        // An untrusted email is stored unverified on first login and never replaces the stored one.
         var ids = await db.Database.SqlQuery<Guid>($"""
             INSERT INTO users (id, external_id, email, email_verified, display_name, locale, time_zone, created_at)
             VALUES ({newId}, {identity.ExternalId}, {emailAddress}, {identity.EmailVerified}, {identity.DisplayName},
                     {locale}, {DefaultTimeZone}, {now})
             ON CONFLICT (external_id) DO UPDATE
-            SET email = EXCLUDED.email, email_verified = EXCLUDED.email_verified, display_name = EXCLUDED.display_name
+            SET email = CASE WHEN {identity.EmailTrusted} THEN EXCLUDED.email ELSE users.email END,
+                email_verified = CASE WHEN {identity.EmailTrusted} THEN EXCLUDED.email_verified ELSE users.email_verified END,
+                display_name = EXCLUDED.display_name
             RETURNING id AS "Value"
             """).ToListAsync(ct);
 

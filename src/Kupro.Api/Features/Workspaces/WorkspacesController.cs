@@ -14,7 +14,7 @@ public sealed class WorkspacesController(WorkspaceService workspaces) : Controll
     /// <summary>List workspaces you are an active member of.</summary>
     [HttpGet(Name = "listWorkspaces")]
     public async Task<IReadOnlyList<WorkspaceSummary>> List(CancellationToken ct) =>
-        await workspaces.ListMineAsync(User.GetUserId(), ct);
+        await workspaces.ListMineAsync(User.GetUserId(), User.GetTokenWorkspaceId(), ct);
 
     /// <summary>Create a workspace. You become its Owner.</summary>
     [HttpPost(Name = "createWorkspace")]

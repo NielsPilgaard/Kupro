@@ -25,11 +25,15 @@ public sealed class TokensController(ApiTokenService tokens) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<CreatedApiTokenResponse>> Create(CreateApiTokenRequest request, CancellationToken ct)
     {
-        var (created, error) = await tokens.CreateAsync(User.GetUserId(), request, ct);
-        return created is not null
-            ? StatusCode(StatusCodes.Status201Created, created)
-            : this.Problem(StatusCodes.Status403Forbidden, "workspace_not_allowed",
-                $"Cannot create this token in that workspace ({error}).");
+        var (created, error) = await tokens.CreateAsync(User.GetUserId(), User.GetTokenId(), request, ct);
+        return (created, error) switch
+        {
+            ({ } token, _) => StatusCode(StatusCodes.Status201Created, token),
+            (_, CreateApiTokenError.OutlivesCaller) => this.Problem(StatusCodes.Status403Forbidden, "token_outlives_caller",
+                "A token can't create a token that expires later than itself; set expiresInDays."),
+            _ => this.Problem(StatusCodes.Status403Forbidden, "workspace_not_allowed",
+                $"Cannot create this token in that workspace ({error})."),
+        };
     }
 
     /// <summary>Revoke an API token. Takes effect immediately.</summary>

@@ -23,6 +23,9 @@ public static class KuproClaims
 
     public static string? GetAgentName(this ClaimsPrincipal principal) => principal.FindFirstValue(AgentName);
 
+    public static Guid? GetTokenId(this ClaimsPrincipal principal) =>
+        principal.FindFirstValue(TokenId) is { } id ? Guid.Parse(id) : null;
+
     public static Guid? GetTokenWorkspaceId(this ClaimsPrincipal principal) =>
         principal.FindFirstValue(WorkspaceId) is { } id ? Guid.Parse(id) : null;
 }
