@@ -1,6 +1,6 @@
 # Public site image (ADR-017). Build context = repo root: the site imports web/src/styles/tokens.css.
 # Bun tag pinned to "packageManager" in site/package.json.
-FROM oven/bun:1.4.3-alpine AS build
+FROM oven/bun:1.4.4-alpine AS build
 WORKDIR /app/site
 
 COPY site/package.json site/bun.lock ./
@@ -14,7 +14,7 @@ ARG PUBLIC_APP_URL=http://localhost:5180
 ENV SITE_URL=$SITE_URL PUBLIC_APP_URL=$PUBLIC_APP_URL ASTRO_TELEMETRY_DISABLED=1
 RUN bun run build
 
-FROM nginx:1.29-alpine AS runtime
+FROM nginx:1.31-alpine AS runtime
 COPY --from=build /app/site/dist /usr/share/nginx/html
 COPY site/headers.conf /etc/nginx/snippets/headers.conf
 COPY site/nginx.conf /etc/nginx/conf.d/default.conf
