@@ -1,0 +1,49 @@
+# Version updates, weekly. Security updates come on top, as soon as an advisory is published (repo setting).
+# Minor and patch bumps are grouped per ecosystem so they arrive as one PR; majors come one by one.
+# Not covered: the Postgres image tag (ARG PG_MAJOR, a major upgrade needs pg_upgrade) and images pinned in
+# the AppHost (deploy/ is generated from it).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      nuget:
+        update-types: [minor, patch]
+
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: bun
+    directories:
+      - /web
+      - /site
+      - /tests/e2e
+    schedule:
+      interval: weekly
+    groups:
+      bun:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories:
+      - /infrastructure/keycloak
+      - /infrastructure/backup-agent
+      - /web
+      - /site
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        update-types: [minor, patch]
