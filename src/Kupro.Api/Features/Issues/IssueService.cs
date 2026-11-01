@@ -309,6 +309,15 @@ public sealed class IssueService(
             numbers[group.Key] = last - group.Count();
         }
 
+        // New issues go on top of their column (project + state), in request order, so they are on its first page.
+        var ranks = new Dictionary<(Guid, IssueState), double>();
+        foreach (var group in requests.GroupBy(r => (projects[r.Project.ToUpperInvariant()], r.State)))
+        {
+            var (projectId, state) = group.Key;
+            var top = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MinAsync(i => (double?)i.Rank, ct) ?? 0;
+            ranks[group.Key] = top - group.Count() - 1;
+        }
+
         var now = clock.GetUtcNow();
         var created = new List<Issue>(requests.Count);
         foreach (var (r, index) in requests.Select((r, i) => (r, i)))
@@ -335,8 +344,7 @@ public sealed class IssueService(
                 Effort = r.Effort,
                 StartDate = r.StartDate,
                 DueDate = r.DueDate,
-                // New issues go to the bottom of their column; the project counter is monotonic.
-                Rank = number,
+                Rank = ++ranks[(projectId, r.State)],
                 SprintId = sprintIds[index],
                 CreatedById = workspace.MemberId,
                 CreatedAt = now,

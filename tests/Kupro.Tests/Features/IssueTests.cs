@@ -188,8 +188,9 @@ public sealed class IssueTests(PostgresFixture postgres) : ApiTestBase(postgres)
     [Fact]
     public async Task Move_places_issue_between_neighbours_and_changes_state()
     {
-        var first = await CreateAsync(new("KUP", "First", State: IssueState.Todo));
+        // New issues go on top, so the lower one is created first.
         var second = await CreateAsync(new("KUP", "Second", State: IssueState.Todo));
+        var first = await CreateAsync(new("KUP", "First", State: IssueState.Todo));
         var moving = await CreateAsync(new("KUP", "Moving"));
 
         var moved = await ReadAsync<IssueSummary>(await _client.PostAsJsonAsync($"{Issues}/{moving.Key}/move",
@@ -198,6 +199,19 @@ public sealed class IssueTests(PostgresFixture postgres) : ApiTestBase(postgres)
         moved.State.ShouldBe(IssueState.Todo);
         var column = await ListAsync("?state=todo&sort=rank");
         column.Items.Select(i => i.Key).ShouldBe([first.Key, moving.Key, second.Key]);
+    }
+
+    [Fact]
+    public async Task New_issues_go_on_top_of_their_column_in_request_order()
+    {
+        var old = await CreateAsync(new("KUP", "Old", State: IssueState.Todo));
+        var created = await ReadAsync<List<IssueSummary>>(await _client.PostAsJsonAsync($"{Issues}/bulk",
+            new CreateIssuesRequest([new("KUP", "A", State: IssueState.Todo), new("KUP", "B", State: IssueState.Todo)]),
+            Json.Options, Ct), HttpStatusCode.Created);
+        var newest = await CreateAsync(new("KUP", "Newest", State: IssueState.Todo));
+
+        var column = await ListAsync("?state=todo&sort=rank");
+        column.Items.Select(i => i.Key).ShouldBe([newest.Key, created[0].Key, created[1].Key, old.Key]);
     }
 
     [Fact]
