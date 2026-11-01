@@ -11,6 +11,7 @@ import {
   moveIssueMutation,
   updateIssueMutation,
 } from './gen/@tanstack/react-query.gen';
+import { listIssues } from './gen/sdk.gen';
 import type {
   IssueDetail,
   IssuePage,
@@ -26,6 +27,27 @@ type IssueFilters = NonNullable<ListIssuesData['query']>;
 
 export function useIssues(workspace: string, query: IssueFilters) {
   return useQuery(listIssuesOptions({ path: { workspace }, query: { limit: 200, ...query } }));
+}
+
+/**
+ * Every page, for views whose totals must cover all matches (My Issues). Same key and shape as a single page, so list
+ * invalidation and optimistic updates apply unchanged.
+ */
+export function useAllIssues(workspace: string, query: IssueFilters) {
+  const options = { path: { workspace }, query: { limit: 200, ...query } };
+  return useQuery({
+    ...listIssuesOptions(options),
+    queryFn: async ({ signal }): Promise<IssuePage> => {
+      const items: IssueSummary[] = [];
+      let cursor: string | undefined;
+      do {
+        const { data } = await listIssues({ ...options, query: { ...options.query, cursor }, signal, throwOnError: true });
+        items.push(...data.items);
+        cursor = data.nextCursor ?? undefined;
+      } while (cursor);
+      return { items, nextCursor: null };
+    },
+  });
 }
 
 export function useIssue(workspace: string, key: string | null) {

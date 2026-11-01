@@ -196,12 +196,14 @@ export function PlanPage() {
     [],
   );
 
-  // C with a selected month cell creates there; otherwise C keeps opening the issue dialog.
+  // C with a selected month cell creates there; otherwise C keeps opening the issue dialog. A cell whose row is no
+  // longer shown (focus changed, epic folded) is ignored.
+  const selected = cell && rows.some((r) => r.key === cell.row) ? cell : null;
   const { setCreateOverride } = ui;
   useEffect(() => {
-    setCreateOverride(cell ? () => setDraft({ ...cell.draft, startDate: cell.month, dueDate: lastDayOf(cell.month) }) : null);
+    setCreateOverride(selected ? () => setDraft({ ...selected.draft, startDate: selected.month, dueDate: lastDayOf(selected.month) }) : null);
     return () => setCreateOverride(null);
-  }, [cell, setCreateOverride]);
+  }, [selected, setCreateOverride]);
 
   const violated = useMemo(() => new Set(plan?.dependencies.filter((d) => d.violated).map((d) => d.blocked)), [plan]);
   const foldable = rows.filter((r) => r.kind === 'epic' || r.kind === 'loose').map((r) => r.key);
@@ -254,7 +256,7 @@ export function PlanPage() {
                 timeline={t2}
                 late={row.kind === 'epic' || row.kind === 'feature' ? violated.has(row.card.key) : false}
                 focused={!!focus}
-                selectedMonth={cell?.row === row.key ? cell.month : null}
+                selectedMonth={selected?.row === row.key ? selected.month : null}
                 onSelectMonth={onSelectMonth}
                 onDraft={setDraft}
                 onDrag={setOverride}

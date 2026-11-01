@@ -33,6 +33,8 @@ export function MyIssues({ workspace, issues, emptyText }: { workspace: string; 
   const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
   const colors = useMemo(() => new Map(projects?.map((p) => [p.key, p.color])), [projects]);
 
+  // Part of the memo key so the 14-day Done cutoff moves at midnight.
+  const today = new Date().toDateString();
   const sections = useMemo(
     () =>
       sectionStates
@@ -48,7 +50,8 @@ export function MyIssues({ workspace, issues, emptyText }: { workspace: string; 
             ),
         }))
         .filter((s) => s.items.length > 0),
-    [issues],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- today only re-runs the filter after midnight
+    [issues, today],
   );
   const flat = useMemo(() => sections.flatMap((s) => s.items), [sections]);
 
@@ -70,7 +73,7 @@ export function MyIssues({ workspace, issues, emptyText }: { workspace: string; 
     k: () => step(-1),
     arrowdown: () => step(1),
     arrowup: () => step(-1),
-    enter: () => ui.activeKey && show(ui.activeKey),
+    enter: () => ui.activeKey && flat.some((i) => i.key === ui.activeKey) && show(ui.activeKey),
   });
 
   const activeRow = useRef<HTMLButtonElement | null>(null);
@@ -78,7 +81,7 @@ export function MyIssues({ workspace, issues, emptyText }: { workspace: string; 
     activeRow.current?.scrollIntoView({ block: 'nearest' });
   }, [ui.activeKey]);
 
-  if (issues.length === 0) return <p className="p-8 text-center text-md text-mute">{emptyText}</p>;
+  if (sections.length === 0) return <p className="p-8 text-center text-md text-mute">{emptyText}</p>;
 
   return (
     <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 p-4 md:p-6 3xl:max-w-[2200px] 3xl:gap-8 3xl:p-8">

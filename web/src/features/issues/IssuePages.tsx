@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Mic } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, getProjectOptions } from '../../api/gen/@tanstack/react-query.gen';
-import { useIssues } from '../../api/issues';
+import { useAllIssues, useIssues } from '../../api/issues';
 import { useStartMeeting } from '../../api/meetings';
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
@@ -81,7 +81,7 @@ export function MyIssuesPage() {
   const { t } = useTranslation();
   const { workspace } = useParams({ strict: false }) as { workspace: string };
   const { data: me } = useQuery(getMeOptions());
-  const { data, isPending } = useIssues(workspace, { assignee: 'me' });
+  const { data, isPending } = useAllIssues(workspace, { assignee: 'me' });
   return (
     <>
       <Topbar crumbs={[t('nav.myIssues')]} />

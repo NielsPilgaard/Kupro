@@ -36,12 +36,11 @@ Agents get the same review, close plan and burndown through CLI and MCP.
 - `CloseSprintRequest` gains `target` (sprint id; default next planned), `items` (`issue` key, `outcome`:
   `carry|split|backlog|cancel|done`, `hoursLeft` for split, optional per-item `target`) and `startNext` (start the
   target sprint right after close). `moveUnfinishedTo` stays as the default outcome for unlisted issues.
-- Validation: split needs effort, no child issues and `0 < hoursLeft < effort` (`invalid_split`); target must be an
-  open sprint of the same project (`invalid_sprint`); `no_next_sprint` as today when carry or split has no target.
-- Split per [ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md): original → Done with effort = effort − hoursLeft,
-  stays in the closing sprint; continuation created through `IssueService.CreateAsync`'s path with the copied
-  fields, effort = hoursLeft, in the target sprint; `relates` relation; open `blocks` relations moved; activity
-  `split_into` / `split_from`.
+- Validation: split rules per [ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md) (`invalid_split`); target must be
+  an open sprint of the same project other than the closing one (`invalid_sprint`); `no_next_sprint` as today when
+  carry or split has no target.
+- Split per [ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md); the continuation is created through
+  `IssueService.CreateAsync`'s path, in the target sprint.
 - One transaction: outcomes applied through `IssueService` (activity entry `sprint_closed` per issue with outcome and
   from/to sprint), ledger close rows, sprint closed, optional start of the target.
 - Issues that are no longer unfinished in the sprint are skipped, not failed; the response lists them.

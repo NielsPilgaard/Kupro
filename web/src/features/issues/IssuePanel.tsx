@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Ban, ChevronDown, Copy, IterationCw, Link2, Maximize2, Minimize2, OctagonAlert, Tag, X } from 'lucide-react';
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -49,8 +49,10 @@ export function IssuePanel({ workspace, issueKey, meName }: { workspace: string;
   const navigate = useNavigate();
   const { data: issue, isError } = useIssue(workspace, issueKey);
   const [editing, setEditing] = useState(false);
-  const [widened, setWidened] = useState(false);
-  const wide = useMediaQuery(largeScreen) || widened;
+  const largeScreenMatch = useMediaQuery(largeScreen);
+  // A manual choice wins over the breakpoint, so Narrow works on large screens too.
+  const [override, setOverride] = useState<boolean | null>(null);
+  const wide = override ?? largeScreenMatch;
   const { setActiveKey } = ui;
 
   useEffect(() => setActiveKey(issueKey), [issueKey, setActiveKey]);
@@ -74,7 +76,7 @@ export function IssuePanel({ workspace, issueKey, meName }: { workspace: string;
         )}
         <button
           type="button"
-          onClick={() => setWidened(!widened)}
+          onClick={() => setOverride(!wide)}
           className="ml-auto rounded-r1 p-1 text-mute hover:bg-sel hover:text-ink max-md:hidden"
           aria-label={t(wide ? 'issue.narrow' : 'issue.widen')}
           aria-pressed={wide}
@@ -116,6 +118,8 @@ function IssueBody({
   const update = useUpdateIssue(workspace);
   const save = (body: UpdateIssueRequest) => update.mutate({ path: { workspace, key: issue.key }, body });
   const [title, setTitle] = useState(issue.title);
+  // Held here, not in Description: crossing the wide breakpoint remounts Description, and a draft must survive that.
+  const [description, setDescription] = useState(issue.description ?? '');
   const [chosenTab, setTab] = useState<Tab>('description');
   // E edits the description, so it has to be the visible tab.
   const tab = editing ? 'description' : chosenTab;
@@ -254,7 +258,17 @@ function IssueBody({
       />
     </div>
   );
-  const description = <Description workspace={workspace} issue={issue} editing={editing} setEditing={setEditing} save={save} />;
+  const descriptionSection = (
+    <Description
+      workspace={workspace}
+      issue={issue}
+      draft={description}
+      setDraft={setDescription}
+      editing={editing}
+      setEditing={setEditing}
+      save={save}
+    />
+  );
   const children =
     issue.children.length > 0 ? (
       <section className="flex flex-col gap-1" aria-label={t('issue.subtasks')}>
@@ -278,7 +292,7 @@ function IssueBody({
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-auto px-6 py-5">
           {titleRow}
-          {description}
+          {descriptionSection}
           {issue.children.length > 0 && (
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold text-mute">{t('issue.subtasks')}</h3>
@@ -349,7 +363,7 @@ function IssueBody({
         </div>
       </div>
       <div role="tabpanel" id="issue-tabpanel" aria-labelledby={`issue-tab-${tab}`} className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-        {tab === 'description' && description}
+        {tab === 'description' && descriptionSection}
         {tab === 'children' && children}
         {tab === 'relations' && <Relations workspace={workspace} issue={issue} />}
         {tab === 'activity' && activity}
@@ -361,18 +375,21 @@ function IssueBody({
 function Description({
   workspace,
   issue,
+  draft: description,
+  setDraft: setDescription,
   editing,
   setEditing,
   save,
 }: {
   workspace: string;
   issue: IssueDetail;
+  draft: string;
+  setDraft: Dispatch<SetStateAction<string>>;
   editing: boolean;
   setEditing(v: boolean): void;
   save(body: UpdateIssueRequest): void;
 }) {
   const { t } = useTranslation();
-  const [description, setDescription] = useState(issue.description ?? '');
   const upload = useMarkdownUpload(workspace, issue.key, setDescription);
   return (
     <section className="flex flex-col gap-2" aria-label={t('issue.description')}>
@@ -454,7 +471,13 @@ function ParentLink({ issueRef }: { issueRef: { key: string; title: string } }) 
 function SprintSelect({ workspace, issue, onChange }: { workspace: string; issue: IssueDetail; onChange(id: string | null): void }) {
   const { t } = useTranslation();
   const { data: sprints } = useQuery(listSprintsOptions({ path: { workspace }, query: { project: issue.projectKey, state: ['planned', 'active'] } }));
-  const current = sprints?.find((s) => s.id === issue.sprintId);
+  const open = sprints?.find((s) => s.id === issue.sprintId);
+  // Done/canceled issues keep a closed sprint: look it up for the label only, it stays unassignable.
+  const { data: closed } = useQuery({
+    ...listSprintsOptions({ path: { workspace }, query: { project: issue.projectKey, state: ['closed'] } }),
+    enabled: !!issue.sprintId && !!sprints && !open,
+  });
+  const current = open ?? closed?.find((s) => s.id === issue.sprintId);
   return (
     <Picker
       label={t('issue.sprint')}
