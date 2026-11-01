@@ -37,7 +37,7 @@ jobs:
       IMAGE_TAG: ${{ inputs.image_tag }}
     steps:
       # Full history: the Postgres and agent tags are computed at the deployed commit, which a rollback makes older.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

@@ -19,7 +19,7 @@ jobs:
     name: .NET build, test, drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -52,7 +52,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -72,7 +72,7 @@ jobs:
       run:
         working-directory: site
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -86,7 +86,7 @@ jobs:
     name: Grafana dashboards drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Regenerate dashboards and alert rules
         run: python3 infrastructure/observability/build_dashboards.py
       - name: Drift
@@ -103,7 +103,7 @@ jobs:
           - { os: macos-14, rid: osx-arm64 }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -148,7 +148,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -178,7 +178,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Image name
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/kupro-keycloak" >> "$GITHUB_ENV"
@@ -213,7 +213,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Image names and tags
         run: |
@@ -264,7 +264,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Image name
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/kupro-web" >> "$GITHUB_ENV"
@@ -299,7 +299,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Image name
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/kupro-site" >> "$GITHUB_ENV"
