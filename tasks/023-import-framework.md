@@ -130,8 +130,8 @@ then only add a connector, a markup converter and default mappings.
       within budget.
 - [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
 - [ ] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
-- [ ] Undo removes everything the import created and nothing else; it is refused while native records reference
-  imported issues. Finish deletes the token (checked in the DB).
+- [ ] Undo removes everything the import created and nothing else; it is refused while records it didn't create
+  (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
 - [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
 - [ ] A Danish CSV in Windows-1252 keeps æøå.
 
