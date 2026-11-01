@@ -9,6 +9,7 @@ using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -303,10 +304,13 @@ public sealed class IssueService(
         }
 
         var created = new List<Issue>(requests.Count);
+        // Ids are fixed before the strategy runs, so a commit whose acknowledgement was lost is recognised by
+        // verifySucceeded instead of retried into duplicate issues with fresh numbers.
+        var ids = requests.Select(_ => Guid.CreateVersion7()).ToList();
         // Retrying execution strategy: the transaction must run inside it as one retriable unit. The counter update locks
         // each project row (in id order, so two batches cannot deadlock) until commit: concurrent creates in a column then
         // read each other's top rank, and a failed save burns no issue numbers.
-        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        await db.Database.CreateExecutionStrategy().ExecuteAsync<object?, bool>(null, async (_, _, _) =>
         {
             db.ChangeTracker.Clear();
             created.Clear();
@@ -336,7 +340,7 @@ public sealed class IssueService(
                 var number = ++numbers[projectId];
                 var issue = new Issue
                 {
-                    Id = Guid.CreateVersion7(),
+                    Id = ids[index],
                     WorkspaceId = workspace.RequireWorkspaceId(),
                     ProjectId = projectId,
                     Number = number,
@@ -372,9 +376,9 @@ public sealed class IssueService(
 
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-        });
+            return true;
+        }, async (_, _, _) => new ExecutionResult<bool>(await db.Issues.AnyAsync(i => i.Id == ids[0], ct), true), ct);
 
-        var ids = created.Select(i => i.Id).ToList();
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
         var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
         await realtime.IssuesAsync(ordered, created: true);

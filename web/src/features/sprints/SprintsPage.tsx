@@ -80,7 +80,7 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
   const toast = useToast();
   const [closing, setClosing] = useState(false);
   // The close prompt counts every unfinished issue, so the whole sprint is loaded; the board pages per column.
-  const { data, isPending } = useAllIssues(workspace, { sprint: sprint.id, sort: 'rank' });
+  const { data, isPending, isError } = useAllIssues(workspace, { sprint: sprint.id, sort: 'rank' });
   const close = useMutation({
     ...closeSprintMutation(),
     onSuccess: (result) => {
@@ -116,13 +116,13 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
           <span className="flex-1">{t('sprint.closePrompt', { count: unfinished })}</span>
           <Button
             variant="primary"
-            disabled={!hasNext || isPending || close.isPending}
+            disabled={!hasNext || isPending || isError || close.isPending}
             title={hasNext ? undefined : t('sprint.noNext')}
             onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'next' } })}
           >
             {t('sprint.toNext')}
           </Button>
-          <Button disabled={isPending || close.isPending} onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'backlog' } })}>
+          <Button disabled={isPending || isError || close.isPending} onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'backlog' } })}>
             {t('sprint.toBacklog')}
           </Button>
           <Button variant="ghost" onClick={() => setClosing(false)}>

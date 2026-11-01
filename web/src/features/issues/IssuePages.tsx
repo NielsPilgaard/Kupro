@@ -78,13 +78,18 @@ export function MyIssuesPage() {
   const { t } = useTranslation();
   const { workspace } = useParams({ strict: false }) as { workspace: string };
   const { data: me } = useQuery(getMeOptions());
-  const { data, isPending } = useAllIssues(workspace, { assignee: 'me' });
+  const { data, isPending, isError, refetch } = useAllIssues(workspace, { assignee: 'me' });
   return (
     <>
       <Topbar crumbs={[t('nav.myIssues')]} />
       <main className="min-h-0 flex-1 overflow-auto">
         {isPending ? (
           <p className="p-8 text-center text-mute">{t('common.loading')}</p>
+        ) : isError && !data ? (
+          <div className="flex flex-col items-center gap-2 p-8 text-center">
+            <p className="text-bad">{t('errors.loadFailed')}</p>
+            <Button onClick={() => void refetch()}>{t('common.retry')}</Button>
+          </div>
         ) : (
           <MyIssues workspace={workspace} issues={data?.items ?? []} emptyText={t('issue.emptyMine', { name: me?.displayName })} />
         )}

@@ -196,9 +196,9 @@ export function PlanPage() {
     [],
   );
 
-  // C with a selected month cell creates there; otherwise C keeps opening the issue dialog. A cell whose row is no
-  // longer shown (focus changed, epic folded) is ignored.
-  const selected = cell && rows.some((r) => r.key === cell.row) ? cell : null;
+  // C with a selected month cell creates there; otherwise C keeps opening the issue dialog. A cell whose row or month is
+  // no longer shown (focus changed, epic folded, horizon moved) is ignored.
+  const selected = cell && rows.some((r) => r.key === cell.row) && months.includes(cell.month) ? cell : null;
   // The cell's draft top is relative to its row: folding an earlier epic moves the row after the click.
   const selectedTop = selected ? tops[rows.findIndex((r) => r.key === selected.row)]! : 0;
   const { setCreateOverride } = ui;

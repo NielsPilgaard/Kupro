@@ -26,7 +26,7 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
   const navigate = useNavigate();
   const query: IssueFilters = { ...filters, sort: 'priority' };
   // One row is enough to tell an empty project from groups that are still loading.
-  const { data: probe, isError } = useIssues(workspace, { ...filters, limit: 1 });
+  const { data: probe } =useIssues(workspace, { ...filters, limit: 1 });
 
   const open = (key: string) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: key }) });
   // Read from the cache at key time: the groups own their queries.
@@ -54,9 +54,6 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
     activeRow.current?.scrollIntoView({ block: 'nearest' });
   }, [ui.activeKey]);
 
-  if (isError) {
-    return <p className="p-8 text-center text-bad">{t('errors.loadFailed')}</p>;
-  }
   if (probe?.items.length === 0) {
     return <p className="p-8 text-center text-mute">{emptyText}</p>;
   }
