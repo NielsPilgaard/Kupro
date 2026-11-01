@@ -8,8 +8,8 @@ supersedes: ''
 superseded_by: ''
 description: >-
   Defines issues: fixed types (Epic, Feature, Task) with a strict hierarchy, a fixed workflow, effort in hours,
-  dates, relations and per-project sprints, plus planning data (milestones, project capacity). Bug is a label; agents
-  can be assignees. No custom fields or workflows in v1.
+  dates, relations and per-project sprints, plus planning data (milestones, project capacity). Bug is a label; only
+  people can be assignees. No custom fields or workflows in v1.
 ---
 
 # ADR-008: Work Item Model
@@ -19,14 +19,14 @@ description: >-
 - Workspace → Projects → Issues. Issue key `PROJ-123`.
 - Types: **Epic → Feature → Task** (strict parent/child). Types are filterable and searchable.
 - Fixed workflow: Backlog, Todo, In Progress, In Review, Done, Canceled.
-- Effort in **hours**, on every type. Bug = label on Task. Agents can be assignees.
+- Effort in **hours**, on every type. Bug = label on Task. Only people can be assignees.
 - Sprints per project, issue in ≤ 1 sprint.
 - Relations: blocks / blocked by, relates to, duplicates.
 - Planning: milestones (dated markers) and project capacity (people per project, from a month onward).
 
 ## Status
 
-**Accepted** — OQ-1 to OQ-4 resolved 2026-10-03.
+**Accepted** — OQ-1 to OQ-4 resolved 2026-10-03; OQ-3 reversed 2026-10-31.
 
 ## Context
 
@@ -43,7 +43,7 @@ dependencies to be first-class. Types make top-level work (epics) easy to find.
 | type | Epic / Feature / Task |
 | parent | Epic ← Feature ← Task; Task may also sit directly under Epic |
 | state | Fixed workflow above |
-| assignee | Single member — human or agent (member kind `agent`) |
+| assignee | Single human member. The assignee answers for the work; agents act on issues but are never assignees |
 | priority | None, Low, Medium, High, Urgent |
 | labels | Workspace-level; `bug` is a built-in label |
 | effort | Hours (decimal), any type. Epics/features hold their own top-down estimate and show child roll-up beside it |
@@ -54,8 +54,8 @@ dependencies to be first-class. Types make top-level work (epics) easy to find.
 
 ### Sprints
 
-Per project, fixed start/end, one active at a time. Unfinished issues roll to next sprint on close (prompted).
-Sprint view = board filtered by sprint. Simple burndown later.
+Per project, fixed start/end, one active at a time. Sprint view = board filtered by sprint. Closing, carry-over and
+burndown: [ADR-020](ADR-020-sprint-close-burndown.md).
 
 ### Planning
 
@@ -74,7 +74,9 @@ Supply per month = people × hours per week × weeks in month. No per-person cap
 - **OQ-1**: Effort unit → **hours**. One unit across all types, so sprint load and delivery plan demand use the same
   number. Plan UI may display large totals as people per month — display only.
 - **OQ-2**: Bug → **label on Task**, not a type.
-- **OQ-3**: Agents as assignees → **yes**; agents are workspace members of kind `agent`.
+- **OQ-3**: Agents as assignees → **no** (reversed 2026-10-31; was yes). Assignee means responsibility, and an agent
+  can't hold that. Agents still create and change issues as members of kind `agent`; the activity log attributes it.
+  The API rejects an agent assignee with `assignee_not_human`; existing agent assignees were cleared.
 - **OQ-4**: Sprints → **per project** in v1.
 
 ## Consequences
@@ -97,3 +99,5 @@ Supply per month = people × hours per week × weeks in month. No per-person cap
 
 - [ADR-009](ADR-009-multi-tenancy.md) — every entity carries `workspace_id`
 - [ADR-013](ADR-013-seats-billing.md) — whether agent members count as seats
+- [ADR-019](ADR-019-import.md) — how imports from deeper or looser models fit this one
+- [ADR-020](ADR-020-sprint-close-burndown.md) — sprint close outcomes, split carry-over, burndown

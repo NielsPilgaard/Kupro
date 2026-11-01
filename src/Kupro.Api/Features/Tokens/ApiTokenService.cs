@@ -71,6 +71,9 @@ public enum CreateApiTokenError
 
     /// <summary>Not an active member (agents: Member or Owner) of the workspace, or the agent name is another user's.</summary>
     WorkspaceNotAllowed,
+
+    /// <summary>The caller is an expiring API token and the new token would expire later (or never).</summary>
+    OutlivesCaller,
 }
 
 public sealed class ApiTokenService(
@@ -84,9 +87,25 @@ public sealed class ApiTokenService(
 
     private static readonly TimeSpan LastUsedResolution = TimeSpan.FromMinutes(1);
 
+    /// <param name="callerTokenId">The API token the request came with, if any; the new token can't outlive it.</param>
     public async Task<(CreatedApiTokenResponse? Created, CreateApiTokenError Error)> CreateAsync(
-        Guid userId, CreateApiTokenRequest request, CancellationToken ct)
+        Guid userId, Guid? callerTokenId, CreateApiTokenRequest request, CancellationToken ct)
     {
+        var now = clock.GetUtcNow();
+        DateTimeOffset? expiresAt = request.ExpiresInDays is { } days ? now.AddDays(days) : null;
+        if (callerTokenId is { } callerId)
+        {
+            await using var callerDb = await dbFactory.CreateDbContextAsync(ct);
+            var callerExpiresAt = await callerDb.ApiTokens.AsNoTracking()
+                .Where(t => t.Id == callerId)
+                .Select(t => t.ExpiresAt)
+                .SingleAsync(ct);
+            if (callerExpiresAt is not null && (expiresAt is null || expiresAt > callerExpiresAt))
+            {
+                return (null, CreateApiTokenError.OutlivesCaller);
+            }
+        }
+
         Guid? workspaceId = null;
         if (request.Workspace is { } slug)
         {
@@ -101,7 +120,6 @@ public sealed class ApiTokenService(
 
         var prefix = request.Kind == ApiTokenKind.Agent ? AgentPrefix : PersonalPrefix;
         var secret = prefix + Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-        var now = clock.GetUtcNow();
 
         var token = new ApiToken
         {
@@ -114,7 +132,7 @@ public sealed class ApiTokenService(
             Hash = Hash(secret),
             Hint = prefix + "..." + secret[^4..],
             CreatedAt = now,
-            ExpiresAt = request.ExpiresInDays is { } days ? now.AddDays(days) : null,
+            ExpiresAt = expiresAt,
         };
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);

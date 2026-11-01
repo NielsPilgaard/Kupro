@@ -40,7 +40,8 @@ export function CommandPalette({ workspace }: { workspace: string }) {
   const { data: projects } = useQuery({ ...listProjectsOptions({ path: { workspace } }), enabled: !!page });
   const { data: labels } = useQuery({ ...listLabelsOptions({ path: { workspace } }), enabled: page === 'label' });
   const { data: members } = useMembers(workspace);
-  const { data: recent } = useIssues(workspace, { sort: 'updated' });
+  // Recently updated issues before a search starts; the server search finds the rest.
+  const { data: recent } = useIssues(workspace, { sort: 'updated', limit: 20 });
 
   // Debounced server search: free text plus filters such as `state:todo assignee:me`.
   const [search, setSearch] = useState('');
@@ -90,13 +91,13 @@ export function CommandPalette({ workspace }: { workspace: string }) {
       case 'assign':
         return [
           { id: 'assign:none', label: t('issue.unassigned'), icon: <Avatar member={null} size={16} />, run: () => change({ clear: ['assignee'] }) },
+          // Assignees are people: they answer for the work (ADR-008).
           ...(members ?? [])
-            .filter((m) => m.status === 'active')
+            .filter((m) => m.status === 'active' && m.kind === 'human')
             .map((m) => ({
               id: `assign:${m.id}`,
               label: m.name,
               icon: <Avatar member={{ id: m.id, name: m.name, kind: m.kind }} size={16} />,
-              hint: m.kind === 'agent' ? t('palette.agentFor', { name: m.ownerName }) : undefined,
               cli: cliFor('assign', key ?? undefined, m.email === me?.email ? 'me' : m.id),
               run: () => change({ assignee: m.id }),
             })),

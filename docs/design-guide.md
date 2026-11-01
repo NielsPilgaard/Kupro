@@ -24,7 +24,7 @@ purpose: 'Canonical source for UI tokens and component rules; every web UI chang
    transition may delay showing the new state.
 2. **Calm density.** Show a lot, shout little. One accent element per view; colour is for state, not decoration.
 3. **Keyboard first.** Every action has a palette entry; frequent ones a single-key shortcut, shown as a `kbd` hint.
-4. **Agents are visible.** Agent assignees and agent actions look different from humans, and say which surface they used.
+4. **Agents are visible.** Agent actions look different from humans, and say which surface they used.
 5. **Shape + colour + text.** State, type and warnings are always readable without colour (WCAG 1.4.1).
 
 ## Tokens
@@ -52,7 +52,7 @@ Implemented as CSS custom properties in `web/src/styles/tokens.css`, mapped into
 | `--rev` | `#6553A8` | `#A194E6` | In Review, Epic tag |
 | `--ok` | `#3F8A3C` | `#78C36F` | Done, capacity surplus, agent "working" dot |
 | `--warn` | `#A9801A` | `#E3BC55` | Plan-health warnings |
-| `--bad` | `#B3393B` | `#EE6E6E` | Errors, capacity deficit, violated dependency |
+| `--bad` | `#B3393B` | `#EE6E6E` | Errors, capacity deficit, card late against its blocker |
 
 Derived (never hand-pick these): `--sel = color-mix(in srgb, var(--acc) 13%, transparent)` (selected row / active
 palette item); `--side-sel = color-mix(in srgb, var(--side-ink) 11%, transparent)` (active nav item); chip/tag fill =
@@ -92,6 +92,8 @@ Mono for issue keys, hours, dates and numbers in columns, with `tabular-nums`.
   toasts), `full` for labels and avatars.
 - **Density**: comfortable — `--row` 34 px (list rows, group headers), nav items 28 px, topbar 48 px, buttons 30 px.
   Compact (28 px rows, 12.5 px text) is a later per-user setting; build with `--row`, never hard-coded heights.
+- **Large screens**: from `3xl` (1920 px) the sidebar widens (`--sidebar` 252 px, `--nav-item` 34 px, `md` text);
+  centred form pages (onboarding, new project) step up from `2xl`. Lists and boards keep their density.
 - **Elevation**: borders, not shadows, for resting surfaces. Shadow only on things that float: popovers and the palette
   (`0 24px 60px -12px rgb(0 0 0 / .45)`), toasts, a card being dragged.
 
@@ -119,7 +121,10 @@ transitions drop to 0 ms.
 - **Topbar**: breadcrumb (`Project / Issues`), segmented view tabs (List · Board · Plan), search field showing the
   `Ctrl K` hint, one primary button ("New issue", `C`). One primary button per view, max.
 - **Content** owns scrolling; the shell never scrolls. Sticky group headers in lists, sticky month header in the plan.
-- **Issue detail** opens as a right-hand panel (min 480 px) over list/board, full page on narrow screens.
+- **Issue detail** opens as a right-hand panel (min 480 px) over list/board, full page on narrow screens. At 560 px:
+  title, a row of property chips (status, priority, assignee, labels, type), a planning strip (sprint, dates,
+  estimate) and tabs (description, subtasks, relations, activity). From `3xl`, or widened from its header, it grows to
+  ~920 px: content on the left, every property in a 288 px rail on the right, no tabs.
 
 ## Components
 
@@ -173,12 +178,13 @@ While dragging: −1.5° tilt, float shadow, 1.5 px `--acc-ink` outline; the dro
 
 Structure and behaviour: [delivery-plan.md](delivery-plan.md). Visual rules:
 
-- **Rows**: 132 px project header on `--panel` (name, colour square, "3 people from Jan"); track with a faint month
-  grid (`--line` at 70%).
+- **Rows**: 300 px label column. Project row on `--sunk` (name, colour square, "3 people from Jan", health) with the
+  capacity band in its track; epic rows (chevron, key, title, feature count, focus button on hover) and feature rows
+  (indented, state ring, key, title, effort) 30 px high on `--panel`. Tracks have a faint month grid (`--line` at 70%).
 - **Cards (outline)**: `--panel` fill, 1.5 px border in the project colour, `--r1`, 20 px high, `sm` text.
   Progress = 2.5 px bar along the bottom edge, width = done children / total. Epics: bold title.
-- **Violated dependency**: card gets a `--bad` border, a 1.5 px dashed `--bad` outline (offset 2 px) and a `!` badge;
-  the connector to its blocker is a dashed `--bad` curve.
+- **Late against its blocker**: card gets a `--bad` border, a 1.5 px dashed `--bad` outline (offset 2 px) and a `!`
+  badge. No connector lines.
 - **Milestones**: 1.5 px dashed `--acc-ink` vertical line, label at the top in `--acc-ink` bold `xs`.
 - **Plan health** (no dated work, no effort, no dates): italic `--warn` text with a `!` badge, inside the empty row.
 - **Capacity band (bars)**: per month two 9 px bars from a shared baseline — demand (filled; `--ok` if covered,

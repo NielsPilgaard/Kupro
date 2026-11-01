@@ -103,6 +103,7 @@ The workflows are `ci.yml` (build, test, publish images), `staging.yml` (E2E on 
 | Environment `production`, secret | `DOKPLOY_URL` | `https://<dokploy host>` | No trailing slash. |
 | Environment `production`, secret | `DOKPLOY_API_KEY` | Dokploy → Settings → Profile → API keys | |
 | Environment `production`, secret | `DOKPLOY_COMPOSE_ID` | from the compose app's URL in Dokploy | |
+| Environment `production`, deployment branches | Selected branches | `main` | Only runs from `main` may deploy. |
 
 Images go to GHCR as `ghcr.io/<owner>/kupro-{api,web,keycloak,site}:sha-<commit>` and `:latest`, plus
 `kupro-{postgres,backup-agent}:src-<hash>`. GHCR packages start private: either make them public, or add a GHCR

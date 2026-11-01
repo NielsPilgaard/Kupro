@@ -32,10 +32,10 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     public async Task Agent_creates_updates_and_closes_an_issue_with_only_the_cli()
     {
         var created = await RunJsonAsync("issue", "create", "--project", "cli", "--title", "Ship the CLI",
-            "--type", "task", "--priority", "high", "--label", "cli", "--effort", "3h", "--assignee", "me");
+            "--type", "task", "--priority", "high", "--label", "cli", "--effort", "3h");
         var key = created.GetProperty("key").GetString()!;
         key.ShouldBe("CLI-1");
-        created.GetProperty("assignee").GetProperty("name").GetString().ShouldBe("cli-agent");
+        (!created.TryGetProperty("assignee", out var assignee) || assignee.ValueKind == JsonValueKind.Null).ShouldBeTrue();
 
         var updated = await RunJsonAsync("issue", "update", key, "--state", "in-progress", "--add-label", "bug", "--effort", "none");
         updated.GetProperty("state").GetString().ShouldBe("inProgress");

@@ -11,7 +11,7 @@ namespace Kupro.Api.Features.Issues;
 /// <param name="Description">Markdown.</param>
 /// <param name="State">Workflow state; default backlog.</param>
 /// <param name="Priority">Default none.</param>
-/// <param name="Assignee">Member id, or <c>me</c>.</param>
+/// <param name="Assignee">Member id of a person, or <c>me</c>. Agents can't be assignees.</param>
 /// <param name="Parent">Parent issue key: a feature or epic (tasks), or an epic (features). In a bulk create, <c>#i</c>
 /// points to the i-th issue (0-based) earlier in the same request, so an epic and its children go in one call.</param>
 /// <param name="Effort">Estimate in hours.</param>
@@ -55,7 +55,7 @@ public enum IssueField
 /// <param name="Description">New Markdown description.</param>
 /// <param name="State">New workflow state.</param>
 /// <param name="Priority">New priority.</param>
-/// <param name="Assignee">Member id, or <c>me</c>.</param>
+/// <param name="Assignee">Member id of a person, or <c>me</c>. Agents can't be assignees.</param>
 /// <param name="Parent">New parent issue key.</param>
 /// <param name="Effort">New estimate in hours.</param>
 /// <param name="StartDate">New start date.</param>

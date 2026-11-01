@@ -28,8 +28,8 @@ An alternative to Jira, Azure DevOps, Linear, Trello and Monday, for teams that 
 - **Agents as teammates.** Everything you can do in the UI, an agent can do through the REST API, the `kupro` CLI or
   MCP. A CI test fails when one of them falls behind.
 - **Speed.** Every action answers in under 500 ms at p99, and the UI updates before the server replies.
-- **Planning that works.** The delivery plan shows every project's epics and features over the year, the
-  dependencies between them, and whether the people you have can deliver it.
+- **Planning that works.** The delivery plan shows every project's epics and features over the year, with their
+  estimates, and whether the people you have can deliver it. Focus on one epic to plan it in detail.
 - **A meeting agent** (in progress). Start it in standup; it listens and proposes the ticket changes it hears. You
   approve them, or let it apply them directly.
 - **Simplicity.** One fixed workflow, effort in hours, no custom-field sprawl. Features are cut before they confuse.
@@ -38,7 +38,7 @@ An alternative to Jira, Azure DevOps, Linear, Trello and Monday, for teams that 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/plan-dark.png">
-  <img src="docs/images/plan-light.png" alt="The delivery plan: epics and features per project over eight months, with dependencies, milestones and a capacity bar per month">
+  <img src="docs/images/plan-light.png" alt="The delivery plan: epics and features per project over eight months, with milestones and a capacity bar per month">
 </picture>
 
 ## Quickstart

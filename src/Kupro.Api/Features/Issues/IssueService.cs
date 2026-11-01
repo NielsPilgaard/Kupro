@@ -9,6 +9,7 @@ using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -280,9 +281,9 @@ public sealed class IssueService(
                 return parentError with { Detail = where + parentError.Detail };
             }
 
-            if (r.Assignee is not null && !assignees.ContainsKey(r.Assignee))
+            if (r.Assignee is not null && AssigneeError(assignees, r.Assignee, where) is { } assigneeError)
             {
-                return new IssueError("assignee_not_found", $"{where}No active member {r.Assignee}.");
+                return assigneeError;
             }
 
             if (r.StartDate > r.DueDate)
@@ -302,60 +303,82 @@ public sealed class IssueService(
             }
         }
 
-        var numbers = new Dictionary<Guid, int>();
-        foreach (var group in requests.GroupBy(r => projects[r.Project.ToUpperInvariant()]))
-        {
-            var last = await ProjectService.AllocateIssueNumbersAsync(db, group.Key, group.Count(), ct);
-            numbers[group.Key] = last - group.Count();
-        }
-
-        var now = clock.GetUtcNow();
         var created = new List<Issue>(requests.Count);
-        foreach (var (r, index) in requests.Select((r, i) => (r, i)))
+        // Ids are fixed before the strategy runs, so a commit whose acknowledgement was lost is recognised by
+        // verifySucceeded instead of retried into duplicate issues with fresh numbers.
+        var ids = requests.Select(_ => Guid.CreateVersion7()).ToList();
+        // Retrying execution strategy: the transaction must run inside it as one retriable unit. The counter update locks
+        // each project row (in id order, so two batches cannot deadlock) until commit: concurrent creates in a column then
+        // read each other's top rank, and a failed save burns no issue numbers.
+        await db.Database.CreateExecutionStrategy().ExecuteAsync<object?, bool>(null, async (_, _, _) =>
         {
-            var projectKey = r.Project.ToUpperInvariant();
-            var projectId = projects[projectKey];
-            var number = ++numbers[projectId];
-            var issue = new Issue
+            db.ChangeTracker.Clear();
+            created.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            var numbers = new Dictionary<Guid, int>();
+            foreach (var group in requests.GroupBy(r => projects[r.Project.ToUpperInvariant()]).OrderBy(g => g.Key))
             {
-                Id = Guid.CreateVersion7(),
-                WorkspaceId = workspace.RequireWorkspaceId(),
-                ProjectId = projectId,
-                Number = number,
-                Key = $"{projectKey}-{number}",
-                Type = r.Type,
-                Title = r.Title.Trim(),
-                Description = r.Description,
-                State = r.State,
-                Priority = r.Priority,
-                AssigneeId = r.Assignee is null ? null : assignees[r.Assignee],
-                ParentId = r.Parent is null ? null
-                    : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
-                    : parents[NormalizeKey(r.Parent)].Id,
-                Effort = r.Effort,
-                StartDate = r.StartDate,
-                DueDate = r.DueDate,
-                // New issues go to the bottom of their column; the project counter is monotonic.
-                Rank = number,
-                SprintId = sprintIds[index],
-                CreatedById = workspace.MemberId,
-                CreatedAt = now,
-                UpdatedAt = now,
-                CompletedAt = IsClosed(r.State) ? now : null,
-            };
-            foreach (var labelId in await labels.ResolveAsync(db, r.Labels ?? [], ct))
-            {
-                issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+                var last = await ProjectService.AllocateIssueNumbersAsync(db, group.Key, group.Count(), ct);
+                numbers[group.Key] = last - group.Count();
             }
 
-            db.Issues.Add(issue);
-            activity.Record(db, issue.Id, "created");
-            created.Add(issue);
-        }
+            // New issues go on top of their column (project + state), in request order, so they are on its first page.
+            var ranks = new Dictionary<(Guid, IssueState), double>();
+            foreach (var group in requests.GroupBy(r => (projects[r.Project.ToUpperInvariant()], r.State)))
+            {
+                var (projectId, state) = group.Key;
+                var top = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MinAsync(i => (double?)i.Rank, ct) ?? 0;
+                ranks[group.Key] = top - group.Count() - 1;
+            }
 
-        await db.SaveChangesAsync(ct);
+            var now = clock.GetUtcNow();
+            foreach (var (r, index) in requests.Select((r, i) => (r, i)))
+            {
+                var projectKey = r.Project.ToUpperInvariant();
+                var projectId = projects[projectKey];
+                var number = ++numbers[projectId];
+                var issue = new Issue
+                {
+                    Id = ids[index],
+                    WorkspaceId = workspace.RequireWorkspaceId(),
+                    ProjectId = projectId,
+                    Number = number,
+                    Key = $"{projectKey}-{number}",
+                    Type = r.Type,
+                    Title = r.Title.Trim(),
+                    Description = r.Description,
+                    State = r.State,
+                    Priority = r.Priority,
+                    AssigneeId = r.Assignee is null ? null : assignees[r.Assignee].Id,
+                    ParentId = r.Parent is null ? null
+                        : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
+                        : parents[NormalizeKey(r.Parent)].Id,
+                    Effort = r.Effort,
+                    StartDate = r.StartDate,
+                    DueDate = r.DueDate,
+                    Rank = ++ranks[(projectId, r.State)],
+                    SprintId = sprintIds[index],
+                    CreatedById = workspace.MemberId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    CompletedAt = IsClosed(r.State) ? now : null,
+                };
+                foreach (var labelId in await labels.ResolveAsync(db, r.Labels ?? [], ct))
+                {
+                    issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+                }
 
-        var ids = created.Select(i => i.Id).ToList();
+                db.Issues.Add(issue);
+                activity.Record(db, issue.Id, "created");
+                created.Add(issue);
+            }
+
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return true;
+        }, async (_, _, _) => new ExecutionResult<bool>(await db.Issues.AnyAsync(i => i.Id == ids[0], ct), true), ct);
+
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
         var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
         await realtime.IssuesAsync(ordered, created: true);
@@ -464,13 +487,13 @@ public sealed class IssueService(
             if (c.Assignee is not null || clear.Contains(IssueField.Assignee))
             {
                 Guid? assigneeId = null;
-                if (!clear.Contains(IssueField.Assignee) && !assignees.TryGetValue(c.Assignee!, out var resolved))
+                if (!clear.Contains(IssueField.Assignee) && AssigneeError(assignees, c.Assignee!, where) is { } assigneeError)
                 {
-                    return new IssueError("assignee_not_found", $"{where}No active member {c.Assignee}.");
+                    return assigneeError;
                 }
                 else if (!clear.Contains(IssueField.Assignee))
                 {
-                    assigneeId = assignees[c.Assignee!];
+                    assigneeId = assignees[c.Assignee!].Id;
                 }
 
                 if (assigneeId != issue.AssigneeId)
@@ -767,17 +790,24 @@ public sealed class IssueService(
     private Guid? ResolveMemberShorthand(string value) =>
         value == Me ? workspace.MemberId : Guid.TryParse(value, out var id) ? id : null;
 
-    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member id; unknown values are left out.</summary>
-    private async Task<Dictionary<string, Guid>> ResolveAssigneesAsync(
+    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member; unknown values are left out.</summary>
+    private async Task<Dictionary<string, (Guid Id, MemberKind Kind)>> ResolveAssigneesAsync(
         KuproDbContext db, IEnumerable<string?> values, CancellationToken ct)
     {
         var wanted = values.OfType<string>().Distinct()
             .Select(v => (Value: v, Id: ResolveMemberShorthand(v))).Where(x => x.Id is not null).ToList();
         var ids = wanted.Select(x => x.Id!.Value).Distinct().ToList();
         var active = await db.Members.Where(m => ids.Contains(m.Id) && m.Status == MemberStatus.Active)
-            .Select(m => m.Id).ToListAsync(ct);
-        return wanted.Where(x => active.Contains(x.Id!.Value)).ToDictionary(x => x.Value, x => x.Id!.Value);
+            .ToDictionaryAsync(m => m.Id, m => m.Kind, ct);
+        return wanted.Where(x => active.ContainsKey(x.Id!.Value))
+            .ToDictionary(x => x.Value, x => (x.Id!.Value, active[x.Id!.Value]));
     }
+
+    /// <summary>The assignee answers for the work, so it must be a person (ADR-008); agents act through activity instead.</summary>
+    private static IssueError? AssigneeError(Dictionary<string, (Guid Id, MemberKind Kind)> assignees, string value, string where) =>
+        !assignees.TryGetValue(value, out var member) ? new IssueError("assignee_not_found", $"{where}No active member {value}.")
+        : member.Kind == MemberKind.Agent ? new IssueError("assignee_not_human", $"{where}Agents can't be assignees; assign the person responsible.")
+        : null;
 
     /// <summary>Applies label replace/add/remove; returns the change for the activity log, or null if unchanged.</summary>
     private async Task<FieldChange?> ApplyLabelsAsync(

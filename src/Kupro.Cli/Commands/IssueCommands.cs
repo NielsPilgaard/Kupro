@@ -328,7 +328,7 @@ internal static class IssueCommands
         public Option<IssuePriority?> Priority { get; } = Cli.EnumOption<IssuePriority>("--priority", "Priority");
         public Option<string?> Description { get; } = new("--description", "-d") { Description = "Markdown description." };
         public Option<string?> DescriptionFile { get; } = new("--description-file") { Description = "Read the description from a file, or - for stdin." };
-        public Option<string?> Assignee { get; } = new("--assignee", "-a") { Description = "Member id or `me`." };
+        public Option<string?> Assignee { get; } = new("--assignee", "-a") { Description = "Member id of a person, or `me`. Agents can't be assignees." };
         public Option<string?> Parent { get; } = new("--parent") { Description = "Parent issue key." };
         public Option<string?> Effort { get; } = new("--effort", "-e") { Description = "Estimate in hours, e.g. 6 or 1.5." };
         public Option<string?> Start { get; } = new("--start") { Description = "Start date, YYYY-MM-DD." };

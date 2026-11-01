@@ -25,7 +25,7 @@ and delivery dates over the year and shows whether the team you have can deliver
 ## Target customer
 
 - **v1**: dev teams (2–30 people) at Danish/EU startups and scaleups who care about data sovereignty and speed.
-- **Later**: public sector / enterprise leaving Jira (needs self-hosting, SSO, Jira importer).
+- **Later**: public sector / enterprise leaving Jira (needs self-hosting, SSO).
 
 ## Principles (in priority order)
 
@@ -48,13 +48,14 @@ and delivery dates over the year and shows whether the team you have can deliver
 | Meeting agent: suggest mode by default, full auto opt-in, within a monthly AI budget ([task 015](../tasks/015-meeting-agent.md), [ADR-013](adr/ADR-013-seats-billing.md)) | Self-hosting package |
 | Members page: roles, free guests, billing access ([ADR-013](adr/ADR-013-seats-billing.md)) | Billing (subscriptions, invoices) |
 | Workspace export: everything, at any time ([task 016](../tasks/completed/016-workspace-export.md)) | |
+| Import from Jira, Azure DevOps and CSV, re-runnable until cutover ([ADR-019](adr/ADR-019-import.md)) | Two-way sync with other trackers |
 | Public website: landing, pricing, legal pages ([ADR-017](adr/ADR-017-public-site.md)) | |
 | English + Danish UI ([ADR-011](adr/ADR-011-i18n.md)) | |
 
 ## Integrations
 
 - **Git**: GitHub first (link `KEY-123` in branch/PR → link + state transitions), then GitLab, Gitea, Bitbucket.
-- **Import**: GitHub Issues and Linear first (startup audience), then Jira and Azure DevOps.
+- **Import**: Jira and Azure DevOps first, then Linear and Trello, then GitHub Issues, Monday and YouTrack ([ADR-019](adr/ADR-019-import.md)).
 
 ## After v1
 

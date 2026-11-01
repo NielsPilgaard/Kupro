@@ -23,6 +23,7 @@
     "edit": "Edit",
     "cancel": "Cancel",
     "loading": "Loading…",
+    "retry": "Try again",
     "save": "Save"
   },
   "nav": {
@@ -114,6 +115,13 @@
     "emptyProject": "No issues yet. Press C to create one.",
     "emptyMine": "Nothing assigned to you, {{name}}.",
     "sprint": "Sprint",
+    "subtasks": "Subtasks",
+    "noSubtasks": "No subtasks.",
+    "childrenDone": "{{done}} of {{total}} done",
+    "planning": "Planning",
+    "sections": "Sections",
+    "widen": "Widen panel",
+    "narrow": "Narrow panel",
     "noSprint": "No sprint"
   },
   "errors": {
@@ -123,6 +131,20 @@
     "issueNotFound": "{{key}} doesn't exist or you can't see it.",
     "loadFailed": "Couldn't load issues.",
     "relationFailed": "Couldn't add the relation. Check the issue key."
+  },
+  "myIssues": {
+    "open": "Open",
+    "dueSoon": "Due within 7 days",
+    "overdue": "{{count}} overdue",
+    "remaining": "Effort left",
+    "recentlyDone": "Done, last 14 days"
+  },
+  "picker": {
+    "move": "move",
+    "choose": "select",
+    "type": "Change type…",
+    "sprint": "Move to sprint…",
+    "relation": "Relation type…"
   },
   "palette": {
     "title": "Command palette",
@@ -227,7 +249,7 @@
     "addMilestone": "Add milestone",
     "noProjects": "Create a project to start planning.",
     "selectedMonth": "Selected month",
-    "noDatedWork": "No dated work in this horizon. Drag in this row to add a feature.",
+    "noDatedWork": "No dated work in the horizon. Drag in the row to add an epic.",
     "undated_one": "{{count}} card without dates",
     "undated_other": "{{count}} cards without dates",
     "noEffort_one": "{{count}} without effort",
@@ -253,6 +275,21 @@
     "fromMonth": "From month",
     "removeStep": "Remove",
     "addStep": "Add a step",
+    "tree": "Project / epic / feature",
+    "noEpic": "No epic",
+    "fold": "Collapse",
+    "unfold": "Expand",
+    "foldAll": "Collapse all",
+    "unfoldAll": "Expand all",
+    "focus": "Focus",
+    "focusPlaceholder": "Find an epic…",
+    "allEpics": "All epics",
+    "focusEpic": "Focus on {{key}}",
+    "noDates": "No dates",
+    "featuresDone": "{{done}} of {{total}} features done",
+    "dragToDate": "Drag to set dates",
+    "newEpic": "New epic {{from}} to {{to}}, type a title and press Enter",
+    "newEpicLabel": "New epic's title",
     "save": "Save"
   },
   "feed": {

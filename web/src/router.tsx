@@ -78,11 +78,12 @@ const planRoute = createRoute({
   path: '/plan',
   component: PlanPage,
   // Horizon, zoom and projects live in the URL (docs/delivery-plan.md: no plan entity).
-  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string; zoom?: Zoom; project?: string; issue?: string; meeting?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { from?: string; to?: string; zoom?: Zoom; project?: string; epic?: string; issue?: string; meeting?: string } => ({
     ...(typeof search.from === 'string' ? { from: search.from } : {}),
     ...(typeof search.to === 'string' ? { to: search.to } : {}),
     ...(search.zoom === 'month' || search.zoom === 'quarter' || search.zoom === 'year' ? { zoom: search.zoom } : {}),
     ...(typeof search.project === 'string' ? { project: search.project } : {}),
+    ...(typeof search.epic === 'string' ? { epic: search.epic } : {}),
     ...withIssue(search),
   }),
 });

@@ -235,13 +235,15 @@ public sealed class WorkspaceService(
     }
 
     /// <summary>Workspaces the user is an active member of.</summary>
-    public async Task<IReadOnlyList<WorkspaceSummary>> ListMineAsync(Guid userId, CancellationToken ct)
+    /// <param name="tokenWorkspaceId">The workspace the caller's API token is limited to; it lists only that one.</param>
+    public async Task<IReadOnlyList<WorkspaceSummary>> ListMineAsync(Guid userId, Guid? tokenWorkspaceId, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         // Spans workspaces by design: the list a user picks a workspace from. Restricted to the user's own memberships.
         return await (
                 from m in db.Members.IgnoreQueryFilters([KuproDbContext.TenantFilter]).AsNoTracking()
                 where m.UserId == userId && m.Kind == MemberKind.Human && m.Status == MemberStatus.Active
+                where tokenWorkspaceId == null || m.WorkspaceId == tokenWorkspaceId
                 join w in db.Workspaces on m.WorkspaceId equals w.Id
                 orderby w.Name
                 select new WorkspaceSummary(w.Id, w.Slug, w.Name, m.Role))

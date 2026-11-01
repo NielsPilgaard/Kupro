@@ -71,7 +71,8 @@ public sealed class KuproApiFactory(PostgresFixture postgres, IReadOnlyDictionar
     }
 
     /// <summary>A client authenticated as a Keycloak user (created on first request).</summary>
-    public HttpClient CreateUserClient(TestUser user) => CreateBearerClient(CreateJwt(user));
+    /// <param name="clientId">The realm client the token was issued to (<c>azp</c>); not one of ours for a DCR client.</param>
+    public HttpClient CreateUserClient(TestUser user, string clientId = "web") => CreateBearerClient(CreateJwt(user, clientId));
 
     public HttpClient CreateBearerClient(string bearer)
     {
@@ -80,7 +81,7 @@ public sealed class KuproApiFactory(PostgresFixture postgres, IReadOnlyDictionar
         return client;
     }
 
-    public static string CreateJwt(TestUser user) =>
+    public static string CreateJwt(TestUser user, string clientId = "web") =>
         new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = Issuer,
@@ -90,6 +91,7 @@ public sealed class KuproApiFactory(PostgresFixture postgres, IReadOnlyDictionar
             Subject = new ClaimsIdentity(
             [
                 new Claim("sub", user.Subject),
+                new Claim("azp", clientId),
                 new Claim("email", user.Email),
                 new Claim("email_verified", "true", ClaimValueTypes.Boolean),
                 new Claim("name", user.Name),

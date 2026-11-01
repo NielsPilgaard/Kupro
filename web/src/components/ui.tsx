@@ -1,3 +1,4 @@
+import { Layers, Puzzle, SquareCheck, type LucideIcon } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, IssueState, IssueType, MemberRef } from '../api/gen/types.gen';
@@ -58,6 +59,18 @@ export function TypeTag({ type }: { type: IssueType }) {
       {t(`type.${type}`)}
     </span>
   );
+}
+
+const typeIcon: Record<IssueType, { Icon: LucideIcon; tone: string }> = {
+  task: { Icon: SquareCheck, tone: 'text-mute' },
+  feature: { Icon: Puzzle, tone: 'text-acc-ink' },
+  epic: { Icon: Layers, tone: 'text-rev' },
+};
+
+/** 14 px glyph per type, for pickers and property rows; same tones as TypeTag. */
+export function TypeIcon({ type }: { type: IssueType }) {
+  const { Icon, tone } = typeIcon[type];
+  return <Icon size={14} strokeWidth={1.5} aria-hidden="true" className={`shrink-0 ${tone}`} />;
 }
 
 export function LabelPill({ name }: { name: string }) {

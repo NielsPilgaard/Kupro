@@ -126,7 +126,11 @@ export function NewProjectPage() {
 }
 
 function Centered({ children }: { children: ReactNode }) {
-  return <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 p-4">{children}</main>;
+  return (
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 p-4 2xl:max-w-lg 3xl:max-w-xl 3xl:gap-8">
+      {children}
+    </main>
+  );
 }
 
 function SimpleForm(props: {
@@ -141,23 +145,23 @@ function SimpleForm(props: {
 }) {
   return (
     <form
-      className="flex w-full flex-col gap-2"
+      className="flex w-full flex-col gap-2 2xl:gap-3"
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
         props.onSubmit();
       }}
     >
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-semibold">{props.label}</span>
+        <span className="text-sm font-semibold 2xl:text-md">{props.label}</span>
         <input
           autoFocus
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
-          className="h-[var(--control)] rounded-r1 border border-line bg-panel px-2"
+          className="h-[var(--control)] rounded-r1 border border-line bg-panel px-2 2xl:h-10 2xl:px-3 2xl:text-lg"
         />
       </label>
-      <p className={`text-sm ${props.error ? 'text-bad' : 'text-mute'}`}>{props.error ?? props.hint}</p>
-      <Button variant="primary" type="submit" disabled={props.busy} className="self-start">
+      <p className={`text-sm 2xl:text-md ${props.error ? 'text-bad' : 'text-mute'}`}>{props.error ?? props.hint}</p>
+      <Button variant="primary" type="submit" disabled={props.busy} className="self-start 2xl:h-10 2xl:px-4 2xl:text-md">
         {props.submit}
       </Button>
     </form>

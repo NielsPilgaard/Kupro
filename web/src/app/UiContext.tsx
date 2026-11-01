@@ -17,6 +17,9 @@ interface UiState {
   /** A view can take over `C` (the plan creates in the selected month); null restores the issue dialog. */
   createOverride: (() => void) | null;
   setCreateOverride(fn: (() => void) | null): void;
+  /** The open issue panel takes over S/A/P/L with its inline pickers; returns false to fall back to the palette. */
+  pickerOverride: ((page: PalettePage) => boolean) | null;
+  setPickerOverride(fn: ((page: PalettePage) => boolean) | null): void;
 }
 
 const UiContext = createContext<UiState | null>(null);
@@ -36,6 +39,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [createOverride, setOverride] = useState<(() => void) | null>(null);
   // Stable, so views can set it from an effect without re-running it. Functions in state must be wrapped.
   const setCreateOverride = useCallback((fn: (() => void) | null) => setOverride(() => fn), []);
+  const [pickerOverride, setPicker] = useState<((page: PalettePage) => boolean) | null>(null);
+  const setPickerOverride = useCallback((fn: ((page: PalettePage) => boolean) | null) => setPicker(() => fn), []);
 
   const value = useMemo<UiState>(
     () => ({
@@ -50,8 +55,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
       toggleSidebar: () => setSidebarCollapsed((c) => !c),
       createOverride,
       setCreateOverride,
+      pickerOverride,
+      setPickerOverride,
     }),
-    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride],
+    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride, pickerOverride, setPickerOverride],
   );
 
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;

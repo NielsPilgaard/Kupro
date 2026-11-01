@@ -28,6 +28,7 @@ const paths: Record<Locale, Record<Page, string>> = {
   },
 };
 
+export const pages = Object.keys(paths.en) as Page[];
 export const t = (locale: Locale): Copy => copy[locale];
 export const path = (locale: Locale, page: Page): string => paths[locale][page];
 export const other = (locale: Locale): Locale => (locale === 'en' ? 'da' : 'en');

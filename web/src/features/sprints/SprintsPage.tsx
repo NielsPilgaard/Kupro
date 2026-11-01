@@ -10,7 +10,7 @@ import {
   startSprintMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
 import type { SprintResponse } from '../../api/gen/types.gen';
-import { useIssues } from '../../api/issues';
+import { useAllIssues } from '../../api/issues';
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
@@ -79,7 +79,8 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
   const qc = useQueryClient();
   const toast = useToast();
   const [closing, setClosing] = useState(false);
-  const { data } = useIssues(workspace, { sprint: sprint.id, sort: 'rank' });
+  // The close prompt counts every unfinished issue, so the whole sprint is loaded; the board pages per column.
+  const { data, isPending, isError } = useAllIssues(workspace, { sprint: sprint.id, sort: 'rank' });
   const close = useMutation({
     ...closeSprintMutation(),
     onSuccess: (result) => {
@@ -115,13 +116,13 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
           <span className="flex-1">{t('sprint.closePrompt', { count: unfinished })}</span>
           <Button
             variant="primary"
-            disabled={!hasNext || close.isPending}
+            disabled={!hasNext || isPending || isError || close.isPending}
             title={hasNext ? undefined : t('sprint.noNext')}
             onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'next' } })}
           >
             {t('sprint.toNext')}
           </Button>
-          <Button disabled={close.isPending} onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'backlog' } })}>
+          <Button disabled={isPending || isError || close.isPending} onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'backlog' } })}>
             {t('sprint.toBacklog')}
           </Button>
           <Button variant="ghost" onClick={() => setClosing(false)}>
@@ -129,7 +130,7 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
           </Button>
         </div>
       )}
-      <div className="min-h-0 flex-1">{data && <Board workspace={workspace} issues={data.items} />}</div>
+      <div className="min-h-0 flex-1"><Board workspace={workspace} filters={{ sprint: sprint.id, sort: 'rank' }} /></div>
     </section>
   );
 }

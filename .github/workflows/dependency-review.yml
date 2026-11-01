@@ -1,0 +1,22 @@
+name: Dependency review
+
+# Fails a PR that adds or bumps a dependency with a known vulnerability (moderate or worse). Dependabot alerts cover
+# the dependencies already on main.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate

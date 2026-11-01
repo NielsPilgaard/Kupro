@@ -47,7 +47,7 @@ public sealed partial class KuproTools(
     {
         if (workspace is null)
         {
-            return await workspaces.ListMineAsync(scope.UserId, ct);
+            return await workspaces.ListMineAsync(scope.UserId, scope.TokenWorkspaceId, ct);
         }
 
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);

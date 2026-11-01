@@ -13,7 +13,7 @@ import { IssuePanel } from '../features/issues/IssuePanel';
 import { MeetingPanel } from '../features/meetings/MeetingPanel';
 import { useShortcuts } from '../lib/shortcuts';
 import { projectColorClass } from '../lib/issues';
-import { useUi } from './UiContext';
+import { useUi, type PalettePage } from './UiContext';
 
 /** Sidebar 212 px + topbar 48 px + scrolling content; the shell itself never scrolls (design guide). */
 export function AppShell() {
@@ -30,14 +30,16 @@ export function AppShell() {
     if (me && me.locale !== i18n.language) void i18n.changeLanguage(me.locale);
   }, [me, i18n]);
 
+  const pickFor = (page: PalettePage) => ui.activeKey && !ui.pickerOverride?.(page) && ui.openPalette(page);
+
   useShortcuts({
     'mod+k': () => ui.openPalette(),
     c: () => (ui.createOverride ? ui.createOverride() : ui.setCreateOpen(true)),
     '[': () => ui.toggleSidebar(),
-    s: () => ui.activeKey && ui.openPalette('state'),
-    a: () => ui.activeKey && ui.openPalette('assign'),
-    p: () => ui.activeKey && ui.openPalette('priority'),
-    l: () => ui.activeKey && ui.openPalette('label'),
+    s: () => pickFor('state'),
+    a: () => pickFor('assign'),
+    p: () => pickFor('priority'),
+    l: () => pickFor('label'),
     escape: () => {
       if (search.issue) void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: undefined }) });
     },
@@ -63,7 +65,8 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
   const { data: workspaces } = useQuery(listWorkspacesOptions());
   const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
   const current = workspaces?.find((w) => w.slug === workspace);
-  const nav = 'flex h-[var(--nav-item)] items-center gap-2 rounded-r1 px-2 text-side-ink hover:bg-side-sel';
+  const nav =
+    'flex h-[var(--nav-item)] items-center gap-2 rounded-r1 px-2 text-side-ink hover:bg-side-sel 3xl:gap-2.5 3xl:text-md 3xl:[&>svg]:size-[18px]';
   const active = { className: 'bg-side-sel font-semibold' };
 
   return (
@@ -71,7 +74,7 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
       aria-label={t('nav.label')}
       className={`flex shrink-0 flex-col gap-4 bg-side p-2 text-side-ink transition-[width] duration-[var(--dur-1)] ${collapsed ? 'w-[52px]' : 'w-[var(--sidebar)]'} max-sm:hidden`}
     >
-      <div className="flex h-9 items-center gap-2 px-1">
+      <div className="flex h-9 items-center gap-2 px-1 3xl:h-10 3xl:text-md">
         <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
           <rect x="3" y="6.5" width="17" height="5" rx="2.5" className="fill-side-ink" />
           <rect x="9" y="13.5" width="20" height="5" rx="2.5" className="fill-acc" />
@@ -116,7 +119,9 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto">
-        {!collapsed && <div className="px-2 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60">{t('nav.projects')}</div>}
+        {!collapsed && (
+          <div className="px-2 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60 3xl:text-sm">{t('nav.projects')}</div>
+        )}
         {projects?.map((p) => (
           <Link
             key={p.id}

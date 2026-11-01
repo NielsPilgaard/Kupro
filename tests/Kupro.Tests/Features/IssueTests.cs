@@ -188,8 +188,9 @@ public sealed class IssueTests(PostgresFixture postgres) : ApiTestBase(postgres)
     [Fact]
     public async Task Move_places_issue_between_neighbours_and_changes_state()
     {
-        var first = await CreateAsync(new("KUP", "First", State: IssueState.Todo));
+        // New issues go on top, so the lower one is created first.
         var second = await CreateAsync(new("KUP", "Second", State: IssueState.Todo));
+        var first = await CreateAsync(new("KUP", "First", State: IssueState.Todo));
         var moving = await CreateAsync(new("KUP", "Moving"));
 
         var moved = await ReadAsync<IssueSummary>(await _client.PostAsJsonAsync($"{Issues}/{moving.Key}/move",
@@ -198,6 +199,19 @@ public sealed class IssueTests(PostgresFixture postgres) : ApiTestBase(postgres)
         moved.State.ShouldBe(IssueState.Todo);
         var column = await ListAsync("?state=todo&sort=rank");
         column.Items.Select(i => i.Key).ShouldBe([first.Key, moving.Key, second.Key]);
+    }
+
+    [Fact]
+    public async Task New_issues_go_on_top_of_their_column_in_request_order()
+    {
+        var old = await CreateAsync(new("KUP", "Old", State: IssueState.Todo));
+        var created = await ReadAsync<List<IssueSummary>>(await _client.PostAsJsonAsync($"{Issues}/bulk",
+            new CreateIssuesRequest([new("KUP", "A", State: IssueState.Todo), new("KUP", "B", State: IssueState.Todo)]),
+            Json.Options, Ct), HttpStatusCode.Created);
+        var newest = await CreateAsync(new("KUP", "Newest", State: IssueState.Todo));
+
+        var column = await ListAsync("?state=todo&sort=rank");
+        column.Items.Select(i => i.Key).ShouldBe([newest.Key, created[0].Key, created[1].Key, old.Key]);
     }
 
     [Fact]
@@ -270,13 +284,30 @@ public sealed class IssueTests(PostgresFixture postgres) : ApiTestBase(postgres)
         using var agent = Factory.CreateBearerClient(token.Secret);
         agent.DefaultRequestHeaders.Add("X-Kupro-Client", "mcp");
 
-        var issue = await ReadAsync<IssueDetail>(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Triaged", Assignee: "me"), Json.Options, Ct),
+        var issue = await ReadAsync<IssueDetail>(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Triaged"), Json.Options, Ct),
             HttpStatusCode.Created);
 
         issue.CreatedBy.Kind.ShouldBe(MemberKind.Agent);
         issue.CreatedBy.Name.ShouldBe("triage-agent");
-        issue.Assignee!.Name.ShouldBe("triage-agent");
         (await ActivityAsync(issue.Id)).ShouldHaveSingleItem().Via.ShouldBe(Surface.Mcp);
+    }
+
+    [Fact]
+    public async Task Agents_cannot_be_assignees()
+    {
+        var token = await NewTokenAsync(_client, new("bot", ApiTokenKind.Agent, "triage-agent", null, _workspace.Slug));
+        using var agent = Factory.CreateBearerClient(token.Secret);
+        var issue = await CreateAsync(new("KUP", "Needs an owner"));
+
+        await ShouldBeProblemAsync(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Self-assigned", Assignee: "me"), Json.Options, Ct),
+            HttpStatusCode.BadRequest, "assignee_not_human");
+        await ShouldBeProblemAsync(await agent.PatchAsJsonAsync($"{Issues}/{issue.Key}", new UpdateIssueRequest(Assignee: "me"), Json.Options, Ct),
+            HttpStatusCode.BadRequest, "assignee_not_human");
+
+        var mine = await ReadAsync<IssueDetail>(await agent.PostAsJsonAsync(Issues, new CreateIssueRequest("KUP", "Mine to own"), Json.Options, Ct),
+            HttpStatusCode.Created);
+        await ShouldBeProblemAsync(await _client.PatchAsJsonAsync($"{Issues}/{mine.Key}", new UpdateIssueRequest(Assignee: mine.CreatedBy.Id.ToString()), Json.Options, Ct),
+            HttpStatusCode.BadRequest, "assignee_not_human");
     }
 
     [Fact]

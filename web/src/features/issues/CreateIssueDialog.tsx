@@ -84,6 +84,11 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
       aria-label={t('issue.new')}
       onClose={() => ui.setCreateOpen(false)}
       onKeyDown={(e) => {
+        // The shell's global Esc handler prevents the default, which would swallow the dialog's own cancel.
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          ui.setCreateOpen(false);
+        }
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           submit();
@@ -151,7 +156,7 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
               <option value="">{t('issue.unassigned')}</option>
               <option value="me">{t('issue.me')}</option>
               {members
-                ?.filter((m) => m.status === 'active')
+                ?.filter((m) => m.status === 'active' && m.kind === 'human')
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}

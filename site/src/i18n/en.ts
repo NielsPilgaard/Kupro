@@ -10,6 +10,9 @@ export const en = {
     pricingTitle: 'Pricing · Kupro',
     pricingDescription: '€9 per person a month or €90 a year. 30-day free trial with the meeting agent included. No card needed.',
     notFoundTitle: 'Page not found · Kupro',
+    /** Line under the headline on the social card (scripts/brand-images.ts), and the card's alt text. */
+    ogDetail: 'Issue tracker and planner. Fast, keyboard first, hosted in the EU.',
+    ogImageAlt: 'Kupro: Say it in standup. It’s in the tracker.',
   },
   nav: {
     label: 'Main',

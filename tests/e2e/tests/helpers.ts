@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Lands in a workspace with a project (creating both on a fresh account), signed in by auth.setup.ts. */
 export async function signInToProject(page: Page) {
@@ -31,4 +31,13 @@ export async function createIssue(page: Page, title: string) {
   const panel = page.getByRole('complementary');
   await expect(panel.getByLabel('Title')).toHaveValue(title);
   return (await panel.locator('header span.font-mono').textContent())!.trim();
+}
+
+/** Board columns and list groups page as they scroll: scrolls `container`'s loading sentinel until `target` has loaded. */
+export async function scrollUntilLoaded(container: Locator, target: Locator) {
+  await expect(async () => {
+    const more = container.getByText('Loading…');
+    if (await more.count()) await more.scrollIntoViewIfNeeded();
+    await expect(target).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
 }

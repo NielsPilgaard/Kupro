@@ -60,6 +60,13 @@ As above. Authorization (workspace membership, roles Owner/Member/Guest) lives i
   the realm. The login theme restyles `keycloak.v2` with the web app's tokens, CSS only, so every Keycloak page keeps
   working; the email theme replaces the layout and the main mails (EN/DA). The realm reads `${REALM_*}` from the
   environment on first import (client URLs, SMTP); dev users live in a separate file that only dev and E2E mount.
+- **IMP-006**: Anonymous DCR lets anyone register a client, and a client's mappers can put any value in a token. The
+  realm therefore lists every registration policy itself (Keycloak adds its defaults only to a realm with none),
+  including allowed mapper types (no hardcoded-claim, audience or user attribute/property mappers) and default
+  client scopes only. The API also trusts `email` and `email_verified` only from our own clients (`azp` `web`, `cli`,
+  `mcp`), because invites are matched on a verified email.
+- **IMP-007**: A token limited to one workspace stays inside it: it can't manage tokens, create workspaces or accept
+  invites, and lists only its own workspace. A token can't create a token that outlives it.
 
 ## Related Decisions
 
