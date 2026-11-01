@@ -4,9 +4,11 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -23,6 +25,13 @@ import { useHours } from '../../lib/format';
 import { boardStates, compareRank } from '../../lib/issues';
 
 const columnId = (state: IssueState) => `column:${state}`;
+
+/** The droppable under the pointer wins. Corners alone let the card's own slot beat a tall empty column it was dropped
+ *  into; corners stay the fallback for the gaps between columns and for the keyboard sensor (no pointer). */
+const collisionDetection: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  return hits.length > 0 ? hits : closestCorners(args);
+};
 
 /** Columns per state; cards in manual rank order. Dropping sends one move (state + neighbours). */
 export function Board({ workspace, issues }: { workspace: string; issues: IssueSummary[] }) {
@@ -64,7 +73,7 @@ export function Board({ workspace, issues }: { workspace: string; issues: IssueS
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="flex h-full gap-3 overflow-x-auto p-4" role="region" aria-label={t('views.board')}>
         {columns.map((column) => (
           <Column key={column.state} state={column.state} items={column.items} />
