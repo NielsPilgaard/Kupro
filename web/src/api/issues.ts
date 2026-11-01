@@ -1,11 +1,22 @@
-import { useMutation, useQuery, useQueryClient, type Query, type QueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type Query,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/Toasts';
+import { projectKeyOf } from '../lib/issues';
 import {
   createIssueMutation,
   getIssueOptions,
   getIssueQueryKey,
   listIssueActivityQueryKey,
+  listIssuesInfiniteOptions,
   listIssuesOptions,
   listMembersOptions,
   moveIssueMutation,
@@ -23,7 +34,7 @@ import type {
   UpdateIssueRequest,
 } from './gen/types.gen';
 
-type IssueFilters = NonNullable<ListIssuesData['query']>;
+export type IssueFilters = NonNullable<ListIssuesData['query']>;
 
 export function useIssues(workspace: string, query: IssueFilters) {
   return useQuery(listIssuesOptions({ path: { workspace }, query: { limit: 200, ...query } }));
@@ -50,6 +61,24 @@ export function useAllIssues(workspace: string, query: IssueFilters) {
   });
 }
 
+/** Options for one state's issues, a page at a time; also the key a handler reads the loaded pages back from. */
+export const stateIssuesOptions = (workspace: string, query: IssueFilters, state: IssueState) => ({
+  ...listIssuesInfiniteOptions({ path: { workspace }, query: { limit: 50, ...query, state: [state] } }),
+  // An object page param merges into the query; the first page simply has no cursor.
+  initialPageParam: { path: { workspace }, query: {} },
+  getNextPageParam: (last: IssuePage) => last.nextCursor ?? undefined,
+});
+
+/** Board columns and list groups page per state, so each one is complete up to where it has scrolled. */
+export function useStateIssues(workspace: string, query: IssueFilters, state: IssueState) {
+  return useInfiniteQuery(stateIssuesOptions(workspace, query, state));
+}
+
+/** Loaded items of a state's pages, read outside render (drag and keyboard handlers). */
+export function loadedStateIssues(qc: QueryClient, workspace: string, query: IssueFilters, state: IssueState) {
+  return listItems(qc.getQueryData(stateIssuesOptions(workspace, query, state).queryKey)).filter((i) => i.state === state);
+}
+
 export function useIssue(workspace: string, key: string | null) {
   return useQuery({ ...getIssueOptions({ path: { workspace, key: key ?? '' } }), enabled: !!key });
 }
@@ -60,15 +89,25 @@ export function useMembers(workspace: string) {
 
 export const isIssueList = (q: Query) => (q.queryKey[0] as { _id?: string } | undefined)?._id === 'listIssues';
 
+/** A cached issue list: one page (`useIssues`) or the loaded pages of an infinite list (`useStateIssues`). */
+export type IssueList = IssuePage | InfiniteData<IssuePage>;
+
+export const listItems = (list: IssueList | undefined): IssueSummary[] =>
+  !list ? [] : 'pages' in list ? list.pages.flatMap((p) => p.items) : list.items;
+
+export function mapList(list: IssueList, map: (items: IssueSummary[]) => IssueSummary[]): IssueList {
+  return 'pages' in list ? { ...list, pages: list.pages.map((p) => ({ ...p, items: map(p.items) })) } : { ...list, items: map(list.items) };
+}
+
 /** Snapshot of every cached issue list plus one detail, for rollback. */
-type Snapshot = { lists: [readonly unknown[], IssuePage | undefined][]; detail?: IssueDetail; detailKey: readonly unknown[] };
+type Snapshot = { lists: [QueryKey, IssueList | undefined][]; detail?: IssueDetail; detailKey: readonly unknown[] };
 
 async function snapshot(qc: QueryClient, workspace: string, key: string): Promise<Snapshot> {
   const detailKey = getIssueQueryKey({ path: { workspace, key } });
   await qc.cancelQueries({ predicate: isIssueList });
   await qc.cancelQueries({ queryKey: detailKey });
   return {
-    lists: qc.getQueriesData<IssuePage>({ predicate: isIssueList }),
+    lists: qc.getQueriesData<IssueList>({ predicate: isIssueList }),
     detail: qc.getQueryData<IssueDetail>(detailKey),
     detailKey,
   };
@@ -82,12 +121,33 @@ function restore(qc: QueryClient, snap: Snapshot | undefined) {
 
 /** Applies a change to every cached copy of an issue, so the new state appears in the same frame (ADR-003). */
 function patchEverywhere(qc: QueryClient, snap: Snapshot, key: string, patch: (i: IssueSummary) => IssueSummary) {
-  for (const [queryKey, page] of snap.lists) {
-    if (!page) continue;
-    qc.setQueryData<IssuePage>(queryKey, { ...page, items: page.items.map((i) => (i.key === key ? patch(i) : i)) });
+  const original = snap.lists.flatMap(([, list]) => listItems(list)).find((i) => i.key === key);
+  const patched = original && patch(original);
+  for (const [queryKey, list] of snap.lists) {
+    if (!list) continue;
+    const filter = (queryKey[0] as { query?: IssueFilters }).query ?? {};
+    qc.setQueryData<IssueList>(queryKey, place(mapList(list, (items) => items.map((i) => (i.key === key ? patch(i) : i))), filter, patched));
   }
   // The detail shares every summary field except parentKey, which a patch never changes.
   if (snap.detail) qc.setQueryData<IssueDetail>(snap.detailKey, { ...snap.detail, ...patch(snap.detail as unknown as IssueSummary) });
+}
+
+/** Filters a state-filtered list can check on a summary; a list with any other filter waits for the refetch instead. */
+const checkable = new Set(['state', 'project', 'sprint', 'sort', 'limit']);
+
+/** A state change moves the issue between state-filtered lists (board columns, list groups) in the same frame. */
+function place(list: IssueList, filter: IssueFilters, issue: IssueSummary | undefined): IssueList {
+  if (!issue || !filter.state) return list;
+  const fits = filter.state.includes(issue.state);
+  const present = listItems(list).some((i) => i.key === issue.key);
+  if (present && !fits) return mapList(list, (items) => items.filter((i) => i.key !== issue.key));
+  if (present || !fits || !Object.keys(filter).every((k) => checkable.has(k))) return list;
+  if (filter.project && !filter.project.includes(projectKeyOf(issue.key))) return list;
+  if (filter.sprint && filter.sprint !== issue.sprintId) return list;
+  // Prepending to the first page is enough: columns and groups sort what they show.
+  return 'pages' in list
+    ? { ...list, pages: list.pages.map((p, i) => (i === 0 ? { ...p, items: [issue, ...p.items] } : p)) }
+    : { ...list, items: [issue, ...list.items] };
 }
 
 function applyChanges(issue: IssueSummary, c: UpdateIssueRequest, members: MemberRef[] | undefined, me: string | undefined): IssueSummary {
@@ -151,7 +211,7 @@ export function useMoveIssue(workspace: string) {
     onMutate: async (vars: { path: { workspace: string; key: string }; body: MoveIssueRequest }) => {
       const snap = await snapshot(qc, workspace, vars.path.key);
       const rankOf = (key: string | null | undefined) =>
-        key ? snap.lists.flatMap(([, page]) => page?.items ?? []).find((i) => i.key === key)?.rank : undefined;
+        key ? snap.lists.flatMap(([, list]) => listItems(list)).find((i) => i.key === key)?.rank : undefined;
       const a = rankOf(vars.body.after);
       const b = rankOf(vars.body.before);
       patchEverywhere(qc, snap, vars.path.key, (i) => ({

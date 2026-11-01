@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Mic } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, getProjectOptions } from '../../api/gen/@tanstack/react-query.gen';
-import { useAllIssues, useIssues } from '../../api/issues';
+import { useAllIssues } from '../../api/issues';
 import { useStartMeeting } from '../../api/meetings';
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
@@ -19,7 +19,7 @@ export function ProjectIssuesPage() {
   const { workspace, project } = useParams({ strict: false }) as { workspace: string; project: string };
   const { view = 'list' } = useSearch({ strict: false }) as { view?: View };
   const { data: info } = useQuery(getProjectOptions({ path: { workspace, key: project } }));
-  const { data, isPending, isError } = useIssues(workspace, { project: [project], sort: view === 'board' ? 'rank' : 'updated' });
+  const filters = { project: [project] };
 
   const tabs = (
     <div role="tablist" aria-label={t('views.label')} className="flex rounded-r1 bg-sunk p-0.5">
@@ -42,14 +42,11 @@ export function ProjectIssuesPage() {
     <>
       <Topbar crumbs={[info?.name ?? project, t('views.issues')]} tabs={tabs} actions={<StartMeetingButton workspace={workspace} project={project} />} />
       <main className="min-h-0 flex-1 overflow-auto">
-        {isPending && <p className="p-8 text-center text-mute">{t('common.loading')}</p>}
-        {isError && <p className="p-8 text-center text-bad">{t('errors.loadFailed')}</p>}
-        {data &&
-          (view === 'board' ? (
-            <Board workspace={workspace} issues={data.items} />
-          ) : (
-            <IssueList issues={data.items} emptyText={t('issue.emptyProject')} />
-          ))}
+        {view === 'board' ? (
+          <Board workspace={workspace} filters={{ ...filters, sort: 'rank' }} />
+        ) : (
+          <IssueList workspace={workspace} filters={filters} emptyText={t('issue.emptyProject')} />
+        )}
       </main>
     </>
   );

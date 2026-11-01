@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { getAccessToken } from '../auth/auth';
 import { useToast } from '../components/Toasts';
 import { getIssueQueryKey, getMeOptions, listIssueActivityQueryKey } from './gen/@tanstack/react-query.gen';
-import type { IssuePage, IssueSummary, Surface } from './gen/types.gen';
-import { isIssueList, useMembers } from './issues';
+import type { IssueSummary, Surface } from './gen/types.gen';
+import { isIssueList, mapList, useMembers, type IssueList } from './issues';
 import { isMeetingQuery } from './meetings';
 
 /** Server pushes from the workspace hub (task 012); shapes mirror WorkspaceHub.cs. */
@@ -68,8 +68,8 @@ export function useRealtime(workspace: string, openIssue: string | undefined) {
 
     connection.on('issues', (e: IssuesEvent) => {
       const changed = new Map(e.items.map((i) => [i.id, i]));
-      qc.setQueriesData<IssuePage>({ predicate: isIssueList }, (page) =>
-        page ? { ...page, items: page.items.map((i) => changed.get(i.id) ?? i) } : page,
+      qc.setQueriesData<IssueList>({ predicate: isIssueList }, (list) =>
+        list ? mapList(list, (items) => items.map((i) => changed.get(i.id) ?? i)) : list,
       );
       // Own changes already refetch through the mutation; others may move issues in or out of filtered lists.
       if (e.created || !isMe(e.actorId)) void qc.invalidateQueries({ predicate: isIssueList });

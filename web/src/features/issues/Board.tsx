@@ -14,12 +14,14 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMoveIssue } from '../../api/issues';
+import { listItems, loadedStateIssues, useMoveIssue, useStateIssues, type IssueFilters } from '../../api/issues';
 import type { IssueState, IssueSummary } from '../../api/gen/types.gen';
 import { useUi } from '../../app/UiContext';
+import { LoadMore } from '../../components/LoadMore';
 import { Avatar, Labels, StatusRing, TypeTag } from '../../components/ui';
 import { useHours } from '../../lib/format';
 import { boardStates, compareRank } from '../../lib/issues';
@@ -33,9 +35,13 @@ const collisionDetection: CollisionDetection = (args) => {
   return hits.length > 0 ? hits : closestCorners(args);
 };
 
-/** Columns per state; cards in manual rank order. Dropping sends one move (state + neighbours). */
-export function Board({ workspace, issues }: { workspace: string; issues: IssueSummary[] }) {
+/**
+ * Columns per state; cards in manual rank order. Each column pages on its own, so it is complete up to where it has
+ * scrolled. Dropping sends one move (state + neighbours).
+ */
+export function Board({ workspace, filters }: { workspace: string; filters: IssueFilters }) {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const move = useMoveIssue(workspace);
   const [dragging, setDragging] = useState<IssueSummary | null>(null);
   const sensors = useSensors(
@@ -43,18 +49,19 @@ export function Board({ workspace, issues }: { workspace: string; issues: IssueS
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const columns = useMemo(
-    () => boardStates.map((state) => ({ state, items: issues.filter((i) => i.state === state).sort(compareRank) })),
-    [issues],
-  );
+  // Read from the cache at event time: the columns own their queries.
+  const loaded = () =>
+    boardStates.map((state) => ({ state, items: loadedStateIssues(qc, workspace, filters, state).sort(compareRank) }));
 
   function onDragStart(event: DragStartEvent) {
-    setDragging(issues.find((i) => i.key === event.active.id) ?? null);
+    setDragging(loaded().flatMap((c) => c.items).find((i) => i.key === event.active.id) ?? null);
   }
 
   function onDragEnd({ active, over }: DragEndEvent) {
     setDragging(null);
     if (!over || active.id === over.id) return;
+    const columns = loaded();
+    const issues = columns.flatMap((c) => c.items);
     const issue = issues.find((i) => i.key === active.id);
     if (!issue) return;
 
@@ -75,8 +82,8 @@ export function Board({ workspace, issues }: { workspace: string; issues: IssueS
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="flex h-full gap-3 overflow-x-auto p-4" role="region" aria-label={t('views.board')}>
-        {columns.map((column) => (
-          <Column key={column.state} state={column.state} items={column.items} />
+        {boardStates.map((state) => (
+          <Column key={state} workspace={workspace} filters={filters} state={state} />
         ))}
       </div>
       <DragOverlay dropAnimation={null}>{dragging && <Card issue={dragging} overlay />}</DragOverlay>
@@ -94,9 +101,12 @@ function nextKey(columns: { state: IssueState; items: IssueSummary[] }[], issue:
   return items[items.findIndex((i) => i.key === issue.key) + 1]?.key ?? null;
 }
 
-function Column({ state, items }: { state: IssueState; items: IssueSummary[] }) {
+function Column({ workspace, filters, state }: { workspace: string; filters: IssueFilters; state: IssueState }) {
   const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: columnId(state) });
+  const pages = useStateIssues(workspace, filters, state);
+  // A realtime update changes a card's state in place; it leaves this column at once and joins its new one on refetch.
+  const items = listItems(pages.data).filter((i) => i.state === state).sort(compareRank);
   return (
     <section
       ref={setNodeRef}
@@ -107,7 +117,10 @@ function Column({ state, items }: { state: IssueState; items: IssueSummary[] }) 
       <h2 className="flex items-center gap-2 px-1 py-1 font-semibold">
         <StatusRing state={state} />
         {t(`state.${state}`)}
-        <span className="font-normal text-mute">{items.length}</span>
+        <span className="font-normal text-mute">
+          {items.length}
+          {pages.hasNextPage && '+'}
+        </span>
       </h2>
       <SortableContext items={items.map((i) => i.key)} strategy={verticalListSortingStrategy}>
         {/* Each column scrolls on its own; the padding keeps the active card's outline inside the scroll box. */}
@@ -115,6 +128,7 @@ function Column({ state, items }: { state: IssueState; items: IssueSummary[] }) 
           {items.map((issue) => (
             <SortableCard key={issue.key} issue={issue} />
           ))}
+          <LoadMore {...pages} />
         </div>
       </SortableContext>
     </section>

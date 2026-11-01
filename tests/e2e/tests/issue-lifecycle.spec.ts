@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createIssue, signInToProject } from './helpers';
+import { createIssue, scrollUntilLoaded, signInToProject } from './helpers';
 
 test('create, move and close an issue, keyboard first', async ({ page }) => {
   await signInToProject(page);
@@ -15,8 +15,8 @@ test('create, move and close an issue, keyboard first', async ({ page }) => {
   await page.getByRole('tab', { name: 'Board' }).click();
   const card = page.locator(`article[data-key="${key}"]`);
   const target = page.locator('section[data-state="inProgress"]');
+  // New issues go on top of their column; scrolling still guards against a short window.
   await expect(card).toBeVisible();
-  // Earlier runs' issues can push the new card below the fold.
   await card.scrollIntoViewIfNeeded();
   const from = (await card.boundingBox())!;
   const to = (await target.boundingBox())!;
@@ -43,5 +43,7 @@ test('create, move and close an issue, keyboard first', async ({ page }) => {
 
   // The change survives a reload (it reached the API, not just the cache).
   await page.reload();
-  await expect(page.locator(`section[data-state="done"] article[data-key="${key}"]`)).toBeVisible();
+  // The card keeps its rank, which can put it past the Done column's first page after earlier runs.
+  const done = page.locator('section[data-state="done"]');
+  await scrollUntilLoaded(done, done.locator(`article[data-key="${key}"]`));
 });

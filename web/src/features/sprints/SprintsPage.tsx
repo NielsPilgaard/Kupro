@@ -10,7 +10,7 @@ import {
   startSprintMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
 import type { SprintResponse } from '../../api/gen/types.gen';
-import { useIssues } from '../../api/issues';
+import { useAllIssues } from '../../api/issues';
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
@@ -79,7 +79,8 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
   const qc = useQueryClient();
   const toast = useToast();
   const [closing, setClosing] = useState(false);
-  const { data } = useIssues(workspace, { sprint: sprint.id, sort: 'rank' });
+  // The close prompt counts every unfinished issue, so the whole sprint is loaded; the board pages per column.
+  const { data } = useAllIssues(workspace, { sprint: sprint.id, sort: 'rank' });
   const close = useMutation({
     ...closeSprintMutation(),
     onSuccess: (result) => {
@@ -129,7 +130,7 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
           </Button>
         </div>
       )}
-      <div className="min-h-0 flex-1">{data && <Board workspace={workspace} issues={data.items} />}</div>
+      <div className="min-h-0 flex-1"><Board workspace={workspace} filters={{ sprint: sprint.id, sort: 'rank' }} /></div>
     </section>
   );
 }
