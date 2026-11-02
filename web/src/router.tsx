@@ -6,6 +6,7 @@ import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/Is
 import { MembersPage } from './features/members/MembersPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { PlanPage, type Zoom } from './features/plan/PlanPage';
+import { SprintReportPage } from './features/sprints/SprintReportPage';
 import { SprintsPage } from './features/sprints/SprintsPage';
 import { HomePage, NewProjectPage, WorkspaceIndexPage } from './features/workspace/WorkspacePages';
 import { AuthCallbackError } from './routes/AuthCallbackError';
@@ -73,6 +74,12 @@ const sprintsRoute = createRoute({
     ...withIssue(search),
   }),
 });
+const sprintReportRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/sprints/$sprintId',
+  component: SprintReportPage,
+  validateSearch: withIssue,
+});
 const planRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/plan',
@@ -102,7 +109,7 @@ const routeTree = rootRoute.addChildren([
   authedRoute.addChildren([
     homeRoute,
     settingsRoute,
-    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, membersRoute, myIssuesRoute, sprintsRoute, planRoute, projectRoute]),
+    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, membersRoute, myIssuesRoute, sprintsRoute, sprintReportRoute, planRoute, projectRoute]),
   ]),
 ]);
 

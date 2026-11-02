@@ -596,6 +596,18 @@ function Relations({ workspace, issue }: { workspace: string; issue: IssueDetail
   return (
     <section className="flex flex-col gap-1">
       <h3 className="text-sm font-semibold text-mute">{t('issue.relations')}</h3>
+      {issue.splitFrom && (
+        <div className="flex items-center gap-2">
+          <span className="w-28 shrink-0 text-sm text-mute">{t('issue.splitFrom')}</span>
+          <IssueLink issueRef={issue.splitFrom} />
+        </div>
+      )}
+      {issue.continuedIn && (
+        <div className="flex items-center gap-2">
+          <span className="w-28 shrink-0 text-sm text-mute">{t('issue.continuedIn')}</span>
+          <IssueLink issueRef={issue.continuedIn} />
+        </div>
+      )}
       {issue.relations.map((r) => (
         <div key={r.id} className="group flex items-center gap-2">
           <span className="flex w-28 shrink-0 items-center gap-1.5 text-sm text-mute">

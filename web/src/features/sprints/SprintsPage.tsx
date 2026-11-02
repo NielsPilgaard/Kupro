@@ -1,21 +1,20 @@
 import { useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query';
-import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  closeSprintMutation,
   createSprintMutation,
   listProjectsOptions,
   listSprintsOptions,
   startSprintMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
 import type { SprintResponse } from '../../api/gen/types.gen';
-import { useAllIssues } from '../../api/issues';
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
 import { useDate, useHours } from '../../lib/format';
 import { Board } from '../issues/Board';
+import { daysBetween } from './sprintClose';
 
 const isSprintOrIssueQuery = (q: Query) => {
   const id = (q.queryKey[0] as { _id?: string } | undefined)?._id;
@@ -35,6 +34,7 @@ export function SprintsPage() {
   });
   const active = sprints?.find((s) => s.state === 'active');
   const planned = sprints?.filter((s) => s.state === 'planned') ?? [];
+  const closed = sprints?.filter((s) => s.state === 'closed').reverse() ?? [];
 
   const tabs = (
     <div role="tablist" aria-label={t('nav.projects')} className="flex rounded-r1 bg-sunk p-0.5">
@@ -60,11 +60,12 @@ export function SprintsPage() {
         {project && (
           <>
             {active ? (
-              <ActiveSprint workspace={workspace} sprint={active} hasNext={planned.length > 0} />
+              <ActiveSprint workspace={workspace} sprint={active} />
             ) : (
               <p className="px-4 pt-4 text-mute">{t('sprint.noneActive')}</p>
             )}
             <Planned workspace={workspace} project={project} sprints={planned} canStart={!active} />
+            <Closed workspace={workspace} sprints={closed} />
           </>
         )}
       </main>
@@ -72,26 +73,15 @@ export function SprintsPage() {
   );
 }
 
-function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprint: SprintResponse; hasNext: boolean }) {
+function ActiveSprint({ workspace, sprint }: { workspace: string; sprint: SprintResponse }) {
   const { t } = useTranslation();
   const hours = useHours();
   const date = useDate();
-  const qc = useQueryClient();
-  const toast = useToast();
-  const [closing, setClosing] = useState(false);
-  // The close prompt counts every unfinished issue, so the whole sprint is loaded; the board pages per column.
-  const { data, isPending, isError } = useAllIssues(workspace, { sprint: sprint.id, sort: 'rank' });
-  const close = useMutation({
-    ...closeSprintMutation(),
-    onSuccess: (result) => {
-      setClosing(false);
-      toast.info(t('sprint.closed', { name: result.sprint.name, count: result.moved, target: result.movedTo?.name ?? t('sprint.backlog') }));
-      void qc.invalidateQueries({ predicate: isSprintOrIssueQuery });
-    },
-    onError: () => toast.error(t('sprint.closeFailed')),
-  });
-  const unfinished = data?.items.filter((i) => i.state !== 'done' && i.state !== 'canceled').length ?? 0;
+  const navigate = useNavigate();
   const progress = sprint.effort > 0 ? Math.round((sprint.doneEffort / sprint.effort) * 100) : 0;
+  const today = new Date().toLocaleDateString('sv');
+  const overdue = daysBetween(sprint.endDate, today);
+  const review = { to: '/w/$workspace/sprints/$sprintId', params: { workspace, sprintId: sprint.id } } as const;
 
   return (
     <section aria-label={sprint.name} className="flex min-h-[420px] flex-col">
@@ -107,30 +97,43 @@ function ActiveSprint({ workspace, sprint, hasNext }: { workspace: string; sprin
           <span className="block h-full bg-ok" style={{ width: `${progress}%` }} />
         </span>
         {sprint.goal && <span className="text-mute">{sprint.goal}</span>}
-        <Button className="ml-auto" onClick={() => setClosing(true)}>
+        <Button className="ml-auto" onClick={() => void navigate(review)}>
           {t('sprint.close')}
         </Button>
       </header>
-      {closing && (
-        <div role="dialog" aria-label={t('sprint.close')} className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-r2 border border-line bg-panel p-3">
-          <span className="flex-1">{t('sprint.closePrompt', { count: unfinished })}</span>
-          <Button
-            variant="primary"
-            disabled={!hasNext || isPending || isError || close.isPending}
-            title={hasNext ? undefined : t('sprint.noNext')}
-            onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'next' } })}
-          >
-            {t('sprint.toNext')}
-          </Button>
-          <Button disabled={isPending || isError || close.isPending} onClick={() => close.mutate({ path: { workspace, id: sprint.id }, body: { moveUnfinishedTo: 'backlog' } })}>
-            {t('sprint.toBacklog')}
-          </Button>
-          <Button variant="ghost" onClick={() => setClosing(false)}>
-            {t('common.cancel')}
-          </Button>
-        </div>
+      {overdue > 0 && (
+        <p role="status" className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-r2 border border-line bg-panel p-3">
+          {t('sprint.overdue', { name: sprint.name, count: overdue })}
+          <Link {...review} className="font-semibold text-acc-ink underline">
+            {t('sprint.reviewAndClose')}
+          </Link>
+        </p>
       )}
       <div className="min-h-0 flex-1"><Board workspace={workspace} filters={{ sprint: sprint.id, sort: 'rank' }} /></div>
+    </section>
+  );
+}
+
+function Closed({ workspace, sprints }: { workspace: string; sprints: SprintResponse[] }) {
+  const { t } = useTranslation();
+  const date = useDate();
+  if (sprints.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-2 border-t border-line p-4" aria-label={t('sprint.closedSprints')}>
+      <h2 className="font-semibold">{t('sprint.closedSprints')}</h2>
+      {sprints.map((s) => (
+        <Link
+          key={s.id}
+          to="/w/$workspace/sprints/$sprintId"
+          params={{ workspace, sprintId: s.id }}
+          className="flex h-[var(--row)] items-center gap-3 border-b border-line hover:bg-sel"
+        >
+          <span className="font-semibold">{s.name}</span>
+          <span className="font-mono text-sm text-mute">
+            {date(s.startDate)} – {date(s.endDate)}
+          </span>
+        </Link>
+      ))}
     </section>
   );
 }

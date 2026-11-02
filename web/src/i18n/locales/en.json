@@ -122,7 +122,9 @@
     "sections": "Sections",
     "widen": "Widen panel",
     "narrow": "Narrow panel",
-    "noSprint": "No sprint"
+    "noSprint": "No sprint",
+    "splitFrom": "Split from",
+    "continuedIn": "Continued in"
   },
   "errors": {
     "updateFailed": "Couldn't save {{key}}. Your change was undone.",
@@ -215,13 +217,7 @@
     "hours": "{{done}} of {{total}} done",
     "hoursHint": "Effort of done issues out of all issues in the sprint",
     "close": "Close sprint",
-    "closePrompt_one": "{{count}} unfinished issue. Where should it go?",
-    "closePrompt_other": "{{count}} unfinished issues. Where should they go?",
-    "toNext": "Next sprint",
-    "toBacklog": "Backlog",
     "noNext": "Plan a sprint first",
-    "closed_one": "{{name}} closed. {{count}} issue moved to {{target}}.",
-    "closed_other": "{{name}} closed. {{count}} issues moved to {{target}}.",
     "backlog": "the backlog",
     "closeFailed": "Couldn't close the sprint.",
     "planned": "Planned",
@@ -232,7 +228,11 @@
     "createFailed": "Couldn't plan the sprint. Check the dates.",
     "name": "Sprint name",
     "namePlaceholder": "Sprint name, e.g. Sprint 15",
-    "plan": "Plan sprint"
+    "plan": "Plan sprint",
+    "overdue_one": "{{name}} ended {{count}} day ago.",
+    "overdue_other": "{{name}} ended {{count}} days ago.",
+    "reviewAndClose": "Review and close.",
+    "closedSprints": "Closed"
   },
   "plan": {
     "title": "Delivery plan",
@@ -314,7 +314,16 @@
       "mcp": "MCP",
       "api": "API",
       "meeting": "meeting"
-    }
+    },
+    "sprintClosed": {
+      "carry": "{{name}} carried this from {{sprint}} to {{target}} on close",
+      "split": "{{name}} split this when closing {{sprint}}",
+      "backlog": "{{name}} moved this from {{sprint}} to {{target}} on close",
+      "cancel": "{{name}} canceled this when closing {{sprint}}",
+      "done": "{{name}} marked this done when closing {{sprint}}"
+    },
+    "splitFrom": "{{name}} split this from {{key}}",
+    "splitInto": "{{name}} continued this in {{key}}"
   },
   "upload": {
     "uploading": "Uploading {{name}}…",
@@ -444,5 +453,83 @@
       "lastOwner": "A workspace needs at least one active owner. Make someone else owner first.",
       "failed": "That didn't work. Try again."
     }
+  },
+  "sprintClose": {
+    "loadFailed": "Couldn't load the sprint.",
+    "closeTitle": "Close {{name}}",
+    "reportTitle": "{{name}}: sprint report",
+    "stats": {
+      "atStart": "At start",
+      "added": "Added",
+      "completed": "Completed",
+      "carried": "Carried",
+      "remaining": "Remaining",
+      "completion": "Completion"
+    },
+    "burndown": "Burndown",
+    "burndownOf": "Burndown for {{name}}",
+    "noBurndown": "This sprint has no burndown: it closed before Kupro kept one.",
+    "perAssignee": "Per assignee",
+    "unassigned": "Unassigned",
+    "chart": {
+      "date": "Date",
+      "scope": "Scope",
+      "remaining": "Remaining",
+      "ideal": "Ideal",
+      "scopeDashed": "Scope (dashed)",
+      "weekends": "Weekends shaded"
+    },
+    "unfinished": "Unfinished work",
+    "leftSprint": "Left the sprint",
+    "none": "None.",
+    "allFinished": "Everything is finished. Nothing to decide.",
+    "completed_one": "Completed ({{count}})",
+    "completed_other": "Completed ({{count}})",
+    "target": "Move to",
+    "createNext": "Create next sprint",
+    "bulk_one": "{{count}} selected",
+    "bulk_other": "{{count}} selected",
+    "outcomes": {
+      "carry": "Carry",
+      "split": "Split",
+      "backlog": "Backlog",
+      "cancel": "Cancel",
+      "done": "Done"
+    },
+    "continuedIn": "Continued in",
+    "selectRow": "Select {{key}}",
+    "outcomeOf": "Outcome for {{key}}",
+    "splitHasChildren": "Issues with child issues can't be split.",
+    "splitNoEffort": "Add an effort before splitting.",
+    "hoursLeft": "Hours left",
+    "splitPreview": "{{key}} done here ({{done}}) · new issue with {{left}} to {{target}}",
+    "splitInvalid": "Above 0 and below {{hours}}.",
+    "startNext": "Start {{name}} after closing",
+    "footer": {
+      "carry_one": "{{count}} carry ({{hours}})",
+      "carry_other": "{{count}} carry ({{hours}})",
+      "split_one": "{{count}} split ({{hours}} done here, {{count}} new issue)",
+      "split_other": "{{count}} split ({{hours}} done here, {{count}} new issues)",
+      "backlog_one": "{{count}} to backlog",
+      "backlog_other": "{{count}} to backlog",
+      "cancel_one": "{{count}} canceled",
+      "cancel_other": "{{count}} canceled",
+      "done_one": "{{count}} done",
+      "done_other": "{{count}} done",
+      "nothing": "Nothing unfinished."
+    },
+    "keys": {
+      "j": "next",
+      "k": "previous",
+      "x": "select",
+      "c": "carry",
+      "s": "split",
+      "b": "backlog",
+      "d": "done"
+    },
+    "closed_one": "{{name}} closed. {{count}} issue moved on.",
+    "closed_other": "{{name}} closed. {{count}} issues moved on.",
+    "closedSplits": "New issues from splits: {{keys}}.",
+    "closedSkipped": "Skipped, no longer unfinished: {{keys}}."
   }
 }
