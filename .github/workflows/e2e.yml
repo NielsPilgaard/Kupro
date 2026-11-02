@@ -33,7 +33,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
@@ -58,7 +58,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         if: inputs.image_tag == ''
         with:
           global-json-file: global.json
@@ -73,7 +73,7 @@ jobs:
 
       - name: Build Keycloak image
         if: inputs.image_tag == ''
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: infrastructure/keycloak/Dockerfile
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build Postgres image
         if: inputs.image_tag == ''
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: infrastructure/postgres
           load: true
@@ -93,7 +93,7 @@ jobs:
           cache-to: type=gha,scope=e2e-postgres,mode=max
 
       - name: Build web image with local Keycloak URL
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: web/Dockerfile

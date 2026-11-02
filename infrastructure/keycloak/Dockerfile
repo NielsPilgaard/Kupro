@@ -1,6 +1,6 @@
 # Kupro Keycloak (ADR-005): stock Keycloak plus the kupro login and email theme and the realm.
 # Build context = repo root. Dev users (kupro-users-0.json) stay out; dev and E2E mount them.
-FROM quay.io/keycloak/keycloak:26.6
+FROM quay.io/keycloak/keycloak:26.8
 
 # Theme files are served from /resources/<Keycloak version>/, a path that stays the same when only the theme changes.
 # Keycloak's default 30-day max-age would keep old styles in browsers after a deploy.
