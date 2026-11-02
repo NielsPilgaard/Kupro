@@ -7,9 +7,10 @@ using Kupro.Api.Features.Workspaces;
 namespace Kupro.Tests.Infrastructure;
 
 /// <summary>Base for HTTP-level tests: one API instance per test class, migrated database.</summary>
-public abstract class ApiTestBase(PostgresFixture postgres, IReadOnlyDictionary<string, string?>? settings = null) : IAsyncLifetime
+public abstract class ApiTestBase(
+    PostgresFixture postgres, IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null) : IAsyncLifetime
 {
-    protected KuproApiFactory Factory { get; } = new(postgres, settings);
+    protected KuproApiFactory Factory { get; } = new(postgres, settings, clock);
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 

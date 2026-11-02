@@ -14,12 +14,16 @@ public enum FeedItemKind
     Updated,
     RelationAdded,
     RelationRemoved,
+    SprintClosed,
+    SplitFrom,
+    SplitInto,
 }
 
 /// <summary>
 /// One field change. Values are display-ready strings: enum names (<c>inProgress</c>), member names, issue keys,
 /// sprint names, ISO dates, comma-separated labels. Description changes carry no values.
 /// For relations, <c>Field</c> is the relation type and <c>To</c> (added) or <c>From</c> (removed) the other issue.
+/// A sprint close has <c>outcome</c> (<c>To</c> is the outcome) and <c>sprint</c>; a split has <c>issue</c> (<c>To</c> is the other key).
 /// </summary>
 public sealed record FeedChange(string Field, string? From, string? To);
 
@@ -133,6 +137,16 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                         f.Value.TryGetProperty("to", out var to) ? Display(f.Name, to) : null));
                 }
             }
+            else if (kind is FeedItemKind.SprintClosed && data is { ValueKind: JsonValueKind.Object } close)
+            {
+                changes.Add(new FeedChange("outcome", null, close.GetProperty("outcome").GetString()));
+                var sprint = close.GetProperty("sprint");
+                changes.Add(new FeedChange("sprint", Display("sprint", sprint.GetProperty("from")), Display("sprint", sprint.GetProperty("to"))));
+            }
+            else if (kind is FeedItemKind.SplitFrom or FeedItemKind.SplitInto && data is { ValueKind: JsonValueKind.Object } split)
+            {
+                changes.Add(new FeedChange("issue", null, split.GetProperty("issue").GetString()));
+            }
             else if (kind is FeedItemKind.RelationAdded or FeedItemKind.RelationRemoved && data is { ValueKind: JsonValueKind.Object } relation)
             {
                 var type = relation.GetProperty("type");
@@ -163,6 +177,9 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
         "updated" => FeedItemKind.Updated,
         "relation_added" => FeedItemKind.RelationAdded,
         "relation_removed" => FeedItemKind.RelationRemoved,
+        "sprint_closed" => FeedItemKind.SprintClosed,
+        "split_from" => FeedItemKind.SplitFrom,
+        "split_into" => FeedItemKind.SplitInto,
         _ => null,
     };
 

@@ -85,6 +85,52 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Sprint_close_with_outcomes_review_and_burndown_with_only_the_cli()
+    {
+        await RunJsonAsync("sprint", "create", "-p", "CLI", "--name", "One", "--start", "2027-01-04", "--end", "2027-01-15");
+        var sprints = await RunJsonAsync("sprint", "list", "-p", "CLI");
+        var one = sprints[0].GetProperty("id").GetString()!;
+        var two = (await RunJsonAsync("sprint", "create", "-p", "CLI", "--name", "Two", "--start", "2027-01-18", "--end", "2027-01-29")).GetProperty("id").GetString()!;
+        await RunJsonAsync("sprint", "start", one);
+        string Key(JsonElement issue) => issue.GetProperty("key").GetString()!;
+        var split = Key(await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Half done", "--sprint", "active", "--effort", "8"));
+        var carry = Key(await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Carried", "--sprint", "active", "--effort", "2"));
+        var backlog = Key(await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Later", "--sprint", "active", "--effort", "1"));
+        var cancel = Key(await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Dropped", "--sprint", "active", "--effort", "1"));
+        var done = Key(await RunJsonAsync("issue", "create", "-p", "CLI", "-t", "Finished", "--sprint", "active", "--effort", "1"));
+
+        var review = await RunJsonAsync("sprint", "review", "active", "-p", "CLI");
+        review.GetProperty("unfinished").GetArrayLength().ShouldBe(5);
+
+        var closed = await RunJsonAsync("sprint", "close", "active", "-p", "CLI", "--to", two, "--split", $"{split}=3",
+            "--backlog", backlog, "--cancel", cancel, "--done", done, "--start-next");
+
+        closed.GetProperty("moved").GetInt32().ShouldBe(3);
+        closed.GetProperty("started").GetProperty("name").GetString().ShouldBe("Two");
+        closed.GetProperty("splits")[0].GetProperty("original").GetString().ShouldBe(split);
+        var list = await RunJsonAsync("issue", "list", "--sprint", two);
+        list.GetProperty("items").EnumerateArray().Select(Key).ShouldContain(carry);
+
+        var burndown = await RunJsonAsync("sprint", "burndown", one, "--by", "assignee");
+        burndown.GetProperty("assignees").EnumerateArray().ShouldNotBeEmpty();
+
+        var (exit, output, _) = await RunAsync(json: false, "sprint", "review", one);
+        exit.ShouldBe(0);
+        output.ShouldContain(carry);
+        output.ShouldContain("Completed:");
+        (exit, output, _) = await RunAsync(json: false, "sprint", "burndown", one);
+        exit.ShouldBe(0);
+        output.ShouldContain("REMAINING");
+    }
+
+    [Fact]
+    public void Sparkline_scales_to_the_highest_value_and_leaves_days_without_data_blank()
+    {
+        Kupro.Cli.Commands.SprintCommands.Sparkline([8, 4, 0, null]).ShouldBe("█▅▁ ");
+        Kupro.Cli.Commands.SprintCommands.Sparkline([0, 0]).ShouldBe("▁▁");
+    }
+
+    [Fact]
     public async Task Capacity_and_plan_with_only_the_cli()
     {
         var steps = await RunJsonAsync("capacity", "set", "CLI", "3@2027-01", "5@2027-07");

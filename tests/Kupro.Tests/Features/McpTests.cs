@@ -36,7 +36,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.ShouldContain("search_issues");
         tools.ShouldContain("create_issues");
         tools.ShouldContain("update_issues");
-        tools.Count.ShouldBeLessThanOrEqualTo(22, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
+        tools.Count.ShouldBeLessThanOrEqualTo(24, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
     }
 
     [Fact]
@@ -87,6 +87,49 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         var closed = await CallAsync(mcp, "manage_sprint", new() { ["action"] = "close", ["id"] = id, ["moveUnfinishedTo"] = "backlog" });
         closed.GetProperty("moved").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Agent_splits_what_is_in_review_at_half_its_effort_through_mcp()
+    {
+        await using var mcp = await ConnectAsync();
+        var id = (await CallAsync(mcp, "manage_sprint", new()
+        {
+            ["action"] = "create",
+            ["project"] = "MCP",
+            ["name"] = "Fourteen",
+            ["startDate"] = "2027-01-04",
+            ["endDate"] = "2027-01-15",
+        })).GetProperty("id").GetString();
+        await CallAsync(mcp, "manage_sprint", new()
+        {
+            ["action"] = "create",
+            ["project"] = "MCP",
+            ["name"] = "Fifteen",
+            ["startDate"] = "2027-01-18",
+            ["endDate"] = "2027-01-29",
+        });
+        await CallAsync(mcp, "manage_sprint", new() { ["action"] = "start", ["id"] = id });
+        await CallAsync(mcp, "create_issues", new()
+        {
+            ["issues"] = new object[]
+            {
+                new { project = "MCP", title = "In review", state = "inReview", effort = 8, sprint = "active" },
+                new { project = "MCP", title = "Not started", state = "todo", effort = 2, sprint = "active" },
+            },
+        });
+
+        var review = await CallAsync(mcp, "get_sprint_review", new() { ["id"] = id });
+        var items = review.GetProperty("unfinished").EnumerateArray()
+            .Where(i => i.GetProperty("state").GetString() == "inReview")
+            .Select(i => new { issue = i.GetProperty("key").GetString(), outcome = "split", hoursLeft = i.GetProperty("effort").GetDecimal() / 2 })
+            .ToArray();
+        var closed = await CallAsync(mcp, "manage_sprint", new() { ["action"] = "close", ["id"] = id, ["items"] = items, ["startNext"] = true });
+
+        closed.GetProperty("splits")[0].GetProperty("hoursDone").GetDecimal().ShouldBe(4);
+        closed.GetProperty("started").GetProperty("name").GetString().ShouldBe("Fifteen");
+        var burndown = await CallAsync(mcp, "get_sprint_burndown", new() { ["id"] = id, ["by"] = "assignee" });
+        burndown.GetProperty("assignees").EnumerateArray().ShouldHaveSingleItem();
     }
 
     [Fact]

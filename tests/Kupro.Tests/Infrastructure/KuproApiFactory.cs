@@ -18,7 +18,9 @@ namespace Kupro.Tests.Infrastructure;
 /// can mint JWTs that go through the real JwtBearer pipeline (including user provisioning).
 /// </summary>
 /// <param name="settings">Extra configuration, e.g. <see cref="StorageFixture.Settings"/>.</param>
-public sealed class KuproApiFactory(PostgresFixture postgres, IReadOnlyDictionary<string, string?>? settings = null)
+/// <param name="clock">Replaces the system clock, for tests that depend on the date.</param>
+public sealed class KuproApiFactory(
+    PostgresFixture postgres, IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null)
     : WebApplicationFactory<Program>
 {
     private const string Issuer = "https://keycloak.test/realms/kupro";
@@ -35,6 +37,7 @@ public sealed class KuproApiFactory(PostgresFixture postgres, IReadOnlyDictionar
         }
 
         builder.ConfigureTestServices(services =>
+        {
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 var configuration = new OpenIdConnectConfiguration { Issuer = Issuer };
@@ -43,7 +46,13 @@ public sealed class KuproApiFactory(PostgresFixture postgres, IReadOnlyDictionar
                 options.ConfigurationManager = null;
                 options.TokenValidationParameters.ValidIssuer = Issuer;
                 options.TokenValidationParameters.IssuerSigningKey = SigningKey;
-            }));
+            });
+            services.ConfigureDbContext<KuproDbContext>(options => options.AddInterceptors(new SprintLedgerGuard()));
+            if (clock is not null)
+            {
+                services.AddSingleton(clock);
+            }
+        });
     }
 
     private static readonly SemaphoreSlim MigrationGate = new(1, 1);

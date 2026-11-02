@@ -1081,7 +1081,7 @@
         "tags": [
           "Sprints"
         ],
-        "summary": "Close the active sprint; unfinished issues move to the next sprint or the backlog.",
+        "summary": "Close the active sprint with an outcome per unfinished issue: carry, split, backlog, cancel or done.",
         "operationId": "closeSprint",
         "parameters": [
           {
@@ -1144,6 +1144,113 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/sprints/{id}/review": {
+      "get": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "What closing needs, or the sprint report once closed: summary, unfinished and completed issues, open target sprints.",
+        "operationId": "getSprintReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintReview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/sprints/{id}/burndown": {
+      "get": {
+        "tags": [
+          "Sprints"
+        ],
+        "summary": "Scope, remaining and ideal hours per day; with `by=assignee`, also one series per assignee.",
+        "operationId": "getSprintBurndown",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "by",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/BurndownGrouping"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SprintBurndown"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4332,6 +4439,118 @@
           }
         }
       },
+      "BurndownAssignee": {
+        "required": [
+          "assignee",
+          "atStart",
+          "added",
+          "completed",
+          "remaining",
+          "carried",
+          "points"
+        ],
+        "type": "object",
+        "properties": {
+          "assignee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The person; null for unassigned work.",
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          },
+          "atStart": {
+            "type": "number",
+            "description": "Hours at start.",
+            "format": "double"
+          },
+          "added": {
+            "type": "number",
+            "description": "Hours added or reassigned to them, net.",
+            "format": "double"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Hours done.",
+            "format": "double"
+          },
+          "remaining": {
+            "type": "number",
+            "description": "Hours still open in the sprint.",
+            "format": "double"
+          },
+          "carried": {
+            "type": "number",
+            "description": "Hours carried on close, including split hours left.",
+            "format": "double"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BurndownPoint"
+            },
+            "description": "Their series; team series are the sum of these."
+          }
+        }
+      },
+      "BurndownGrouping": {
+        "enum": [
+          "assignee"
+        ]
+      },
+      "BurndownIdeal": {
+        "required": [
+          "date",
+          "hours"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Europe/Copenhagen day.",
+            "format": "date"
+          },
+          "hours": {
+            "type": "number",
+            "description": "Where the ideal line is at the end of that day: baseline scope to 0 over the sprint's weekdays.",
+            "format": "double"
+          }
+        }
+      },
+      "BurndownPoint": {
+        "required": [
+          "date",
+          "scope",
+          "remaining"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Europe/Copenhagen day; values are as of its end.",
+            "format": "date"
+          },
+          "scope": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Hours in scope; null before the ledger starts and for days still to come.",
+            "format": "double"
+          },
+          "remaining": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Hours remaining; null like `scope`.",
+            "format": "double"
+          }
+        }
+      },
       "CapacityEntry": {
         "required": [
           "fromMonth",
@@ -4351,12 +4570,102 @@
           }
         }
       },
+      "CloseOutcome": {
+        "enum": [
+          "carry",
+          "split",
+          "backlog",
+          "cancel",
+          "done"
+        ],
+        "description": "What happens to one unfinished issue when its sprint closes (ADR-020)."
+      },
+      "CloseOutcomeTotal": {
+        "required": [
+          "outcome",
+          "count",
+          "hours"
+        ],
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "description": "The outcome.",
+            "$ref": "#/components/schemas/CloseOutcome"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Issues that got it.",
+            "format": "int32"
+          },
+          "hours": {
+            "type": "number",
+            "description": "Their hours; for a split, the hours left.",
+            "format": "double"
+          }
+        }
+      },
+      "CloseSprintItem": {
+        "required": [
+          "issue",
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue key."
+          },
+          "outcome": {
+            "description": "What happens to it.",
+            "$ref": "#/components/schemas/CloseOutcome"
+          },
+          "hoursLeft": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Split only: hours that move on, above 0 and below the issue's effort.",
+            "format": "double"
+          },
+          "target": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Carry and split only: sprint for this issue, instead of the request's target.",
+            "format": "uuid"
+          }
+        }
+      },
       "CloseSprintRequest": {
         "type": "object",
         "properties": {
           "moveUnfinishedTo": {
-            "description": "Where open issues go: `next` sprint or `backlog`.",
+            "description": "Outcome for issues not in `items`: `next` carries them, `backlog` moves them out.",
             "$ref": "#/components/schemas/UnfinishedDestination"
+          },
+          "target": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Sprint for carried and split work: an open sprint of the same project. Default: the next planned one.",
+            "format": "uuid"
+          },
+          "items": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CloseSprintItem"
+            },
+            "description": "Outcome per issue. Issues no longer unfinished in the sprint are skipped and reported."
+          },
+          "startNext": {
+            "type": "boolean",
+            "description": "Start the target sprint right after closing.",
+            "default": false
           }
         }
       },
@@ -4364,7 +4673,11 @@
         "required": [
           "sprint",
           "moved",
-          "movedTo"
+          "movedTo",
+          "outcomes",
+          "splits",
+          "skipped",
+          "started"
         ],
         "type": "object",
         "properties": {
@@ -4374,7 +4687,7 @@
           },
           "moved": {
             "type": "integer",
-            "description": "How many unfinished issues moved.",
+            "description": "How many unfinished issues left the sprint (carried, split or to the backlog).",
             "format": "int32"
           },
           "movedTo": {
@@ -4383,7 +4696,39 @@
                 "type": "null"
               },
               {
-                "description": "Sprint they moved to; null when they went to the backlog.",
+                "description": "Default target sprint; null when nothing needed one.",
+                "$ref": "#/components/schemas/SprintResponse"
+              }
+            ]
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CloseOutcomeTotal"
+            },
+            "description": "Count and hours per outcome that was used."
+          },
+          "splits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintSplit"
+            },
+            "description": "The splits made."
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys in `items` that were no longer unfinished in the sprint."
+          },
+          "started": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The target sprint, when `startNext` started it.",
                 "$ref": "#/components/schemas/SprintResponse"
               }
             ]
@@ -4841,7 +5186,7 @@
             ]
           }
         },
-        "description": "One field change. Values are display-ready strings: enum names (`inProgress`), member names, issue keys,\nsprint names, ISO dates, comma-separated labels. Description changes carry no values.\nFor relations, `Field` is the relation type and `To` (added) or `From` (removed) the other issue."
+        "description": "One field change. Values are display-ready strings: enum names (`inProgress`), member names, issue keys,\nsprint names, ISO dates, comma-separated labels. Description changes carry no values.\nFor relations, `Field` is the relation type and `To` (added) or `From` (removed) the other issue.\nA sprint close has `outcome` (`To` is the outcome) and `sprint`; a split has `issue` (`To` is the other key)."
       },
       "FeedItem": {
         "required": [
@@ -4913,7 +5258,10 @@
           "created",
           "updated",
           "relationAdded",
-          "relationRemoved"
+          "relationRemoved",
+          "sprintClosed",
+          "splitFrom",
+          "splitInto"
         ]
       },
       "FeedMeeting": {
@@ -5163,6 +5511,28 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "splitFrom": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The issue this one continues, when it came from a split on sprint close.",
+                "$ref": "#/components/schemas/IssueRef"
+              }
+            ]
+          },
+          "continuedIn": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where this issue's hours left went, when it was split on sprint close.",
+                "$ref": "#/components/schemas/IssueRef"
+              }
+            ]
           }
         }
       },
@@ -6485,6 +6855,67 @@
           }
         }
       },
+      "SprintBurndown": {
+        "required": [
+          "sprintId",
+          "startDate",
+          "endDate",
+          "closedOn",
+          "points",
+          "ideal",
+          "assignees"
+        ],
+        "type": "object",
+        "properties": {
+          "sprintId": {
+            "type": "string",
+            "description": "The sprint.",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "description": "First day.",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Last planned day.",
+            "format": "date"
+          },
+          "closedOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Day it closed, in Europe/Copenhagen.",
+            "format": "date"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BurndownPoint"
+            },
+            "description": "Team series, one per day from the first day (or the day it started, if earlier) to the later of the end date and the close."
+          },
+          "ideal": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BurndownIdeal"
+            },
+            "description": "Ideal line for the same days."
+          },
+          "assignees": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/BurndownAssignee"
+            },
+            "description": "Per assignee, with `by=assignee`."
+          }
+        }
+      },
       "SprintResponse": {
         "required": [
           "id",
@@ -6547,6 +6978,217 @@
           "doneEffort": {
             "type": "number",
             "description": "Effort of its done issues, in hours.",
+            "format": "double"
+          }
+        }
+      },
+      "SprintReview": {
+        "required": [
+          "sprint",
+          "summary",
+          "unfinished",
+          "completed",
+          "targets"
+        ],
+        "type": "object",
+        "properties": {
+          "sprint": {
+            "description": "The sprint.",
+            "$ref": "#/components/schemas/SprintResponse"
+          },
+          "summary": {
+            "description": "Hours per report line.",
+            "$ref": "#/components/schemas/SprintReviewSummary"
+          },
+          "unfinished": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintReviewIssue"
+            },
+            "description": "Active sprint: open issues. Closed sprint: those that were carried or moved to the backlog."
+          },
+          "completed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintReviewIssue"
+            },
+            "description": "Done issues in the sprint; splits name their continuation."
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SprintResponse"
+            },
+            "description": "Open sprints of the project that unfinished work can go to."
+          }
+        }
+      },
+      "SprintReviewIssue": {
+        "required": [
+          "key",
+          "title",
+          "type",
+          "state",
+          "assignee",
+          "effort",
+          "hasChildren",
+          "outcome",
+          "continuedIn"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "state": {
+            "$ref": "#/components/schemas/IssueState"
+          },
+          "assignee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          },
+          "effort": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "hasChildren": {
+            "type": "boolean",
+            "description": "Issues with children can't be split."
+          },
+          "outcome": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Set once the sprint closed.",
+                "$ref": "#/components/schemas/CloseOutcome"
+              }
+            ]
+          },
+          "continuedIn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the continuation, for a split issue."
+          }
+        }
+      },
+      "SprintReviewSummary": {
+        "required": [
+          "atStart",
+          "added",
+          "removed",
+          "reestimated",
+          "completed",
+          "carried",
+          "split",
+          "toBacklog",
+          "canceled",
+          "remaining",
+          "completionPercent"
+        ],
+        "type": "object",
+        "properties": {
+          "atStart": {
+            "type": "number",
+            "description": "Scope when the sprint started.",
+            "format": "double"
+          },
+          "added": {
+            "type": "number",
+            "description": "Added during the sprint.",
+            "format": "double"
+          },
+          "removed": {
+            "type": "number",
+            "description": "Moved out during the sprint.",
+            "format": "double"
+          },
+          "reestimated": {
+            "type": "number",
+            "description": "Net effort changes during the sprint.",
+            "format": "double"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Done, including the hours done on split issues.",
+            "format": "double"
+          },
+          "carried": {
+            "type": "number",
+            "description": "Carried to another sprint on close.",
+            "format": "double"
+          },
+          "split": {
+            "type": "number",
+            "description": "Hours left on split issues, moved on with their continuations.",
+            "format": "double"
+          },
+          "toBacklog": {
+            "type": "number",
+            "description": "Moved to the backlog on close.",
+            "format": "double"
+          },
+          "canceled": {
+            "type": "number",
+            "description": "Canceled.",
+            "format": "double"
+          },
+          "remaining": {
+            "type": "number",
+            "description": "Still open in the sprint; 0 once closed.",
+            "format": "double"
+          },
+          "completionPercent": {
+            "type": "integer",
+            "description": "Completed as a share of scope, before anything left on close.",
+            "format": "int32"
+          }
+        },
+        "description": "Hours per line of the sprint report, from the ledger."
+      },
+      "SprintSplit": {
+        "required": [
+          "original",
+          "continuation",
+          "hoursDone",
+          "hoursLeft"
+        ],
+        "type": "object",
+        "properties": {
+          "original": {
+            "type": "string",
+            "description": "Key of the issue that is now Done."
+          },
+          "continuation": {
+            "type": "string",
+            "description": "Key of the new issue."
+          },
+          "hoursDone": {
+            "type": "number",
+            "description": "Effort kept on the original.",
+            "format": "double"
+          },
+          "hoursLeft": {
+            "type": "number",
+            "description": "Effort on the continuation.",
             "format": "double"
           }
         }

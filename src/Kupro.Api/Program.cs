@@ -33,6 +33,7 @@ builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddScoped<LabelService>();
 builder.Services.AddScoped<ActivityLog>();
+builder.Services.AddScoped<SprintLedger>();
 builder.Services.AddScoped<IssueService>();
 builder.Services.AddScoped<SprintService>();
 builder.Services.AddScoped<PlanService>();

@@ -19,7 +19,7 @@ namespace Kupro.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
@@ -1073,6 +1073,64 @@ namespace Kupro.Api.Data.Migrations
                     b.ToTable("sprints", (string)null);
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Sprints.SprintLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AssigneeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignee_id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<decimal>("RemainingDelta")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("remaining_delta");
+
+                    b.Property<decimal>("ScopeDelta")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("scope_delta");
+
+                    b.Property<Guid>("SprintId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sprint_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sprint_ledger");
+
+                    b.HasIndex("WorkspaceId", "AssigneeId")
+                        .HasDatabaseName("ix_sprint_ledger_workspace_id_assignee_id");
+
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_sprint_ledger_workspace_id_issue_id");
+
+                    b.HasIndex("WorkspaceId", "SprintId", "At")
+                        .HasDatabaseName("ix_sprint_ledger_workspace_id_sprint_id_at");
+
+                    b.ToTable("sprint_ledger", (string)null);
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Tokens.ApiToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1678,6 +1736,32 @@ namespace Kupro.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_sprints_projects_workspace_id_project_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Sprints.SprintLedgerEntry", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "AssigneeId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sprint_ledger_members_workspace_id_assignee_id");
+
+                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sprint_ledger_issues_workspace_id_issue_id");
+
+                    b.HasOne("Kupro.Api.Features.Sprints.Sprint", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "SprintId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sprint_ledger_sprints_workspace_id_sprint_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Tokens.ApiToken", b =>
