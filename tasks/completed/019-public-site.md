@@ -3,7 +3,7 @@ title: 'Task 019: Public website'
 description: >-
   Build the public site in site/ (Astro, static): landing page led by the meeting agent, pricing, and the legal pages,
   in English and Danish, with its own nginx container, an Aspire resource and the app moved to app.<domain>.
-status: 'In progress'
+status: 'Done'
 phase: 1
 depends_on: []
 purpose: 'Implementation spec for task 019.'
@@ -13,9 +13,9 @@ purpose: 'Implementation spec for task 019.'
 
 ## TL;DR
 
-Decisions are in [ADR-017](../docs/adr/ADR-017-public-site.md); prices in [ADR-013](../docs/adr/ADR-013-seats-billing.md);
-copy rules in [branding.md](../docs/branding.md). The look book in
-[docs/design/public-pages/](../docs/design/public-pages/index.html) is the visual starting point.
+Decisions are in [ADR-017](../../docs/adr/ADR-017-public-site.md); prices in [ADR-013](../../docs/adr/ADR-013-seats-billing.md);
+copy rules in [branding.md](../../docs/branding.md). The look book in
+[docs/design/public-pages/](../../docs/design/public-pages/index.html) is the visual starting point.
 
 ## Scope
 
@@ -25,11 +25,11 @@ copy rules in [branding.md](../docs/branding.md). The look book in
   placeholder, product, developers, legal links, "no tracking" cookie line). Light and dark from the system setting.
 - **Landing** (`/`, `/da/`), in this order:
   1. Hero: meeting agent ("Say it in standup. It's in the tracker."), live proposal mock, privacy promise band.
-  2. Fast and easy: under half a second per action ([ADR-010](../docs/adr/ADR-010-performance-budget.md)),
+  2. Fast and easy: under half a second per action ([ADR-010](../../docs/adr/ADR-010-performance-budget.md)),
      keyboard first, nothing to configure before the first issue.
   3. Delivery plan: plan mock with capacity band.
   4. Agents too: one action in the web app, the CLI and MCP.
-  5. European by default: vendor table ([ADR-006](../docs/adr/ADR-006-eu-vendor-policy.md)), no tracking, AGPL.
+  5. European by default: vendor table ([ADR-006](../../docs/adr/ADR-006-eu-vendor-policy.md)), no tracking, AGPL.
   6. Price strip and closing call to action.
 - **Pricing** (`/pricing`, `/da/priser`): Trial, Monthly, Yearly, Custom; what a seat is; FAQ (seats, idle-seat
   alerts, agents and guests, VAT, cancelling, non-profits, self-hosting).
@@ -54,3 +54,9 @@ copy rules in [branding.md](../docs/branding.md). The look book in
 - Lighthouse (mobile) performance and accessibility ≥ 95 on `/` and `/pricing`.
 - Works at 360 px wide without horizontal scroll; light and dark both readable.
 - `aspire run` shows the `site` resource; `aspire publish` emits a `site` service.
+
+## Outcome
+
+Checked 2026-11-02 against a production build: 15 static pages; `/` and `/pricing` score 99 performance and 100
+accessibility on Lighthouse mobile; no horizontal scroll at 360 px on any route, light and dark; no third-party requests;
+no cookies. The legal placeholders and Danish legal text stay manual steps, out of scope here.

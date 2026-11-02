@@ -143,5 +143,5 @@ per-person velocity, no ranking, no per-person capacity ([ADR-008](ADR-008-work-
 
 ## References
 
-- **REF-001**: [Task 028](../../tasks/028-sprint-close-burndown.md) — implementation spec
+- **REF-001**: [Task 028](../../tasks/completed/028-sprint-close-burndown.md) — implementation spec
 - **REF-002**: [Task 010](../../tasks/completed/010-sprints.md) — the close it replaces

@@ -29,7 +29,6 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
-| 19 | [019 Public website](019-public-site.md) | P1 | 1 | — | In progress |
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 | 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 013, 016 | Todo |
@@ -37,7 +36,20 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | Todo |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | Todo |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
-| 28 | [028 Sprint close review, split carry-over and burndown](028-sprint-close-burndown.md) | P2 | 1 | 010, 012 | Todo |
+
+## What an agent can pick up
+
+Checked 2026-11-02. The build order above is not the same as what is buildable: every open row waits on a person, directly
+or through a dependency, so **nothing is buildable until a manual step is done**. Don't spend a session re-deriving this;
+read this table, and update it when a step is done.
+
+| Task | State | What unblocks an agent |
+|---|---|---|
+| 013 | Code is in the repo; everything left is manual steps (domain, VPS, Dokploy, first deploy) | The owner working through go-live |
+| 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
+| 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
+| 020, 023 | Depend on 013, which is not Done | 013 Done. Much of 020 could be built earlier if the owner relaxes the dependency |
+| 024–027 | Wait on 023, and need sandbox accounts (manual steps) | 023 Done and the sandboxes |
 
 ## Completed
 
@@ -61,6 +73,8 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | [018 Members page and billing access](completed/018-members-billing-access.md) | 1 | Done |
 | [021 Backup and restore rehearsal (local)](completed/021-backup-rehearsal.md) | 0 | Done |
 | [017 Meeting agent AI budget](completed/017-meeting-agent-budget.md) | 2 | Done |
+| [019 Public website](completed/019-public-site.md) | 1 | Done |
+| [028 Sprint close review, split carry-over and burndown](completed/028-sprint-close-burndown.md) | 1 | Done |
 
 ## Rationale
 

@@ -4,7 +4,7 @@ description: >-
   A purpose-made view for closing the active sprint: per-issue outcome (carry, split, backlog, cancel, done), split
   into a Done original and a continuation issue, team and per-assignee burndown, and the same page as a read-only
   sprint report after close. Backed by the sprint ledger, on REST, CLI and MCP.
-status: 'Todo'
+status: 'Done'
 phase: 1
 depends_on: [010, 012]
 purpose: 'Implementation spec for task 028.'
@@ -14,8 +14,8 @@ purpose: 'Implementation spec for task 028.'
 
 ## TL;DR
 
-Decisions are in [ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md). This task replaces the inline close prompt
-from [task 010](completed/010-sprints.md) with a **Close sprint** page: summary, burndown, per-assignee burndown and an
+Decisions are in [ADR-020](../../docs/adr/ADR-020-sprint-close-burndown.md). This task replaces the inline close prompt
+from [task 010](010-sprints.md) with a **Close sprint** page: summary, burndown, per-assignee burndown and an
 "Unfinished work" table where each issue gets an outcome. After close the same page is the read-only **sprint report**.
 Agents get the same review, close plan and burndown through CLI and MCP.
 
@@ -29,17 +29,17 @@ Agents get the same review, close plan and burndown through CLI and MCP.
   apply path, which goes through `IssueService` already). Rows only for issues whose sprint (old or new) is active.
 - `SprintService.StartAsync` writes `baseline` rows for every issue in the sprint.
 - Migration: `sprint_ledger` + baseline rows for currently active sprints (IMP-003).
-- Export: add `sprint_ledger` to `ExportWriter` ([task 016](completed/016-workspace-export.md)).
+- Export: add `sprint_ledger` to `ExportWriter` ([task 016](016-workspace-export.md)).
 
 ### Close
 
 - `CloseSprintRequest` gains `target` (sprint id; default next planned), `items` (`issue` key, `outcome`:
   `carry|split|backlog|cancel|done`, `hoursLeft` for split, optional per-item `target`) and `startNext` (start the
   target sprint right after close). `moveUnfinishedTo` stays as the default outcome for unlisted issues.
-- Validation: split rules per [ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md) (`invalid_split`); target must be
+- Validation: split rules per [ADR-020](../../docs/adr/ADR-020-sprint-close-burndown.md) (`invalid_split`); target must be
   an open sprint of the same project other than the closing one (`invalid_sprint`); `no_next_sprint` as today when
   carry or split has no target.
-- Split per [ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md); the continuation is created through
+- Split per [ADR-020](../../docs/adr/ADR-020-sprint-close-burndown.md); the continuation is created through
   `IssueService.CreateAsync`'s path, in the target sprint.
 - One transaction: outcomes applied through `IssueService` (activity entry `sprint_closed` per issue with outcome and
   from/to sprint), ledger close rows, sprint closed, optional start of the target.
@@ -87,34 +87,40 @@ answer "close sprint 14, split what's in review at half its effort".
   closing" checkbox + Close sprint; disabled while a split row has no valid hours left. Toast after close as today,
   listing new continuation keys and skipped issues.
 - Keyboard: `j`/`k` rows, `x` select, `c` carry, `s` split (focuses hours), `b` backlog, `Del` cancel, `d` done.
-- Live: the page follows realtime issue and sprint changes ([task 012](completed/012-realtime.md)); a row whose issue
+- Live: the page follows realtime issue and sprint changes ([task 012](012-realtime.md)); a row whose issue
   became Done moves to Completed and drops its chosen outcome.
 - Chart: hand-rolled SVG like the delivery plan, no chart dependency. Colours from tokens; the rules go in a new
-  "Burndown" section of [design-guide.md](../docs/design-guide.md). Screen-reader table behind each chart.
-- Strings EN + DA ([ADR-011](../docs/adr/ADR-011-i18n.md)); terms from the [glossary](../docs/branding.md#glossary).
+  "Burndown" section of [design-guide.md](../../docs/design-guide.md). Screen-reader table behind each chart.
+- Strings EN + DA ([ADR-011](../../docs/adr/ADR-011-i18n.md)); terms from the [glossary](../../docs/branding.md#glossary).
 
 ## Out of scope
 
 - Velocity across sprints, forecasting, per-person capacity or per-person history across sprints.
 - Retro notes, goal met yes/no, story points.
 - Working-day calendars and holidays (ideal line uses weekdays).
-- Meeting agent proposing close outcomes in a review meeting (follow-up to [task 015](015-meeting-agent.md)).
+- Meeting agent proposing close outcomes in a review meeting (follow-up to [task 015](../015-meeting-agent.md)).
 - Burndown for sprints closed before this ships.
 
 ## Acceptance criteria
 
-- [ ] Full close with mixed outcomes (carry, split, backlog, cancel, done) via UI, CLI and MCP, one transaction.
-- [ ] Split: original is Done in the closing sprint with effort = hours done; continuation has hours left, copied
+- [x] Full close with mixed outcomes (carry, split, backlog, cancel, done) via UI, CLI and MCP, one transaction.
+- [x] Split: original is Done in the closing sprint with effort = hours done; continuation has hours left, copied
       fields, the original's state, a `relates` link and the open `blocks` relations, in the target sprint; the
       parent's roll-up total is unchanged; both issues show the split link.
-- [ ] Old `close` call with only `moveUnfinishedTo` behaves as in task 010.
-- [ ] Burndown matches a hand-computed fixture: mid-sprint add, effort change, reassignment, reopen, cancel, split.
-- [ ] Per-assignee series sum to the team series; unassigned shown.
-- [ ] Test fails if an `IssueService` write path changes sprint, effort, state or assignee of an issue in an active
+- [x] Old `close` call with only `moveUnfinishedTo` behaves as in task 010.
+- [x] Burndown matches a hand-computed fixture: mid-sprint add, effort change, reassignment, reopen, cancel, split.
+- [x] Per-assignee series sum to the team series; unassigned shown.
+- [x] Test fails if an `IssueService` write path changes sprint, effort, state or assignee of an issue in an active
       sprint without ledger rows (ADR-020 IMP-002).
-- [ ] Review and burndown on a 300-issue sprint with 5 000 ledger rows inside the ADR-010 budget (perf test, task 014).
-- [ ] Parity test passes; `sprint_ledger` in the export.
-- [ ] EN + DA strings; i18n check passes.
+- [x] Review and burndown on a 300-issue sprint with 5 000 ledger rows inside the ADR-010 budget (perf test, task 014).
+- [x] Parity test passes; `sprint_ledger` in the export.
+- [x] EN + DA strings; i18n check passes.
 
 Resolved questions (split input starts empty; per-assignee burndown visible to all) are in
-[ADR-020](../docs/adr/ADR-020-sprint-close-burndown.md).
+[ADR-020](../../docs/adr/ADR-020-sprint-close-burndown.md).
+
+## Outcome
+
+`close` now succeeds with no planned sprint when nothing needs a target; `no_next_sprint` applies only when a carry or
+split has none. A sprint started before its first planned day charts from the day it started. The CLI's `--to-backlog`
+became `--to backlog`. The MCP tool budget in the test moved from 22 to 24 for the two read tools this task names.
