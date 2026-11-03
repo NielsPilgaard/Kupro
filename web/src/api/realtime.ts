@@ -74,12 +74,12 @@ export function useRealtime(workspace: string, openIssue: string | undefined) {
       // Own changes already refetch through the mutation; others may move issues in or out of filtered lists.
       if (e.created || !isMe(e.actorId)) void qc.invalidateQueries({ predicate: isIssueList });
       for (const item of e.items) touched(item.key, e.actorId, e.via);
-      void qc.invalidateQueries(byOperation('getPlan', 'listSprints', 'getSprint'));
+      void qc.invalidateQueries(byOperation('getPlan', 'listSprints', 'getSprint', 'getSprintReview', 'getSprintBurndown'));
     });
 
     connection.on('changed', (e: ChangedEvent) => {
       if (e.topic === 'issue' && e.issueKey) touched(e.issueKey, e.actorId, e.via);
-      if (e.topic === 'sprints') void qc.invalidateQueries(byOperation('listSprints', 'getSprint', 'getPlan'));
+      if (e.topic === 'sprints') void qc.invalidateQueries(byOperation('listSprints', 'getSprint', 'getPlan', 'getSprintReview', 'getSprintBurndown'));
       if (e.topic === 'plan') void qc.invalidateQueries(byOperation('getPlan', 'listMilestones', 'getProjectCapacity'));
       if (e.topic === 'meetings') void qc.invalidateQueries({ predicate: isMeetingQuery });
     });

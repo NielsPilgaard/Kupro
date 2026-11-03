@@ -30,7 +30,7 @@ internal static class ExportWriter
     public static readonly IReadOnlySet<Type> Exported = new HashSet<Type>
     {
         typeof(Member), typeof(Project), typeof(Label), typeof(Issue), typeof(IssueLabel), typeof(IssueRelation),
-        typeof(Sprint), typeof(Milestone), typeof(ProjectCapacity), typeof(Comment), typeof(ActivityEntry),
+        typeof(Sprint), typeof(SprintLedgerEntry), typeof(Milestone), typeof(ProjectCapacity), typeof(Comment), typeof(ActivityEntry),
         typeof(Attachment), typeof(MeetingSession), typeof(TranscriptSegment), typeof(MeetingProposal), typeof(MeetingSettings),
     };
 
@@ -135,6 +135,7 @@ internal static class ExportWriter
         await ArrayAsync(json, "issues", db.Issues.AsNoTracking().Include(i => i.Labels).OrderBy(i => i.ProjectId).ThenBy(i => i.Number), ct);
         await ArrayAsync(json, "issueRelations", db.IssueRelations.AsNoTracking().OrderBy(r => r.CreatedAt), ct);
         await ArrayAsync(json, "sprints", db.Sprints.AsNoTracking().OrderBy(s => s.StartDate), ct);
+        await ArrayAsync(json, "sprintLedger", db.SprintLedger.AsNoTracking().OrderBy(l => l.At).ThenBy(l => l.Id), ct);
         await ArrayAsync(json, "milestones", db.Milestones.AsNoTracking().OrderBy(m => m.Date), ct);
         await ArrayAsync(json, "projectCapacity", db.ProjectCapacity.AsNoTracking().OrderBy(c => c.FromMonth), ct);
         await ArrayAsync(json, "comments", db.Comments.AsNoTracking().OrderBy(c => c.CreatedAt), ct);

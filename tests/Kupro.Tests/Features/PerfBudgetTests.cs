@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
+using Kupro.Api.Features.Sprints;
 using Kupro.Tests.Infrastructure;
 
 namespace Kupro.Tests.Features;
@@ -60,6 +61,14 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
             (await client.PostAsJsonAsync($"{ws}/issues/OPS-{(n++ % 2000) + 1}/move", new MoveIssueRequest(IssueState.InProgress), Json.Options, Ct))
             .EnsureSuccessStatusCode()));
 
+        // Task 028: a 300-issue sprint with 5 000 ledger rows.
+        var sprintId = await SeedSprintWithLedgerAsync(client, ws);
+        foreach (var url in new[] { $"{ws}/sprints/{sprintId}/review", $"{ws}/sprints/{sprintId}/burndown?by=assignee" })
+        {
+            results.Add(await MeasureAsync($"GET {url.Replace(ws, "{ws}", StringComparison.Ordinal).Replace(sprintId.ToString(), "{id}", StringComparison.Ordinal)}", async () =>
+                (await client.GetAsync(url, Ct)).EnsureSuccessStatusCode()));
+        }
+
         // CI sets KUPRO_PERF_REPORT to $GITHUB_STEP_SUMMARY, so every run shows the numbers.
         if (Environment.GetEnvironmentVariable("KUPRO_PERF_REPORT") is { Length: > 0 } report)
         {
@@ -73,6 +82,35 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
             .Select(r => $"{r.Name}: p50 {r.P50:F1} ms, p99 {r.P99:F1} ms")
             .ToList();
         overBudget.ShouldBeEmpty("endpoints over the ADR-010 budget (p50 100 ms, p99 500 ms)");
+    }
+
+    private static async Task<Guid> SeedSprintWithLedgerAsync(HttpClient client, string ws)
+    {
+        var sprint = await ReadAsync<SprintResponse>(await client.PostAsJsonAsync($"{ws}/sprints",
+            new CreateSprintRequest("CORE", "Big", DateOnly.FromDateTime(DateTime.UtcNow), DateOnly.FromDateTime(DateTime.UtcNow).AddDays(13)), Json.Options, Ct),
+            HttpStatusCode.Created);
+        var keys = new List<string>();
+        for (var batch = 0; batch < 3; batch++)
+        {
+            var created = await ReadAsync<IReadOnlyList<IssueSummary>>(await client.PostAsJsonAsync($"{ws}/issues/bulk", new CreateIssuesRequest(
+                Enumerable.Range(0, 100).Select(i => new CreateIssueRequest("CORE", $"Sprint issue {batch}-{i}", State: IssueState.Todo, Effort: 1 + (i % 8),
+                    Sprint: sprint.Id.ToString())).ToList()), Json.Options, Ct), HttpStatusCode.Created);
+            keys.AddRange(created.Select(i => i.Key));
+        }
+
+        (await client.PostAsync($"{ws}/sprints/{sprint.Id}/start", null, Ct)).EnsureSuccessStatusCode();
+
+        // Effort changes write one row per issue: 16 rounds on top of the 300 baseline rows make 5 100.
+        for (var round = 0; round < 16; round++)
+        {
+            foreach (var chunk in keys.Chunk(100))
+            {
+                var items = chunk.Select(k => new IssueUpdate(k, new UpdateIssueRequest(Effort: 2 + round))).ToList();
+                (await client.PatchAsJsonAsync($"{ws}/issues/bulk", new UpdateIssuesRequest(items), Json.Options, Ct)).EnsureSuccessStatusCode();
+            }
+        }
+
+        return sprint.Id;
     }
 
     private static async Task SeedAsync(HttpClient client, string ws)

@@ -217,6 +217,8 @@ public sealed record IssuePage(IReadOnlyList<IssueSummary> Items, string? NextCu
 public sealed record IssueRelationResponse(Guid Id, RelationKind Type, IssueRef Issue);
 
 /// <param name="ChildEffort">Sum of the children's effort, shown beside the issue's own estimate.</param>
+/// <param name="SplitFrom">The issue this one continues, when it came from a split on sprint close.</param>
+/// <param name="ContinuedIn">Where this issue's hours left went, when it was split on sprint close.</param>
 public sealed record IssueDetail(
     Guid Id,
     string Key,
@@ -240,7 +242,9 @@ public sealed record IssueDetail(
     MemberRef CreatedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? CompletedAt);
+    DateTimeOffset? CompletedAt,
+    IssueRef? SplitFrom = null,
+    IssueRef? ContinuedIn = null);
 
 /// <param name="Name">Label name (lowercase).</param>
 /// <param name="Color">Display colour.</param>

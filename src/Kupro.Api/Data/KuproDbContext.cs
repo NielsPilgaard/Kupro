@@ -35,6 +35,7 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Issue> Issues => Set<Issue>();
     public DbSet<Sprint> Sprints => Set<Sprint>();
+    public DbSet<SprintLedgerEntry> SprintLedger => Set<SprintLedgerEntry>();
     public DbSet<Milestone> Milestones => Set<Milestone>();
     public DbSet<ProjectCapacity> ProjectCapacity => Set<ProjectCapacity>();
     public DbSet<Label> Labels => Set<Label>();

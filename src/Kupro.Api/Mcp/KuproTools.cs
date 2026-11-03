@@ -202,9 +202,44 @@ public sealed partial class KuproTools(
         return Unwrap(await sprints.ListAsync(project, state, ct));
     }
 
+    [McpServerTool(Name = "get_sprint_review", ReadOnly = true), Description(
+        "Before closing a sprint, or as its report afterwards: summary in hours (at start, added, completed, carried, " +
+        "split, to backlog, canceled, completion %), unfinished issues with state, assignee, effort and hasChildren, " +
+        "completed issues, and the open sprints unfinished work can go to. Use it to build the `items` of a close.")]
+    [CoversOperations("getSprintReview")]
+    public async Task<SprintReview> GetSprintReview(
+        [Description("Sprint id, from list_sprints.")] Guid id,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return Unwrap(await sprints.ReviewAsync(id, ct));
+    }
+
+    [McpServerTool(Name = "get_sprint_burndown", ReadOnly = true), Description(
+        "A sprint's burndown per Europe/Copenhagen day: scope and remaining hours (null before the data starts and for " +
+        "days to come) and the ideal line. With by=assignee, also one series and totals per assignee; assignee null is " +
+        "unassigned work. Sprints closed before the ledger existed have no data.")]
+    [CoversOperations("getSprintBurndown")]
+    public async Task<SprintBurndown> GetSprintBurndown(
+        [Description("Sprint id, from list_sprints.")] Guid id,
+        [Description("assignee: also per assignee.")] BurndownGrouping? by = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
+        return Unwrap(await sprints.BurndownAsync(id, by, ct));
+    }
+
     [McpServerTool(Name = "manage_sprint"), Description(
-        "Create, start or close a sprint. create needs project, name, startDate, endDate. close moves unfinished " +
-        "issues to the next planned sprint (default) or to the backlog (moveUnfinishedTo=backlog).")]
+        "Create, start or close a sprint. create needs project, name, startDate, endDate. close applies an outcome per " +
+        "unfinished issue, in one transaction: read get_sprint_review first, then pass `items`, each with issue (key) and " +
+        "outcome: carry (to the target sprint), split (needs hoursLeft: above 0, below the issue's effort; no child " +
+        "issues; the original becomes Done with the hours done, a new issue takes the hours left to the target), backlog, " +
+        "cancel or done. So 'close sprint 14, split what's in review at half its effort' is one split item per In Review " +
+        "issue with hoursLeft = effort / 2. Issues not listed follow moveUnfinishedTo: next (default) or backlog. target " +
+        "defaults to the next planned sprint; startNext starts it after closing. The response lists new keys in splits, " +
+        "and in skipped any listed issue that was no longer unfinished.")]
     [CoversOperations("createSprint", "startSprint", "closeSprint")]
     public async Task<object> ManageSprint(
         [Description("create, start or close.")] string action,
@@ -214,7 +249,10 @@ public sealed partial class KuproTools(
         [Description("First day, YYYY-MM-DD (create).")] DateOnly? startDate = null,
         [Description("Last day, YYYY-MM-DD (create).")] DateOnly? endDate = null,
         [Description("Goal (create).")] string? goal = null,
-        [Description("next or backlog (close).")] UnfinishedDestination? moveUnfinishedTo = null,
+        [Description("next or backlog: outcome for issues not in items (close).")] UnfinishedDestination? moveUnfinishedTo = null,
+        [Description("Sprint id for carried and split work; default the next planned one (close).")] Guid? target = null,
+        [Description("Outcome per issue: issue, outcome, hoursLeft (split), target (close).")] IReadOnlyList<CloseSprintItem>? items = null,
+        [Description("Start the target sprint right after closing (close).")] bool startNext = false,
         [Description(WorkspaceHelp)] string? workspace = null,
         CancellationToken ct = default)
     {
@@ -225,7 +263,7 @@ public sealed partial class KuproTools(
                 Unwrap(await sprints.CreateAsync(new CreateSprintRequest(project, name, start, end, goal), ct)),
             "start" when id is { } startId => Unwrap(await sprints.StartAsync(startId, ct)),
             "close" when id is { } closeId => Unwrap(await sprints.CloseAsync(closeId,
-                new CloseSprintRequest(moveUnfinishedTo ?? UnfinishedDestination.Next), ct)),
+                new CloseSprintRequest(moveUnfinishedTo ?? UnfinishedDestination.Next, target, items, startNext), ct)),
             _ => throw new McpException("invalid_arguments: create needs project, name, startDate, endDate; start and close need id."),
         };
     }

@@ -90,7 +90,7 @@ search engines must read and that should load instantly on a phone. The public p
 
 ## Implementation Notes
 
-- **IMP-001**: [Task 019](../../tasks/019-public-site.md) builds the site, its container and the Aspire resource.
+- **IMP-001**: [Task 019](../../tasks/completed/019-public-site.md) builds the site, its container and the Aspire resource.
 - **IMP-002**: `site/Dockerfile` builds with Bun and copies `dist/` into `nginx:alpine`; build context is the repo
   root so the site can import `web/src/styles/tokens.css`.
 - **IMP-003**: The look book stays in `docs/design/public-pages/` as the design record; the site is the source of

@@ -83,7 +83,7 @@ Center ends on 28 March 2029.
 
 ### Site
 
-- `kupro.app/switch/jira` (EN/DA, [task 019](019-public-site.md) structure): what comes across, what changes (the
+- `kupro.app/switch/jira` (EN/DA, [task 019](completed/019-public-site.md) structure): what comes across, what changes (the
   fixed workflow, no custom fields), the Data Center deadline, a three-step how-to.
 
 ## Acceptance criteria

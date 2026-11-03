@@ -11,7 +11,7 @@ import {
   listIssueActivityQueryKey,
   updateCommentMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
-import type { FeedChange, FeedItem, FeedMeeting, IssuePriority, IssueState, IssueType, RelationKind, Surface } from '../../api/gen/types.gen';
+import type { FeedChange, FeedItem, FeedMeeting, IssuePriority, IssueState, IssueType, RelationKind, Surface, CloseOutcome } from '../../api/gen/types.gen';
 import { useMembers } from '../../api/issues';
 import { Avatar, Button, Kbd } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
@@ -94,7 +94,17 @@ function EventItem({ item }: { item: FeedItem }) {
       }
     }
   };
-  const lines = item.kind === 'created' ? [t('feed.created', { name })] : item.changes.map(line);
+  const of = (field: string) => item.changes.find((c) => c.field === field);
+  const lines =
+    item.kind === 'created'
+      ? [t('feed.created', { name })]
+      : item.kind === 'sprintClosed'
+        ? [t(`feed.sprintClosed.${of('outcome')?.to as CloseOutcome}`, { name, sprint: of('sprint')?.from, target: of('sprint')?.to ?? t('sprint.backlog') })]
+        : item.kind === 'splitFrom'
+          ? [t('feed.splitFrom', { name, key: of('issue')?.to })]
+          : item.kind === 'splitInto'
+            ? [t('feed.splitInto', { name, key: of('issue')?.to })]
+            : item.changes.map(line);
 
   return (
     <li className="flex gap-2 text-sm text-mute">

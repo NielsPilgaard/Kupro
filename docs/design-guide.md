@@ -190,6 +190,20 @@ Structure and behaviour: [delivery-plan.md](delivery-plan.md). Visual rules:
 - **Capacity band (bars)**: per month two 9 px bars from a shared baseline — demand (filled; `--ok` if covered,
   `--bad` if over supply) and supply (1.5 px `--mute` outline). Tooltip and screen-reader text: "needs 4.5, has 3".
 
+### Burndown
+
+Close sprint page and sprint report ([ADR-020](adr/ADR-020-sprint-close-burndown.md)). Hand-rolled SVG like the delivery
+plan, no chart dependency. Each chart has a screen-reader table behind it.
+
+- **Remaining**: 2 px `--acc-ink` step line; a point is the value at the end of its Europe/Copenhagen day.
+- **Scope**: 1.5 px dashed `--mute` step line. **Ideal**: 1 px `--mute` at 60% straight line from baseline scope to 0 over
+  the sprint's weekdays.
+- **Weekends**: `--sunk` bands. **End date** on a sprint that ran late: 1 px dashed `--mute` vertical.
+- **Per assignee**: small multiples, 240 px minimum, all on one y scale so heights compare, followed by a table (at start,
+  added, completed, remaining, carried) sorted by name with Unassigned last. No ranking.
+- **Outcome control**: segmented, as the view tabs. Split is disabled with a tooltip for issues without effort or with
+  children. Its hours-left input starts empty and takes focus.
+
 ### Command palette
 
 `Ctrl/Cmd K`. Centered, 540 px max, 44 px from the top, `--panel`, `--r2`, float shadow, dimmed backdrop. Query row

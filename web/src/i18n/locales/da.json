@@ -122,7 +122,9 @@
     "sections": "Sektioner",
     "widen": "Gør panelet bredere",
     "narrow": "Gør panelet smallere",
-    "noSprint": "Ingen sprint"
+    "noSprint": "Ingen sprint",
+    "splitFrom": "Delt fra",
+    "continuedIn": "Fortsat i"
   },
   "errors": {
     "updateFailed": "{{key}} kunne ikke gemmes. Ændringen er rullet tilbage.",
@@ -214,16 +216,10 @@
     "noneActive": "Intet aktivt sprint. Planlæg et herunder, og start det.",
     "hours": "{{done}} af {{total}} færdig",
     "hoursHint": "Estimat på færdige opgaver ud af alle opgaver i sprintet",
-    "close": "Luk sprint",
-    "closePrompt_one": "{{count}} ufærdig opgave. Hvor skal den hen?",
-    "closePrompt_other": "{{count}} ufærdige opgaver. Hvor skal de hen?",
-    "toNext": "Næste sprint",
-    "toBacklog": "Backlog",
+    "close": "Afslut sprint",
     "noNext": "Planlæg et sprint først",
-    "closed_one": "{{name}} er lukket. {{count}} opgave flyttet til {{target}}.",
-    "closed_other": "{{name}} er lukket. {{count}} opgaver flyttet til {{target}}.",
     "backlog": "backloggen",
-    "closeFailed": "Sprintet kunne ikke lukkes.",
+    "closeFailed": "Sprintet kunne ikke afsluttes.",
     "planned": "Planlagte",
     "issueCount_one": "{{count}} opgave · {{hours}}",
     "issueCount_other": "{{count}} opgaver · {{hours}}",
@@ -232,7 +228,11 @@
     "createFailed": "Sprintet kunne ikke planlægges. Tjek datoerne.",
     "name": "Sprintets navn",
     "namePlaceholder": "Sprintets navn, fx Sprint 15",
-    "plan": "Planlæg sprint"
+    "plan": "Planlæg sprint",
+    "overdue_one": "{{name}} sluttede for {{count}} dag siden.",
+    "overdue_other": "{{name}} sluttede for {{count}} dage siden.",
+    "reviewAndClose": "Gennemgå og afslut.",
+    "closedSprints": "Afsluttede"
   },
   "plan": {
     "title": "Leveranceplan",
@@ -314,7 +314,16 @@
       "mcp": "MCP",
       "api": "API",
       "meeting": "møde"
-    }
+    },
+    "sprintClosed": {
+      "carry": "{{name}} overførte dette fra {{sprint}} til {{target}} ved afslutning",
+      "split": "{{name}} delte dette ved afslutning af {{sprint}}",
+      "backlog": "{{name}} flyttede dette fra {{sprint}} til {{target}} ved afslutning",
+      "cancel": "{{name}} annullerede dette ved afslutning af {{sprint}}",
+      "done": "{{name}} markerede dette som færdigt ved afslutning af {{sprint}}"
+    },
+    "splitFrom": "{{name}} delte dette fra {{key}}",
+    "splitInto": "{{name}} fortsatte dette i {{key}}"
   },
   "upload": {
     "uploading": "Uploader {{name}}…",
@@ -444,5 +453,84 @@
       "lastOwner": "Et arbejdsområde skal have mindst én aktiv ejer. Gør en anden til ejer først.",
       "failed": "Det lykkedes ikke. Prøv igen."
     }
+  },
+  "sprintClose": {
+    "loadFailed": "Sprintet kunne ikke hentes.",
+    "closeTitle": "Afslut {{name}}",
+    "reportTitle": "{{name}}: sprintrapport",
+    "stats": {
+      "atStart": "Ved start",
+      "added": "Tilføjet",
+      "completed": "Udført",
+      "carried": "Overført",
+      "remaining": "Tilbage",
+      "completion": "Gennemført"
+    },
+    "burndown": "Burndown",
+    "burndownOf": "Burndown for {{name}}",
+    "noBurndown": "Sprintet har ingen burndown: det blev afsluttet, før Kupro gemte en.",
+    "perAssignee": "Pr. ansvarlig",
+    "unassigned": "Ikke tildelt",
+    "chart": {
+      "date": "Dato",
+      "scope": "Omfang",
+      "remaining": "Tilbage",
+      "ideal": "Ideel",
+      "scopeDashed": "Omfang (stiplet)",
+      "weekends": "Weekender skraveret"
+    },
+    "unfinished": "Ufærdigt arbejde",
+    "leftSprint": "Forlod sprintet",
+    "none": "Ingen.",
+    "allFinished": "Alt er færdigt. Der er intet at beslutte.",
+    "completed_one": "Udført ({{count}})",
+    "completed_other": "Udført ({{count}})",
+    "target": "Flyt til",
+    "createNext": "Opret næste sprint",
+    "bulk_one": "{{count}} valgt",
+    "bulk_other": "{{count}} valgt",
+    "outcomes": {
+      "carry": "Overfør",
+      "split": "Del",
+      "backlog": "Backlog",
+      "cancel": "Annullér",
+      "done": "Færdig"
+    },
+    "continuedIn": "Fortsat i",
+    "selectRow": "Vælg {{key}}",
+    "outcomeOf": "Udfald for {{key}}",
+    "splitHasChildren": "Opgaver med underopgaver kan ikke deles.",
+    "splitNoEffort": "Tilføj et estimat, før du deler.",
+    "hoursLeft": "Timer tilbage",
+    "splitPreview": "{{key}} færdig her ({{done}}) · ny opgave med {{left}} til {{target}}",
+    "splitInvalid": "Over 0 og under {{hours}}, med højst to decimaler.",
+    "startNext": "Start {{name}} efter afslutning",
+    "footer": {
+      "carry_one": "{{count}} overføres ({{hours}})",
+      "carry_other": "{{count}} overføres ({{hours}})",
+      "split_one": "{{count}} deles ({{hours}} færdig her, {{count}} ny opgave)",
+      "split_other": "{{count}} deles ({{hours}} færdig her, {{count}} nye opgaver)",
+      "backlog_one": "{{count}} til backlog",
+      "backlog_other": "{{count}} til backlog",
+      "cancel_one": "{{count}} annulleret",
+      "cancel_other": "{{count}} annulleret",
+      "done_one": "{{count}} færdig",
+      "done_other": "{{count}} færdige",
+      "nothing": "Intet ufærdigt."
+    },
+    "keys": {
+      "j": "næste",
+      "k": "forrige",
+      "x": "vælg",
+      "c": "overfør",
+      "s": "del",
+      "b": "backlog",
+      "d": "færdig"
+    },
+    "closed_one": "{{name}} er afsluttet. {{count}} opgave flyttet videre.",
+    "closed_other": "{{name}} er afsluttet. {{count}} opgaver flyttet videre.",
+    "closedSplits": "Nye opgaver fra opdelinger: {{keys}}.",
+    "closedSkipped": "Sprunget over, ikke længere ufærdige: {{keys}}.",
+    "burndownFailed": "Burndown kunne ikke hentes."
   }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Text;
+using System.Text.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Projects;
@@ -24,12 +25,16 @@ public sealed class IssueService(
     WorkspaceContext workspace,
     LabelService labels,
     ActivityLog activity,
+    SprintLedger ledger,
     RealtimeEvents realtime,
     TimeProvider clock)
 {
     public const string Me = "me";
     public const string Unassigned = "none";
     public const string ActiveSprint = "active";
+
+    internal const string SplitFromKind = "split_from";
+    internal const string SplitIntoKind = "split_into";
 
     // ---------------------------------------------------------------- reads
 
@@ -71,6 +76,8 @@ public sealed class IssueService(
                         m.Kind))
                     .First(),
                 i.CompletedAt,
+                Splits = db.Activity.Where(a => a.IssueId == i.Id && (a.Kind == SplitFromKind || a.Kind == SplitIntoKind))
+                    .OrderBy(a => a.CreatedAt).Select(a => new { a.Kind, a.Data }).ToList(),
             })
             .SingleAsync(ct);
 
@@ -78,9 +85,20 @@ public sealed class IssueService(
             .Concat(row.Incoming.Select(r => new IssueRelationResponse(r.Id, ViewOf(r.Type, outgoing: false), r.Other)))
             .OrderBy(r => r.Type).ThenBy(r => r.Issue.Key, StringComparer.Ordinal)
             .ToList();
+        // An issue can be reopened and split again; the latest link wins.
+        var splitKeys = new Dictionary<string, string?>();
+        foreach (var split in row.Splits)
+        {
+            splitKeys[split.Kind] = SplitKey(split.Data);
+        }
+
+        var splitRefs = splitKeys.Count == 0 ? [] : await db.Issues.AsNoTracking().Where(i => splitKeys.Values.Contains(i.Key))
+            .Select(i => new IssueRef(i.Key, i.Title, i.Type, i.State)).ToListAsync(ct);
+        IssueRef? SplitRef(string kind) => splitKeys.TryGetValue(kind, out var other) ? splitRefs.Find(r => r.Key == other) : null;
         return new IssueDetail(s.Id, s.Key, row.ProjectKey, s.Type, s.Title, row.Description, s.State, s.Priority,
             s.Assignee, row.Parent, s.Effort, row.Children.Count > 0 ? row.ChildEffort : null, s.StartDate, s.DueDate,
-            s.Labels, row.Children, relations, s.Rank, s.SprintId, row.CreatedBy, s.CreatedAt, s.UpdatedAt, row.CompletedAt);
+            s.Labels, row.Children, relations, s.Rank, s.SprintId, row.CreatedBy, s.CreatedAt, s.UpdatedAt, row.CompletedAt,
+            SplitRef(SplitFromKind), SplitRef(SplitIntoKind));
     }
 
     public async Task<IssueResult<IssuePage>> ListAsync(IssueQuery query, CancellationToken ct)
@@ -303,7 +321,7 @@ public sealed class IssueService(
             }
         }
 
-        var created = new List<Issue>(requests.Count);
+        IssueError? sprintClosed = null;
         // Ids are fixed before the strategy runs, so a commit whose acknowledgement was lost is recognised by
         // verifySucceeded instead of retried into duplicate issues with fresh numbers.
         var ids = requests.Select(_ => Guid.CreateVersion7()).ToList();
@@ -313,65 +331,30 @@ public sealed class IssueService(
         await db.Database.CreateExecutionStrategy().ExecuteAsync<object?, bool>(null, async (_, _, _) =>
         {
             db.ChangeTracker.Clear();
-            created.Clear();
+            sprintClosed = null;
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-            var numbers = new Dictionary<Guid, int>();
-            foreach (var group in requests.GroupBy(r => projects[r.Project.ToUpperInvariant()]).OrderBy(g => g.Key))
-            {
-                var last = await ProjectService.AllocateIssueNumbersAsync(db, group.Key, group.Count(), ct);
-                numbers[group.Key] = last - group.Count();
-            }
-
-            // New issues go on top of their column (project + state), in request order, so they are on its first page.
-            var ranks = new Dictionary<(Guid, IssueState), double>();
-            foreach (var group in requests.GroupBy(r => (projects[r.Project.ToUpperInvariant()], r.State)))
-            {
-                var (projectId, state) = group.Key;
-                var top = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MinAsync(i => (double?)i.Rank, ct) ?? 0;
-                ranks[group.Key] = top - group.Count() - 1;
-            }
-
-            var now = clock.GetUtcNow();
+            var rows = new List<NewIssue>(requests.Count);
             foreach (var (r, index) in requests.Select((r, i) => (r, i)))
             {
                 var projectKey = r.Project.ToUpperInvariant();
-                var projectId = projects[projectKey];
-                var number = ++numbers[projectId];
-                var issue = new Issue
-                {
-                    Id = ids[index],
-                    WorkspaceId = workspace.RequireWorkspaceId(),
-                    ProjectId = projectId,
-                    Number = number,
-                    Key = $"{projectKey}-{number}",
-                    Type = r.Type,
-                    Title = r.Title.Trim(),
-                    Description = r.Description,
-                    State = r.State,
-                    Priority = r.Priority,
-                    AssigneeId = r.Assignee is null ? null : assignees[r.Assignee].Id,
-                    ParentId = r.Parent is null ? null
-                        : IsBatchRef(r.Parent) ? created[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)].Id
+                rows.Add(new NewIssue(
+                    ids[index], projects[projectKey], projectKey, r.Type, r.Title.Trim(), r.Description, r.State, r.Priority,
+                    r.Assignee is null ? null : assignees[r.Assignee].Id,
+                    r.Parent is null ? null
+                        : IsBatchRef(r.Parent) ? ids[int.Parse(r.Parent.AsSpan(1), CultureInfo.InvariantCulture)]
                         : parents[NormalizeKey(r.Parent)].Id,
-                    Effort = r.Effort,
-                    StartDate = r.StartDate,
-                    DueDate = r.DueDate,
-                    Rank = ++ranks[(projectId, r.State)],
-                    SprintId = sprintIds[index],
-                    CreatedById = workspace.MemberId,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    CompletedAt = IsClosed(r.State) ? now : null,
-                };
-                foreach (var labelId in await labels.ResolveAsync(db, r.Labels ?? [], ct))
-                {
-                    issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
-                }
+                    r.Effort, r.StartDate, r.DueDate, sprintIds[index],
+                    await labels.ResolveAsync(db, r.Labels ?? [], ct)));
+            }
 
-                db.Issues.Add(issue);
-                activity.Record(db, issue.Id, "created");
-                created.Add(issue);
+            // Before the project counters in InsertAsync: closing a sprint takes the sprint first too.
+            await SprintLedger.LockSprintsAsync(db, sprintIds.OfType<Guid>().Distinct().ToList(), ct);
+            var inserted = await InsertAsync(db, rows, ct);
+            if (inserted.Error is not null)
+            {
+                sprintClosed = inserted.Error;
+                return false;
             }
 
             await db.SaveChangesAsync(ct);
@@ -379,10 +362,81 @@ public sealed class IssueService(
             return true;
         }, async (_, _, _) => new ExecutionResult<bool>(await db.Issues.AnyAsync(i => i.Id == ids[0], ct), true), ct);
 
+        if (sprintClosed is not null)
+        {
+            return sprintClosed;
+        }
+
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
         var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
         await realtime.IssuesAsync(ordered, created: true);
         return ordered;
+    }
+
+    /// <summary>
+    /// Adds issues to the caller's context and transaction: key, rank, activity and ledger rows. The counter update locks
+    /// each project row until the caller commits.
+    /// </summary>
+    private async Task<IssueResult<List<Issue>>> InsertAsync(KuproDbContext db, IReadOnlyList<NewIssue> rows, CancellationToken ct)
+    {
+        var numbers = new Dictionary<Guid, int>();
+        foreach (var group in rows.GroupBy(r => r.ProjectId).OrderBy(g => g.Key))
+        {
+            var last = await ProjectService.AllocateIssueNumbersAsync(db, group.Key, group.Count(), ct);
+            numbers[group.Key] = last - group.Count();
+        }
+
+        // New issues go on top of their column (project + state), in request order, so they are on its first page.
+        var ranks = new Dictionary<(Guid, IssueState), double>();
+        foreach (var group in rows.GroupBy(r => (r.ProjectId, r.State)))
+        {
+            var (projectId, state) = group.Key;
+            var top = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MinAsync(i => (double?)i.Rank, ct) ?? 0;
+            ranks[group.Key] = top - group.Count() - 1;
+        }
+
+        var now = clock.GetUtcNow();
+        var created = new List<Issue>(rows.Count);
+        foreach (var r in rows)
+        {
+            var number = ++numbers[r.ProjectId];
+            var issue = new Issue
+            {
+                Id = r.Id,
+                WorkspaceId = workspace.RequireWorkspaceId(),
+                ProjectId = r.ProjectId,
+                Number = number,
+                Key = $"{r.ProjectKey}-{number}",
+                Type = r.Type,
+                Title = r.Title,
+                Description = r.Description,
+                State = r.State,
+                Priority = r.Priority,
+                AssigneeId = r.AssigneeId,
+                ParentId = r.ParentId,
+                Effort = r.Effort,
+                StartDate = r.StartDate,
+                DueDate = r.DueDate,
+                Rank = ++ranks[(r.ProjectId, r.State)],
+                SprintId = r.SprintId,
+                CreatedById = workspace.MemberId,
+                CreatedAt = now,
+                UpdatedAt = now,
+                CompletedAt = IsClosed(r.State) ? now : null,
+            };
+            foreach (var labelId in r.LabelIds)
+            {
+                issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+            }
+
+            db.Issues.Add(issue);
+            activity.Record(db, issue.Id, "created");
+            created.Add(issue);
+        }
+
+        return await ledger.RecordAsync(db, created.Select(i => (i.Id, LedgerState.None, LedgerState.Of(i))), ct) is { } sprintClosed
+            ? sprintClosed
+            : created;
     }
 
     // ---------------------------------------------------------------- update
@@ -397,8 +451,60 @@ public sealed class IssueService(
     public async Task<IssueResult<IReadOnlyList<IssueSummary>>> UpdateManyAsync(
         IReadOnlyList<IssueUpdate> updates, CancellationToken ct)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var applied = await InWriteAsync(db => ApplyUpdatesAsync(db, updates, ct), ct);
+        if (applied.Error is { } error)
+        {
+            return error;
+        }
 
+        var ids = applied.Value!;
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
+        var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
+        await realtime.IssuesAsync(ordered);
+        return ordered;
+    }
+
+    /// <summary>
+    /// Runs a write in one transaction, committing unless it returns an error. A save that lost a race with another write
+    /// to the same issue starts over on fresh data, so both changes land and the ledger follows what was actually stored.
+    /// </summary>
+    private async Task<IssueResult<T>> InWriteAsync<T>(Func<KuproDbContext, Task<IssueResult<T>>> write, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            try
+            {
+                IssueResult<T> result = default;
+                await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+                {
+                    db.ChangeTracker.Clear();
+                    await using var tx = await db.Database.BeginTransactionAsync(ct);
+                    result = await write(db);
+                    if (result.Error is null)
+                    {
+                        await tx.CommitAsync(ct);
+                    }
+                });
+                return result;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (attempt == MaxWriteAttempts)
+                {
+                    return new IssueError("issue_conflict", "The issue is being changed by someone else right now. Try again.");
+                }
+            }
+        }
+    }
+
+    /// <summary>Losing a race means another write got through, so a request only runs out with this many writers on one issue at once.</summary>
+    private const int MaxWriteAttempts = 10;
+
+    private async Task<IssueResult<List<Guid>>> ApplyUpdatesAsync(
+        KuproDbContext db, IReadOnlyList<IssueUpdate> updates, CancellationToken ct)
+    {
         var keys = updates.Select(u => NormalizeKey(u.Key)).Distinct().ToList();
         var issues = await db.Issues.Include(i => i.Labels).Where(i => keys.Contains(i.Key)).ToDictionaryAsync(i => i.Key, ct);
         var parentKeys = updates.Where(u => u.Changes.Parent is not null).Select(u => NormalizeKey(u.Changes.Parent!)).Distinct().ToList();
@@ -407,6 +513,7 @@ public sealed class IssueService(
         var assignees = await ResolveAssigneesAsync(db, updates.Select(u => u.Changes.Assignee), ct);
         var labelNames = await db.Labels.AsNoTracking().ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
+        var before = issues.Values.Select(i => (Issue: i, State: LedgerState.Of(i))).ToList();
         var now = clock.GetUtcNow();
         for (var n = 0; n < updates.Count; n++)
         {
@@ -587,19 +694,32 @@ public sealed class IssueService(
             }
         }
 
-        await db.SaveChangesAsync(ct);
+        if (await ledger.RecordAsync(db, before.Select(b => (b.Issue.Id, b.State, LedgerState.Of(b.Issue))), ct) is { } sprintClosed)
+        {
+            return sprintClosed;
+        }
 
-        var ids = updates.Select(u => issues[NormalizeKey(u.Key)].Id).Distinct().ToList();
-        var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
-        var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
-        await realtime.IssuesAsync(ordered);
-        return ordered;
+        await db.SaveChangesAsync(ct);
+        return updates.Select(u => issues[NormalizeKey(u.Key)].Id).Distinct().ToList();
     }
 
     /// <summary>Board move: optional state change plus a position between two neighbours.</summary>
     public async Task<IssueResult<IssueSummary>> MoveAsync(string key, MoveIssueRequest request, CancellationToken ct)
     {
+        var applied = await InWriteAsync(db => ApplyMoveAsync(db, key, request, ct), ct);
+        if (applied.Error is { } error)
+        {
+            return error;
+        }
+
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var moved = await db.Issues.AsNoTracking().Where(i => i.Id == applied.Value).Select(SummaryOf(db)).SingleAsync(ct);
+        await realtime.IssuesAsync([moved]);
+        return moved;
+    }
+
+    private async Task<IssueResult<Guid>> ApplyMoveAsync(KuproDbContext db, string key, MoveIssueRequest request, CancellationToken ct)
+    {
         var issue = await db.Issues.SingleOrDefaultAsync(i => i.Key == NormalizeKey(key), ct);
         if (issue is null)
         {
@@ -615,6 +735,7 @@ public sealed class IssueService(
             return new IssueError("issue_not_found", "A neighbour issue in after/before doesn't exist.");
         }
 
+        var ledgerBefore = LedgerState.Of(issue);
         var now = clock.GetUtcNow();
         issue.Rank = (after, before) switch
         {
@@ -632,10 +753,10 @@ public sealed class IssueService(
         }
 
         issue.UpdatedAt = now;
+        // A move keeps the issue's sprint, so the closed-sprint check can't apply.
+        _ = await ledger.RecordAsync(db, [(issue.Id, ledgerBefore, LedgerState.Of(issue))], ct);
         await db.SaveChangesAsync(ct);
-        var moved = await db.Issues.AsNoTracking().Where(i => i.Id == issue.Id).Select(SummaryOf(db)).SingleAsync(ct);
-        await realtime.IssuesAsync([moved]);
-        return moved;
+        return issue.Id;
     }
 
     // ---------------------------------------------------------------- relations
@@ -734,28 +855,262 @@ public sealed class IssueService(
     // ---------------------------------------------------------------- helpers
 
     /// <summary>
-    /// Moves a sprint's unfinished issues to another sprint, or out of sprints when <paramref name="to"/> is null.
-    /// Called by SprintService when a sprint closes; each move is logged on the issue.
+    /// Applies the close outcomes to a sprint's unfinished issues (ADR-020), in the caller's transaction and while the
+    /// sprint is still active. Saves, but publishes nothing: the caller calls <see cref="PublishCloseAsync"/> after commit.
     /// </summary>
-    public async Task<int> MoveUnfinishedAsync(Guid from, Guid? to, CancellationToken ct)
+    internal async Task<IssueResult<AppliedClose>> ApplyCloseAsync(
+        KuproDbContext db, Sprint sprint, CloseSprintRequest request, Guid? defaultTarget, IReadOnlyCollection<Guid> openSprints, CancellationToken ct)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var open = await db.Issues
-            .Where(i => i.SprintId == from && i.State != IssueState.Done && i.State != IssueState.Canceled)
-            .ToListAsync(ct);
-        var now = clock.GetUtcNow();
-        foreach (var issue in open)
+        var items = new Dictionary<string, CloseSprintItem>();
+        foreach (var item in request.Items ?? [])
         {
-            activity.Record(db, issue.Id, "updated", new Dictionary<string, FieldChange> { ["sprint"] = new(from, to) });
-            issue.SprintId = to;
-            issue.UpdatedAt = now;
+            // MCP arguments don't pass the controller's validation; numbers also bind to enums.
+            if (string.IsNullOrWhiteSpace(item?.Issue) || !Enum.IsDefined(item.Outcome))
+            {
+                return new IssueError("invalid_close_item", "Each item needs an issue key and an outcome: carry, split, backlog, cancel or done.");
+            }
+
+            if (!items.TryAdd(NormalizeKey(item.Issue), item))
+            {
+                return new IssueError("invalid_close_item", $"{item.Issue} is listed twice.");
+            }
         }
 
+        // Holds the rows, so an update already under way waits, then starts over and finds the issue moved.
+        await db.Database.ExecuteSqlAsync(
+            $"SELECT id FROM issues WHERE sprint_id = {sprint.Id} AND workspace_id = {db.CurrentWorkspaceId} ORDER BY id FOR UPDATE", ct);
+        var unfinished = await db.Issues.Include(i => i.Labels)
+            .Where(i => i.SprintId == sprint.Id && i.State != IssueState.Done && i.State != IssueState.Canceled)
+            .OrderBy(i => i.Number)
+            .ToListAsync(ct);
+        var unfinishedKeys = unfinished.Select(i => i.Key).ToHashSet();
+        var skipped = items.Keys.Where(k => !unfinishedKeys.Contains(k)).Order(StringComparer.Ordinal).ToList();
+
+        var splitIds = unfinished.Where(i => items.GetValueOrDefault(i.Key)?.Outcome == CloseOutcome.Split).Select(i => (Guid?)i.Id).ToList();
+        var parentsOfSplits = splitIds.Count == 0 ? [] : await db.Issues.Where(c => splitIds.Contains(c.ParentId))
+            .Select(c => c.ParentId).Distinct().ToListAsync(ct);
+        var defaultOutcome = request.MoveUnfinishedTo == UnfinishedDestination.Backlog ? CloseOutcome.Backlog : CloseOutcome.Carry;
+        foreach (var issue in unfinished)
+        {
+            var item = items.GetValueOrDefault(issue.Key);
+            var outcome = item?.Outcome ?? defaultOutcome;
+            if (outcome is CloseOutcome.Carry or CloseOutcome.Split && (item?.Target ?? defaultTarget) is null)
+            {
+                return new IssueError("no_next_sprint", "There is no planned sprint to move unfinished issues to. Create one, or move them to the backlog.");
+            }
+
+            if (item is not null && CloseItemError(issue, item, parentsOfSplits.Contains(issue.Id), openSprints) is { } error)
+            {
+                return error;
+            }
+        }
+
+        var projectKey = splitIds.Count == 0 ? "" : await db.Projects.Where(p => p.Id == sprint.ProjectId).Select(p => p.Key).SingleAsync(ct);
+        var now = clock.GetUtcNow();
+        var totals = new Dictionary<CloseOutcome, (int Count, decimal Hours)>();
+        var moved = 0;
+        var usedDefaultTarget = false;
+        var continuations = new List<(Issue Original, NewIssue Continuation, decimal HoursDone, decimal HoursLeft)>();
+        foreach (var issue in unfinished)
+        {
+            var item = items.GetValueOrDefault(issue.Key);
+            var outcome = item?.Outcome ?? defaultOutcome;
+            var before = LedgerState.Of(issue);
+            var effort = issue.Effort ?? 0;
+            var target = item?.Target ?? defaultTarget;
+            usedDefaultTarget |= outcome is CloseOutcome.Carry or CloseOutcome.Split && item?.Target is null;
+            Guid? to = sprint.Id;
+            var hours = effort;
+            switch (outcome)
+            {
+                case CloseOutcome.Carry:
+                    to = target;
+                    ledger.RecordLeaving(db, sprint.Id, issue, LedgerKind.Carried, effort);
+                    issue.SprintId = to;
+                    moved++;
+                    break;
+                case CloseOutcome.Backlog:
+                    to = null;
+                    ledger.RecordLeaving(db, sprint.Id, issue, LedgerKind.Backlogged, effort);
+                    issue.SprintId = null;
+                    moved++;
+                    break;
+                case CloseOutcome.Cancel:
+                case CloseOutcome.Done:
+                    var state = outcome == CloseOutcome.Done ? IssueState.Done : IssueState.Canceled;
+                    activity.Record(db, issue.Id, "updated", new Dictionary<string, FieldChange> { ["state"] = new(issue.State, state) });
+                    SetState(issue, state, now);
+                    ledger.Record(db, issue.Id, before, LedgerState.Of(issue));
+                    break;
+                case CloseOutcome.Split:
+                    var left = item!.HoursLeft!.Value;
+                    var done = effort - left;
+                    continuations.Add((issue, new NewIssue(
+                        Guid.CreateVersion7(), issue.ProjectId, projectKey, issue.Type, issue.Title, issue.Description, issue.State,
+                        issue.Priority, issue.AssigneeId, issue.ParentId, left, issue.StartDate, issue.DueDate, target,
+                        issue.Labels.Select(l => l.LabelId).ToList()), done, left));
+                    activity.Record(db, issue.Id, "updated", new Dictionary<string, FieldChange>
+                    {
+                        ["state"] = new(issue.State, IssueState.Done),
+                        ["effort"] = new(effort, done),
+                    });
+                    // The hours done are a normal completion on close day; the hours left leave as the split row.
+                    ledger.RecordLeaving(db, sprint.Id, issue, LedgerKind.Split, left);
+                    issue.Effort = done;
+                    SetState(issue, IssueState.Done, now);
+                    ledger.Record(db, issue.Id, before with { Effort = done }, LedgerState.Of(issue));
+                    hours = left;
+                    moved++;
+                    break;
+            }
+
+            issue.UpdatedAt = now;
+            activity.Record(db, issue.Id, "sprint_closed", new { outcome, sprint = new FieldChange(sprint.Id, to) });
+            var (count, sum) = totals.GetValueOrDefault(outcome);
+            totals[outcome] = (count + 1, sum + hours);
+        }
+
+        // Saved before the continuations, so the next read sees these issues' new states.
         await db.SaveChangesAsync(ct);
-        var ids = open.Select(i => i.Id).ToList();
-        await realtime.IssuesAsync(await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct));
-        return open.Count;
+
+        var inserted = await InsertAsync(db, continuations.Select(c => c.Continuation).ToList(), ct);
+        if (inserted.Error is { } insertError)
+        {
+            return insertError;
+        }
+
+        var created = inserted.Value!;
+        foreach (var (original, continuation) in continuations.Select(c => c.Original).Zip(created))
+        {
+            db.IssueRelations.Add(new IssueRelation
+            {
+                Id = Guid.CreateVersion7(),
+                WorkspaceId = original.WorkspaceId,
+                SourceId = original.Id,
+                TargetId = continuation.Id,
+                Type = RelationType.Relates,
+                CreatedAt = now,
+            });
+            activity.Record(db, original.Id, SplitIntoKind, new SplitLink(continuation.Key));
+            activity.Record(db, continuation.Id, SplitFromKind, new SplitLink(original.Key));
+        }
+
+        var relationKeys = await MoveOpenBlocksAsync(db, continuations.Select(c => c.Original.Id).Zip(created.Select(c => c.Id))
+            .ToDictionary(p => p.First, p => p.Second), ct);
+        await db.SaveChangesAsync(ct);
+
+        return new AppliedClose(
+            totals.OrderBy(t => t.Key).Select(t => new CloseOutcomeTotal(t.Key, t.Value.Count, t.Value.Hours)).ToList(),
+            moved,
+            continuations.Zip(created, (c, n) => new SprintSplit(c.Original.Key, n.Key, c.HoursDone, c.HoursLeft)).ToList(),
+            skipped,
+            unfinished.Select(i => i.Id).ToList(),
+            created.Select(i => i.Id).ToList(),
+            relationKeys,
+            usedDefaultTarget);
     }
+
+    /// <summary>Pushes what a committed close changed.</summary>
+    internal async Task PublishCloseAsync(AppliedClose applied, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var changed = applied.ChangedIds.Concat(applied.CreatedIds).ToList();
+        var summaries = await db.Issues.AsNoTracking().Where(i => changed.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
+        await realtime.IssuesAsync(summaries.Where(s => applied.ChangedIds.Contains(s.Id)).ToList());
+        await realtime.IssuesAsync(summaries.Where(s => applied.CreatedIds.Contains(s.Id)).ToList(), created: true);
+        foreach (var key in applied.RelationKeys)
+        {
+            await realtime.ChangedAsync(ChangeTopic.Issue, key);
+        }
+    }
+
+    /// <summary>
+    /// Open <c>blocks</c> relations follow the work to the continuation, since the Done original no longer blocks anything
+    /// (ADR-020). Returns the keys of the other issues, whose relations changed.
+    /// </summary>
+    private static async Task<IReadOnlyList<string>> MoveOpenBlocksAsync(
+        KuproDbContext db, Dictionary<Guid, Guid> continuationOf, CancellationToken ct)
+    {
+        if (continuationOf.Count == 0)
+        {
+            return [];
+        }
+
+        var splitIds = continuationOf.Keys.ToList();
+        // Holds the rows, so a removal already under way finishes first and the read below doesn't see the row: moving one that is gone would fail the close.
+        await db.Database.ExecuteSqlAsync($"""
+            SELECT id FROM issue_relations
+            WHERE workspace_id = {db.CurrentWorkspaceId} AND type = 'Blocks' AND (source_id = ANY({splitIds}) OR target_id = ANY({splitIds}))
+            ORDER BY id FOR UPDATE
+            """, ct);
+        var blocks = await db.IssueRelations
+            .Where(r => r.Type == RelationType.Blocks && (splitIds.Contains(r.SourceId) || splitIds.Contains(r.TargetId)))
+            .ToListAsync(ct);
+        var otherIds = blocks.SelectMany(r => new[] { r.SourceId, r.TargetId }).Where(id => !continuationOf.ContainsKey(id)).Distinct().ToList();
+        var openOthers = await db.Issues.AsNoTracking()
+            .Where(i => otherIds.Contains(i.Id) && i.State != IssueState.Done && i.State != IssueState.Canceled)
+            .ToDictionaryAsync(i => i.Id, i => i.Key, ct);
+
+        var touched = new HashSet<string>();
+        foreach (var relation in blocks)
+        {
+            var sourceSplit = continuationOf.TryGetValue(relation.SourceId, out var newSource);
+            var targetSplit = continuationOf.TryGetValue(relation.TargetId, out var newTarget);
+            if (sourceSplit && targetSplit)
+            {
+                relation.SourceId = newSource;
+                relation.TargetId = newTarget;
+            }
+            else if (sourceSplit && openOthers.TryGetValue(relation.TargetId, out var blocked))
+            {
+                relation.SourceId = newSource;
+                touched.Add(blocked);
+            }
+            else if (targetSplit && openOthers.TryGetValue(relation.SourceId, out var blocker))
+            {
+                relation.TargetId = newTarget;
+                touched.Add(blocker);
+            }
+        }
+
+        return touched.ToList();
+    }
+
+    /// <summary>Rules for one listed item whose issue is still unfinished; items already finished are skipped, not checked.</summary>
+    private static IssueError? CloseItemError(Issue issue, CloseSprintItem item, bool hasChildren, IReadOnlyCollection<Guid> openSprints)
+    {
+        if (item.Target is { } target && item.Outcome is CloseOutcome.Carry or CloseOutcome.Split && !openSprints.Contains(target))
+        {
+            return new IssueError("invalid_sprint", $"{issue.Key}: sprint {target} isn't an open sprint in this project, other than the one closing.");
+        }
+
+        if (item.Outcome != CloseOutcome.Split)
+        {
+            return item.HoursLeft is not null ? new IssueError("invalid_split", $"{issue.Key}: hoursLeft only applies to a split.")
+                : item.Target is not null && item.Outcome != CloseOutcome.Carry
+                    ? new IssueError("invalid_sprint", $"{issue.Key}: a target only applies to carry and split.")
+                    : null;
+        }
+
+        if (issue.Effort is not { } effort)
+        {
+            return new IssueError("invalid_split", $"{issue.Key} has no effort to split.");
+        }
+
+        if (hasChildren)
+        {
+            return new IssueError("invalid_split", $"{issue.Key} has child issues and can't be split.");
+        }
+
+        // Effort is stored with two decimals; finer hours would round the two parts away from the original total.
+        return item.HoursLeft is not { } left || left <= 0 || left >= effort || decimal.Round(left, 2) != left
+            ? new IssueError("invalid_split", $"{issue.Key}: hoursLeft must be above 0 and below its effort ({effort}), in hundredths at most.")
+            : null;
+    }
+
+    /// <summary>The other issue's key in a <c>split_from</c> or <c>split_into</c> entry.</summary>
+    internal static string? SplitKey(string? data) =>
+        data is null ? null : JsonSerializer.Deserialize<SplitLink>(data, JsonSerializerOptions.Web)?.Issue;
 
     /// <summary>Sprint id for <c>active</c> or an id; it must belong to the issue's project and not be closed.</summary>
     private static async Task<(Guid? Id, IssueError? Error)> ResolveSprintAsync(
@@ -903,6 +1258,26 @@ public sealed class IssueService(
 
     private sealed record ParentInfo(Guid Id, IssueType Type);
 
+    private sealed record SplitLink(string Issue);
+
+    /// <summary>An issue about to be inserted, with everything already resolved and validated.</summary>
+    private sealed record NewIssue(
+        Guid Id,
+        Guid ProjectId,
+        string ProjectKey,
+        IssueType Type,
+        string Title,
+        string? Description,
+        IssueState State,
+        IssuePriority Priority,
+        Guid? AssigneeId,
+        Guid? ParentId,
+        decimal? Effort,
+        DateOnly? StartDate,
+        DateOnly? DueDate,
+        Guid? SprintId,
+        IReadOnlyList<Guid> LabelIds);
+
     private static class Validate
     {
         public static bool CanBeParent(IssueType child, IssueType parent) => child switch
@@ -962,3 +1337,14 @@ public sealed class IssueService(
             Convert.ToBase64String(Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 }
+
+/// <summary>What <see cref="IssueService.ApplyCloseAsync"/> did; the ids and keys are for pushing it after commit.</summary>
+internal sealed record AppliedClose(
+    IReadOnlyList<CloseOutcomeTotal> Outcomes,
+    int Moved,
+    IReadOnlyList<SprintSplit> Splits,
+    IReadOnlyList<string> Skipped,
+    IReadOnlyList<Guid> ChangedIds,
+    IReadOnlyList<Guid> CreatedIds,
+    IReadOnlyList<string> RelationKeys,
+    bool UsedDefaultTarget);

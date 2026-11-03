@@ -51,11 +51,25 @@ public sealed class SprintsController(SprintService sprints) : ControllerBase
     public async Task<ActionResult<SprintResponse>> Start(Guid id, CancellationToken ct) =>
         this.ToResult(await sprints.StartAsync(id, ct));
 
-    /// <summary>Close the active sprint; unfinished issues move to the next sprint or the backlog.</summary>
+    /// <summary>Close the active sprint with an outcome per unfinished issue: carry, split, backlog, cancel or done.</summary>
     [HttpPost("{id:guid}/close", Name = "closeSprint")]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CloseSprintResponse>> Close(Guid id, CloseSprintRequest request, CancellationToken ct) =>
         this.ToResult(await sprints.CloseAsync(id, request, ct));
+
+    /// <summary>What closing needs, or the sprint report once closed: summary, unfinished and completed issues, open target sprints.</summary>
+    [HttpGet("{id:guid}/review", Name = "getSprintReview")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SprintReview>> Review(Guid id, CancellationToken ct) =>
+        this.ToResult(await sprints.ReviewAsync(id, ct));
+
+    /// <summary>Scope, remaining and ideal hours per day; with <c>by=assignee</c>, also one series per assignee.</summary>
+    [HttpGet("{id:guid}/burndown", Name = "getSprintBurndown")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SprintBurndown>> Burndown(Guid id, [FromQuery] BurndownGrouping? by, CancellationToken ct) =>
+        this.ToResult(await sprints.BurndownAsync(id, by, ct));
 }
