@@ -1037,6 +1037,12 @@ public sealed class IssueService(
         }
 
         var splitIds = continuationOf.Keys.ToList();
+        // Holds the rows, so a removal already under way finishes first and the read below doesn't see the row: moving one that is gone would fail the close.
+        await db.Database.ExecuteSqlAsync($"""
+            SELECT id FROM issue_relations
+            WHERE workspace_id = {db.CurrentWorkspaceId} AND type = 'Blocks' AND (source_id = ANY({splitIds}) OR target_id = ANY({splitIds}))
+            ORDER BY id FOR UPDATE
+            """, ct);
         var blocks = await db.IssueRelations
             .Where(r => r.Type == RelationType.Blocks && (splitIds.Contains(r.SourceId) || splitIds.Contains(r.TargetId)))
             .ToListAsync(ct);

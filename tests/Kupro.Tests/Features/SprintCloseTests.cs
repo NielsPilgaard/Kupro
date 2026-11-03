@@ -441,18 +441,23 @@ public sealed class SprintCloseTests : ApiTestBase
         // The removal stays uncommitted until the close waits on it: the close has seen the row, and it is about to go.
         using var scope = Factory.Services.CreateScope();
         await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(Ct);
-        await using var removal = await db.Database.BeginTransactionAsync(Ct);
-        await db.IssueRelations.IgnoreQueryFilters().Where(r => r.Id == relationId).ExecuteDeleteAsync(Ct);
-
-        var closing = _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close",
-            new CloseSprintRequest(Items: [new(split.Key, CloseOutcome.Split, HoursLeft: 3)]), Json.Options, Ct);
-        while (!closing.IsCompleted && await db.Database.SqlQuery<int>(
-            $"""SELECT count(*)::int AS "Value" FROM pg_stat_activity WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))""").SingleAsync(Ct) == 0)
+        var closing = await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            await Task.Delay(20, Ct);
-        }
+            await using var removal = await db.Database.BeginTransactionAsync(Ct);
+            await db.IssueRelations.IgnoreQueryFilters().Where(r => r.Id == relationId).ExecuteDeleteAsync(Ct);
 
-        await removal.CommitAsync(Ct);
+            var posted = _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close",
+                new CloseSprintRequest(Items: [new(split.Key, CloseOutcome.Split, HoursLeft: 3)]), Json.Options, Ct);
+            // pg_locks, not pg_stat_activity: that one is a snapshot for the whole transaction and can miss the close's backend.
+            while (!posted.IsCompleted && await db.Database.SqlQuery<int>(
+                $"""SELECT count(*)::int AS "Value" FROM pg_locks WHERE NOT granted AND pg_backend_pid() = ANY(pg_blocking_pids(pid))""").SingleAsync(Ct) == 0)
+            {
+                await Task.Delay(20, Ct);
+            }
+
+            await removal.CommitAsync(Ct);
+            return posted;
+        });
 
         var closed = await ReadAsync<CloseSprintResponse>(await closing);
         (await IssueDetailAsync(closed.Splits[0].Continuation)).Relations.ShouldNotContain(r => r.Issue.Key == blocked.Key);
