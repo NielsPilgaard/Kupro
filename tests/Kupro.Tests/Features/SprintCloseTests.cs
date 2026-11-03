@@ -430,6 +430,36 @@ public sealed class SprintCloseTests : ApiTestBase
     }
 
     [Fact]
+    public async Task A_relation_removed_while_the_close_moves_it_does_not_fail_the_close()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var split = await IssueAsync("Half done", 8);
+        var blocked = await CreateAsync(new("SPR", "Open blocked", State: IssueState.Todo));
+        await RelateAsync(split.Key, RelationKind.Blocks, blocked.Key);
+        var relationId = (await IssueDetailAsync(split.Key)).Relations.Single(r => r.Issue.Key == blocked.Key).Id;
+
+        // The removal stays uncommitted until the close waits on it: the close has seen the row, and it is about to go.
+        using var scope = Factory.Services.CreateScope();
+        await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(Ct);
+        await using var removal = await db.Database.BeginTransactionAsync(Ct);
+        await db.IssueRelations.IgnoreQueryFilters().Where(r => r.Id == relationId).ExecuteDeleteAsync(Ct);
+
+        var closing = _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close",
+            new CloseSprintRequest(Items: [new(split.Key, CloseOutcome.Split, HoursLeft: 3)]), Json.Options, Ct);
+        while (!closing.IsCompleted && await db.Database.SqlQuery<int>(
+            $"""SELECT count(*)::int AS "Value" FROM pg_stat_activity WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))""").SingleAsync(Ct) == 0)
+        {
+            await Task.Delay(20, Ct);
+        }
+
+        await removal.CommitAsync(Ct);
+
+        var closed = await ReadAsync<CloseSprintResponse>(await closing);
+        (await IssueDetailAsync(closed.Splits[0].Continuation)).Relations.ShouldNotContain(r => r.Issue.Key == blocked.Key);
+        (await IssueDetailAsync(split.Key)).Relations.ShouldNotContain(r => r.Issue.Key == blocked.Key);
+    }
+
+    [Fact]
     public async Task A_stale_item_with_a_stale_target_is_skipped_not_failed()
     {
         var (one, _) = await TwoSprintsAsync();
