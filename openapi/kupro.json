@@ -4515,7 +4515,7 @@
           },
           "hours": {
             "type": "number",
-            "description": "Where the ideal line is at the end of that day: baseline scope to 0 over the sprint's weekdays.",
+            "description": "Where the ideal line is at the end of that day: baseline scope (see `atStart` on the review) to 0 over the sprint's weekdays.",
             "format": "double"
           }
         }
@@ -4696,7 +4696,7 @@
                 "type": "null"
               },
               {
-                "description": "Default target sprint; null when nothing needed one.",
+                "description": "Default target sprint; null when no carried or split issue went there.",
                 "$ref": "#/components/schemas/SprintResponse"
               }
             ]
@@ -7076,7 +7076,7 @@
                 "type": "null"
               },
               {
-                "description": "Set once the sprint closed.",
+                "description": "Set once the sprint closed, for issues it carried, split or moved to the backlog. Issues it marked done or canceled have none.",
                 "$ref": "#/components/schemas/CloseOutcome"
               }
             ]
@@ -7108,7 +7108,7 @@
         "properties": {
           "atStart": {
             "type": "number",
-            "description": "Scope when the sprint started.",
+            "description": "Scope when the sprint started. For a sprint already active when the ledger shipped, scope at that moment.",
             "format": "double"
           },
           "added": {

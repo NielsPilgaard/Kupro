@@ -131,6 +131,10 @@ per-person velocity, no ranking, no per-person capacity ([ADR-008](ADR-008-work-
   caller's DbContext. A test fails if an `IssueService` write path changes sprint, effort, state or assignee without it.
 - **IMP-003**: Migration writes `baseline` rows for issues in currently active sprints.
 - **IMP-004**: The continuation is created through `IssueService`'s create path (key, rank, realtime, search vector).
+- **IMP-006**: Exact totals need writes in a known order. `Issue` has a row version (`xmin`): a save on stale data starts
+  over. Issue writes hold a shared lock on the sprints involved; starting and closing a sprint lock it exclusively and
+  closing also locks its issues. Order: sprint, then project counter, then issue.
+- **IMP-007**: A sprint spans at most 366 days, which bounds the burndown's points.
 - **IMP-005**: Import ([ADR-019](ADR-019-import.md)) writes a baseline for an imported active sprint and no ledger
   for closed ones.
 

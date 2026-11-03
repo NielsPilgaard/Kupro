@@ -139,7 +139,19 @@ internal static class SprintCommands
                     StartNext = c.Get(startNext),
                 }, cancellationToken: ct);
 
-                var lines = new List<string> { $"Closed {closed!.Sprint?.Name}. Moved {closed.Moved} unfinished issue(s) to {closed.MovedTo?.Name ?? "the backlog"}." };
+                var lines = new List<string> { $"Closed {closed!.Sprint?.Name}." };
+                var carried = closed.Outcomes?.FirstOrDefault(o => o.Outcome == CloseOutcome.Carry)?.Count ?? 0;
+                var backlogged = closed.Outcomes?.FirstOrDefault(o => o.Outcome == CloseOutcome.Backlog)?.Count ?? 0;
+                if (carried > 0)
+                {
+                    lines.Add(closed.MovedTo is { } next ? $"Carried {carried} issue(s), to {next.Name} unless listed otherwise." : $"Carried {carried} issue(s).");
+                }
+
+                if (backlogged > 0)
+                {
+                    lines.Add($"Moved {backlogged} issue(s) to the backlog.");
+                }
+
                 lines.AddRange(closed.Splits?.Select(p => $"Split {p.Original}: {p.HoursDone}h done here, {p.HoursLeft}h in {p.Continuation}.") ?? []);
                 if (closed.Skipped is { Count: > 0 } skipped)
                 {

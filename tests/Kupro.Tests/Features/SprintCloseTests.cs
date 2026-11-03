@@ -341,6 +341,133 @@ public sealed class SprintCloseTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Concurrent_updates_to_one_issue_keep_the_ledger_equal_to_the_issue()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var issue = await IssueAsync("Contested", 1);
+
+        var responses = await Task.WhenAll(Enumerable.Range(2, 8).Select(effort => _client.PatchAsJsonAsync(
+                $"{Ws}/issues/{issue.Key}", new UpdateIssueRequest(Effort: effort), Json.Options, Ct))
+            .Append(_client.PatchAsJsonAsync($"{Ws}/issues/{issue.Key}", new UpdateIssueRequest(State: IssueState.Done), Json.Options, Ct)));
+        responses.ShouldAllBe(r => r.IsSuccessStatusCode);
+
+        var live = await IssueDetailAsync(issue.Key);
+        var summary = (await GetAsync<SprintReview>(_client, $"{Ws}/sprints/{one.Id}/review")).Summary;
+        live.State.ShouldBe(IssueState.Done);
+        summary.Remaining.ShouldBe(0);
+        summary.Completed.ShouldBe(live.Effort!.Value);
+    }
+
+    [Fact]
+    public async Task An_issue_joining_while_the_sprint_starts_is_counted_once()
+    {
+        var one = await SprintAsync("One", 0);
+
+        var starting = _client.PostAsync($"{Ws}/sprints/{one.Id}/start", null, Ct);
+        var joining = Enumerable.Range(0, 5).Select(n => IssueInAsync(one.Id, $"Joining {n}", 2)).ToList();
+        await starting;
+        await Task.WhenAll(joining);
+
+        var summary = (await GetAsync<SprintReview>(_client, $"{Ws}/sprints/{one.Id}/review")).Summary;
+        (summary.AtStart + summary.Added).ShouldBe(10);
+        summary.Remaining.ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task An_update_racing_the_close_keeps_the_ledger_and_the_outcome()
+    {
+        var (one, two) = await TwoSprintsAsync();
+        var issues = new List<IssueDetail>();
+        for (var n = 0; n < 5; n++)
+        {
+            issues.Add(await IssueAsync($"Open {n}", 4));
+        }
+
+        var closing = _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close", new CloseSprintRequest(), Json.Options, Ct);
+        await Task.WhenAll(issues.Select(i => _client.PatchAsJsonAsync($"{Ws}/issues/{i.Key}", new UpdateIssueRequest(Effort: 6), Json.Options, Ct)));
+        (await closing).EnsureSuccessStatusCode();
+
+        (await GetAsync<IssuePage>(_client, $"{Ws}/issues?sprint={two.Id}")).Items.Count.ShouldBe(5);
+        (await GetAsync<SprintReview>(_client, $"{Ws}/sprints/{one.Id}/review")).Summary.Remaining.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_stale_item_with_a_stale_target_is_skipped_not_failed()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var finished = await IssueAsync("Finished meanwhile", 2);
+        await PatchAsync(finished.Key, new(State: IssueState.Done));
+
+        var closed = await CloseAsync(one.Id, new CloseSprintRequest(Items: [new(finished.Key, CloseOutcome.Carry, Target: Guid.NewGuid())]));
+
+        closed.Skipped.ShouldBe([finished.Key]);
+    }
+
+    [Fact]
+    public async Task An_empty_or_unknown_target_is_invalid()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var issue = await IssueAsync("Work", 2);
+
+        await ShouldBeProblemAsync(await _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close",
+            new CloseSprintRequest(Target: Guid.Empty), Json.Options, Ct), HttpStatusCode.BadRequest, "invalid_sprint");
+        await ShouldBeProblemAsync(await _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close",
+            new CloseSprintRequest(Items: [new(issue.Key, CloseOutcome.Carry, Target: Guid.Empty)]), Json.Options, Ct), HttpStatusCode.BadRequest, "invalid_sprint");
+    }
+
+    [Fact]
+    public async Task An_outcome_that_does_not_exist_is_rejected_and_changes_nothing()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var issue = await IssueAsync("Work", 2);
+
+        var response = await _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close", new { items = new[] { new { issue = issue.Key, outcome = 99 } } }, Json.Options, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await GetAsync<SprintResponse>(_client, $"{Ws}/sprints/{one.Id}")).State.ShouldBe(SprintState.Active);
+    }
+
+    [Fact]
+    public async Task MovedTo_is_only_set_when_work_went_to_the_default_target()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var issue = await IssueAsync("Later", 2);
+
+        var closed = await CloseAsync(one.Id, new CloseSprintRequest(Items: [new(issue.Key, CloseOutcome.Backlog)]));
+
+        closed.MovedTo.ShouldBeNull();
+        closed.Moved.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task An_issue_reopened_after_the_close_stays_out_of_the_report_lists()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var issue = await IssueAsync("Reopened later", 2, IssueState.Done);
+        await CloseAsync(one.Id, new CloseSprintRequest());
+        await PatchAsync(issue.Key, new(State: IssueState.InProgress));
+
+        var report = await GetAsync<SprintReview>(_client, $"{Ws}/sprints/{one.Id}/review");
+
+        report.Unfinished.ShouldBeEmpty();
+        report.Completed.ShouldBeEmpty();
+        report.Summary.Completed.ShouldBe(2, "the numbers are what happened in the sprint");
+    }
+
+    [Fact]
+    public async Task A_sprint_cannot_span_more_than_a_year()
+    {
+        var start = new DateOnly(2027, 1, 4);
+
+        await ShouldBeProblemAsync(await _client.PostAsJsonAsync($"{Ws}/sprints",
+            new CreateSprintRequest("SPR", "Forever", start, start.AddDays(366)), Json.Options, Ct), HttpStatusCode.BadRequest, "invalid_dates");
+
+        var sprint = await SprintAsync("Short", 0);
+        await ShouldBeProblemAsync(await _client.PatchAsJsonAsync($"{Ws}/sprints/{sprint.Id}",
+            new UpdateSprintRequest(EndDate: new DateOnly(9999, 1, 1)), Json.Options, Ct), HttpStatusCode.BadRequest, "invalid_dates");
+    }
+
+    [Fact]
     public async Task The_guard_fails_a_save_that_skips_the_ledger()
     {
         var (_, _) = await TwoSprintsAsync();

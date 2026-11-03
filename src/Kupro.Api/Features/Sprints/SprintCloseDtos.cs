@@ -64,7 +64,7 @@ public sealed record SprintSplit(string Original, string Continuation, decimal H
 
 /// <param name="Sprint">The closed sprint.</param>
 /// <param name="Moved">How many unfinished issues left the sprint (carried, split or to the backlog).</param>
-/// <param name="MovedTo">Default target sprint; null when nothing needed one.</param>
+/// <param name="MovedTo">Default target sprint; null when no carried or split issue went there.</param>
 /// <param name="Outcomes">Count and hours per outcome that was used.</param>
 /// <param name="Splits">The splits made.</param>
 /// <param name="Skipped">Keys in <c>items</c> that were no longer unfinished in the sprint.</param>
@@ -79,7 +79,7 @@ public sealed record CloseSprintResponse(
     SprintResponse? Started);
 
 /// <summary>Hours per line of the sprint report, from the ledger.</summary>
-/// <param name="AtStart">Scope when the sprint started.</param>
+/// <param name="AtStart">Scope when the sprint started. For a sprint already active when the ledger shipped, scope at that moment.</param>
 /// <param name="Added">Added during the sprint.</param>
 /// <param name="Removed">Moved out during the sprint.</param>
 /// <param name="Reestimated">Net effort changes during the sprint.</param>
@@ -104,7 +104,7 @@ public sealed record SprintReviewSummary(
     int CompletionPercent);
 
 /// <param name="HasChildren">Issues with children can't be split.</param>
-/// <param name="Outcome">Set once the sprint closed.</param>
+/// <param name="Outcome">Set once the sprint closed, for issues it carried, split or moved to the backlog. Issues it marked done or canceled have none.</param>
 /// <param name="ContinuedIn">Key of the continuation, for a split issue.</param>
 public sealed record SprintReviewIssue(
     string Key,
@@ -141,7 +141,7 @@ public enum BurndownGrouping
 public sealed record BurndownPoint(DateOnly Date, decimal? Scope, decimal? Remaining);
 
 /// <param name="Date">Europe/Copenhagen day.</param>
-/// <param name="Hours">Where the ideal line is at the end of that day: baseline scope to 0 over the sprint's weekdays.</param>
+/// <param name="Hours">Where the ideal line is at the end of that day: baseline scope (see <c>atStart</c> on the review) to 0 over the sprint's weekdays.</param>
 public sealed record BurndownIdeal(DateOnly Date, decimal Hours);
 
 /// <param name="Assignee">The person; null for unassigned work.</param>

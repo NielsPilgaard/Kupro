@@ -96,9 +96,9 @@ public sealed class SprintService(
 
     public async Task<IssueResult<SprintResponse>> CreateAsync(CreateSprintRequest request, CancellationToken ct)
     {
-        if (request.EndDate < request.StartDate)
+        if (DatesError(request.StartDate, request.EndDate) is { } datesError)
         {
-            return new IssueError("invalid_dates", "The sprint ends before it starts.");
+            return datesError;
         }
 
         var key = request.Project.ToUpperInvariant();
@@ -140,9 +140,9 @@ public sealed class SprintService(
         sprint.Goal = request.Goal ?? sprint.Goal;
         sprint.StartDate = request.StartDate ?? sprint.StartDate;
         sprint.EndDate = request.EndDate ?? sprint.EndDate;
-        if (sprint.EndDate < sprint.StartDate)
+        if (DatesError(sprint.StartDate, sprint.EndDate) is { } datesError)
         {
-            return new IssueError("invalid_dates", "The sprint ends before it starts.");
+            return datesError;
         }
 
         await db.SaveChangesAsync(ct);
@@ -150,30 +150,51 @@ public sealed class SprintService(
         return await GetAsync(id, ct);
     }
 
-    /// <summary>Starts a planned sprint. Fails while the project has another active sprint.</summary>
+    /// <summary>
+    /// Starts a planned sprint. Fails while the project has another active sprint. The row lock orders it against issue
+    /// writes, so an issue joining at this moment lands in the baseline or gets its own ledger row.
+    /// </summary>
     public async Task<IssueResult<SprintResponse>> StartAsync(Guid id, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var sprint = await db.Sprints.SingleOrDefaultAsync(s => s.Id == id, ct);
-        if (sprint is null)
+        IssueError? error = null;
+        await db.Database.CreateExecutionStrategy().ExecuteAsync<object?, bool>(null, async (_, _, _) =>
         {
-            return NotFound(id);
-        }
+            db.ChangeTracker.Clear();
+            error = null;
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var sprint = await db.Sprints.FromSql($"SELECT * FROM sprints WHERE id = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
+            if (sprint is null)
+            {
+                error = NotFound(id);
+                return false;
+            }
 
-        if (sprint.State != SprintState.Planned)
-        {
-            return new IssueError("sprint_not_planned", $"{sprint.Name} is {sprint.State}; only planned sprints start.");
-        }
+            if (sprint.State != SprintState.Planned)
+            {
+                error = new IssueError("sprint_not_planned", $"{sprint.Name} is {sprint.State}; only planned sprints start.");
+                return false;
+            }
 
-        sprint.State = SprintState.Active;
-        await ledger.RecordBaselineAsync(db, sprint.Id, ct);
-        try
+            sprint.State = SprintState.Active;
+            await ledger.RecordBaselineAsync(db, sprint.Id, ct);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                error = new IssueError("sprint_already_active", "The project already has an active sprint. Close it first.");
+                return false;
+            }
+
+            await tx.CommitAsync(ct);
+            return true;
+        }, async (_, _, _) => new ExecutionResult<bool>(await db.Sprints.AnyAsync(s => s.Id == id && s.State == SprintState.Active, ct), true), ct);
+
+        if (error is not null)
         {
-            await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            return new IssueError("sprint_already_active", "The project already has an active sprint. Close it first.");
+            return error;
         }
 
         await realtime.ChangedAsync(ChangeTopic.Sprints);
@@ -217,10 +238,9 @@ public sealed class SprintService(
             var open = await db.Sprints.AsNoTracking()
                 .Where(s => s.ProjectId == sprint.ProjectId && s.State == SprintState.Planned)
                 .OrderBy(s => s.StartDate).Select(s => s.Id).ToListAsync(ct);
-            var wanted = (request.Items ?? []).Select(i => i.Target).Append(request.Target).OfType<Guid>().Distinct();
-            if (wanted.FirstOrDefault(t => !open.Contains(t)) is var wrong && wrong != Guid.Empty)
+            if (request.Target is { } wanted && !open.Contains(wanted))
             {
-                error = new IssueError("invalid_sprint", $"Sprint {wrong} isn't an open sprint in this project, other than the one closing.");
+                error = new IssueError("invalid_sprint", $"Sprint {wanted} isn't an open sprint in this project, other than the one closing.");
                 return false;
             }
 
@@ -231,7 +251,7 @@ public sealed class SprintService(
                 return false;
             }
 
-            var result = await issues.ApplyCloseAsync(db, sprint, request, target, ct);
+            var result = await issues.ApplyCloseAsync(db, sprint, request, target, open, ct);
             if (result.Error is not null)
             {
                 error = result.Error;
@@ -272,7 +292,7 @@ public sealed class SprintService(
         await realtime.ChangedAsync(ChangeTopic.Sprints);
 
         var closed = (await GetAsync(id, ct)).Value!;
-        var movedTo = defaultTarget is { } t ? (await GetAsync(t, ct)).Value : null;
+        var movedTo = applied.UsedDefaultTarget && defaultTarget is { } t ? (await GetAsync(t, ct)).Value : null;
         var startedSprint = started is { } s ? (await GetAsync(s, ct)).Value : null;
         return new CloseSprintResponse(closed, applied.Moved, movedTo, applied.Outcomes, applied.Splits, applied.Skipped, startedSprint);
     }
@@ -323,7 +343,9 @@ public sealed class SprintService(
         {
             var row = new SprintReviewIssue(i.Key, i.Title, i.Type, i.State, i.Assignee, i.Effort, i.HasChildren,
                 outcomeOf.TryGetValue(i.Id, out var outcome) ? outcome : null, IssueService.SplitKey(i.SplitData));
-            if (leftIds.Contains(i.Id) || (i.State != IssueState.Done && i.State != IssueState.Canceled))
+            // Reopened after the close: not what the sprint delivered, and the report's numbers are from the ledger anyway.
+            var stillOpen = sprint.State != SprintState.Closed && i.State != IssueState.Done && i.State != IssueState.Canceled;
+            if (leftIds.Contains(i.Id) || stillOpen)
             {
                 unfinished.Add(row);
             }
@@ -361,12 +383,27 @@ public sealed class SprintService(
             .Select(firstDay.AddDays).ToList();
         var lastKnown = closedOn ?? LocalDay(clock.GetUtcNow());
 
-        List<BurndownPoint> Series(IReadOnlyCollection<LedgerTotal> source) => days.Select(day =>
-            firstKnown is null || day < firstKnown || day > lastKnown
-                ? new BurndownPoint(day, null, null)
-                : new BurndownPoint(day,
-                    source.Where(r => r.Day <= day).Sum(r => r.Scope),
-                    source.Where(r => r.Day <= day).Sum(r => r.Remaining))).ToList();
+        List<BurndownPoint> Series(IEnumerable<LedgerTotal> source)
+        {
+            var sorted = source.OrderBy(r => r.Day).ToList();
+            var next = 0;
+            decimal scope = 0, remaining = 0;
+            var points = new List<BurndownPoint>(days.Count);
+            foreach (var day in days)
+            {
+                for (; next < sorted.Count && sorted[next].Day <= day; next++)
+                {
+                    scope += sorted[next].Scope;
+                    remaining += sorted[next].Remaining;
+                }
+
+                points.Add(firstKnown is null || day < firstKnown || day > lastKnown
+                    ? new BurndownPoint(day, null, null)
+                    : new BurndownPoint(day, scope, remaining));
+            }
+
+            return points;
+        }
 
         IReadOnlyList<BurndownAssignee>? assignees = null;
         if (by == BurndownGrouping.Assignee)
@@ -408,6 +445,14 @@ public sealed class SprintService(
             return new BurndownIdeal(day, hours);
         }).ToList();
     }
+
+    /// <summary>Long enough for any real sprint; the burndown has a point per day, so the span has to be bounded.</summary>
+    private const int MaxSprintDays = 366;
+
+    private static IssueError? DatesError(DateOnly start, DateOnly end) =>
+        end < start ? new IssueError("invalid_dates", "The sprint ends before it starts.")
+        : end.DayNumber - start.DayNumber >= MaxSprintDays ? new IssueError("invalid_dates", $"A sprint can't be longer than {MaxSprintDays} days.")
+        : null;
 
     private static bool IsWeekend(DateOnly day) => day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 

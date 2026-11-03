@@ -87,8 +87,7 @@ public sealed class SprintLedger(WorkspaceContext workspace, TimeProvider clock)
             return;
         }
 
-        var active = await db.Sprints.Where(s => sprintIds.Contains(s.Id) && s.State == SprintState.Active)
-            .Select(s => s.Id).ToListAsync(ct);
+        var active = await LockSprintsAsync(db, sprintIds, ct);
         foreach (var (issueId, before, after) in changed)
         {
             foreach (var row in Diff(before, after, active))
@@ -96,6 +95,25 @@ public sealed class SprintLedger(WorkspaceContext workspace, TimeProvider clock)
                 Add(db, row.SprintId, issueId, row.AssigneeId, row.Kind, row.Scope, row.Remaining);
             }
         }
+    }
+
+    /// <summary>
+    /// Holds a shared lock on the sprints until the caller's transaction ends, and returns the active ones. Starting and
+    /// closing a sprint lock it exclusively, so whichever comes first, the other sees its result and no row goes missing.
+    /// Take it before any other lock in the transaction.
+    /// </summary>
+    public static async Task<IReadOnlyCollection<Guid>> LockSprintsAsync(KuproDbContext db, IReadOnlyCollection<Guid> sprintIds, CancellationToken ct)
+    {
+        if (sprintIds.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = sprintIds.ToArray();
+        // State is filtered here, not in the query: a planned sprint has to be locked too, or it could start unseen.
+        var sprints = await db.Sprints.FromSql($"SELECT * FROM sprints WHERE id = ANY({ids}) ORDER BY id FOR SHARE")
+            .AsNoTracking().Select(s => new { s.Id, s.State }).ToListAsync(ct);
+        return sprints.Where(s => s.State == SprintState.Active).Select(s => s.Id).ToList();
     }
 
     /// <summary>A change inside a sprint the caller knows is active, without a lookup.</summary>

@@ -123,4 +123,5 @@ Resolved questions (split input starts empty; per-assignee burndown visible to a
 
 `close` now succeeds with no planned sprint when nothing needs a target; `no_next_sprint` applies only when a carry or
 split has none. A sprint started before its first planned day charts from the day it started. The CLI's `--to-backlog`
-became `--to backlog`. The MCP tool budget in the test moved from 22 to 24 for the two read tools this task names.
+became `--to backlog`. `movedTo` is null unless carried or split work went to the default target. Sprints span at most 366
+days. The MCP tool budget in the test moved from 22 to 24 for the two read tools this task names.

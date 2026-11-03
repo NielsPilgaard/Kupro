@@ -134,6 +134,9 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
         builder.Property(i => i.Priority).HasConversion<short>();
         builder.Property(i => i.Effort).HasPrecision(8, 2);
 
+        // Postgres xmin. A save based on a stale read fails instead of writing ledger rows that no longer add up (ADR-020).
+        builder.Property<uint>("Version").IsRowVersion();
+
         // workspace_id leads every index (ADR-009); each list filter has one (ADR-010).
         builder.HasIndex(i => new { i.WorkspaceId, i.Key }).IsUnique();
         builder.HasIndex(i => new { i.ProjectId, i.Number }).IsUnique();
