@@ -392,6 +392,44 @@ public sealed class SprintCloseTests : ApiTestBase
     }
 
     [Fact]
+    public async Task An_issue_joining_the_next_sprint_as_the_close_starts_it_is_counted_once()
+    {
+        var (one, two) = await TwoSprintsAsync();
+        await IssueAsync("Carried", 3);
+
+        var closing = _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close", new CloseSprintRequest(StartNext: true), Json.Options, Ct);
+        var joining = Enumerable.Range(0, 5).Select(n => IssueInAsync(two.Id, $"Joining {n}", 2)).ToList();
+        (await closing).EnsureSuccessStatusCode();
+        await Task.WhenAll(joining);
+
+        var summary = (await GetAsync<SprintReview>(_client, $"{Ws}/sprints/{two.Id}/review")).Summary;
+        (summary.AtStart + summary.Added).ShouldBe(13);
+        summary.Remaining.ShouldBe(13);
+    }
+
+    [Fact]
+    public async Task An_issue_cannot_end_up_in_a_sprint_that_closed_while_it_was_saving()
+    {
+        var (one, _) = await TwoSprintsAsync();
+        var keys = new List<string>();
+        for (var n = 0; n < 5; n++)
+        {
+            keys.Add((await CreateAsync(new("SPR", $"Backlog {n}", Effort: 2))).Key);
+        }
+
+        var closing = _client.PostAsJsonAsync($"{Ws}/sprints/{one.Id}/close", new CloseSprintRequest(), Json.Options, Ct);
+        var moves = keys.Select(key => _client.PatchAsJsonAsync($"{Ws}/issues/{key}", new UpdateIssueRequest(Sprint: one.Id.ToString()), Json.Options, Ct)).ToList();
+        (await closing).EnsureSuccessStatusCode();
+
+        foreach (var response in await Task.WhenAll(moves))
+        {
+            response.StatusCode.ShouldBeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
+        }
+
+        (await GetAsync<IssuePage>(_client, $"{Ws}/issues?sprint={one.Id}")).Items.ShouldBeEmpty("open work leaves a closing sprint, or never joins it");
+    }
+
+    [Fact]
     public async Task A_stale_item_with_a_stale_target_is_skipped_not_failed()
     {
         var (one, _) = await TwoSprintsAsync();

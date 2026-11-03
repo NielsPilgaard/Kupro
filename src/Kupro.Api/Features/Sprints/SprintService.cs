@@ -202,8 +202,9 @@ public sealed class SprintService(
     }
 
     /// <summary>
-    /// Closes the active sprint and applies an outcome to each unfinished issue (ADR-020), all in one transaction. The row
-    /// lock makes a second close wait, then find the sprint closed.
+    /// Closes the active sprint and applies an outcome to each unfinished issue (ADR-020), all in one transaction. It locks
+    /// every open sprint of the project in one statement, in id order like issue writes: a second close waits, then finds
+    /// the sprint closed, and no issue can join a target sprint unseen.
     /// </summary>
     public async Task<IssueResult<CloseSprintResponse>> CloseAsync(Guid id, CloseSprintRequest request, CancellationToken ct)
     {
@@ -222,7 +223,14 @@ public sealed class SprintService(
             started = null;
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-            var sprint = await db.Sprints.FromSql($"SELECT * FROM sprints WHERE id = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
+            var locked = await db.Sprints.FromSql($"""
+                SELECT * FROM sprints
+                WHERE workspace_id = {db.CurrentWorkspaceId} AND state <> 'Closed'
+                  AND project_id = (SELECT project_id FROM sprints WHERE id = {id} AND workspace_id = {db.CurrentWorkspaceId})
+                ORDER BY id FOR UPDATE
+                """).ToListAsync(ct);
+            // Not among them if a close got here first, which the state check below reports.
+            var sprint = locked.Find(s => s.Id == id) ?? await db.Sprints.SingleOrDefaultAsync(s => s.Id == id, ct);
             if (sprint is null)
             {
                 error = NotFound(id);
@@ -235,9 +243,7 @@ public sealed class SprintService(
                 return false;
             }
 
-            var open = await db.Sprints.AsNoTracking()
-                .Where(s => s.ProjectId == sprint.ProjectId && s.State == SprintState.Planned)
-                .OrderBy(s => s.StartDate).Select(s => s.Id).ToListAsync(ct);
+            var open = locked.Where(s => s.State == SprintState.Planned).OrderBy(s => s.StartDate).Select(s => s.Id).ToList();
             if (request.Target is { } wanted && !open.Contains(wanted))
             {
                 error = new IssueError("invalid_sprint", $"Sprint {wanted} isn't an open sprint in this project, other than the one closing.");
@@ -265,7 +271,7 @@ public sealed class SprintService(
             if (request.StartNext)
             {
                 // After the close is saved: the database allows one active sprint per project.
-                var next = await db.Sprints.SingleAsync(s => s.Id == target, ct);
+                var next = locked.Single(s => s.Id == target);
                 next.State = SprintState.Active;
                 await ledger.RecordBaselineAsync(db, next.Id, ct);
                 await db.SaveChangesAsync(ct);

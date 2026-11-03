@@ -76,18 +76,27 @@ public readonly record struct LedgerState(Guid? SprintId, decimal? Effort, Issue
 /// </summary>
 public sealed class SprintLedger(WorkspaceContext workspace, TimeProvider clock)
 {
-    /// <summary>Rows for issues whose sprint, before or after, is active. Reads sprint states only when one is involved.</summary>
-    public async Task RecordAsync(
+    /// <summary>
+    /// Rows for issues whose sprint, before or after, is active. Reads sprint states only when one is involved. The caller
+    /// resolved its sprints before this lock, so a sprint that closed in between is caught here, and the caller must not save.
+    /// </summary>
+    public async Task<IssueError?> RecordAsync(
         KuproDbContext db, IEnumerable<(Guid IssueId, LedgerState Before, LedgerState After)> changes, CancellationToken ct)
     {
         var changed = changes.Where(c => c.Before != c.After).ToList();
         var sprintIds = changed.SelectMany(c => new[] { c.Before.SprintId, c.After.SprintId }).OfType<Guid>().Distinct().ToList();
         if (sprintIds.Count == 0)
         {
-            return;
+            return null;
         }
 
-        var active = await LockSprintsAsync(db, sprintIds, ct);
+        var locked = await LockSprintsAsync(db, sprintIds, ct);
+        if (changed.Any(c => c.After.SprintId is { } to && to != c.Before.SprintId && locked.GetValueOrDefault(to) == SprintState.Closed))
+        {
+            return new IssueError("invalid_sprint", "The sprint closed while this was being saved.");
+        }
+
+        var active = locked.Where(s => s.Value == SprintState.Active).Select(s => s.Key).ToList();
         foreach (var (issueId, before, after) in changed)
         {
             foreach (var row in Diff(before, after, active))
@@ -95,14 +104,16 @@ public sealed class SprintLedger(WorkspaceContext workspace, TimeProvider clock)
                 Add(db, row.SprintId, issueId, row.AssigneeId, row.Kind, row.Scope, row.Remaining);
             }
         }
+
+        return null;
     }
 
     /// <summary>
-    /// Holds a shared lock on the sprints until the caller's transaction ends, and returns the active ones. Starting and
+    /// Holds a shared lock on the sprints until the caller's transaction ends. Starting and
     /// closing a sprint lock it exclusively, so whichever comes first, the other sees its result and no row goes missing.
-    /// Take it before any other lock in the transaction.
+    /// Take it before any other lock in the transaction. Returns the state of each.
     /// </summary>
-    public static async Task<IReadOnlyCollection<Guid>> LockSprintsAsync(KuproDbContext db, IReadOnlyCollection<Guid> sprintIds, CancellationToken ct)
+    public static async Task<Dictionary<Guid, SprintState>> LockSprintsAsync(KuproDbContext db, IReadOnlyCollection<Guid> sprintIds, CancellationToken ct)
     {
         if (sprintIds.Count == 0)
         {
@@ -113,7 +124,7 @@ public sealed class SprintLedger(WorkspaceContext workspace, TimeProvider clock)
         // State is filtered here, not in the query: a planned sprint has to be locked too, or it could start unseen.
         var sprints = await db.Sprints.FromSql($"SELECT * FROM sprints WHERE id = ANY({ids}) ORDER BY id FOR SHARE")
             .AsNoTracking().Select(s => new { s.Id, s.State }).ToListAsync(ct);
-        return sprints.Where(s => s.State == SprintState.Active).Select(s => s.Id).ToList();
+        return sprints.ToDictionary(s => s.Id, s => s.State);
     }
 
     /// <summary>A change inside a sprint the caller knows is active, without a lookup.</summary>

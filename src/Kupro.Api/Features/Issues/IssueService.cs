@@ -321,6 +321,7 @@ public sealed class IssueService(
             }
         }
 
+        IssueError? sprintClosed = null;
         // Ids are fixed before the strategy runs, so a commit whose acknowledgement was lost is recognised by
         // verifySucceeded instead of retried into duplicate issues with fresh numbers.
         var ids = requests.Select(_ => Guid.CreateVersion7()).ToList();
@@ -330,6 +331,7 @@ public sealed class IssueService(
         await db.Database.CreateExecutionStrategy().ExecuteAsync<object?, bool>(null, async (_, _, _) =>
         {
             db.ChangeTracker.Clear();
+            sprintClosed = null;
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
             var rows = new List<NewIssue>(requests.Count);
@@ -348,11 +350,22 @@ public sealed class IssueService(
 
             // Before the project counters in InsertAsync: closing a sprint takes the sprint first too.
             await SprintLedger.LockSprintsAsync(db, sprintIds.OfType<Guid>().Distinct().ToList(), ct);
-            await InsertAsync(db, rows, ct);
+            var inserted = await InsertAsync(db, rows, ct);
+            if (inserted.Error is not null)
+            {
+                sprintClosed = inserted.Error;
+                return false;
+            }
+
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
             return true;
         }, async (_, _, _) => new ExecutionResult<bool>(await db.Issues.AnyAsync(i => i.Id == ids[0], ct), true), ct);
+
+        if (sprintClosed is not null)
+        {
+            return sprintClosed;
+        }
 
         var summaries = await db.Issues.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(SummaryOf(db)).ToListAsync(ct);
         var ordered = summaries.OrderBy(s => ids.IndexOf(s.Id)).ToList();
@@ -364,7 +377,7 @@ public sealed class IssueService(
     /// Adds issues to the caller's context and transaction: key, rank, activity and ledger rows. The counter update locks
     /// each project row until the caller commits.
     /// </summary>
-    private async Task<List<Issue>> InsertAsync(KuproDbContext db, IReadOnlyList<NewIssue> rows, CancellationToken ct)
+    private async Task<IssueResult<List<Issue>>> InsertAsync(KuproDbContext db, IReadOnlyList<NewIssue> rows, CancellationToken ct)
     {
         var numbers = new Dictionary<Guid, int>();
         foreach (var group in rows.GroupBy(r => r.ProjectId).OrderBy(g => g.Key))
@@ -421,8 +434,9 @@ public sealed class IssueService(
             created.Add(issue);
         }
 
-        await ledger.RecordAsync(db, created.Select(i => (i.Id, LedgerState.None, LedgerState.Of(i))), ct);
-        return created;
+        return await ledger.RecordAsync(db, created.Select(i => (i.Id, LedgerState.None, LedgerState.Of(i))), ct) is { } sprintClosed
+            ? sprintClosed
+            : created;
     }
 
     // ---------------------------------------------------------------- update
@@ -680,7 +694,11 @@ public sealed class IssueService(
             }
         }
 
-        await ledger.RecordAsync(db, before.Select(b => (b.Issue.Id, b.State, LedgerState.Of(b.Issue))), ct);
+        if (await ledger.RecordAsync(db, before.Select(b => (b.Issue.Id, b.State, LedgerState.Of(b.Issue))), ct) is { } sprintClosed)
+        {
+            return sprintClosed;
+        }
+
         await db.SaveChangesAsync(ct);
         return updates.Select(u => issues[NormalizeKey(u.Key)].Id).Distinct().ToList();
     }
@@ -735,7 +753,8 @@ public sealed class IssueService(
         }
 
         issue.UpdatedAt = now;
-        await ledger.RecordAsync(db, [(issue.Id, ledgerBefore, LedgerState.Of(issue))], ct);
+        // A move keeps the issue's sprint, so the closed-sprint check can't apply.
+        _ = await ledger.RecordAsync(db, [(issue.Id, ledgerBefore, LedgerState.Of(issue))], ct);
         await db.SaveChangesAsync(ct);
         return issue.Id;
     }
@@ -954,7 +973,13 @@ public sealed class IssueService(
         // Saved before the continuations, so the next read sees these issues' new states.
         await db.SaveChangesAsync(ct);
 
-        var created = await InsertAsync(db, continuations.Select(c => c.Continuation).ToList(), ct);
+        var inserted = await InsertAsync(db, continuations.Select(c => c.Continuation).ToList(), ct);
+        if (inserted.Error is { } insertError)
+        {
+            return insertError;
+        }
+
+        var created = inserted.Value!;
         foreach (var (original, continuation) in continuations.Select(c => c.Original).Zip(created))
         {
             db.IssueRelations.Add(new IssueRelation

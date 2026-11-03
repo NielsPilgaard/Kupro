@@ -233,6 +233,7 @@ function CloseReview({ workspace, review }: { workspace: string; review: SprintR
   const [selectedKeys, setSelected] = useState<string[]>([]);
   // A row can leave the list through a realtime change; its key must not keep taking outcomes unseen.
   const selected = selectedKeys.filter((key) => unfinished.some((i) => i.key === key));
+  if (selected.length !== selectedKeys.length) setSelected(selected);
   const [cursor, setCursor] = useState(0);
   const [focusSplit, setFocusSplit] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
