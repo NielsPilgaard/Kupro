@@ -503,7 +503,7 @@
     "splitNoEffort": "Tilføj et estimat, før du deler.",
     "hoursLeft": "Timer tilbage",
     "splitPreview": "{{key}} færdig her ({{done}}) · ny opgave med {{left}} til {{target}}",
-    "splitInvalid": "Over 0 og under {{hours}}.",
+    "splitInvalid": "Over 0 og under {{hours}}, med højst to decimaler.",
     "startNext": "Start {{name}} efter afslutning",
     "footer": {
       "carry_one": "{{count}} overføres ({{hours}})",
@@ -530,6 +530,7 @@
     "closed_one": "{{name}} er afsluttet. {{count}} opgave flyttet videre.",
     "closed_other": "{{name}} er afsluttet. {{count}} opgaver flyttet videre.",
     "closedSplits": "Nye opgaver fra opdelinger: {{keys}}.",
-    "closedSkipped": "Sprunget over, ikke længere ufærdige: {{keys}}."
+    "closedSkipped": "Sprunget over, ikke længere ufærdige: {{keys}}.",
+    "burndownFailed": "Burndown kunne ikke hentes."
   }
 }

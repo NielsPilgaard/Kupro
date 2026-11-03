@@ -503,7 +503,7 @@
     "splitNoEffort": "Add an effort before splitting.",
     "hoursLeft": "Hours left",
     "splitPreview": "{{key}} done here ({{done}}) · new issue with {{left}} to {{target}}",
-    "splitInvalid": "Above 0 and below {{hours}}.",
+    "splitInvalid": "Above 0 and below {{hours}}, with at most two decimals.",
     "startNext": "Start {{name}} after closing",
     "footer": {
       "carry_one": "{{count}} carry ({{hours}})",
@@ -530,6 +530,7 @@
     "closed_one": "{{name}} closed. {{count}} issue moved on.",
     "closed_other": "{{name}} closed. {{count}} issues moved on.",
     "closedSplits": "New issues from splits: {{keys}}.",
-    "closedSkipped": "Skipped, no longer unfinished: {{keys}}."
+    "closedSkipped": "Skipped, no longer unfinished: {{keys}}.",
+    "burndownFailed": "Couldn't load the burndown."
   }
 }

@@ -9,8 +9,11 @@ export function useHours() {
 
 export function useDate() {
   const { i18n } = useTranslation();
-  const format = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' });
-  return (iso: string | null | undefined) => (iso ? format.format(new Date(iso)) : '');
+  const options = { day: 'numeric', month: 'short' } as const;
+  const format = new Intl.DateTimeFormat(i18n.language, options);
+  // A date without a time is a calendar day that parses as UTC midnight: in local time it shows the day before west of UTC.
+  const calendarDay = new Intl.DateTimeFormat(i18n.language, { ...options, timeZone: 'UTC' });
+  return (iso: string | null | undefined) => (iso ? (iso.length === 10 ? calendarDay : format).format(new Date(iso)) : '');
 }
 
 /** "17 Oct, 09:16": for lists where several items share a day. */

@@ -17,7 +17,7 @@ const parseHours = (text: string) => {
 export function hoursLeftOf(issue: Pick<SprintReviewIssue, 'effort'>, plan: RowPlan): number | null {
   const left = parseHours(plan.hoursLeft);
   const effort = issue.effort ?? 0;
-  return left !== null && left > 0 && left < effort && Math.round(left * 100) === left * 100 ? left : null;
+  return left !== null && left > 0 && left < effort && Math.round(left * 100) / 100 === left ? left : null;
 }
 
 export const canSplit = (issue: Pick<SprintReviewIssue, 'effort' | 'hasChildren'>) => !!issue.effort && !issue.hasChildren;
@@ -52,7 +52,7 @@ export function closeItems(issues: SprintReviewIssue[], plans: Record<string, Ro
 
 /** A split row without valid hours left blocks the close. */
 export const planIsValid = (issues: SprintReviewIssue[], plans: Record<string, RowPlan>) =>
-  issues.every((issue) => (plans[issue.key]?.outcome ?? 'carry') !== 'split' || hoursLeftOf(issue, plans[issue.key] ?? defaultPlan) !== null);
+  issues.every((issue) => (plans[issue.key]?.outcome ?? 'carry') !== 'split' || (canSplit(issue) && hoursLeftOf(issue, plans[issue.key] ?? defaultPlan) !== null));
 
 const addDays = (iso: string, days: number) => {
   const date = new Date(`${iso}T00:00:00Z`);

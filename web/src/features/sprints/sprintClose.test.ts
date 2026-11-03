@@ -19,6 +19,8 @@ describe('hoursLeftOf', () => {
     ['4', 4],
     ['4,5', 4.5],
     ['0.25', 0.25],
+    ['0.07', 0.07],
+    ['1.15', 1.15],
     ['', null],
     ['0', null],
     ['8', null],
@@ -67,6 +69,10 @@ describe('the close plan', () => {
     expect(planIsValid(issues, plans)).toBe(true);
     expect(planIsValid(issues, { B: { outcome: 'split', hoursLeft: '' } })).toBe(false);
     expect(planIsValid(issues, { B: { outcome: 'split', hoursLeft: '4' } })).toBe(false);
+  });
+
+  it('is invalid when a split row gained child issues meanwhile', () => {
+    expect(planIsValid([issue('A', 8, true)], { A: { outcome: 'split', hoursLeft: '1' } })).toBe(false);
   });
 });
 

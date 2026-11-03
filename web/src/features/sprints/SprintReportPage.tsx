@@ -42,6 +42,7 @@ export function SprintReportPage() {
           <div className="flex flex-col gap-6 p-4 pb-0">
             <Header review={review.data} />
             <Stats review={review.data} />
+            {burndown.isError && <p className="text-bad">{t('sprintClose.burndownFailed')}</p>}
             {burndown.data && <Charts burndown={burndown.data} atStart={review.data.summary.atStart} />}
           </div>
         )}
@@ -229,7 +230,9 @@ function CloseReview({ workspace, review }: { workspace: string; review: SprintR
   const search = useSearch({ strict: false }) as { issue?: string; meeting?: string };
   const { sprint, unfinished, completed, targets } = review;
   const [plans, setPlans] = useState<Record<string, RowPlan>>({});
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selectedKeys, setSelected] = useState<string[]>([]);
+  // A row can leave the list through a realtime change; its key must not keep taking outcomes unseen.
+  const selected = selectedKeys.filter((key) => unfinished.some((i) => i.key === key));
   const [cursor, setCursor] = useState(0);
   const [focusSplit, setFocusSplit] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
@@ -466,7 +469,8 @@ function UnfinishedRow({
           ))}
         </div>
       </div>
-      {isSplit && (
+      {isSplit && !splittable && <p className="m-0 pl-7 text-sm text-bad">{t(issue.hasChildren ? 'sprintClose.splitHasChildren' : 'sprintClose.splitNoEffort')}</p>}
+      {isSplit && splittable && (
         <div className="flex flex-wrap items-center gap-2 pl-7 text-sm">
           <label className="flex items-center gap-2">
             {t('sprintClose.hoursLeft')}
