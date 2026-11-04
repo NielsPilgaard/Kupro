@@ -34,7 +34,8 @@ public sealed partial class KuproTools(
     UserService users,
     MeetingService meetings)
 {
-    private const string WorkspaceHelp = "Workspace slug. Optional when your token is limited to one workspace or you are in only one.";
+    // Repeated in every tool's schema, so it stays short; the server instructions explain when it can be left out.
+    private const string WorkspaceHelp = "Workspace slug, if you have several.";
 
     [McpServerTool(Name = "get_me", ReadOnly = true), Description("Who you are: your user, and the agent name if you use an agent token.")]
     [CoversOperations("getMe")]

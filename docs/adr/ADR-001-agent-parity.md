@@ -75,6 +75,9 @@ without a check. Agents also need things humans don't: machine-readable output, 
 - **IMP-003**: Tool budget: 24 tools after sprint close (task 028) added `get_sprint_review` and `get_sprint_burndown`, enforced
   by the MCP test. A new feature extends an existing tool's actions or consolidates before the budget grows.
   Import adds a read-only `imports` tool (23, [ADR-019](ADR-019-import.md)).
+- **IMP-004**: `tools/list` sends `ttlMs: 3600000`, `cacheScope: private`, and sorts tools by name, so the list is
+  byte-identical across instances. It stays under 22 KB, enforced by the MCP test: text repeated in every tool's schema
+  belongs in the server instructions. Clients on the 2025-11-25 protocol ignore the field.
 
 ## Related Decisions
 

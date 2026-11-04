@@ -15,7 +15,11 @@ public static class McpSetup
     private const string Instructions =
         "Kupro is an issue tracker. Work happens in a workspace; issues live in projects and are addressed by key " +
         "(KUP-12). Types: epic > feature > task. States: backlog, todo, inProgress, inReview, done, canceled. " +
-        "Effort is in hours. Start with list_workspaces and list_projects; use search_issues before creating duplicates.";
+        "Effort is in hours. Start with list_workspaces and list_projects; use search_issues before creating duplicates. " +
+        "Tools take a workspace slug, which you can leave out when your token is limited to one workspace or you are in only one.";
+
+    /// <summary>The tool list only changes with a deploy. A hint for clients on protocol 2026-07-28; older ones ignore the field (ADR-001 IMP-004).</summary>
+    private static readonly TimeSpan ToolListTimeToLive = TimeSpan.FromHours(1);
 
     public static IHostApplicationBuilder AddKuproMcp(this IHostApplicationBuilder builder)
     {
@@ -34,7 +38,15 @@ public static class McpSetup
             })
             // Stateless: every JSON-RPC request is a plain authenticated HTTP request; nothing to pin to one instance.
             .WithHttpTransport(options => options.Stateless = true)
-            .WithTools<KuproTools>(json);
+            .WithTools<KuproTools>(json)
+            .WithRequestFilters(filters => filters.AddListToolsFilter(next => async (context, ct) =>
+            {
+                var result = await next(context, ct);
+                result.TimeToLive = ToolListTimeToLive;
+                // Sorted, so the list is byte-identical across instances and restarts and client prompt caches keep hitting.
+                result.Tools = [.. result.Tools.OrderBy(t => t.Name, StringComparer.Ordinal)];
+                return result;
+            }));
 
         return builder;
     }

@@ -5,6 +5,7 @@ using System.Text.Json;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Tokens;
 using Kupro.Tests.Infrastructure;
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -37,6 +38,67 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.ShouldContain("create_issues");
         tools.ShouldContain("update_issues");
         tools.Count.ShouldBeLessThanOrEqualTo(24, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
+    }
+
+    [Fact]
+    public async Task Tool_list_is_cacheable_for_an_hour_on_the_current_protocol()
+    {
+        await using var mcp = await ConnectAsync("2026-07-28");
+
+        var first = await mcp.ListToolsAsync(new ListToolsRequestParams(), Ct);
+        var second = await mcp.ListToolsAsync(new ListToolsRequestParams(), Ct);
+
+        first.TimeToLive.ShouldBe(TimeSpan.FromHours(1));
+        first.CacheScope.ShouldBe(CacheScope.Private, "the endpoint requires authentication");
+        first.Tools.Select(t => t.Name).ShouldBe(second.Tools.Select(t => t.Name));
+        first.Tools.Select(t => t.Name).ShouldBeInOrder(SortDirection.Ascending, StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public async Task Tool_list_sends_ttlMs_on_the_wire()
+    {
+        var http = Factory.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _agentToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = JsonContent.Create(new
+            {
+                jsonrpc = "2.0",
+                id = 1,
+                method = "tools/list",
+                @params = new Dictionary<string, object>
+                {
+                    ["_meta"] = new Dictionary<string, object>
+                    {
+                        ["io.modelcontextprotocol/protocolVersion"] = "2026-07-28",
+                        ["io.modelcontextprotocol/clientInfo"] = new { name = "test", version = "1" },
+                        ["io.modelcontextprotocol/clientCapabilities"] = new { },
+                    },
+                },
+            }),
+        };
+        request.Headers.Add("MCP-Protocol-Version", "2026-07-28");
+        request.Headers.Add("Mcp-Method", "tools/list");
+        request.Headers.Accept.ParseAdd("application/json");
+        request.Headers.Accept.ParseAdd("text/event-stream");
+
+        var response = await http.SendAsync(request, Ct);
+        var body = await response.Content.ReadAsStringAsync(Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+        body.ShouldContain("\"ttlMs\":3600000");
+        body.ShouldContain("\"cacheScope\":\"private\"");
+    }
+
+    [Fact]
+    public async Task Tool_list_stays_small_and_works_on_the_older_protocol()
+    {
+        await using var mcp = await ConnectAsync("2025-11-25");
+
+        var list = await mcp.ListToolsAsync(new ListToolsRequestParams(), Ct);
+
+        JsonSerializer.Serialize(list, McpJsonUtilities.DefaultOptions).Length.ShouldBeLessThan(22_000, "ADR-001 IMP-004: every session pays for this list");
+        (await CallAsync(mcp, "list_projects", new())).GetArrayLength().ShouldBe(1);
     }
 
     [Fact]
@@ -209,7 +271,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         result.Content.OfType<TextContentBlock>().Single().Text.ShouldContain("workspace_not_found");
     }
 
-    private async Task<McpClient> ConnectAsync()
+    private async Task<McpClient> ConnectAsync(string? protocolVersion = null)
     {
         var http = Factory.CreateClient();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _agentToken);
@@ -218,7 +280,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
             Endpoint = new Uri(http.BaseAddress!, "/mcp"),
             TransportMode = HttpTransportMode.StreamableHttp,
         }, http, ownsHttpClient: true);
-        return await McpClient.CreateAsync(transport, cancellationToken: Ct);
+        return await McpClient.CreateAsync(transport, new McpClientOptions { ProtocolVersion = protocolVersion }, cancellationToken: Ct);
     }
 
     private static async Task<JsonElement> CallAsync(McpClient mcp, string tool, Dictionary<string, object?> args)
