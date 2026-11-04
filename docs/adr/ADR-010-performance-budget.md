@@ -43,6 +43,24 @@ count asserted in integration tests for hot endpoints).
 
 - **NEG-001**: Load test infrastructure to maintain in CI.
 
+## Implementation Notes
+
+- **IMP-001**: Npgsql auto-prepare stays off (task 029). After five executions Postgres may switch a prepared statement to
+  a generic plan, which assumes an average-sized tenant. One statement in `GET issues/{key}` went from 0.09 to 5.5 ms by
+  scanning all 10,488 of a large tenant's rows, and that cost grows with tenant size, so the largest customers pay most.
+  Re-measure before reconsidering, and on analyzed tables: without planner stats the gain looks like 3x and is not real.
+
+  | p50 ms, off → on (`Max Auto Prepare=64`, `Auto Prepare Min Usages=2`) | No stats | Analyzed | Analyzed, 300 small tenants beside a 10k one |
+  |---|---|---|---|
+  | `GET issues?limit=200` | 9.9 → 3.3 | 4.0 → 3.6 | 3.9 → 3.7 |
+  | `GET issues/CORE-1` | 8.4 → 6.4 | 4.0 → 2.2 | 4.1 → **6.5** |
+  | `PATCH issues/{key}` | | 8.5 → 5.5 | 7.7 → **9.9** |
+  | `POST issues` | | 10.3 → 7.6 | 10.4 → **12.0** |
+  | `GET issues?q=issue` (every row matches) | 40 → **70** | 39 → 39 | 39 → 39 |
+
+  Release build, API in-process, Postgres in Docker on a laptop, one client: relative cost, not production latency.
+- **IMP-002**: `PerfBudgetTests` runs `ANALYZE` after seeding, because autovacuum does that in production.
+
 ## Related Decisions
 
 - [ADR-002](ADR-002-backend-stack.md) — backend

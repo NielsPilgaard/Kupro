@@ -6,6 +6,7 @@ using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
 using Kupro.Tests.Infrastructure;
+using Npgsql;
 
 namespace Kupro.Tests.Features;
 
@@ -17,6 +18,7 @@ namespace Kupro.Tests.Features;
 [Trait("Category", "Perf")]
 public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
+    private readonly PostgresFixture _postgres = postgres;
     private const int IssueCount = 10_000;
     private const int Samples = 60;
     private static readonly TimeSpan P99Budget = TimeSpan.FromMilliseconds(500);
@@ -31,6 +33,7 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         var (client, workspace, _) = await NewWorkspaceAsync();
         var ws = $"/api/v1/workspaces/{workspace.Slug}";
         await SeedAsync(client, ws);
+        await AnalyzeAsync();
 
         var reads = new[]
         {
@@ -63,6 +66,7 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
 
         // Task 028: a 300-issue sprint with 5 000 ledger rows.
         var sprintId = await SeedSprintWithLedgerAsync(client, ws);
+        await AnalyzeAsync();
         foreach (var url in new[] { $"{ws}/sprints/{sprintId}/review", $"{ws}/sprints/{sprintId}/burndown?by=assignee" })
         {
             results.Add(await MeasureAsync($"GET {url.Replace(ws, "{ws}", StringComparison.Ordinal).Replace(sprintId.ToString(), "{id}", StringComparison.Ordinal)}", async () =>
@@ -82,6 +86,15 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
             .Select(r => $"{r.Name}: p50 {r.P50:F1} ms, p99 {r.P99:F1} ms")
             .ToList();
         overBudget.ShouldBeEmpty("endpoints over the ADR-010 budget (p50 100 ms, p99 500 ms)");
+    }
+
+    /// <summary>Autovacuum does this in production. Without planner stats the numbers describe plans production never runs (ADR-010 IMP-001).</summary>
+    private async Task AnalyzeAsync()
+    {
+        await using var connection = new NpgsqlConnection(_postgres.ConnectionString);
+        await connection.OpenAsync(Ct);
+        await using var analyze = new NpgsqlCommand("ANALYZE", connection);
+        await analyze.ExecuteNonQueryAsync(Ct);
     }
 
     private static async Task<Guid> SeedSprintWithLedgerAsync(HttpClient client, string ws)
