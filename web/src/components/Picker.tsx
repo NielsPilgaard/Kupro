@@ -33,6 +33,7 @@ export function Picker({
   open: controlled,
   onOpenChange,
   shortcut,
+  disabled = false,
   className = chip,
   children,
 }: {
@@ -47,6 +48,8 @@ export function Picker({
   open?: boolean;
   onOpenChange?(open: boolean): void;
   shortcut?: string;
+  /** No dimming: the value is real, it just can't be changed yet. */
+  disabled?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -114,8 +117,9 @@ export function Picker({
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => setOpen(!open)}
-        className={`group flex max-w-full items-center gap-1.5 rounded-r1 text-left transition-colors duration-[var(--dur-1)] ${className}`}
+        className={`group flex max-w-full items-center gap-1.5 rounded-r1 text-left transition-colors duration-[var(--dur-1)] disabled:pointer-events-none ${className}`}
       >
         {/* Chips can stand without a visible field name; screen readers still hear "Status: In progress". */}
         <span className="sr-only">{label}: </span>

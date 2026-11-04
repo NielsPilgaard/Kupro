@@ -79,8 +79,38 @@ export function loadedStateIssues(qc: QueryClient, workspace: string, query: Iss
   return listItems(qc.getQueryData(stateIssuesOptions(workspace, query, state).queryKey)).filter((i) => i.state === state);
 }
 
+/**
+ * Opens from the cached list row while the detail loads. `isPlaceholderData` means description, parent, children,
+ * relations and createdBy are unknown, not empty.
+ */
 export function useIssue(workspace: string, key: string | null) {
-  return useQuery({ ...getIssueOptions({ path: { workspace, key: key ?? '' } }), enabled: !!key });
+  const qc = useQueryClient();
+  return useQuery({
+    ...getIssueOptions({ path: { workspace, key: key ?? '' } }),
+    enabled: !!key,
+    placeholderData: () => detailFromLists(qc, workspace, key ?? ''),
+  });
+}
+
+function detailFromLists(qc: QueryClient, workspace: string, key: string): IssueDetail | undefined {
+  const rows = qc
+    .getQueriesData<IssueList>({ predicate: inWorkspace(workspace) })
+    .flatMap(([, list]) => listItems(list))
+    .filter((i) => i.key === key);
+  if (rows.length === 0) return undefined;
+  // An inactive list can be minutes old, so take the newest copy.
+  const row = rows.reduce((a, b) => (Date.parse(b.updatedAt) > Date.parse(a.updatedAt) ? b : a));
+  return {
+    ...row,
+    projectKey: projectKeyOf(key),
+    description: null,
+    parent: null,
+    childEffort: null,
+    children: [],
+    relations: [],
+    createdBy: { id: '', name: '', kind: 'human' },
+    completedAt: null,
+  };
 }
 
 export function useMembers(workspace: string) {
@@ -88,6 +118,10 @@ export function useMembers(workspace: string) {
 }
 
 export const isIssueList = (q: Query) => (q.queryKey[0] as { _id?: string } | undefined)?._id === 'listIssues';
+
+/** Issue keys repeat across workspaces, so another workspace's lists must not be read or patched. */
+const inWorkspace = (workspace: string) => (q: Query) =>
+  isIssueList(q) && (q.queryKey[0] as { path?: { workspace?: string } }).path?.workspace === workspace;
 
 /** A cached issue list: one page (`useIssues`) or the loaded pages of an infinite list (`useStateIssues`). */
 export type IssueList = IssuePage | InfiniteData<IssuePage>;
@@ -104,12 +138,11 @@ type Snapshot = { lists: [QueryKey, IssueList | undefined][]; detail?: IssueDeta
 
 async function snapshot(qc: QueryClient, workspace: string, key: string): Promise<Snapshot> {
   const detailKey = getIssueQueryKey({ path: { workspace, key } });
-  // Issue keys repeat across workspaces, so another workspace's lists must not be patched.
-  const inWorkspace = (q: Query) => isIssueList(q) && (q.queryKey[0] as { path?: { workspace?: string } }).path?.workspace === workspace;
-  await qc.cancelQueries({ predicate: inWorkspace });
+  const predicate = inWorkspace(workspace);
+  await qc.cancelQueries({ predicate });
   await qc.cancelQueries({ queryKey: detailKey });
   return {
-    lists: qc.getQueriesData<IssueList>({ predicate: inWorkspace }),
+    lists: qc.getQueriesData<IssueList>({ predicate }),
     detail: qc.getQueryData<IssueDetail>(detailKey),
     detailKey,
   };

@@ -47,7 +47,7 @@ export function IssuePanel({ workspace, issueKey, meName }: { workspace: string;
   const { t } = useTranslation();
   const ui = useUi();
   const navigate = useNavigate();
-  const { data: issue, isError } = useIssue(workspace, issueKey);
+  const { data: issue, isError, isPlaceholderData } = useIssue(workspace, issueKey);
   const [editing, setEditing] = useState(false);
   const largeScreenMatch = useMediaQuery(largeScreen);
   // A manual choice wins over the breakpoint, so Narrow works on large screens too.
@@ -90,7 +90,7 @@ export function IssuePanel({ workspace, issueKey, meName }: { workspace: string;
       </header>
       {isError && <p className="p-4 text-bad">{t('errors.issueNotFound', { key: issueKey })}</p>}
       {issue && (
-        <IssueBody key={issue.key} workspace={workspace} issue={issue} wide={wide} editing={editing} setEditing={setEditing} meName={meName} />
+        <IssueBody key={issue.key} workspace={workspace} issue={issue} loading={isPlaceholderData} wide={wide} editing={editing} setEditing={setEditing} meName={meName} />
       )}
     </aside>
   );
@@ -101,12 +101,15 @@ type Tab = 'description' | 'children' | 'relations' | 'activity';
 function IssueBody({
   workspace,
   issue,
+  loading,
   wide,
   editing,
   setEditing,
 }: {
   workspace: string;
   issue: IssueDetail;
+  /** `issue` is the list row: everything is read-only, and what a row doesn't have shows as loading, never as empty. */
+  loading: boolean;
   wide: boolean;
   editing: boolean;
   setEditing(v: boolean): void;
@@ -118,6 +121,12 @@ function IssueBody({
   const update = useUpdateIssue(workspace);
   const save = (body: UpdateIssueRequest) => update.mutate({ path: { workspace, key: issue.key }, body });
   const [title, setTitle] = useState(issue.title);
+  // The row can be older than the detail, and a blur saves what an input holds: start over when the detail arrives.
+  const [seededFromRow, setSeededFromRow] = useState(loading);
+  if (seededFromRow !== loading) {
+    setSeededFromRow(loading);
+    setTitle(issue.title);
+  }
   // Held here, not in Description: crossing the wide breakpoint remounts Description, and a draft must survive that.
   const remoteDescription = issue.description ?? '';
   const [description, setDescription] = useState(remoteDescription);
@@ -138,12 +147,12 @@ function IssueBody({
   const { activeKey, setPickerOverride } = ui;
   useEffect(() => {
     setPickerOverride((page) => {
-      if (activeKey !== issue.key || page === 'root') return false;
+      if (loading || activeKey !== issue.key || page === 'root') return false;
       setPicker(page);
       return true;
     });
     return () => setPickerOverride(null);
-  }, [activeKey, issue.key, setPickerOverride]);
+  }, [activeKey, issue.key, loading, setPickerOverride]);
   const controlled = (page: PalettePage) => ({ open: picker === page, onOpenChange: (o: boolean) => setPicker(o ? page : null) });
 
   // Assignees are people: they answer for the work (ADR-008).
@@ -163,6 +172,7 @@ function IssueBody({
       label={t('issue.state')}
       placeholder={t('palette.placeholder.state')}
       shortcut="S"
+      disabled={loading}
       options={states.map((x, i) => ({ value: x, label: t(`state.${x}`), icon: <StatusRing state={x} />, key: String(i + 1) }))}
       selected={[issue.state]}
       onPick={(v) => save({ state: v as IssueDetail['state'] })}
@@ -176,6 +186,7 @@ function IssueBody({
       label={t('issue.priority')}
       placeholder={t('palette.placeholder.priority')}
       shortcut="P"
+      disabled={loading}
       options={priorities.map((x, i) => ({ value: x, label: t(`priority.${x}`), icon: <PriorityIcon priority={x} />, key: String((i + 1) % 5) }))}
       selected={[issue.priority]}
       onPick={(v) => save({ priority: v as IssueDetail['priority'] })}
@@ -189,6 +200,7 @@ function IssueBody({
       label={t('issue.assignee')}
       placeholder={t('palette.placeholder.assign')}
       shortcut="A"
+      disabled={loading}
       options={assignees}
       selected={[issue.assignee?.id ?? NONE]}
       onPick={(v) => save(v === NONE ? { clear: ['assignee'] } : { assignee: v })}
@@ -203,6 +215,7 @@ function IssueBody({
       label={t('issue.labels')}
       placeholder={t('palette.placeholder.label')}
       shortcut="L"
+      disabled={loading}
       options={labelNames.map((name) => ({ value: name, label: name, icon: <LabelDot name={name} /> }))}
       selected={issue.labels}
       onPick={(v) => save(issue.labels.includes(v) ? { removeLabels: [v] } : { addLabels: [v] })}
@@ -222,6 +235,7 @@ function IssueBody({
     <Picker
       label={t('issue.type')}
       placeholder={t('picker.type')}
+      disabled={loading}
       options={types.map((x) => ({ value: x, label: t(`type.${x}`), icon: <TypeIcon type={x} /> }))}
       selected={[issue.type]}
       onPick={(v) => save({ type: v as IssueType })}
@@ -229,32 +243,33 @@ function IssueBody({
       <TypeIcon type={issue.type} /> {t(`type.${issue.type}`)}
     </Picker>
   );
-  const sprint = <SprintSelect workspace={workspace} issue={issue} onChange={(id) => save(id ? { sprint: id } : { clear: ['sprint'] })} />;
+  const sprint = <SprintSelect workspace={workspace} issue={issue} disabled={loading} onChange={(id) => save(id ? { sprint: id } : { clear: ['sprint'] })} />;
   const dates = (
     <span className="flex items-center gap-1.5">
-      <DateInput value={issue.startDate} label={t('issue.startDate')} onCommit={(v) => save(v ? { startDate: v } : { clear: ['startDate'] })} />
+      <DateInput key={`start-${loading}`} value={issue.startDate} readOnly={loading} label={t('issue.startDate')} onCommit={(v) => save(v ? { startDate: v } : { clear: ['startDate'] })} />
       <span className="text-mute">→</span>
-      <DateInput value={issue.dueDate} label={t('issue.dueDate')} onCommit={(v) => save(v ? { dueDate: v } : { clear: ['dueDate'] })} />
+      <DateInput key={`due-${loading}`} value={issue.dueDate} readOnly={loading} label={t('issue.dueDate')} onCommit={(v) => save(v ? { dueDate: v } : { clear: ['dueDate'] })} />
     </span>
   );
   const effort = (
     <span className="flex items-center gap-2">
-      <NumberInput value={issue.effort} label={t('issue.effort')} onCommit={(v) => save(v === null ? { clear: ['effort'] } : { effort: v })} />
+      <NumberInput key={String(loading)} value={issue.effort} readOnly={loading} label={t('issue.effort')} onCommit={(v) => save(v === null ? { clear: ['effort'] } : { effort: v })} />
       {issue.childEffort != null && <span className="text-sm text-mute">{t('issue.childEffort', { hours: hours(issue.childEffort) })}</span>}
     </span>
   );
 
   const titleRow = (
     <div className="flex items-start gap-2">
-      <button type="button" onClick={() => setPicker('state')} className="mt-1.5 rounded-full" aria-label={t('issue.changeState')}>
+      <button type="button" disabled={loading} onClick={() => setPicker('state')} className="mt-1.5 rounded-full" aria-label={t('issue.changeState')}>
         <StatusRing state={issue.state} />
       </button>
       <textarea
         value={title}
         rows={1}
+        readOnly={loading}
         aria-label={t('issue.title')}
         onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => title.trim() && title !== issue.title && save({ title: title.trim() })}
+        onBlur={() => !loading && title.trim() && title !== issue.title && save({ title: title.trim() })}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
@@ -265,7 +280,9 @@ function IssueBody({
       />
     </div>
   );
-  const descriptionSection = (
+  const descriptionSection = loading ? (
+    <Loading />
+  ) : (
     <Description
       workspace={workspace}
       issue={issue}
@@ -276,21 +293,22 @@ function IssueBody({
       save={save}
     />
   );
-  const children =
-    issue.children.length > 0 ? (
-      <section className="flex flex-col gap-1" aria-label={t('issue.subtasks')}>
-        <ChildProgress done={childrenDone} total={issue.children.length} />
-        {issue.children.map((child) => (
-          <IssueLink key={child.key} issueRef={child} />
-        ))}
-      </section>
-    ) : (
-      <p className="text-mute">{t('issue.noSubtasks')}</p>
-    );
+  const children = loading ? (
+    <Loading />
+  ) : issue.children.length > 0 ? (
+    <section className="flex flex-col gap-1" aria-label={t('issue.subtasks')}>
+      <ChildProgress done={childrenDone} total={issue.children.length} />
+      {issue.children.map((child) => (
+        <IssueLink key={child.key} issueRef={child} />
+      ))}
+    </section>
+  ) : (
+    <p className="text-mute">{t('issue.noSubtasks')}</p>
+  );
   const activity = (
     <>
       <ActivityFeed workspace={workspace} issueKey={issue.key} />
-      <p className="text-sm text-mute">{t('issue.createdBy', { name: issue.createdBy.name })}</p>
+      {!loading && <p className="text-sm text-mute">{t('issue.createdBy', { name: issue.createdBy.name })}</p>}
     </>
   );
 
@@ -306,7 +324,7 @@ function IssueBody({
               {children}
             </div>
           )}
-          <Relations workspace={workspace} issue={issue} />
+          {!loading && <Relations workspace={workspace} issue={issue} />}
           {activity}
         </div>
         <dl className="flex w-72 shrink-0 flex-col gap-3 overflow-auto border-l border-line bg-sunk/40 px-4 py-5">
@@ -372,11 +390,16 @@ function IssueBody({
       <div role="tabpanel" id="issue-tabpanel" aria-labelledby={`issue-tab-${tab}`} className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
         {tab === 'description' && descriptionSection}
         {tab === 'children' && children}
-        {tab === 'relations' && <Relations workspace={workspace} issue={issue} />}
+        {tab === 'relations' && (loading ? <Loading /> : <Relations workspace={workspace} issue={issue} />)}
         {tab === 'activity' && activity}
       </div>
     </div>
   );
+}
+
+function Loading() {
+  const { t } = useTranslation();
+  return <p className="text-mute">{t('common.loading')}</p>;
 }
 
 function Description({
@@ -475,7 +498,7 @@ function ParentLink({ issueRef }: { issueRef: { key: string; title: string } }) 
   );
 }
 
-function SprintSelect({ workspace, issue, onChange }: { workspace: string; issue: IssueDetail; onChange(id: string | null): void }) {
+function SprintSelect({ workspace, issue, disabled, onChange }: { workspace: string; issue: IssueDetail; disabled: boolean; onChange(id: string | null): void }) {
   const { t } = useTranslation();
   const { data: sprints } = useQuery(listSprintsOptions({ path: { workspace }, query: { project: issue.projectKey, state: ['planned', 'active'] } }));
   const open = sprints?.find((s) => s.id === issue.sprintId);
@@ -488,6 +511,7 @@ function SprintSelect({ workspace, issue, onChange }: { workspace: string; issue
   return (
     <Picker
       label={t('issue.sprint')}
+      disabled={disabled}
       placeholder={t('picker.sprint')}
       options={[
         { value: NONE, label: t('issue.noSprint'), icon: <SprintIcon /> },
@@ -526,15 +550,17 @@ const relationIcon: Record<RelationKind, ReactNode> = {
   duplicatedBy: <Copy size={14} strokeWidth={1.5} aria-hidden="true" className="text-mute" />,
 };
 
-function NumberInput({ value, label, onCommit }: { value: number | null; label: string; onCommit(v: number | null): void }) {
+function NumberInput({ value, label, readOnly, onCommit }: { value: number | null; label: string; readOnly: boolean; onCommit(v: number | null): void }) {
   const [text, setText] = useState(value?.toString() ?? '');
   return (
     <input
       inputMode="decimal"
       aria-label={label}
       value={text}
+      readOnly={readOnly}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
+        if (readOnly) return;
         const parsed = text.trim() === '' ? null : Number(text.replace(',', '.'));
         if (parsed !== value && (parsed === null || !Number.isNaN(parsed))) onCommit(parsed);
       }}
@@ -543,13 +569,14 @@ function NumberInput({ value, label, onCommit }: { value: number | null; label: 
   );
 }
 
-function DateInput({ value, label, onCommit }: { value: string | null; label: string; onCommit(v: string | null): void }) {
+function DateInput({ value, label, readOnly, onCommit }: { value: string | null; label: string; readOnly: boolean; onCommit(v: string | null): void }) {
   return (
     <input
       type="date"
       aria-label={label}
       defaultValue={value ?? ''}
-      onBlur={(e) => e.target.value !== (value ?? '') && onCommit(e.target.value || null)}
+      readOnly={readOnly}
+      onBlur={(e) => !readOnly && e.target.value !== (value ?? '') && onCommit(e.target.value || null)}
       className="h-7 rounded-r1 bg-sunk px-2 font-mono text-sm hover:bg-sel"
     />
   );
