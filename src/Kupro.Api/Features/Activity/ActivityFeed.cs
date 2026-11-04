@@ -49,26 +49,31 @@ public sealed record FeedItem(
 /// <summary>An issue's history and comments merged in time order (task 008).</summary>
 public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
 {
-    /// <summary>Most recent entries kept; older history is rarely read and keeps the response small (ADR-010).</summary>
+    /// <summary>Most recent entries kept per issue; older history is rarely read and keeps the response small (ADR-010).</summary>
     public const int Limit = 500;
 
-    public async Task<IReadOnlyList<FeedItem>?> GetAsync(string key, CancellationToken ct)
+    public async Task<IReadOnlyList<FeedItem>?> GetAsync(string key, CancellationToken ct) =>
+        (await GetManyAsync([key], ct)).Values.SingleOrDefault();
+
+    /// <summary>Feeds by issue key, for the issues that exist among <paramref name="keys"/>. The same queries however many keys.</summary>
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<FeedItem>>> GetManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct)
     {
-        var normalized = key.Trim().ToUpperInvariant();
+        var normalized = keys.Select(k => k.Trim().ToUpperInvariant()).Distinct().ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var issueId = await db.Issues.Where(i => i.Key == normalized).Select(i => (Guid?)i.Id).SingleOrDefaultAsync(ct);
-        if (issueId is null)
+        var issues = await db.Issues.Where(i => normalized.Contains(i.Key)).Select(i => new { i.Id, i.Key }).ToListAsync(ct);
+        if (issues.Count == 0)
         {
-            return null;
+            return new Dictionary<string, IReadOnlyList<FeedItem>>();
         }
 
-        var entries = await db.Activity.AsNoTracking().Where(a => a.IssueId == issueId)
-            .OrderByDescending(a => a.CreatedAt).Take(Limit)
-            .Select(a => new { a.Id, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId })
+        var issueIds = issues.Select(i => i.Id).ToList();
+        var entries = await db.Issues.Where(i => issueIds.Contains(i.Id))
+            .SelectMany(i => db.Activity.Where(a => a.IssueId == i.Id).OrderByDescending(a => a.CreatedAt).Take(Limit))
+            .Select(a => new { a.Id, a.IssueId, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId })
             .ToListAsync(ct);
-        var comments = await db.Comments.AsNoTracking().Where(c => c.IssueId == issueId)
-            .OrderByDescending(c => c.CreatedAt).Take(Limit)
-            .Select(c => new { c.Id, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt, c.ProposalId })
+        var comments = await db.Issues.Where(i => issueIds.Contains(i.Id))
+            .SelectMany(i => db.Comments.Where(c => c.IssueId == i.Id).OrderByDescending(c => c.CreatedAt).Take(Limit))
+            .Select(c => new { c.Id, c.IssueId, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt, c.ProposalId })
             .ToListAsync(ct);
 
         var parsed = entries.Select(e => (Entry: e, Data: Parse(e.Data))).ToList();
@@ -119,7 +124,7 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                 ? new FeedMeeting(p.SessionId, p.Id, p.Snippet, p.ReviewedById is { } r ? members.GetValueOrDefault(r) : null)
                 : null;
 
-        var items = new List<FeedItem>(parsed.Count + comments.Count);
+        var items = new List<(Guid IssueId, FeedItem Item)>(parsed.Count + comments.Count);
         foreach (var (e, data) in parsed)
         {
             if (Kind(e.Kind) is not { } kind || !members.TryGetValue(e.ActorId, out var actor))
@@ -157,18 +162,19 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                 changes.Add(kind == FeedItemKind.RelationAdded ? new(typeName, null, other) : new(typeName, other, null));
             }
 
-            items.Add(new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId)));
+            items.Add((e.IssueId, new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId))));
         }
 
         foreach (var c in comments)
         {
             if (members.TryGetValue(c.AuthorId, out var author))
             {
-                items.Add(new FeedItem(c.Id, FeedItemKind.Comment, author, c.Via, c.CreatedAt, [], c.Body, c.EditedAt, Meeting(c.ProposalId)));
+                items.Add((c.IssueId, new FeedItem(c.Id, FeedItemKind.Comment, author, c.Via, c.CreatedAt, [], c.Body, c.EditedAt, Meeting(c.ProposalId))));
             }
         }
 
-        return items.OrderBy(i => i.At).ThenBy(i => i.Id).ToList();
+        var byIssue = items.ToLookup(i => i.IssueId, i => i.Item);
+        return issues.ToDictionary(i => i.Key, IReadOnlyList<FeedItem> (i) => byIssue[i.Id].OrderBy(f => f.At).ThenBy(f => f.Id).ToList());
     }
 
     private static FeedItemKind? Kind(string kind) => kind switch

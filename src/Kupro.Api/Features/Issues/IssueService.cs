@@ -38,20 +38,26 @@ public sealed class IssueService(
 
     // ---------------------------------------------------------------- reads
 
-    public async Task<IssueDetail?> GetAsync(string key, CancellationToken ct)
+    public async Task<IssueDetail?> GetAsync(string key, CancellationToken ct) =>
+        (await GetManyAsync([key], ct)).SingleOrDefault();
+
+    /// <summary>The issues that exist among <paramref name="keys"/>, in the order asked. The same queries however many keys.</summary>
+    public async Task<IReadOnlyList<IssueDetail>> GetManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct)
     {
-        var normalized = NormalizeKey(key);
+        var normalized = keys.Select(NormalizeKey).Distinct().ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var s = await db.Issues.AsNoTracking().Where(i => i.Key == normalized).Select(SummaryOf(db)).SingleOrDefaultAsync(ct);
-        if (s is null)
+        var summaries = await db.Issues.AsNoTracking().Where(i => normalized.Contains(i.Key)).Select(SummaryOf(db)).ToListAsync(ct);
+        if (summaries.Count == 0)
         {
-            return null;
+            return [];
         }
 
-        var row = await db.Issues.AsNoTracking()
-            .Where(i => i.Id == s.Id)
+        var ids = summaries.Select(s => s.Id).ToList();
+        var rows = await db.Issues.AsNoTracking()
+            .Where(i => ids.Contains(i.Id))
             .Select(i => new
             {
+                i.Id,
                 ProjectKey = db.Projects.Where(p => p.Id == i.ProjectId).Select(p => p.Key).First(),
                 i.Description,
                 Parent = db.Issues.Where(p => p.Id == i.ParentId).Select(p => new IssueRef(p.Key, p.Title, p.Type, p.State))
@@ -79,26 +85,36 @@ public sealed class IssueService(
                 Splits = db.Activity.Where(a => a.IssueId == i.Id && (a.Kind == SplitFromKind || a.Kind == SplitIntoKind))
                     .OrderBy(a => a.CreatedAt).Select(a => new { a.Kind, a.Data }).ToList(),
             })
-            .SingleAsync(ct);
+            .ToDictionaryAsync(r => r.Id, ct);
 
-        var relations = row.Outgoing.Select(r => new IssueRelationResponse(r.Id, ViewOf(r.Type, outgoing: true), r.Other))
-            .Concat(row.Incoming.Select(r => new IssueRelationResponse(r.Id, ViewOf(r.Type, outgoing: false), r.Other)))
-            .OrderBy(r => r.Type).ThenBy(r => r.Issue.Key, StringComparer.Ordinal)
-            .ToList();
         // An issue can be reopened and split again; the latest link wins.
-        var splitKeys = new Dictionary<string, string?>();
-        foreach (var split in row.Splits)
+        var splitKeysOf = rows.Values.ToDictionary(r => r.Id, r =>
         {
-            splitKeys[split.Kind] = SplitKey(split.Data);
-        }
+            var splitKeys = new Dictionary<string, string?>();
+            foreach (var split in r.Splits)
+            {
+                splitKeys[split.Kind] = SplitKey(split.Data);
+            }
 
-        var splitRefs = splitKeys.Count == 0 ? [] : await db.Issues.AsNoTracking().Where(i => splitKeys.Values.Contains(i.Key))
+            return splitKeys;
+        });
+        var allSplitKeys = splitKeysOf.Values.SelectMany(k => k.Values).Distinct().ToList();
+        var splitRefs = allSplitKeys.Count == 0 ? [] : await db.Issues.AsNoTracking().Where(i => allSplitKeys.Contains(i.Key))
             .Select(i => new IssueRef(i.Key, i.Title, i.Type, i.State)).ToListAsync(ct);
-        IssueRef? SplitRef(string kind) => splitKeys.TryGetValue(kind, out var other) ? splitRefs.Find(r => r.Key == other) : null;
-        return new IssueDetail(s.Id, s.Key, row.ProjectKey, s.Type, s.Title, row.Description, s.State, s.Priority,
-            s.Assignee, row.Parent, s.Effort, row.Children.Count > 0 ? row.ChildEffort : null, s.StartDate, s.DueDate,
-            s.Labels, row.Children, relations, s.Rank, s.SprintId, row.CreatedBy, s.CreatedAt, s.UpdatedAt, row.CompletedAt,
-            SplitRef(SplitFromKind), SplitRef(SplitIntoKind));
+
+        return summaries.OrderBy(s => normalized.IndexOf(s.Key)).Select(s =>
+        {
+            var row = rows[s.Id];
+            var relations = row.Outgoing.Select(r => new IssueRelationResponse(r.Id, ViewOf(r.Type, outgoing: true), r.Other))
+                .Concat(row.Incoming.Select(r => new IssueRelationResponse(r.Id, ViewOf(r.Type, outgoing: false), r.Other)))
+                .OrderBy(r => r.Type).ThenBy(r => r.Issue.Key, StringComparer.Ordinal)
+                .ToList();
+            IssueRef? SplitRef(string kind) => splitKeysOf[s.Id].TryGetValue(kind, out var other) ? splitRefs.Find(r => r.Key == other) : null;
+            return new IssueDetail(s.Id, s.Key, row.ProjectKey, s.Type, s.Title, row.Description, s.State, s.Priority,
+                s.Assignee, row.Parent, s.Effort, row.Children.Count > 0 ? row.ChildEffort : null, s.StartDate, s.DueDate,
+                s.Labels, row.Children, relations, s.Rank, s.SprintId, row.CreatedBy, s.CreatedAt, s.UpdatedAt, row.CompletedAt,
+                SplitRef(SplitFromKind), SplitRef(SplitIntoKind));
+        }).ToList();
     }
 
     public async Task<IssueResult<IssuePage>> ListAsync(IssueQuery query, CancellationToken ct)
