@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Tokens;
+using Kupro.Api.Features.Workspaces;
 using Kupro.Tests.Infrastructure;
 using ModelContextProtocol;
 using ModelContextProtocol.Client;
@@ -16,11 +17,13 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
     private string _workspace = null!;
     private string _agentToken = null!;
+    private HttpClient _owner = null!;
 
     public override async ValueTask InitializeAsync()
     {
         await base.InitializeAsync();
         var (client, workspace, _) = await NewWorkspaceAsync();
+        _owner = client;
         _workspace = workspace.Slug;
         await ReadAsync<ProjectResponse>(await client.PostAsJsonAsync($"/api/v1/workspaces/{_workspace}/projects",
             new CreateProjectRequest("MCP", "MCP project"), Json.Options, Ct), HttpStatusCode.Created);
@@ -37,7 +40,8 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.ShouldContain("search_issues");
         tools.ShouldContain("create_issues");
         tools.ShouldContain("update_issues");
-        tools.Count.ShouldBeLessThanOrEqualTo(24, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
+        tools.ShouldContain("get_context");
+        tools.Count.ShouldBeLessThanOrEqualTo(19, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
     }
 
     [Fact]
@@ -96,9 +100,215 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         await using var mcp = await ConnectAsync("2025-11-25");
 
         var list = await mcp.ListToolsAsync(new ListToolsRequestParams(), Ct);
+        var json = JsonSerializer.Serialize(list, McpJsonUtilities.DefaultOptions);
+        json.Length.ShouldBeLessThan(19_000, "ADR-001 IMP-003: every session pays for this list");
+        json.ShouldNotContain("\"default\":null");
+        json.ShouldNotContain("\"null\"");
+        (await CallAsync(mcp, "get_context", new())).GetProperty("projects").GetArrayLength().ShouldBe(1);
+    }
 
-        JsonSerializer.Serialize(list, McpJsonUtilities.DefaultOptions).Length.ShouldBeLessThan(22_000, "ADR-001 IMP-004: every session pays for this list");
-        (await CallAsync(mcp, "list_projects", new())).GetArrayLength().ShouldBe(1);
+    [Fact]
+    public async Task Responses_stay_within_their_byte_limits_on_the_reference_dataset()
+    {
+        // 1,000 dated epics across 3 projects, 300 tasks: what get_plan's full view measured 227 KB on, at a seedable size.
+        await using var mcp = await ConnectAsync();
+        foreach (var project in new[] { "REF", "OPS" })
+        {
+            await CallAsync(mcp, "create_project", new() { ["key"] = project, ["name"] = project });
+        }
+
+        string[] projects = ["MCP", "REF", "OPS"];
+        for (var batch = 0; batch < 10; batch++)
+        {
+            await CallAsync(mcp, "create_issues", new()
+            {
+                ["issues"] = Enumerable.Range(0, 100).Select(i => new
+                {
+                    project = projects[i % 3],
+                    title = $"Dependency issue {batch}-{i}",
+                    type = "epic",
+                    effort = 40,
+                    startDate = "2027-01-01",
+                    dueDate = "2027-06-30",
+                }).ToArray(),
+            });
+        }
+
+        var tasks = new List<string>();
+        for (var batch = 0; batch < 3; batch++)
+        {
+            var created = await CallAsync(mcp, "create_issues", new()
+            {
+                ["issues"] = Enumerable.Range(0, 100).Select(i => new
+                {
+                    project = "MCP",
+                    title = $"Dependency issue {batch}-{i}",
+                    state = "todo",
+                    effort = 2,
+                    labels = new[] { "backend", "api" },
+                }).ToArray(),
+            });
+            tasks.AddRange(created.EnumerateArray().Select(i => i.GetProperty("key").GetString()!));
+        }
+
+        (await TextAsync(mcp, "get_plan", new())).Length.ShouldBeLessThan(10_000, "ADR-001 IMP-003");
+        (await TextAsync(mcp, "search_issues", new())).Length.ShouldBeLessThan(4_000, "ADR-001 IMP-003");
+        (await TextAsync(mcp, "update_issues", new()
+        {
+            ["items"] = tasks.Take(100).Select(key => new { key, changes = new { state = "inProgress" } }).ToArray(),
+        })).Length.ShouldBeLessThan(15_000, "ADR-001 IMP-003");
+        (await TextAsync(mcp, "get_context", new())).Length.ShouldBeLessThan(6_000, "ADR-001 IMP-003");
+        // The full view is still there for who asks, and is what the summary saves.
+        (await TextAsync(mcp, "get_plan", new() { ["view"] = "full" })).Length.ShouldBeGreaterThan(100_000);
+    }
+
+    [Fact]
+    public async Task Whats_on_my_plate_takes_two_calls()
+    {
+        var token = (await NewTokenAsync(_owner, new("me", ApiTokenKind.Personal))).Secret;
+        await using var mcp = await ConnectAsync(token: token);
+        await CallAsync(mcp, "create_issues", new()
+        {
+            ["issues"] = new object[]
+            {
+                new { project = "MCP", title = "Mine", state = "inProgress", assignee = "me", description = "The details" },
+                new { project = "MCP", title = "Finished", state = "done", assignee = "me" },
+                new { project = "MCP", title = "Someone else's", state = "todo" },
+            },
+        });
+
+        var context = await CallAsync(mcp, "get_context", new());
+        var keys = context.GetProperty("myIssues").EnumerateArray().Select(i => i.GetProperty("key").GetString()).ToArray();
+        var issues = await CallAsync(mcp, "get_issue", new() { ["keys"] = keys });
+
+        keys.ShouldBe(["MCP-1"]);
+        issues.GetProperty("issues").EnumerateArray().ShouldHaveSingleItem().GetProperty("description").GetString().ShouldBe("The details");
+    }
+
+    [Fact]
+    public async Task Context_includes_only_what_is_asked_and_caps_members_and_labels()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new()
+        {
+            ["issues"] = new object[] { new { project = "MCP", title = "Many labels", labels = Enumerable.Range(0, 60).Select(i => $"label-{i}").ToArray() } },
+        });
+
+        var labels = await CallAsync(mcp, "get_context", new() { ["include"] = new[] { "labels" } });
+        labels.GetProperty("labels").GetArrayLength().ShouldBe(50);
+        labels.GetProperty("labelsTotal").GetInt32().ShouldBe(60);
+        labels.GetProperty("me").GetProperty("agent").GetString().ShouldBe("claude");
+        labels.GetProperty("workspaces").EnumerateArray().ShouldHaveSingleItem();
+        labels.TryGetProperty("projects", out _).ShouldBeFalse();
+        labels.TryGetProperty("members", out _).ShouldBeFalse();
+
+        var all = await CallAsync(mcp, "get_context", new());
+        all.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("kind").GetString()).ShouldContain("human");
+        all.TryGetProperty("membersTotal", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Context_lists_only_workspaces_when_you_are_in_several_and_name_none()
+    {
+        var slug = (await ReadAsync<WorkspaceSummary>(await _owner.PostAsJsonAsync("/api/v1/workspaces",
+            new CreateWorkspaceRequest("Second", "w-" + Guid.NewGuid().ToString("N")[..12]), Json.Options, Ct), HttpStatusCode.Created)).Slug;
+        var token = (await NewTokenAsync(_owner, new("me", ApiTokenKind.Personal))).Secret;
+        await using var mcp = await ConnectAsync(token: token);
+
+        var context = await CallAsync(mcp, "get_context", new());
+        context.GetProperty("workspaces").GetArrayLength().ShouldBe(2);
+        context.TryGetProperty("projects", out _).ShouldBeFalse();
+
+        var named = await CallAsync(mcp, "get_context", new() { ["workspace"] = slug });
+        named.GetProperty("workspace").GetProperty("slug").GetString().ShouldBe(slug);
+    }
+
+    [Fact]
+    public async Task Search_rows_are_compact_and_fields_add_the_rest()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new() { ["issues"] = new object[] { new { project = "MCP", title = "Row", dueDate = "2027-03-01" } } });
+
+        var row = (await CallAsync(mcp, "search_issues", new())).GetProperty("items")[0];
+        row.TryGetProperty("id", out _).ShouldBeFalse();
+        row.TryGetProperty("rank", out _).ShouldBeFalse();
+        row.TryGetProperty("updatedAt", out _).ShouldBeFalse();
+        row.TryGetProperty("dueDate", out _).ShouldBeFalse();
+
+        var asked = (await CallAsync(mcp, "search_issues", new() { ["fields"] = new[] { "dueDate", "id" } })).GetProperty("items")[0];
+        asked.GetProperty("dueDate").GetString().ShouldBe("2027-03-01");
+        asked.TryGetProperty("id", out _).ShouldBeTrue();
+        asked.TryGetProperty("rank", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Get_issue_reads_many_keys_with_activity_and_reports_missing_ones_per_key()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new()
+        {
+            ["issues"] = new object[] { new { project = "MCP", title = "First" }, new { project = "MCP", title = "Second" } },
+        });
+        await CallAsync(mcp, "comment", new() { ["action"] = "add", ["key"] = "MCP-2", ["body"] = "A remark" });
+
+        var result = await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "mcp-2", "MCP-404", "MCP-1" }, ["include"] = new[] { "activity" } });
+
+        result.GetProperty("issues").EnumerateArray().Select(i => i.GetProperty("key").GetString()).ShouldBe(["MCP-2", "MCP-1"]);
+        var error = result.GetProperty("errors").EnumerateArray().ShouldHaveSingleItem();
+        error.GetProperty("key").GetString().ShouldBe("MCP-404");
+        error.GetProperty("code").GetString().ShouldBe("issue_not_found");
+        var activity = result.GetProperty("activity");
+        activity.GetProperty("MCP-1").GetArrayLength().ShouldBe(1);
+        activity.GetProperty("MCP-2").EnumerateArray().Select(i => i.GetProperty("kind").GetString()).ShouldBe(["created", "comment"]);
+
+        var plain = await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "MCP-1" } });
+        plain.TryGetProperty("activity", out _).ShouldBeFalse();
+        plain.TryGetProperty("errors", out _).ShouldBeFalse();
+        (await mcp.CallToolAsync("get_issue", new Dictionary<string, object?> { ["keys"] = Enumerable.Range(1, 21).Select(i => $"MCP-{i}").ToArray() }, cancellationToken: Ct))
+            .IsError.ShouldBe(true);
+    }
+
+    [Fact]
+    public async Task Danish_letters_and_plus_signs_come_through_unescaped()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new() { ["issues"] = new object[] { new { project = "MCP", title = "Rød grød med fløde på æbler" } } });
+
+        var text = await TextAsync(mcp, "search_issues", new() { ["fields"] = new[] { "createdAt" } });
+
+        text.ShouldContain("Rød grød med fløde på æbler");
+        text.ShouldNotContain("\\u");
+    }
+
+    [Fact]
+    public async Task Summary_plan_leaves_out_cards_and_names_projects_for_their_months()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new()
+        {
+            ["issues"] = new object[]
+            {
+                new { project = "MCP", title = "Blocker", type = "feature", effort = 10, startDate = "2027-01-01", dueDate = "2027-03-31" },
+                new { project = "MCP", title = "Blocked", type = "feature", effort = 10, startDate = "2027-02-01", dueDate = "2027-03-31" },
+            },
+        });
+        await CallAsync(mcp, "relate_issues", new() { ["key"] = "MCP-1", ["type"] = "blocks", ["target"] = "MCP-2" });
+        var horizon = new Dictionary<string, object?> { ["from"] = "2027-01-01", ["to"] = "2027-03-01" };
+
+        var summary = await CallAsync(mcp, "get_plan", horizon);
+        summary.GetProperty("totals").GetArrayLength().ShouldBe(3);
+        summary.GetProperty("violatedDependencies").GetInt32().ShouldBe(1);
+        summary.GetProperty("dependencies").GetArrayLength().ShouldBe(0);
+        var project = summary.GetProperty("projects")[0];
+        project.GetProperty("cards").GetArrayLength().ShouldBe(0);
+        project.GetProperty("months").GetArrayLength().ShouldBe(0);
+
+        var named = await CallAsync(mcp, "get_plan", new(horizon) { ["project"] = new[] { "MCP" } });
+        named.GetProperty("projects")[0].GetProperty("months").GetArrayLength().ShouldBe(3);
+
+        var full = await CallAsync(mcp, "get_plan", new(horizon) { ["view"] = "full" });
+        full.GetProperty("projects")[0].GetProperty("cards").GetArrayLength().ShouldBe(2);
+        full.GetProperty("dependencies").GetArrayLength().ShouldBe(1);
     }
 
     [Fact]
@@ -220,7 +430,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
     {
         await using var mcp = await ConnectAsync();
 
-        var result = await mcp.CallToolAsync("get_issue", new Dictionary<string, object?> { ["key"] = "MCP-404" }, cancellationToken: Ct);
+        var result = await mcp.CallToolAsync("comment", new Dictionary<string, object?> { ["action"] = "add", ["key"] = "MCP-404", ["body"] = "Hello" }, cancellationToken: Ct);
 
         result.IsError.ShouldBe(true);
         result.Content.OfType<TextContentBlock>().Single().Text.ShouldContain("issue_not_found");
@@ -256,7 +466,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
 
         var undone = await CallAsync(mcp, "review_proposals", new() { ["items"] = new[] { new { id, decision = "undo" } } });
         undone[0].GetProperty("proposal").GetProperty("status").GetString().ShouldBe("undone");
-        (await CallAsync(mcp, "get_issue", new() { ["key"] = "MCP-1" })).GetProperty("state").GetString().ShouldBe("backlog");
+        (await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "MCP-1" } })).GetProperty("issues")[0].GetProperty("state").GetString().ShouldBe("backlog");
     }
 
     [Fact]
@@ -271,10 +481,10 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         result.Content.OfType<TextContentBlock>().Single().Text.ShouldContain("workspace_not_found");
     }
 
-    private async Task<McpClient> ConnectAsync(string? protocolVersion = null)
+    private async Task<McpClient> ConnectAsync(string? protocolVersion = null, string? token = null)
     {
         var http = Factory.CreateClient();
-        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _agentToken);
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token ?? _agentToken);
         var transport = new HttpClientTransport(new HttpClientTransportOptions
         {
             Endpoint = new Uri(http.BaseAddress!, "/mcp"),
@@ -283,11 +493,14 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         return await McpClient.CreateAsync(transport, new McpClientOptions { ProtocolVersion = protocolVersion }, cancellationToken: Ct);
     }
 
-    private static async Task<JsonElement> CallAsync(McpClient mcp, string tool, Dictionary<string, object?> args)
+    private static async Task<JsonElement> CallAsync(McpClient mcp, string tool, Dictionary<string, object?> args) =>
+        JsonDocument.Parse(await TextAsync(mcp, tool, args)).RootElement;
+
+    private static async Task<string> TextAsync(McpClient mcp, string tool, Dictionary<string, object?> args)
     {
         var result = await mcp.CallToolAsync(tool, args, cancellationToken: Ct);
         var text = result.Content.OfType<TextContentBlock>().Single().Text;
         result.IsError.ShouldNotBe(true, text);
-        return JsonDocument.Parse(text).RootElement;
+        return text;
     }
 }

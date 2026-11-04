@@ -37,7 +37,7 @@ public sealed class McpWorkspace(
         switch (access.Outcome)
         {
             case WorkspaceAccessOutcome.NotFound:
-                throw new McpException($"workspace_not_found: No workspace '{slug}' you can access. Call list_workspaces.");
+                throw new McpException($"workspace_not_found: No workspace '{slug}' you can access. Call get_context.");
             case WorkspaceAccessOutcome.Deactivated:
                 throw new McpException("member_deactivated: Your membership in this workspace is deactivated.");
         }
@@ -64,6 +64,6 @@ public sealed class McpWorkspace(
             ? mine[0].Slug
             : throw new McpException(mine.Count == 0
                 ? "workspace_not_found: You're not in any workspace."
-                : "workspace_required: You're in several workspaces; pass `workspace` (see list_workspaces).");
+                : "workspace_required: You're in several workspaces; pass `workspace` (see get_context).");
     }
 }

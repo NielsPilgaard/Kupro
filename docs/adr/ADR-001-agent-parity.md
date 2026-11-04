@@ -34,8 +34,8 @@ without a check. Agents also need things humans don't: machine-readable output, 
 - **Service layer is the command layer.** `IssueService.Create(...)`, `IssueService.Move(...)` etc.
 - **REST** (`/api/v1/...`) is the canonical contract. OpenAPI generated from controllers.
 - **MCP** server in the API process (streamable HTTP, OAuth via Keycloak, see [ADR-005](ADR-005-auth-keycloak.md)).
-  Tools are coarse-grained (~12–20) to keep agent context small, e.g. `search_issues`, `get_issue`, `create_issues` (bulk),
-  `update_issues` (bulk), `add_comment`, `list_sprints`, `get_plan`.
+  Tools are coarse-grained (~12–20) to keep agent context small, e.g. `get_context`, `search_issues`, `get_issue`,
+  `create_issues` (bulk), `update_issues` (bulk), `comment`, `list_sprints`, `get_plan`.
 - **CLI** `kupro` (alias TBD): resource-verb shape (`kupro issue create`, `kupro issue list --json`).
 - **Agent ergonomics, everywhere**:
   - Human-readable stable IDs (`KEY-123`) accepted wherever an ID is.
@@ -72,12 +72,17 @@ without a check. Agents also need things humans don't: machine-readable output, 
 
 - **IMP-001**: Parity test reads OpenAPI doc + MCP tool registry + CLI command tree; an `[NoAgentSurface("reason")]` attribute opts out.
 - **IMP-002**: CLI output: table for TTY, JSON when `--json` or stdout is not a TTY.
-- **IMP-003**: Tool budget: 24 tools after sprint close (task 028) added `get_sprint_review` and `get_sprint_burndown`, enforced
-  by the MCP test. A new feature extends an existing tool's actions or consolidates before the budget grows.
-  Import adds a read-only `imports` tool (23, [ADR-019](ADR-019-import.md)).
+- **IMP-003**: Tool budget: 19 tools (task 031), enforced by the MCP test. `get_context` replaced `get_me`,
+  `list_workspaces`, `list_projects`, `list_members` and `list_labels`; `get_issue` takes up to 20 `keys` and replaced
+  `get_issue_activity`. A new feature extends an existing tool's actions or consolidates before the budget grows. Import
+  adds a read-only `imports` tool (20, [ADR-019](ADR-019-import.md)). The MCP test also holds these byte limits, on a
+  dataset of 1,000 dated epics and 300 tasks: `tools/list` 19 KB, default `get_plan` 10 KB, default `search_issues` 4 KB,
+  `update_issues` with 100 rows 15 KB, `get_context` 6 KB. MCP list responses are compact rows
+  (`McpViews`), with `fields` for the rest; `get_plan` defaults to a summary, and REST to the full view.
 - **IMP-004**: `tools/list` sends `ttlMs: 3600000`, `cacheScope: private`, and sorts tools by name, so the list is
-  byte-identical across instances. It stays under 22 KB, enforced by the MCP test: text repeated in every tool's schema
-  belongs in the server instructions. Clients on the 2025-11-25 protocol ignore the field.
+  byte-identical across instances: text repeated in every tool's schema belongs in the server instructions, and the
+  filter strips `"default": null` and `null` types, since an optional parameter already says it can be left out. Clients
+  on the 2025-11-25 protocol ignore the field.
 
 ## Related Decisions
 

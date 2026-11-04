@@ -35,6 +35,8 @@ The tool description's main use, "do we need to hire for Q2 2027?", needs monthl
   `summary` (no cards; health flags as counts).
 - `get_plan` defaults to `summary`, with `view=full`. Its description says when to ask for it and to narrow by `project`.
 - `kupro` gets the same option.
+- As built: the summary has per-project months only when `project` is set, so its size doesn't grow with the number of
+  projects, and `violatedDependencies` replaces the dependency rows.
 
 ## 2. Compact issue rows
 
@@ -57,6 +59,8 @@ third of today's size (5.6 KB against 17.1 KB for 50).
 - `include` limits it. Cap members and labels, and say so in the response when capped, so a large workspace stays small.
 - Move the `[CoversOperations]` entries to it, so the parity test still passes.
 - Rewrite `McpSetup.Instructions` to start with `get_context`.
+- As built: it also returns `myIssues`, your open issues as compact rows, capped at 25. Without them "what's on my plate?"
+  takes a third call. An agent token gets none: agents can't be assignees ([ADR-008](../../docs/adr/ADR-008-work-item-model.md)).
 
 ## 4. Issues in one call
 
@@ -73,16 +77,18 @@ third of today's size (5.6 KB against 17.1 KB for 50).
   only if the schema stays clear.
 - Don't merge write tools further: `manage_sprint` and `meeting` are already the largest, and an `invalid_arguments`
   retry costs a whole model turn.
+- As built: no merges were needed. Stripping `"default": null` and `null` types from the schemas brought the list under
+  the limit.
 
 ## Acceptance criteria
 
-- [ ] `McpTests` asserts byte limits on the reference dataset for `tools/list`, default `get_plan`, default
+- [x] `McpTests` asserts byte limits on the reference dataset for `tools/list`, default `get_plan`, default
   `search_issues`, `update_issues` with 100 rows, and `get_context`.
-- [ ] Tool count stays within the ADR-001 limit, and the limit is lowered to the new count.
-- [ ] `get_context` plus a multi-key `get_issue` answers "what's on my plate?" with 2 tool calls in an MCP test.
-- [ ] Parity test passes. REST and the web client are unchanged except for the new `view` option.
-- [ ] Danish titles come through unescaped in a test, if the check in part 5 finds escaping.
-- [ ] [ADR-001](../../docs/adr/ADR-001-agent-parity.md) IMP-003 records the byte limits and the new tool list. The agent
+- [x] Tool count stays within the ADR-001 limit, and the limit is lowered to the new count.
+- [x] `get_context` plus a multi-key `get_issue` answers "what's on my plate?" with 2 tool calls in an MCP test.
+- [x] Parity test passes. REST and the web client are unchanged except for the new `view` option.
+- [x] Danish titles come through unescaped in a test, if the check in part 5 finds escaping.
+- [x] [ADR-001](../../docs/adr/ADR-001-agent-parity.md) IMP-003 records the byte limits and the new tool list. The agent
   skill and docs from [ADR-018](../../docs/adr/ADR-018-cli-distribution.md) are updated wherever they name a removed tool.
 
 ## Out of scope

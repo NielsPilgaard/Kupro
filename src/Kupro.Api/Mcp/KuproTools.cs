@@ -37,30 +37,48 @@ public sealed partial class KuproTools(
     // Repeated in every tool's schema, so it stays short; the server instructions explain when it can be left out.
     private const string WorkspaceHelp = "Workspace slug, if you have several.";
 
-    [McpServerTool(Name = "get_me", ReadOnly = true), Description("Who you are: your user, and the agent name if you use an agent token.")]
-    [CoversOperations("getMe")]
-    public async Task<MeResponse> GetMe(CancellationToken ct = default) =>
-        await users.GetMeAsync(scope.UserId, scope.AgentName, ct) ?? throw new McpException("user_not_found");
-
-    [McpServerTool(Name = "list_workspaces", ReadOnly = true), Description("Workspaces you can work in, with your role. Pass a slug to get one workspace's details (seats, hours per week).")]
-    [CoversOperations("listWorkspaces", "getWorkspace")]
-    public async Task<object> ListWorkspaces([Description("Optional workspace slug for details.")] string? workspace = null, CancellationToken ct = default)
+    [McpServerTool(Name = "get_context", ReadOnly = true), Description(
+        "Start here: who you are, your workspaces with your role, and for the workspace: its details, projects, members " +
+        "with the ids used to assign issues, label names, active sprints and your open issues. Members and labels are " +
+        "capped at 50, with membersTotal or labelsTotal set when they are. If you are in several workspaces and name " +
+        "none, you get the list only.")]
+    [CoversOperations("getMe", "listWorkspaces", "getWorkspace", "listProjects", "getProject", "listMembers", "listLabels")]
+    public async Task<ContextResponse> GetContext(
+        [Description(WorkspaceHelp)] string? workspace = null,
+        [Description("Parts to return; all when omitted.")] ContextPart[]? include = null,
+        CancellationToken ct = default)
     {
-        if (workspace is null)
+        var me = await users.GetMeAsync(scope.UserId, scope.AgentName, ct) ?? throw new McpException("user_not_found");
+        var mine = await workspaces.ListMineAsync(scope.UserId, scope.TokenWorkspaceId, ct);
+        var slug = workspace ?? (mine.Count == 1 ? mine[0].Slug : null);
+        if (slug is null)
         {
-            return await workspaces.ListMineAsync(scope.UserId, scope.TokenWorkspaceId, ct);
+            return new ContextResponse(me, mine);
         }
 
-        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return await workspaces.GetAsync(ct);
-    }
+        await scope.EnterAsync(slug, WorkspaceRole.Guest, ct);
+        bool Wants(ContextPart part) => include is not { Length: > 0 } || include.Contains(part);
 
-    [McpServerTool(Name = "list_projects", ReadOnly = true), Description("Projects in a workspace (key, name, issue count). Issue keys are PROJECTKEY-NUMBER.")]
-    [CoversOperations("listProjects", "getProject")]
-    public async Task<IReadOnlyList<ProjectResponse>> ListProjects([Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
-    {
-        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return await projects.ListAsync(ct);
+        var (memberRows, membersTotal) = Wants(ContextPart.Members) ? McpViews.Members(await workspaces.ListMembersAsync(ct)) : (null, null);
+        var (labelNames, labelsTotal) = Wants(ContextPart.Labels) ? McpViews.Labels(await labels.ListAsync(ct)) : (null, null);
+        var myIssues = !Wants(ContextPart.MyIssues) ? null : Unwrap(await issueService.ListAsync(new IssueQuery
+        {
+            Assignee = IssueService.Me,
+            State = [IssueState.Todo, IssueState.InProgress, IssueState.InReview],
+            Limit = McpViews.MyIssuesCap,
+        }, ct));
+        return new ContextResponse(
+            me,
+            mine,
+            await workspaces.GetAsync(ct),
+            Wants(ContextPart.Projects) ? (await projects.ListAsync(ct)).Select(McpViews.Project).ToList() : null,
+            memberRows,
+            membersTotal,
+            labelNames,
+            labelsTotal,
+            Wants(ContextPart.Sprints) ? Unwrap(await sprints.ListAsync(null, [SprintState.Active], ct)).Select(McpViews.Sprint).ToList() : null,
+            myIssues is null ? null : McpViews.Rows(myIssues.Items),
+            myIssues?.NextCursor is null ? null : true);
     }
 
     [McpServerTool(Name = "create_project"), Description("Create a project. key: 2-10 uppercase letters/digits, starting with a letter.")]
@@ -76,28 +94,12 @@ public sealed partial class KuproTools(
         return result == ProjectChangeResult.Ok ? project! : throw new McpException($"project_key_taken: {key} exists.");
     }
 
-    [McpServerTool(Name = "list_members", ReadOnly = true), Description("People and agents in a workspace, with member ids for assigning issues.")]
-    [CoversOperations("listMembers")]
-    public async Task<IReadOnlyList<MemberResponse>> ListMembers([Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
-    {
-        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return await workspaces.ListMembersAsync(ct);
-    }
-
-    [McpServerTool(Name = "list_labels", ReadOnly = true), Description("Labels in a workspace with usage counts. New labels are created by using them.")]
-    [CoversOperations("listLabels")]
-    public async Task<IReadOnlyList<LabelResponse>> ListLabels([Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
-    {
-        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return await labels.ListAsync(ct);
-    }
-
     [McpServerTool(Name = "search_issues", ReadOnly = true), Description(
         "Find issues by text and filters. `query` takes free text (typo tolerant) plus filters, e.g. " +
         "`drag epics type:feature state:todo,inProgress assignee:me sprint:current label:bug`. Filters combine with AND; " +
-        "list values combine with OR. Returns up to `limit` rows (best match first when searching) and a nextCursor.")]
+        "list values combine with OR. Returns up to `limit` compact rows (best match first when searching) and a nextCursor.")]
     [CoversOperations("listIssues")]
-    public async Task<IssuePage> SearchIssues(
+    public async Task<IssueRowPage> SearchIssues(
         [Description("Search text with optional key:value filters.")] string? query = null,
         [Description(WorkspaceHelp)] string? workspace = null,
         [Description("Project keys.")] string[]? project = null,
@@ -108,8 +110,9 @@ public sealed partial class KuproTools(
         [Description("Parent key: list its children.")] string? parent = null,
         [Description("Sprint id, `active`, or `none`.")] string? sprint = null,
         [Description("relevance (default when searching), updated (default otherwise), created, priority or rank.")] IssueSort? sort = null,
-        [Description("Page size 1-200, default 50.")] int? limit = null,
+        [Description("Page size 1-200, default 25.")] int? limit = null,
         [Description("nextCursor from the previous call.")] string? cursor = null,
+        [Description("Extra fields per row.")] IssueRowField[]? fields = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
@@ -124,44 +127,66 @@ public sealed partial class KuproTools(
             Parent = parent,
             Sprint = sprint,
             Sort = sort,
-            Limit = Math.Clamp(limit ?? 50, 1, 200),
+            Limit = Math.Clamp(limit ?? 25, 1, 200),
             Cursor = cursor,
         }, ct);
-        return Unwrap(result);
+        var page = Unwrap(result);
+        return new IssueRowPage(page.Items.Select(i => McpViews.Row(i, fields)).ToList(), page.NextCursor);
     }
 
-    [McpServerTool(Name = "get_issue", ReadOnly = true), Description("One issue by key (e.g. KUP-12): description, children, relations, labels, effort.")]
-    [CoversOperations("getIssue")]
-    public async Task<IssueDetail> GetIssue([Description("Issue key.")] string key, [Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
+    [McpServerTool(Name = "get_issue", ReadOnly = true), Description(
+        "Up to 20 issues by key (e.g. KUP-12): description, children, relations, labels, effort. A key that doesn't exist " +
+        "gets an entry in `errors` and the rest still return. include=activity adds each issue's history (created, field " +
+        "changes with from/to, relations) and comments, oldest first, with who did it and via which surface. Comment " +
+        "bodies are markdown; `attachment:ID` links resolve with get_attachment.")]
+    [CoversOperations("getIssue", "listIssueActivity")]
+    public async Task<IssueLookup> GetIssue(
+        [Description("Issue keys, 1-20.")] string[] keys,
+        [Description("activity: also history and comments.")] IssueInclude[]? include = null,
+        [Description(WorkspaceHelp)] string? workspace = null,
+        CancellationToken ct = default)
     {
+        if (keys.Length is 0 or > 20)
+        {
+            throw new McpException("invalid_arguments: keys takes 1 to 20 issue keys.");
+        }
+
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return await issueService.GetAsync(key, ct) ?? throw new McpException(Message(IssueError.NotFound(key)));
+        var issues = await issueService.GetManyAsync(keys, ct);
+        var activity = include?.Contains(IssueInclude.Activity) == true ? await feed.GetManyAsync(keys, ct) : null;
+        var found = issues.Select(i => i.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var errors = keys.Where(k => !found.Contains(k.Trim())).Distinct(StringComparer.OrdinalIgnoreCase).Select(k =>
+        {
+            var error = IssueError.NotFound(k);
+            return new IssueLookupError(k, error.Code, error.Detail);
+        }).ToList();
+        return new IssueLookup(issues, activity, errors.Count > 0 ? errors : null);
     }
 
     [McpServerTool(Name = "create_issues"), Description(
         "Create 1-100 issues, all-or-nothing. Hierarchy: epic > feature > task (a task may sit directly under an epic); " +
         "create parents first and pass their key as `parent`. Effort is in hours. Labels are created on first use.")]
     [CoversOperations("createIssues", "createIssue")]
-    public async Task<IReadOnlyList<IssueSummary>> CreateIssues(
+    public async Task<IReadOnlyList<IssueRow>> CreateIssues(
         [Description("Issues to create.")] CreateIssueRequest[] issues,
         [Description(WorkspaceHelp)] string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
-        return Unwrap(await issueService.CreateManyAsync(issues, ct));
+        return McpViews.Rows(Unwrap(await issueService.CreateManyAsync(issues, ct)));
     }
 
     [McpServerTool(Name = "update_issues"), Description(
         "Update 1-100 issues, all-or-nothing. Only fields you set change; list fields in `clear` to empty them. " +
         "Close an issue with state=done. Labels: `labels` replaces, `addLabels`/`removeLabels` edit.")]
     [CoversOperations("updateIssues", "updateIssue")]
-    public async Task<IReadOnlyList<IssueSummary>> UpdateIssues(
+    public async Task<IReadOnlyList<IssueRow>> UpdateIssues(
         [Description("Updates: { key, changes }.")] IssueUpdate[] items,
         [Description(WorkspaceHelp)] string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
-        return Unwrap(await issueService.UpdateManyAsync(items, ct));
+        return McpViews.Rows(Unwrap(await issueService.UpdateManyAsync(items, ct)));
     }
 
     [McpServerTool(Name = "relate_issues"), Description("Relate two issues: blocks, blockedBy, relates, duplicates, duplicatedBy. Returns the relation id.")]
@@ -270,20 +295,23 @@ public sealed partial class KuproTools(
     }
 
     [McpServerTool(Name = "get_plan", ReadOnly = true), Description(
-        "The delivery plan: per project and in total, per month, demand (hours of dated epic/feature effort spread " +
-        "evenly over each card's days) vs supply (people x hours per week), as hours and people; gapPeople > 0 means " +
-        "short of people. Also cards, milestones, cross-project dependencies (violated = blocker due after the blocked " +
-        "card starts) and plan-health flags. Use it to answer 'do we need to hire for Q2 2027?'.")]
+        "The delivery plan: per month, demand (hours of dated epic/feature effort spread evenly over each card's days) " +
+        "vs supply (people x hours per week), as hours and people; gapPeople > 0 means short of people. Also capacity, " +
+        "milestones, plan-health counts and how many dependencies are violated (blocker due after the blocked card " +
+        "starts). Use it to answer 'do we need to hire for Q2 2027?'. Pass `project` to get months per project. " +
+        "view=full adds every card and dependency, which is large: ask for it only when you need individual cards, and " +
+        "narrow it by `project`.")]
     [CoversOperations("getPlan", "listMilestones", "getProjectCapacity")]
     public async Task<PlanResponse> GetPlan(
         [Description("First month, YYYY-MM-DD (any day). Default: this month.")] DateOnly? from = null,
         [Description("Last month. Default: December next year.")] DateOnly? to = null,
         [Description("Project keys; all when omitted.")] string[]? project = null,
+        [Description("summary (default) or full.")] PlanView? view = null,
         [Description(WorkspaceHelp)] string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return Unwrap(await plan.GetPlanAsync(from, to, project, ct));
+        return Unwrap(await plan.GetPlanAsync(from, to, project, view ?? PlanView.Summary, ct));
     }
 
     [McpServerTool(Name = "set_capacity"), Description(
@@ -320,17 +348,6 @@ public sealed partial class KuproTools(
             "delete" when id is { } x => await plan.DeleteMilestoneAsync(x, ct) ? "deleted" : throw new McpException("milestone_not_found"),
             _ => throw new McpException("invalid_arguments: create needs name and date; update and delete need id."),
         };
-    }
-
-    [McpServerTool(Name = "get_issue_activity", ReadOnly = true), Description(
-        "An issue's history (created, field changes with from/to, relations) and comments, oldest first, with who did " +
-        "it and via which surface. Comment bodies are markdown; `attachment:ID` links resolve with get_attachment.")]
-    [CoversOperations("listIssueActivity")]
-    public async Task<IReadOnlyList<FeedItem>> GetIssueActivity(
-        [Description("Issue key.")] string key, [Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
-    {
-        await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
-        return await feed.GetAsync(key, ct) ?? throw new McpException(Message(IssueError.NotFound(key)));
     }
 
     [McpServerTool(Name = "comment"), Description(
