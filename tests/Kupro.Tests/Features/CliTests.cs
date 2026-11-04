@@ -50,6 +50,18 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Plan_summary_view_leaves_out_cards()
+    {
+        await RunJsonAsync("issue", "create", "--project", "cli", "--title", "Epic", "--type", "epic");
+
+        var full = await RunJsonAsync("plan");
+        var summary = await RunJsonAsync("plan", "--view", "summary");
+
+        full.GetProperty("projects")[0].GetProperty("cards").GetArrayLength().ShouldBe(1);
+        summary.GetProperty("projects")[0].GetProperty("cards").GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Create_many_reads_a_json_file_with_batch_parent_references()
     {
         var file = Path.GetTempFileName();

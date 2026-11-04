@@ -81,6 +81,8 @@ public sealed record PlanDependency(string Blocker, string Blocked, bool Violate
 /// <param name="To">Last month in the horizon.</param>
 /// <param name="HoursPerWeek">Workspace hours per person per week used for supply.</param>
 /// <param name="Totals">Per month across the listed projects.</param>
+/// <param name="Dependencies">Dependencies between cards; empty in the summary view.</param>
+/// <param name="ViolatedDependencies">How many dependencies are violated.</param>
 public sealed record PlanResponse(
     DateOnly From,
     DateOnly To,
@@ -88,7 +90,17 @@ public sealed record PlanResponse(
     IReadOnlyList<PlanProject> Projects,
     IReadOnlyList<PlanMonth> Totals,
     IReadOnlyList<MilestoneResponse> Milestones,
-    IReadOnlyList<PlanDependency> Dependencies);
+    IReadOnlyList<PlanDependency> Dependencies,
+    int ViolatedDependencies);
+
+public enum PlanView
+{
+    /// <summary>Everything, cards included.</summary>
+    Full,
+
+    /// <summary>No cards or dependency rows. Per-project months only when the request names projects, so the size doesn't grow with the workspace.</summary>
+    Summary,
+}
 
 /// <summary>
 /// The delivery plan (task 011, docs/delivery-plan.md): a read model over issues plus milestones and project capacity,
@@ -97,7 +109,7 @@ public sealed record PlanResponse(
 public sealed class PlanService(
     IDbContextFactory<KuproDbContext> dbFactory, WorkspaceContext workspace, RealtimeEvents realtime, TimeProvider clock)
 {
-    public async Task<IssueResult<PlanResponse>> GetPlanAsync(DateOnly? from, DateOnly? to, string[]? projectKeys, CancellationToken ct)
+    public async Task<IssueResult<PlanResponse>> GetPlanAsync(DateOnly? from, DateOnly? to, string[]? projectKeys, PlanView view, CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var start = MonthOf(from ?? today);
@@ -208,7 +220,15 @@ public sealed class PlanService(
                 blocker.DueDate is { } due && blocked.StartDate is { } st && due > st);
         }).ToList();
 
-        return new PlanResponse(start, end, hoursPerWeek, planProjects, totals, milestones, deps);
+        var violated = deps.Count(d => d.Violated);
+        if (view == PlanView.Summary)
+        {
+            var named = projectKeys is { Length: > 0 };
+            planProjects = planProjects.Select(p => p with { Cards = [], Months = named ? p.Months : [] }).ToList();
+            deps = [];
+        }
+
+        return new PlanResponse(start, end, hoursPerWeek, planProjects, totals, milestones, deps, violated);
     }
 
     public async Task<IssueResult<IReadOnlyList<CapacityEntry>>> GetCapacityAsync(string projectKey, CancellationToken ct)

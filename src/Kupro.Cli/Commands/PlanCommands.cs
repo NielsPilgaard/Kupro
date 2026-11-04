@@ -20,7 +20,8 @@ internal static class PlanCommands
         var from = new Option<string?>("--from") { Description = "First month, YYYY-MM (default: this month)." };
         var to = new Option<string?>("--to") { Description = "Last month, YYYY-MM (default: December next year)." };
         var project = new Option<string[]>("--project", "-p") { Description = "Project key; repeatable.", AllowMultipleArgumentsPerToken = true };
-        return new ApiCommand("plan", "Demand vs supply per month: where you're short of people.", "getPlan") { from, to, project }
+        var view = Cli.EnumOption<PlanView>("--view", "How much to return; summary leaves out cards and dependency rows (default: full)");
+        return new ApiCommand("plan", "Demand vs supply per month: where you're short of people.", "getPlan") { from, to, project, view }
             .Handle(async (c, ct) =>
             {
                 var plan = await (await c.InWorkspaceAsync(ct)).Plan.GetAsync(r =>
@@ -28,6 +29,7 @@ internal static class PlanCommands
                     r.QueryParameters.From = c.Get(from) is { } f ? ParseMonth(f) : null;
                     r.QueryParameters.To = c.Get(to) is { } t ? ParseMonth(t) : null;
                     r.QueryParameters.Project = c.Get(project) is { Length: > 0 } p ? p.Select(k => k.ToUpperInvariant()).ToArray() : null;
+                    r.QueryParameters.View = c.Get(view);
                 }, ct);
                 if (c.Out.Json)
                 {
@@ -50,6 +52,11 @@ internal static class PlanCommands
                 foreach (var d in (plan.Dependencies ?? []).Where(d => d.Violated == true))
                 {
                     await c.Out.MessageAsync($"! {d.Blocked} starts before its blocker {d.Blocker} is due");
+                }
+
+                if (c.Get(view) == PlanView.Summary && plan.ViolatedDependencies > 0)
+                {
+                    await c.Out.MessageAsync($"! {plan.ViolatedDependencies} cards start before their blocker is due");
                 }
             });
     }

@@ -18,12 +18,13 @@ public sealed class PlanController(PlanService plan) : ControllerBase
     /// <param name="from">First month (any day in it). Default: this month.</param>
     /// <param name="to">Last month. Default: December next year.</param>
     /// <param name="project">Project keys; all when omitted.</param>
+    /// <param name="view">full (default), or summary: no cards or dependency rows, and per-project months only when `project` is set.</param>
     [HttpGet("plan", Name = "getPlan")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PlanResponse>> Get(
-        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string[]? project, CancellationToken ct) =>
-        this.ToResult(await plan.GetPlanAsync(from, to, project, ct));
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string[]? project, [FromQuery] PlanView? view, CancellationToken ct) =>
+        this.ToResult(await plan.GetPlanAsync(from, to, project, view ?? PlanView.Full, ct));
 
     /// <summary>A project's headcount steps ("3 from Jan, 5 from Jul").</summary>
     [HttpGet("projects/{key}/capacity", Name = "getProjectCapacity")]

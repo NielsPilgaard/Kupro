@@ -1537,6 +1537,14 @@
             }
           },
           {
+            "name": "view",
+            "in": "query",
+            "description": "full (default), or summary: no cards or dependency rows, and per-project months only when `project` is set.",
+            "schema": {
+              "$ref": "#/components/schemas/PlanView"
+            }
+          },
+          {
             "name": "workspace",
             "in": "path",
             "required": true,
@@ -6463,7 +6471,8 @@
           "projects",
           "totals",
           "milestones",
-          "dependencies"
+          "dependencies",
+          "violatedDependencies"
         ],
         "type": "object",
         "properties": {
@@ -6505,9 +6514,21 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PlanDependency"
-            }
+            },
+            "description": "Dependencies between cards; empty in the summary view."
+          },
+          "violatedDependencies": {
+            "type": "integer",
+            "description": "How many dependencies are violated.",
+            "format": "int32"
           }
         }
+      },
+      "PlanView": {
+        "enum": [
+          "full",
+          "summary"
+        ]
       },
       "ProblemDetails": {
         "type": "object",
