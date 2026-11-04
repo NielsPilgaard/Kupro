@@ -36,19 +36,18 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | Todo |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | Todo |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
-| 29 | [029 Speed, first batch](performance/029-speed-first-batch.md) | P1 | 1 | — | Todo |
 | 30 | [031 Agent token budget](performance/031-agent-token-budget.md) | P1 | 1 | — | Todo |
 | 31 | [030 In-memory plan cache with FusionCache](performance/030-plan-cache.md) | P2 | 1 | — | Todo |
 
 ## What an agent can pick up
 
-Checked 2026-11-03. The build order above is not the same as what is buildable: **029, 031 and 030 are the only open tasks an
+Checked 2026-11-04. The build order above is not the same as what is buildable: **031 and 030 are the only open tasks an
 agent can build now**. Every other open row waits on a person, directly or through a dependency. Don't spend a session
 re-deriving this; read this table, and update it when a step is done.
 
 | Task | State | What unblocks an agent |
 |---|---|---|
-| 029, 031, 030 | Buildable now | Nothing |
+| 031, 030 | Buildable now | Nothing |
 | 013 | Code is in the repo; everything left is manual steps (domain, VPS, Dokploy, first deploy) | The owner working through go-live |
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
@@ -79,6 +78,7 @@ re-deriving this; read this table, and update it when a step is done.
 | [017 Meeting agent AI budget](completed/017-meeting-agent-budget.md) | 2 | Done |
 | [019 Public website](completed/019-public-site.md) | 1 | Done |
 | [028 Sprint close review, split carry-over and burndown](completed/028-sprint-close-burndown.md) | 1 | Done |
+| [029 Speed, first batch](completed/029-speed-first-batch.md) | 1 | Done |
 
 ## Rationale
 
