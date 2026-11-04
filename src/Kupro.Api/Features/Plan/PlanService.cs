@@ -107,7 +107,7 @@ public enum PlanView
 /// which this service owns. Demand is spread evenly over each card's days (OQ-3).
 /// </summary>
 public sealed class PlanService(
-    IDbContextFactory<KuproDbContext> dbFactory, WorkspaceContext workspace, RealtimeEvents realtime, TimeProvider clock)
+    IDbContextFactory<KuproDbContext> dbFactory, WorkspaceContext workspace, RealtimeEvents realtime, WorkspaceCache cache, TimeProvider clock)
 {
     public async Task<IssueResult<PlanResponse>> GetPlanAsync(DateOnly? from, DateOnly? to, string[]? projectKeys, PlanView view, CancellationToken ct)
     {
@@ -119,6 +119,27 @@ public sealed class PlanService(
             return new IssueError("invalid_horizon", "The horizon must run forward and span at most 5 years.");
         }
 
+        var keys = (projectKeys ?? []).Select(k => k.ToUpperInvariant()).Distinct().Order(StringComparer.Ordinal).ToArray();
+        var plan = await cache.GetOrSetAsync(
+            $"plan:{today:yyyy-MM-dd}:{start:yyyy-MM}:{end:yyyy-MM}:{string.Join(',', keys)}",
+            (start, end, keys),
+            static (services, state, token) => services.GetRequiredService<PlanService>().BuildPlanAsync(state.start, state.end, state.keys, token),
+            // A plan with 1,000 cards serializes to 244 KB, so about 4 cards per KB.
+            static built => 1 + (built.Projects.Sum(p => p.Cards.Count) / 4),
+            ct);
+
+        // The cached plan is shared between requests: `with` copies, nothing here may change it.
+        return view == PlanView.Summary ? Summarize(plan, named: keys.Length > 0) : plan;
+    }
+
+    private static PlanResponse Summarize(PlanResponse plan, bool named) => plan with
+    {
+        Projects = plan.Projects.Select(p => p with { Cards = [], Months = named ? p.Months : [] }).ToList(),
+        Dependencies = [],
+    };
+
+    internal async Task<PlanResponse> BuildPlanAsync(DateOnly start, DateOnly end, string[] keys, CancellationToken ct)
+    {
         var months = Months(start, end).ToList();
         var horizonEnd = end.AddMonths(1).AddDays(-1);
 
@@ -126,9 +147,8 @@ public sealed class PlanService(
         var hoursPerWeek = await db.Workspaces.Where(w => w.Id == workspace.RequireWorkspaceId()).Select(w => w.HoursPerWeek).SingleAsync(ct);
 
         var projectQuery = db.Projects.AsNoTracking();
-        if (projectKeys is { Length: > 0 })
+        if (keys.Length > 0)
         {
-            var keys = projectKeys.Select(k => k.ToUpperInvariant()).ToList();
             projectQuery = projectQuery.Where(p => keys.Contains(p.Key));
         }
 
@@ -220,15 +240,7 @@ public sealed class PlanService(
                 blocker.DueDate is { } due && blocked.StartDate is { } st && due > st);
         }).ToList();
 
-        var violated = deps.Count(d => d.Violated);
-        if (view == PlanView.Summary)
-        {
-            var named = projectKeys is { Length: > 0 };
-            planProjects = planProjects.Select(p => p with { Cards = [], Months = named ? p.Months : [] }).ToList();
-            deps = [];
-        }
-
-        return new PlanResponse(start, end, hoursPerWeek, planProjects, totals, milestones, deps, violated);
+        return new PlanResponse(start, end, hoursPerWeek, planProjects, totals, milestones, deps, deps.Count(d => d.Violated));
     }
 
     public async Task<IssueResult<IReadOnlyList<CapacityEntry>>> GetCapacityAsync(string projectKey, CancellationToken ct)

@@ -3,7 +3,7 @@ title: 'Task 031: Agent token budget'
 description: >-
   Cut what Kupro costs agents in tokens: a summary plan by default, compact issue rows, one get_context call instead of
   five, multi-key get_issue, unescaped Danish letters, and size limits in tests so it stays that way.
-status: 'Todo'
+status: 'Done'
 phase: 1
 depends_on: []
 purpose: 'Implementation spec for task 031.'

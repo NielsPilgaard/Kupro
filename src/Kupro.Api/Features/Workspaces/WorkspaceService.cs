@@ -130,7 +130,8 @@ public sealed class WorkspaceService(
     IEmailSender email,
     TimeProvider clock,
     IOptions<MembersOptions> options,
-    WorkspaceConnections connections)
+    WorkspaceConnections connections,
+    WorkspaceCache cache)
 {
     public const decimal DefaultHoursPerWeek = 37m;
 
@@ -272,6 +273,8 @@ public sealed class WorkspaceService(
             await db.SaveChangesAsync(ct);
         }
 
+        // No realtime event for this write, so nothing else invalidates: the plan's supply uses hours per week.
+        cache.Invalidate();
         return await GetAsync(ct);
     }
 

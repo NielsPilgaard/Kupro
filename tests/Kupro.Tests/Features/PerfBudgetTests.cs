@@ -5,7 +5,9 @@ using System.Net.Http.Json;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Tenancy;
 using Kupro.Tests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace Kupro.Tests.Features;
@@ -44,6 +46,8 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
             // Search (task 009): typo, text plus filters, a word in every title (ranks all 10k), filters only.
             $"{ws}/issues?q=dependancy", $"{ws}/issues?q=billing%20state:todo,inProgress", $"{ws}/issues?q=issue",
             $"{ws}/issues?q=type:epic%20assignee:me",
+            // Task 030: served from memory, which the next measure doesn't get.
+            $"{ws}/plan", $"{ws}/plan?view=summary",
         };
 
         var results = new List<(string Name, double P50, double P99)>();
@@ -52,6 +56,13 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
             results.Add(await MeasureAsync($"GET {url.Replace(ws, "{ws}", StringComparison.Ordinal)}", async () =>
                 (await client.GetAsync(url, Ct)).EnsureSuccessStatusCode()));
         }
+
+        var generations = Factory.Services.GetRequiredService<WorkspaceCacheGenerations>();
+        results.Add(await MeasureAsync("GET {ws}/plan, after a write", async () =>
+        {
+            generations.Advance(workspace.Id);
+            (await client.GetAsync($"{ws}/plan", Ct)).EnsureSuccessStatusCode();
+        }));
 
         var n = 0;
         results.Add(await MeasureAsync("POST {ws}/issues", async () =>

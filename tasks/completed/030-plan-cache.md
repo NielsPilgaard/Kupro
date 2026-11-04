@@ -3,7 +3,7 @@ title: 'Task 030: In-memory plan cache with FusionCache'
 description: >-
   Add FusionCache as an L1 read-through cache behind a tenant-pinning wrapper, and cache the delivery plan first. Plan
   writes invalidate it from one place, and a test proves every plan-affecting write does.
-status: 'Todo'
+status: 'Done'
 phase: 1
 depends_on: []
 purpose: 'Implementation spec for task 030.'
@@ -67,14 +67,26 @@ This is the part that can go wrong silently. Invalidate after commit, from one p
 
 ## Acceptance criteria
 
-- [ ] Table-driven test: for each plan-affecting write (create issue, change effort, dates, state; relation add and
+- [x] Table-driven test: for each plan-affecting write (create issue, change effort, dates, state; relation add and
   remove; capacity; milestone create, update, delete; sprint close; hours per week; project rename), `GET plan` shows the
   change on the very next read.
-- [ ] A cached plan is never served across workspaces: two workspaces with identical parameters each see their own.
-- [ ] A deactivated member or revoked token is refused while the plan is cached.
-- [ ] A test with a delayed factory shows a write during refresh is not overwritten by old data.
-- [ ] A background refresh runs correctly after the request's scope is disposed.
-- [ ] `PerfBudgetTests` covers `GET plan`. Implementation notes record p50, p95 and query count before and after, both REST
+- [x] A cached plan is never served across workspaces: two workspaces with identical parameters each see their own.
+- [x] A deactivated member or revoked token is refused while the plan is cached.
+- [x] A test with a delayed factory shows a write during refresh is not overwritten by old data.
+- [x] A background refresh runs correctly after the request's scope is disposed.
+- [x] `PerfBudgetTests` covers `GET plan`. Implementation notes record p50, p95 and query count before and after, both REST
   and MCP `get_plan`.
-- [ ] The wrapper is recorded in [ADR-010](../../docs/adr/ADR-010-performance-budget.md), including when to cache
+- [x] The wrapper is recorded in [ADR-010](../../docs/adr/ADR-010-performance-budget.md), including when to cache
   another endpoint.
+
+## Implementation notes
+
+Numbers and the invalidation decision are in [ADR-010](../../docs/adr/ADR-010-performance-budget.md) IMP-003. Where the
+build differs from the spec above:
+
+- The existing `WorkspaceContext.SetForSystem` pins the scope, so there is no new `UseBackgroundWorkspace`.
+- The race is real, so keys carry a generation and there are no tags.
+- Both views share one entry: the summary is derived from the cached full plan, so `view` isn't in the key.
+- Creating a project also invalidates, since a new project appears on the plan.
+- The web gap is fixed in the `changed` handler, not `touched`: `touched` also runs per issue in a bulk event, which
+  already refetches the plan.

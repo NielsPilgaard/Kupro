@@ -18,6 +18,7 @@
     <!-- Design stays private, so without this, projects referencing the Api get Aspire's lower EF Core (CS1705). -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" PrivateAssets="all" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" />
   </ItemGroup>
 
   <ItemGroup>

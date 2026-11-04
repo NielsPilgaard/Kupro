@@ -58,7 +58,8 @@ then only add a connector, a markup converter and default mappings.
 - **Commit**: `ImportJob`, in its own queue: one import per workspace at a time, `Imports:MaxConcurrent` across
   workspaces (default 2). Batches of 500 items, resumable from `imported_item` after a restart. Honours `Retry-After`.
 - Writes go through the feature services' bulk paths (ADR-019 IMP-002) with explicit actor, timestamps and
-  `Surface.Import`. Realtime events coalesce per batch. Search vectors update via the stored computed column.
+  `Surface.Import`. Realtime events coalesce per batch. Search vectors update via the stored computed column. Invalidate
+  the plan cache after each commit ([ADR-010](../docs/adr/ADR-010-performance-budget.md) IMP-003).
 - **Hierarchy fit**, **states**, **fields → labels/details block**, **effort**, **keys and aliases**, **sprints per
   project**, **mention and link rewriting**: as in ADR-019, implemented once here and driven by the mapping.
 - **Markdown**: a `MarkupConverter` interface (ADF, Jira wiki, HTML implementations come with their connectors). This
@@ -102,7 +103,7 @@ then only add a connector, a markup converter and default mappings.
   list`, `kupro import plan <id>`, `kupro import run <id> [--no-wait]`, `kupro import report <id>`, `kupro import
   mapping <id> [--set file.json]`, `kupro import undo <id>`, `kupro import finish <id>`. The People step is a mapping
   file: `kupro import mapping <id>` prints the proposed one.
-- MCP: one read-only `imports` tool (list, plan, report, conflicts). Tool budget 22 → 23 (ADR-001 IMP-003).
+- MCP: one read-only `imports` tool (list, plan, report, conflicts). Tool budget 19 → 20 (ADR-001 IMP-003).
 - Web: Settings → Import (owners), a wizard: Source → Connect → Scope → People → Types & states → Fields & effort →
   Plan → Import → Report. The empty state of a new workspace offers "Coming from Jira or Azure DevOps? Import". All
   strings in the locale files (EN/DA).

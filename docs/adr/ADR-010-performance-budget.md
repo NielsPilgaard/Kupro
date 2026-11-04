@@ -19,6 +19,7 @@ description: >-
 - UI: user action visible < 50 ms (optimistic); initial app load < 1.5 s on broadband.
 - CI: load test (k6 or NBomber) against seeded DB (10k issues/workspace) fails the build on budget breach.
 - Prod: per-endpoint p50/p99 dashboard + alert on p99 > 500 ms ([ADR-014](ADR-014-observability.md)).
+- Cache: only the delivery plan, in memory, behind `WorkspaceCache` (IMP-003).
 
 ## Status
 
@@ -60,9 +61,39 @@ count asserted in integration tests for hot endpoints).
 
   Release build, API in-process, Postgres in Docker on a laptop, one client: relative cost, not production latency.
 - **IMP-002**: `PerfBudgetTests` runs `ANALYZE` after seeding, because autovacuum does that in production.
+- **IMP-003**: `WorkspaceCache` is the only way to reach `IFusionCache` (FusionCache, memory only, task 030). It prefixes
+  each key with the workspace id and the workspace's generation, and runs each factory in its own scope pinned to the
+  workspace, without the request's ExecutionContext.
+
+  - **Invalidation advances the generation.** With `Remove` or `Expire`, a refresh already running stored its old data and
+    the next read got it (measured on 2.9.0). A generation leaves that refresh writing to a key nobody reads. Tags
+    passed the same check, but their expiry entries live in the same size-limited memory, so evicting one could bring old
+    data back.
+  - **Where it invalidates:** `RealtimeEvents`, before the push, for issue, sprint and plan changes. Writes with no realtime
+    event call `Invalidate` themselves: `WorkspaceService.UpdateAsync` and `ProjectService`. A new write that the plan reads
+    must do one or the other; `PlanCacheTests` lists them.
+  - **Only the plan is cached.** It is the heaviest read and many clients refetch it after one write. Both views share one
+    entry per horizon and project selection. Issue lists stay uncached, since every write invalidates them and filters make
+    for many keys. Token and membership checks stay uncached, so revocation stays immediate.
+  - **Cache another endpoint** only when a measure shows it over budget or a high share of database load, its reads far
+    outnumber its writes, and every write to its data can be listed in a test like `PlanCacheTests`.
+  - **Limits:** one API instance, since the generations are in memory. A second instance needs a backplane and shared
+    generations. 64 MB size limit, sized from an estimate per value. 5 minute TTL as a safety net, fail-safe for 15 minutes.
+
+  On 10,000 issues with 1,000 dated epics, measured as in IMP-001, 200 samples:
+
+  | | Before p50 / p95 ms, queries | Hit | After a write |
+  |---|---|---|---|
+  | `GET plan` | 11.6 / 13.8, 8 | 1.9 / 2.1, 1 | 12.3 / 21.1, 8 |
+  | `GET plan?view=summary` | 9.8 / 11.4, 8 | 1.1 / 1.2, 1 | |
+  | MCP `get_plan` (summary) | 11.7 / 14.0, 10 | 2.6 / 3.0, 3 | 12.9 / 18.8, 10 |
+  | MCP `get_plan` (full) | 15.8 / 32.2, 10 | 10.7 / 23.6, 3 | |
+
+  The queries left on a hit are the access checks. MCP full stays slow on a hit because it serializes 244 KB.
 
 ## Related Decisions
 
 - [ADR-002](ADR-002-backend-stack.md) — backend
+- [ADR-009](ADR-009-multi-tenancy.md) — tenant isolation the cache keys follow
 - [ADR-003](ADR-003-frontend-stack.md) — optimistic UI
 - [ADR-014](ADR-014-observability.md) — production latency dashboards and alert

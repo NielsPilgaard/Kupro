@@ -47,7 +47,7 @@ public enum ProjectChangeResult
 
 /// <summary>Projects in the current workspace. Owns the Project entity.</summary>
 public sealed class ProjectService(
-    IDbContextFactory<KuproDbContext> dbFactory, WorkspaceContext workspace, TimeProvider clock)
+    IDbContextFactory<KuproDbContext> dbFactory, WorkspaceContext workspace, WorkspaceCache cache, TimeProvider clock)
 {
     public const string KeyPattern = "^[A-Z][A-Z0-9]{1,9}$";
 
@@ -143,11 +143,13 @@ public sealed class ProjectService(
         return last.Single();
     }
 
-    private static async Task<bool> TrySaveAsync(KuproDbContext db, CancellationToken ct)
+    private async Task<bool> TrySaveAsync(KuproDbContext db, CancellationToken ct)
     {
         try
         {
             await db.SaveChangesAsync(ct);
+            // No realtime event for project writes, so nothing else invalidates: the plan lists projects with name, colour and key.
+            cache.Invalidate();
             return true;
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })

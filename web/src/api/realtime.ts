@@ -79,6 +79,8 @@ export function useRealtime(workspace: string, openIssue: string | undefined) {
 
     connection.on('changed', (e: ChangedEvent) => {
       if (e.topic === 'issue' && e.issueKey) touched(e.issueKey, e.actorId, e.via);
+      // Relations feed the plan's dependencies.
+      if (e.topic === 'issue') void qc.invalidateQueries(byOperation('getPlan'));
       if (e.topic === 'sprints') void qc.invalidateQueries(byOperation('listSprints', 'getSprint', 'getPlan', 'getSprintReview', 'getSprintBurndown'));
       if (e.topic === 'plan') void qc.invalidateQueries(byOperation('getPlan', 'listMilestones', 'getProjectCapacity'));
       if (e.topic === 'meetings') void qc.invalidateQueries({ predicate: isMeetingQuery });
