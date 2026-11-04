@@ -71,8 +71,9 @@ and emits compose for production. Aspire is MIT-licensed OSS — no vendor ([ADR
 
 - **IMP-001**: Pin Aspire package + CLI versions together (`global.json`/`Directory.Packages.props`).
 - **IMP-002**: SPA image = `web/Dockerfile`, build context repo root: `oven/bun` stage (`bun install --frozen-lockfile`,
-  copy `openapi/`, `bun run build`) → `nginx:alpine` serving `dist/` with `web/nginx.conf` (SPA fallback, immutable
-  hashed assets). Traefik (Dokploy) in front for TLS ([ADR-004](ADR-004-hosting.md)).
+  copy `openapi/`, `bun run build`, gzip level 9 next to each JS, CSS and SVG file) → `nginx:alpine` serving `dist/` with
+  `web/nginx.conf` (SPA fallback, immutable hashed assets, `gzip_static`). Traefik (Dokploy) in front for TLS
+  ([ADR-004](ADR-004-hosting.md)).
 - **IMP-003**: EF migrations: run as a separate migration step/service in publish, not on API startup ([ADR-002](ADR-002-backend-stack.md)).
 - **IMP-004**: Integration tests keep Testcontainers ([ADR-002](ADR-002-backend-stack.md) IMP-002); Aspire
   `DistributedApplicationTestingBuilder` is for E2E (Playwright) only.

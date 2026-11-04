@@ -12,6 +12,8 @@ COPY web/ .
 ARG VITE_KEYCLOAK_URL=http://localhost:8080
 ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
 RUN bun run build
+# Served by gzip_static in nginx.conf: on the fly nginx only uses level 1. -k keeps the originals for clients without gzip.
+RUN find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.svg' \) -exec gzip -9 -k {} +
 
 FROM nginx:1.31-alpine AS runtime
 COPY --from=build /app/web/dist /usr/share/nginx/html
