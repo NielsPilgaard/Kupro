@@ -1,4 +1,7 @@
 using System.CommandLine;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Kupro.Cli.Api.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
@@ -10,6 +13,12 @@ internal static class IssueCommands
 {
     /// <summary>Value that empties a field in <c>issue update</c>.</summary>
     private const string None = "none";
+
+    /// <summary>Names of <see cref="IssueSummary"/>'s JSON fields, for <c>--fields</c>.</summary>
+    private static readonly string[] RowFields =
+        ["id", "key", "type", "title", "state", "priority", "assignee", "parentKey", "effort", "startDate", "dueDate", "labels", "rank", "sprintId", "createdAt", "updatedAt"];
+
+    private static readonly JsonSerializerOptions PickedJson = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     public static IEnumerable<Command> Build()
     {
@@ -49,16 +58,22 @@ internal static class IssueCommands
         var limit = new Option<int?>("--limit") { Description = "Page size, 1-200 (default 50)." };
         var cursor = new Option<string?>("--cursor") { Description = "Continue from a previous page's nextCursor." };
         var all = new Option<bool>("--all") { Description = "Follow pages until the end." };
+        var fields = new Option<string[]>("--fields")
+        {
+            Description = $"JSON output only: fields to keep per issue, comma-separated ({string.Join(",", RowFields)}).",
+            AllowMultipleArgumentsPerToken = true,
+        };
         var command = search
             ? new ApiCommand("search", "Search issues: free text (typo tolerant) plus key:value filters.", "listIssues") { words }
             : new ApiCommand("list", "List issues with filters.", "listIssues") { query };
-        foreach (var option in new Option[] { project, state, type, assignee, label, parent, sprint, sort, limit, cursor, all })
+        foreach (var option in new Option[] { project, state, type, assignee, label, parent, sprint, sort, limit, cursor, all, fields })
         {
             command.Options.Add(option);
         }
 
         return command.Handle(async (c, ct) =>
         {
+            var picked = ParseFields(c.Get(fields));
             var issues = (await c.InWorkspaceAsync(ct)).Issues;
             var items = new List<IssueSummary>();
             var next = c.Get(cursor);
@@ -86,6 +101,12 @@ internal static class IssueCommands
             }
             while (c.Get(all) && next is not null);
 
+            if (c.Out.Json && picked is not null)
+            {
+                await c.Out.Writer.WriteLineAsync(await PickedJsonAsync(items, picked, c.Get(all) ? null : next));
+                return;
+            }
+
             if (c.Out.Json)
             {
                 await c.Out.ItemAsync(new IssuePage { Items = items, NextCursor = c.Get(all) ? null : next });
@@ -101,6 +122,35 @@ internal static class IssueCommands
                 await c.Out.MessageAsync($"More: --cursor {next} (or --all)");
             }
         });
+    }
+
+    private static string[]? ParseFields(string[]? values)
+    {
+        if (values is not { Length: > 0 })
+        {
+            return null;
+        }
+
+        var picked = values.SelectMany(v => v.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToArray();
+        return picked.FirstOrDefault(f => !RowFields.Contains(f)) is { } unknown
+            ? throw new CliException($"Unknown field '{unknown}'. Fields: {string.Join(", ", RowFields)}.")
+            : picked;
+    }
+
+    /// <summary>The page as JSON with only the picked fields on each issue. Same shape as without <c>--fields</c>, so agents parse one format.</summary>
+    private static async Task<string> PickedJsonAsync(List<IssueSummary> items, string[] picked, string? next)
+    {
+        var page = JsonNode.Parse(await KiotaJsonSerializer.SerializeAsStringAsync(new IssuePage { Items = items, NextCursor = next }))!.AsObject();
+        foreach (var item in page["items"]!.AsArray())
+        {
+            var row = item!.AsObject();
+            foreach (var field in row.Select(p => p.Key).Where(f => !picked.Contains(f)).ToList())
+            {
+                row.Remove(field);
+            }
+        }
+
+        return page.ToJsonString(PickedJson);
     }
 
     private static Command Get()

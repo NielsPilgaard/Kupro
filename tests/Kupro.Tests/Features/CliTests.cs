@@ -50,6 +50,21 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Issue_list_keeps_only_the_fields_asked_for()
+    {
+        await RunJsonAsync("issue", "create", "--project", "cli", "--title", "Rød grød");
+
+        var list = await RunJsonAsync("issue", "list", "--fields", "key,title");
+        var row = list.GetProperty("items").EnumerateArray().ShouldHaveSingleItem();
+        row.EnumerateObject().Select(p => p.Name).ShouldBe(["key", "title"], ignoreOrder: true);
+        row.GetProperty("title").GetString().ShouldBe("Rød grød");
+
+        var (exit, _, error) = await RunAsync(json: true, "issue", "list", "--fields", "nope");
+        exit.ShouldNotBe(0);
+        error.ShouldContain("nope");
+    }
+
+    [Fact]
     public async Task Plan_summary_view_leaves_out_cards()
     {
         await RunJsonAsync("issue", "create", "--project", "cli", "--title", "Epic", "--type", "epic");
