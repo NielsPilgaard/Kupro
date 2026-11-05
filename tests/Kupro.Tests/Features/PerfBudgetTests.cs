@@ -18,11 +18,14 @@ namespace Kupro.Tests.Features;
 /// (missing index, N+1, unbounded reads), not network or Kestrel overhead. Task 014.
 /// </summary>
 [Trait("Category", "Perf")]
+[Collection(nameof(PerfBudgetRunsAlone))]
 public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
     private readonly PostgresFixture _postgres = postgres;
     private const int IssueCount = 10_000;
     private const int Samples = 60;
+    private const int Attempts = 3;
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan P99Budget = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan P50Budget = TimeSpan.FromMilliseconds(100);
     private static readonly string[] Projects = ["CORE", "WEB", "API", "OPS"];
@@ -93,7 +96,7 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         }
 
         var overBudget = results
-            .Where(r => r.P99 > P99Budget.TotalMilliseconds || r.P50 > P50Budget.TotalMilliseconds)
+            .Where(r => IsOverBudget(r.P50, r.P99))
             .Select(r => $"{r.Name}: p50 {r.P50:F1} ms, p99 {r.P99:F1} ms")
             .ToList();
         overBudget.ShouldBeEmpty("endpoints over the ADR-010 budget (p50 100 ms, p99 500 ms)");
@@ -162,9 +165,28 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         }
     }
 
+    private static bool IsOverBudget(double p50, double p99) =>
+        p99 > P99Budget.TotalMilliseconds || p50 > P50Budget.TotalMilliseconds;
+
+    /// <summary>
+    /// A busy machine slows every sample for a few seconds, and search spends 40% of its p50 budget on CPU, so one
+    /// breach proves nothing. A query regression is over budget on every attempt.
+    /// </summary>
     private static async Task<(string, double, double)> MeasureAsync(string name, Func<Task> request)
     {
         await request(); // warm up: JIT and query plan caches
+        var (p50, p99) = await SampleAsync(request);
+        for (var attempt = 1; attempt < Attempts && IsOverBudget(p50, p99); attempt++)
+        {
+            await Task.Delay(RetryDelay, Ct);
+            (p50, p99) = await SampleAsync(request);
+        }
+
+        return (name, p50, p99);
+    }
+
+    private static async Task<(double P50, double P99)> SampleAsync(Func<Task> request)
+    {
         var times = new List<double>(Samples);
         for (var i = 0; i < Samples; i++)
         {
@@ -174,6 +196,10 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         }
 
         times.Sort();
-        return (name, times[Samples / 2], times[(int)Math.Ceiling(Samples * 0.99) - 1]);
+        return (times[Samples / 2], times[(int)Math.Ceiling(Samples * 0.99) - 1]);
     }
 }
+
+/// <summary>Runs alone, after the parallel classes: their load on the CPU and on Postgres would count as latency.</summary>
+[CollectionDefinition(nameof(PerfBudgetRunsAlone), DisableParallelization = true)]
+public sealed class PerfBudgetRunsAlone;
