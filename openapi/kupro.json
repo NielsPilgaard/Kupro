@@ -7258,7 +7258,8 @@
           "service",
           "version",
           "authority",
-          "cliClientId"
+          "cliClientId",
+          "minCliVersion"
         ],
         "type": "object",
         "properties": {
@@ -7280,6 +7281,10 @@
           "cliClientId": {
             "type": "string",
             "description": "OAuth client id for the CLI's device authorization grant."
+          },
+          "minCliVersion": {
+            "type": "string",
+            "description": "Oldest CLI version this API works with; older CLIs warn."
           }
         }
       },

@@ -25,5 +25,6 @@ public sealed class StatusTests(PostgresFixture postgres) : ApiTestBase(postgres
         var status = await client.GetFromJsonAsync<StatusResponse>("/api/v1/status", Ct);
 
         status.ShouldNotBeNull().Service.ShouldBe("kupro");
+        status.MinCliVersion.ShouldBe(StatusController.MinCliVersion);
     }
 }
