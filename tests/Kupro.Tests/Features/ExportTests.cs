@@ -24,6 +24,7 @@ using CliApp = Kupro.Cli.Cli;
 namespace Kupro.Tests.Features;
 
 /// <summary>Task 016: owners export the whole workspace as a ZIP, built in the background and downloaded from storage.</summary>
+[Collection(nameof(StorageTests))]
 public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage)
     : ApiTestBase(postgres, storage.Settings), IClassFixture<StorageFixture>
 {
@@ -127,15 +128,17 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
     [Fact]
     public async Task A_failed_email_does_not_fail_a_finished_export()
     {
-        var email = new FailingEmailSender();
+        var email = new FailingEmailSender(_owner.Email);
         await using var factory = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<IEmailSender>(email)));
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", KuproApiFactory.CreateJwt(_owner));
 
         var started = await ReadAsync<ExportResponse>(await client.PostAsync($"{Ws}/exports", null, Ct), HttpStatusCode.Accepted);
-        var ready = await ReadyAsync(started.Id);
-        ready.DownloadUrl.ShouldNotBeNull();
-        email.Attempts.ShouldBe(1);
+        (await ReadyAsync(started.Id)).DownloadUrl.ShouldNotBeNull();
+
+        // The export turns ready before the email goes out.
+        await email.Attempted.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        (await ReadyAsync(started.Id)).DownloadUrl.ShouldNotBeNull();
     }
 
     [Fact]
@@ -246,13 +249,20 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
         return Encoding.UTF8.GetString(bom ? bytes[3..] : bytes);
     }
 
-    private sealed class FailingEmailSender : IEmailSender
+    private sealed class FailingEmailSender(string owner) : IEmailSender
     {
-        public int Attempts { get; private set; }
+        private readonly TaskCompletionSource _attempted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Done once the owner was emailed; an export left over from an earlier test emails someone else.</summary>
+        public Task Attempted => _attempted.Task;
 
         public Task SendAsync(EmailMessage message, CancellationToken ct)
         {
-            Attempts++;
+            if (message.To == owner)
+            {
+                _attempted.TrySetResult();
+            }
+
             throw new HttpRequestException("SMTP is down");
         }
     }

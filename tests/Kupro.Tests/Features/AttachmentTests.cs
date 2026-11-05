@@ -10,6 +10,7 @@ using Kupro.Tests.Infrastructure;
 namespace Kupro.Tests.Features;
 
 /// <summary>Task 008: presigned upload to S3-compatible storage, read back only through workspace membership.</summary>
+[Collection(nameof(StorageTests))]
 public sealed class AttachmentTests(PostgresFixture postgres, StorageFixture storage)
     : ApiTestBase(postgres, storage.Settings), IClassFixture<StorageFixture>
 {

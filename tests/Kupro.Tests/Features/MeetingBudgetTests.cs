@@ -175,7 +175,9 @@ public sealed class MeetingBudgetTests(PostgresFixture postgres) : ApiTestBase(p
     [Fact]
     public async Task Meetings_end_after_three_hours()
     {
-        _clock.Now = Copenhagen(2031, 9, 10, 9);
+        // In the past: the job below ends overlong meetings in every workspace, and a later clock would end the live
+        // meetings of the test classes running beside this one.
+        _clock.Now = Copenhagen(2001, 9, 10, 9);
         var (client, ws) = await WorkspaceAsync();
         var talked = await StartAsync(client, ws);
         var forgotten = await StartAsync(client, ws);

@@ -31,3 +31,10 @@ public sealed class StorageFixture : IAsyncLifetime
 
     public ValueTask DisposeAsync() => _container.DisposeAsync();
 }
+
+/// <summary>
+/// Classes with storage configured, one at a time. Their API instances run <c>ExportJob</c>, which builds every
+/// workspace's waiting exports: beside each other, one class's job takes the other's export to its own container.
+/// </summary>
+[CollectionDefinition(nameof(StorageTests))]
+public sealed class StorageTests;
