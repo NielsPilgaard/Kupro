@@ -29,7 +29,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
-| 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | Todo |
+| 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | In progress |
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 | 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 013, 016 | Todo |
 | 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
@@ -48,7 +48,8 @@ this table, and update it when a step is done.
 | 013 | Code is in the repo; everything left is manual steps (domain, VPS, Dokploy, first deploy) | The owner working through go-live |
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
-| 020, 023 | Depend on 013, which is not Done | 013 Done. Much of 020 could be built earlier if the owner relaxes the dependency |
+| 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
+| 023 | Depends on 013, which is not Done | 013 Done |
 | 024–027 | Wait on 023, and need sandbox accounts (manual steps) | 023 Done and the sandboxes |
 
 ## Completed

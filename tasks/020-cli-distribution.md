@@ -4,7 +4,7 @@ description: >-
   Publish the CLI as checksummed binaries in OVHcloud Object Storage behind a one-line install script, add
   `kupro update`, and add `kupro install mcp`, which signs in, registers Kupro in every agent client it
   finds, and installs the Kupro skill.
-status: 'Todo'
+status: 'In progress'
 phase: 1
 depends_on: [005, 006, 013]
 purpose: 'Implementation spec for task 020.'
@@ -17,6 +17,11 @@ purpose: 'Implementation spec for task 020.'
 Decisions are in [ADR-018](../docs/adr/ADR-018-cli-distribution.md). This task builds them: a release pipeline, the
 install scripts, `kupro update`, `kupro install mcp` / `uninstall mcp`, and the Kupro skill. Goal: two
 commands from nothing to an agent managing issues.
+
+**State**: the code was built ahead of 013 (the owner relaxed the dependency on 2026-11-04). Closing the task still
+needs 013: the public bucket and its key (manual steps), a first `cli-v*` release, and the checks in Acceptance criteria
+that run against a real release or the production realm. The site has no docs page yet, so the "docs placeholder" in
+Scope has nothing to change.
 
 ## Scope
 
@@ -36,7 +41,7 @@ commands from nothing to an agent managing issues.
   - `kupro install mcp [--client <name>] [--remote] [--no-skill] [--dry-run]` and `kupro uninstall mcp`, as
     in ADR-018: Claude Code, Claude Desktop, Cursor, VS Code, Codex. One table of client paths and commands.
   - Token refresh under a file lock on the CLI config (ADR-018 IMP-001).
-- **Skill** (`src/Kupro.Cli/Skill/SKILL.md`, embedded resource):
+- **Skill** (`src/Kupro.Cli/Skill/kupro/SKILL.md`, embedded resource):
   - Frontmatter `name: kupro`, a `description` that triggers on issues, tasks, sprints, the plan, and Kupro.
   - Body: pick the workspace; search before creating; keys like `KUP-12`; epic > feature > task, states, effort in
     hours; one bulk call for an epic and its children (`parent: "#0"`); Markdown; comments; sprints and the plan;
