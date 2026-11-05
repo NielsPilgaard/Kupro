@@ -109,6 +109,24 @@ Images go to GHCR as `ghcr.io/<owner>/kupro-{api,web,keycloak,site}:sha-<commit>
 `kupro-{postgres,backup-agent}:src-<hash>`. GHCR packages start private: either make them public, or add a GHCR
 registry in Dokploy (a GitHub token with `read:packages`) so the VPS can pull.
 
+## CLI releases
+
+The CLI ships from a public bucket, not with the deploy ([ADR-018](../adr/ADR-018-cli-distribution.md)).
+`cli-release.yml` runs on a `cli-v<semver>` tag.
+
+**Once**: create the bucket `kupro-downloads` in `gra` and an S3 user with write access to it and nothing else (the
+workflow uploads with `--acl public-read`, so that user also needs to set object ACLs). Add its keys as the repository
+secrets `CLI_STORAGE_ACCESS_KEY` and `CLI_STORAGE_SECRET_KEY`. If you pick another bucket name or region, change it in
+`cli-release.yml`, `Updater.DefaultBaseUrl`, `site/public/install.sh` and `site/public/install.ps1`.
+
+**Each release**: `git tag cli-v1.2.3 && git push origin cli-v1.2.3`. The workflow builds all five binaries, uploads them
+to `cli/1.2.3/`, runs both install scripts against that upload on Linux, Alpine, macOS and Windows, and moves `cli/latest`
+last. If anything fails, `cli/latest` stays where it was; fix it and tag a new version, because a version can't be
+uploaded twice.
+
+**Breaking the API for old CLIs**: raise `StatusController.MinCliVersion` to the first CLI version that works. Older
+CLIs then warn and point to `kupro update`. Release that CLI before deploying the API.
+
 ## First deploy (once per environment)
 
 1. **DNS**: A records for the apex, `www`, `app`, `auth` and `grafana` point at the VPS.

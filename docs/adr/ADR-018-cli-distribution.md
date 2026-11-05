@@ -115,6 +115,16 @@ them is another channel to release, test and explain in the vendor list, for use
   implementation and kept in one table in the CLI source, with a test per client against a temp home directory.
 - **IMP-004**: The CI job that uploads binaries holds the bucket's write key as a GitHub secret
   ([deploy runbook](../runbooks/deploy.md)).
+- **IMP-005**: A client's own CLI is used only when it is a real executable. On Windows, `code` and npm-installed
+  `claude` and `codex` are `.cmd` shims that run through cmd.exe, which mangles a JSON argument, so there the config
+  file is edited instead. The file is also the fallback when a client's CLI fails, so the result is checked after every run.
+- **IMP-006**: Cursor, VS Code and Codex all read `~/.agents/skills`, so they share one copy of the skill, which stays
+  until the last of them is uninstalled. Claude Code gets its own in `~/.claude/skills`. Cursor and VS Code also read
+  that folder, so on a machine with both they can list the skill twice.
+- **IMP-007**: Backups are named `<config>.kupro.bak`, so they never overwrite a user's own `.bak`. `uninstall mcp` deletes
+  them, along with a config file and folders the install left empty.
+- **IMP-008**: The release tests the install scripts against `cli/<version>/` before it moves `cli/latest`, so a release
+  that doesn't install never becomes the latest. A released version can't be uploaded twice.
 
 ## Related Decisions
 

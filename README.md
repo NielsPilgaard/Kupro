@@ -62,16 +62,18 @@ screenshots above through the CLI.
 ## Connect an agent
 
 ```sh
-kupro login                                   # device flow in the browser; or: kupro token set kp_pat_...
+curl -fsSL https://kupro.app/install.sh | sh  # Windows: irm https://kupro.app/install.ps1 | iex
+kupro install mcp                             # signs in, then sets up every agent client it finds, with the Kupro skill
 kupro issue list --state todo                 # tables in a terminal, JSON when piped or with --json
-claude mcp add kupro -- kupro mcp             # MCP over stdio with the CLI's credentials
-
-# Remote MCP with an agent token (or omit --header to sign in with OAuth)
-claude mcp add --transport http kupro http://localhost:5239/mcp --header "Authorization: Bearer kp_agent_..."
 ```
 
-Any MCP client works; Claude Code is just the example. Parity between the UI, API, CLI and MCP is a project rule
-([ADR-001](docs/adr/ADR-001-agent-parity.md)).
+`kupro install mcp` knows Claude Code, Claude Desktop, Cursor, VS Code and Codex; `--remote` writes the server's URL
+instead of the local bridge, `--dry-run` shows what would change, and `kupro uninstall mcp` takes it all out again. Any
+other MCP client can run `kupro mcp` over stdio, or use `<your app>/mcp` directly. Parity between the UI, API, CLI and
+MCP is a project rule ([ADR-001](docs/adr/ADR-001-agent-parity.md)).
+
+The CLI talks to the hosted app by default. Against your own server or a local one, pass `--url` once:
+`kupro login --url http://localhost:5239` stores it. For a local run of `src/Kupro.Cli`, set `KUPRO_URL` instead.
 
 ## Self-hosting
 
