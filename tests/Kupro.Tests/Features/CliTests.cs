@@ -238,6 +238,35 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         error.ShouldContain("--all");
     }
 
+    [Theory]
+    [InlineData("0.0.1", 1)]
+    [InlineData("99.0.0", 0)]
+    [InlineData(CliVersion.Unstamped, 0)]
+    public async Task A_cli_older_than_the_server_warns_once_per_command(string version, int warnings)
+    {
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+        var config = new CliConfig { InMemory = true, Url = "http://localhost", Token = _token, Workspace = _workspace };
+        CliApp.Runtime.Value = new CliRuntime(config, stdout, stderr, Factory.Server.CreateHandler(), Json: true, Version: version);
+
+        // Two API clients in one command: `status` is anonymous and `issue list` signs in, so run the busier one.
+        var exit = await CliApp.BuildRoot().Parse(["issue", "list"]).InvokeAsync(
+            new System.CommandLine.InvocationConfiguration { Error = stderr, Output = stdout }, Ct);
+
+        exit.ShouldBe(0, stderr.ToString());
+        stderr.ToString().Split("kupro update").Length.ShouldBe(warnings + 1);
+    }
+
+    [Theory]
+    [InlineData("1.2.0", "1.10.0", true)]
+    [InlineData("1.10.0", "1.2.0", false)]
+    [InlineData("1.2.0", "1.2.0", false)]
+    [InlineData("1.2.0-rc.1", "1.3.0", true)]
+    [InlineData("1.2.0", null, false)]
+    [InlineData("1.2.0", "soon", false)]
+    public void Version_warning_compares_numerically(string current, string? minimum, bool warns) =>
+        (CliVersion.Warning(current, minimum) is not null).ShouldBe(warns);
+
     private async Task<JsonElement> RunJsonAsync(params string[] args)
     {
         var (exit, output, error) = await RunAsync(json: true, args);

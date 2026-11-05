@@ -9,7 +9,7 @@ namespace Kupro.Cli;
 /// </summary>
 public sealed class CliConfig
 {
-    public const string DefaultUrl = "http://localhost:5239";
+    public const string DefaultUrl = "https://app.kupro.app";
 
     public string? Url { get; set; }
     public string? Workspace { get; set; }
@@ -37,17 +37,29 @@ public sealed class CliConfig
     [JsonIgnore]
     public bool InMemory { get; init; }
 
-    public static CliConfig Load()
+    /// <summary>Where this config lives; tests point it at a temp file.</summary>
+    [JsonIgnore]
+    public string StorePath { get; init; } = FilePath;
+
+    public static CliConfig Load() => Load(FilePath);
+
+    public static CliConfig Load(string path)
     {
         try
         {
-            return File.Exists(FilePath)
-                ? JsonSerializer.Deserialize(File.ReadAllText(FilePath), CliJson.Default.CliConfig) ?? new CliConfig()
-                : new CliConfig();
+            var loaded = File.Exists(path) ? JsonSerializer.Deserialize(File.ReadAllText(path), CliJson.Default.CliConfig) : null;
+            return new CliConfig
+            {
+                StorePath = path,
+                Url = loaded?.Url,
+                Workspace = loaded?.Workspace,
+                Token = loaded?.Token,
+                Session = loaded?.Session,
+            };
         }
         catch (JsonException)
         {
-            return new CliConfig();
+            return new CliConfig { StorePath = path };
         }
     }
 
@@ -58,12 +70,75 @@ public sealed class CliConfig
             return;
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(this, CliJson.Default.CliConfig));
+        // Sync on purpose: callers are short commands with no synchronization context.
+        using var gate = LockAsync(CancellationToken.None).GetAwaiter().GetResult();
+        WriteFile();
+    }
+
+    /// <summary>
+    /// Holds the file lock on the config across processes, so MCP bridges sharing one session refresh it one at a
+    /// time (ADR-018 IMP-001). The OS releases it when a process dies, so a crash leaves no stale lock.
+    /// </summary>
+    public async Task<FileStream?> LockAsync(CancellationToken ct)
+    {
+        if (InMemory)
+        {
+            return null;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(StorePath)!);
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            try
+            {
+                return new FileStream(StorePath + ".lock", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException)
+            {
+                if (DateTimeOffset.UtcNow > deadline)
+                {
+                    throw new CliException($"Another kupro process is holding {StorePath}.lock. Try again.");
+                }
+
+                await Task.Delay(50, ct);
+            }
+        }
+    }
+
+    /// <summary>Replaces the file in one step, so a bridge starting up never reads half a config. Hold the lock.</summary>
+    public void WriteFile()
+    {
+        if (InMemory)
+        {
+            return;
+        }
+
+        var temp = StorePath + ".tmp";
+        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
         if (!OperatingSystem.IsWindows())
         {
             // Holds credentials: owner read/write only.
-            File.SetUnixFileMode(FilePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        using (var writer = new StreamWriter(temp, options))
+        {
+            writer.Write(JsonSerializer.Serialize(this, CliJson.Default.CliConfig));
+        }
+
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, StorePath, overwrite: true);
+                return;
+            }
+            catch (Exception e) when (attempt < 5 && e is IOException or UnauthorizedAccessException)
+            {
+                // Windows refuses while another process is reading the file.
+                Thread.Sleep(50);
+            }
         }
     }
 }
@@ -103,8 +178,16 @@ public sealed class OidcDiscovery
     [JsonPropertyName("device_authorization_endpoint")] public string? DeviceAuthorizationEndpoint { get; set; }
 }
 
+/// <summary>The one field of <c>GET /api/v1/status</c> the version check needs.</summary>
+public sealed class StatusProbe
+{
+    [JsonPropertyName("minCliVersion")] public string? MinCliVersion { get; set; }
+}
+
 [JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(CliConfig))]
+[JsonSerializable(typeof(StatusProbe))]
+[JsonSerializable(typeof(Install.InstallResult[]))]
 [JsonSerializable(typeof(TokenResponse))]
 [JsonSerializable(typeof(DeviceAuthorizationResponse))]
 [JsonSerializable(typeof(OidcDiscovery))]

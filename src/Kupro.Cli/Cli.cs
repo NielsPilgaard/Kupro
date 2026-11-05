@@ -56,7 +56,8 @@ public sealed class CommandContext(ParseResult parse, ApiSession session, Output
 
 /// <summary>Overrides for in-process runs (tests): config, output and HTTP transport.</summary>
 public sealed record CliRuntime(
-    CliConfig Config, TextWriter Out, TextWriter Error, HttpMessageHandler? Transport, bool Json, TextReader? In = null);
+    CliConfig Config, TextWriter Out, TextWriter Error, HttpMessageHandler? Transport, bool Json, TextReader? In = null,
+    string? Version = null);
 
 public static class Cli
 {
@@ -99,6 +100,7 @@ public static class Cli
                      .Concat(PlanCommands.Build())
                      .Concat(CommentCommands.Build())
                      .Concat(MeetingCommands.Build())
+                     .Concat(InstallCommands.Build())
                      .Append(McpCommand.Build()))
         {
             root.Subcommands.Add(command);
@@ -130,7 +132,7 @@ public static class Cli
 
             var json = parse.GetValue(JsonOption) || (runtime?.Json ?? Console.IsOutputRedirected);
             var error = runtime?.Error ?? Console.Error;
-            var context = new CommandContext(parse, new ApiSession(config, runtime?.Transport),
+            var context = new CommandContext(parse, new ApiSession(config, runtime?.Transport, runtime?.Version),
                 new Output(runtime?.Out ?? Console.Out, json));
             try
             {
@@ -164,6 +166,16 @@ public static class Cli
             {
                 await error.WriteLineAsync($"error: can't reach {config.EffectiveUrl} ({e.Message}).");
                 return 1;
+            }
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            {
+                await error.WriteLineAsync("error: the server didn't answer in time. Try again.");
+                return 1;
+            }
+            finally
+            {
+                // Short, so a slow server can't hold up a finished command. Tests wait, to see the warning every time.
+                await context.Session.FinishVersionCheckAsync(error, runtime is null ? TimeSpan.FromMilliseconds(300) : TimeSpan.FromSeconds(30));
             }
         });
         return command;

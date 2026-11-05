@@ -21,18 +21,7 @@ internal static class AccountCommands
         });
 
         var login = new Command("login", "Sign in through the browser (OAuth device flow).");
-        yield return login.Handle(async (c, ct) =>
-        {
-            var status = await c.Session.CreateClient(authenticated: false).Api.V1.Status.GetAsync(cancellationToken: ct);
-            if (status?.Authority is not { } authority)
-            {
-                throw new CliException("This server has no sign-in configured. Use `kupro token set <token>`.");
-            }
-
-            await c.Session.LoginAsync(authority, status.CliClientId ?? "cli", c.Out.Writer, ct);
-            var me = await c.Api.Api.V1.Me.GetAsync(cancellationToken: ct);
-            await c.Out.Writer.WriteLineAsync($"Signed in to {c.Session.Config.EffectiveUrl} as {me?.DisplayName} ({me?.Email}).");
-        });
+        yield return login.Handle(LoginAsync);
 
         yield return new Command("logout", "Forget the stored login session and token.").Handle((c, _) =>
         {
@@ -44,6 +33,20 @@ internal static class AccountCommands
 
         yield return Token();
         yield return Me();
+    }
+
+    /// <summary>Device login, for <c>kupro login</c> and <c>kupro install mcp</c>. Saves <c>--url</c> with the session.</summary>
+    public static async Task LoginAsync(CommandContext c, CancellationToken ct)
+    {
+        var status = await c.Session.CreateClient(authenticated: false).Api.V1.Status.GetAsync(cancellationToken: ct);
+        if (status?.Authority is not { } authority)
+        {
+            throw new CliException("This server has no sign-in configured. Use `kupro token set <token>`.");
+        }
+
+        await c.Session.LoginAsync(authority, status.CliClientId ?? "cli", c.Out.Writer, ct);
+        var me = await c.Api.Api.V1.Me.GetAsync(cancellationToken: ct);
+        await c.Out.Writer.WriteLineAsync($"Signed in to {c.Session.Config.EffectiveUrl} as {me?.DisplayName} ({me?.Email}).");
     }
 
     private static Command Token()
