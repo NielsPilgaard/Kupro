@@ -11,7 +11,7 @@ namespace Kupro.Cli.Commands;
 /// </summary>
 internal static class McpCommand
 {
-    private const int NotSignedIn = -32001;
+    private const int BridgeFailed = -32001;
 
     public static Command Build() =>
         new Command("mcp", "Serve Kupro's MCP tools over stdio, using this CLI's login or token.").Handle(async (c, ct) =>
@@ -59,7 +59,7 @@ internal static class McpCommand
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                replies.Add(Error(message, NotSignedIn, "Not signed in to Kupro. Run `kupro login` or `kupro token set <token>`."));
+                replies.Add(Error(message, BridgeFailed, "Not signed in to Kupro. Run `kupro login` or `kupro token set <token>`."));
             }
             else if (response.Content.Headers.ContentType?.MediaType == "text/event-stream")
             {
@@ -72,18 +72,28 @@ internal static class McpCommand
                     }
                 }
             }
-            else if (response.Content.Headers.ContentLength != 0)
+            else
             {
                 var body = (await response.Content.ReadAsStringAsync(ct)).Trim();
-                if (body.Length > 0)
+                if (IsJsonRpc(body))
                 {
                     replies.Add(body.ReplaceLineEndings(" "));
                 }
+                // An empty 2xx answers a notification. Anything else is a gateway talking, and the client is waiting for this id.
+                else if (body.Length > 0 || !response.IsSuccessStatusCode)
+                {
+                    replies.Add(Error(message, BridgeFailed, $"Kupro answered {(int)response.StatusCode} instead of an MCP reply. Try again."));
+                }
             }
         }
-        catch (Exception e) when (e is HttpRequestException or CliException)
+        catch (Exception e) when (e is HttpRequestException or IOException or CliException)
         {
-            replies.Add(Error(message, NotSignedIn, e.Message));
+            replies.Add(Error(message, BridgeFailed, e.Message));
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // HttpClient's timeout, not a shutdown: the client is still waiting for this id.
+            replies.Add(Error(message, BridgeFailed, "Kupro didn't answer in time. Try again."));
         }
 
         replies.RemoveAll(string.IsNullOrEmpty);
@@ -108,13 +118,27 @@ internal static class McpCommand
         }
     }
 
+    private static bool IsJsonRpc(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.ValueKind == JsonValueKind.Array
+                || (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("jsonrpc", out _));
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>A JSON-RPC error for the request's id; notifications (no id) get no reply.</summary>
     private static string Error(string request, int code, string text)
     {
         try
         {
             using var doc = JsonDocument.Parse(request);
-            if (!doc.RootElement.TryGetProperty("id", out var id))
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("id", out var id))
             {
                 return "";
             }
