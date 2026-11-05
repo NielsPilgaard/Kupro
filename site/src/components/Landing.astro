@@ -198,6 +198,12 @@ const capacity = [
       </div>
     </div>
     <div class="toast"><span class="av-agent" aria-hidden="true">&gt;_</span><span><b>triage-agent</b> {c.agents.toast}</span></div>
+    <div class="par install">
+      <span class="eyebrow">{c.agents.install}</span>
+      <code>{`curl -fsSL ${new URL('install.sh', Astro.site)} | sh\nkupro install mcp`}</code>
+      <p>{c.agents.installHint}</p>
+      <code>{`irm ${new URL('install.ps1', Astro.site)} | iex`}</code>
+    </div>
   </section>
 
   <section class="block" aria-labelledby="eu-h">

@@ -115,6 +115,8 @@ export const da: Copy = {
     cli: 'CLI',
     mcp: 'MCP',
     toast: 'flyttede KUP-139 til Til review via MCP · for 2 sek. siden',
+    install: 'Forbind dine agenter med to kommandoer',
+    installHint: 'Virker med Claude Code, Claude Desktop, Cursor, VS Code og Codex. Du logger ind én gang. På Windows installerer du med:',
   },
   eu: {
     eyebrow: 'Europæisk fra starten',

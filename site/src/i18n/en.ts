@@ -115,6 +115,8 @@ export const en = {
     cli: 'CLI',
     mcp: 'MCP',
     toast: 'moved KUP-139 to In Review via MCP · 2s ago',
+    install: 'Connect your agents in two commands',
+    installHint: 'Works with Claude Code, Claude Desktop, Cursor, VS Code and Codex. You sign in once. On Windows, install with:',
   },
   eu: {
     eyebrow: 'European by default',
