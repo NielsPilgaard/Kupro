@@ -44,6 +44,7 @@ export function SettingsPage() {
           ))}
         </section>
       )}
+      <ConnectAgent />
       <Tokens />
       {workspaces?.some((w) => w.role === 'owner') && (
         <section className="flex flex-col gap-3">
@@ -89,6 +90,34 @@ function Profile() {
           <option value="da">Dansk</option>
         </select>
       </label>
+    </section>
+  );
+}
+
+/** The two commands from nothing to an agent managing issues (ADR-018). Anywhere but the hosted app, the CLI needs this server's URL. */
+function ConnectAgent() {
+  const { t } = useTranslation();
+  const origin = window.location.origin;
+  const install = navigator.userAgent.includes('Windows')
+    ? 'irm https://kupro.app/install.ps1 | iex'
+    : 'curl -fsSL https://kupro.app/install.sh | sh';
+  const connect = origin === 'https://app.kupro.app' ? 'kupro install mcp' : `kupro install mcp --url ${origin}`;
+  const steps = [
+    { label: t('settings.connectInstall'), command: install },
+    { label: t('settings.connectMcp'), command: connect },
+    { label: t('settings.connectRemote'), command: `${origin}/mcp` },
+  ];
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-lg font-semibold">{t('settings.connectAgent')}</h2>
+      <p className="text-sm text-mute">{t('settings.connectAgentHint')}</p>
+      {steps.map((step) => (
+        <div key={step.label} className="flex flex-col gap-1">
+          <span className="text-sm">{step.label}</span>
+          <code className="rounded-r1 border border-line bg-panel p-2 font-mono text-sm break-all select-all">{step.command}</code>
+        </div>
+      ))}
     </section>
   );
 }
