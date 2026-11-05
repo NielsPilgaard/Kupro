@@ -1,0 +1,155 @@
+name: CLI release
+
+# ADR-018: a cli-v<semver> tag builds every binary, uploads them to cli/<version>/ in the public bucket, tests the install
+# scripts against that upload, and only then moves cli/latest. A failure anywhere leaves cli/latest on the previous version.
+on:
+  push:
+    tags: ['cli-v*']
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # The same URL is in Updater.DefaultBaseUrl and both install scripts.
+  DOWNLOAD_URL: https://kupro-downloads.s3.gra.io.cloud.ovh.net
+  S3_BUCKET: kupro-downloads
+  S3_ENDPOINT: https://s3.gra.io.cloud.ovh.net
+  AWS_DEFAULT_REGION: gra
+  # OVHcloud's S3 doesn't take the checksums newer AWS CLIs add by default.
+  AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+
+jobs:
+  version:
+    name: Check the version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        name: Version from the tag, not released before
+        run: |
+          version="${GITHUB_REF_NAME#cli-v}"
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' || { echo "::error::$GITHUB_REF_NAME isn't cli-v<semver>"; exit 1; }
+          if curl -fsI "$DOWNLOAD_URL/cli/$version/SHA256SUMS" > /dev/null; then
+            echo "::error::$version is already released. Releases don't change; tag a new version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.rid }}
+    needs: [version]
+    strategy:
+      matrix:
+        include:
+          # The oldest supported runners, because a glibc binary only runs on that glibc or newer.
+          - { os: ubuntu-22.04, rid: linux-x64 }
+          - { os: ubuntu-22.04-arm, rid: linux-arm64 }
+          - { os: ubuntu-latest, rid: linux-musl-x64, container: 'mcr.microsoft.com/dotnet/sdk:10.0-alpine' }
+          - { os: macos-15, rid: osx-arm64 }
+          - { os: windows-latest, rid: win-x64 }
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    steps:
+      - name: Native toolchain (Alpine)
+        if: matrix.container
+        run: apk add --no-cache clang build-base zlib-dev bash
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        if: ${{ !matrix.container }}
+        with:
+          global-json-file: global.json
+
+      # Retry: dotnet/sdk#53783 (see ci.yml). `||` works in bash and pwsh 7 alike.
+      - run: dotnet tool restore || dotnet tool restore
+
+      - name: Publish native binary
+        run: dotnet publish src/Kupro.Cli -c Release -r ${{ matrix.rid }} -p:Version=${{ needs.version.outputs.version }} -o out
+
+      - name: Name it for the bucket
+        shell: bash
+        run: |
+          mkdir dist
+          if [ -f out/kupro.exe ]; then cp out/kupro.exe "dist/kupro-${{ matrix.rid }}.exe"; else cp out/kupro "dist/kupro-${{ matrix.rid }}"; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kupro-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+
+  upload:
+    name: Upload to the bucket
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.CLI_STORAGE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.CLI_STORAGE_SECRET_KEY }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Upload binaries, then checksums
+        run: |
+          cd dist
+          sha256sum kupro-* > SHA256SUMS
+          cat SHA256SUMS
+          version="${{ needs.version.outputs.version }}"
+          for file in kupro-* SHA256SUMS; do
+            aws s3 cp "$file" "s3://$S3_BUCKET/cli/$version/$file" --endpoint-url "$S3_ENDPOINT" --acl public-read --only-show-errors
+          done
+
+  test-install:
+    name: Install on ${{ matrix.name }}
+    needs: [version, upload]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest, script: sh }
+          - { name: Linux arm64, os: ubuntu-24.04-arm, script: sh }
+          - { name: Alpine, os: ubuntu-latest, script: sh, container: 'alpine:3' }
+          - { name: macOS, os: macos-15, script: sh }
+          - { name: Windows, os: windows-latest, script: ps1 }
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    env:
+      KUPRO_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run install.sh
+        if: matrix.script == 'sh'
+        run: |
+          KUPRO_INSTALL_DIR="$PWD/bin" sh site/public/install.sh
+          test "$("$PWD/bin/kupro" --version)" = "$KUPRO_VERSION"
+
+      - name: Run install.ps1
+        if: matrix.script == 'ps1'
+        shell: pwsh
+        run: |
+          $env:KUPRO_INSTALL_DIR = "$PWD\bin"
+          Get-Content site/public/install.ps1 -Raw | iex
+          $installed = & "$PWD\bin\kupro.exe" --version
+          if ($installed -ne $env:KUPRO_VERSION) { throw "Installed $installed, expected $env:KUPRO_VERSION" }
+
+  promote:
+    name: Move cli/latest
+    needs: [version, test-install]
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.CLI_STORAGE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.CLI_STORAGE_SECRET_KEY }}
+    steps:
+      - name: Write cli/latest
+        run: |
+          echo "${{ needs.version.outputs.version }}" > latest
+          aws s3 cp latest "s3://$S3_BUCKET/cli/latest" --endpoint-url "$S3_ENDPOINT" --acl public-read --content-type text/plain --cache-control no-cache --only-show-errors
+          test "$(curl -fsSL "$DOWNLOAD_URL/cli/latest")" = "${{ needs.version.outputs.version }}"
