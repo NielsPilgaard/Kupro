@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Snapshot format and source connectors (ADR-019). Shared by the API and the AOT CLI, so no reflection JSON. -->
+  <PropertyGroup>
+    <RootNamespace>Kupro.Import</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kupro.Tests" />
+  </ItemGroup>
+
+</Project>

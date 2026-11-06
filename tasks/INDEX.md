@@ -29,9 +29,9 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
-| 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006, 013 | In progress |
+| 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006 (013 to close) | In progress |
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
-| 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 013, 016 | Todo |
+| 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 016 (013 to close) | In progress |
 | 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | Todo |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | Todo |
@@ -40,9 +40,10 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-04. The build order above is not the same as what is buildable: **no open task is buildable by an agent
-now**. Every open row waits on a person, directly or through a dependency. Don't spend a session re-deriving this; read
-this table, and update it when a step is done.
+Checked 2026-11-06. The build order above is not the same as what is buildable: **only 023 is buildable by an agent
+now**. Every other open row waits on a person, directly or through a dependency. Don't spend a session re-deriving
+this; read this table, and update it when a step is done. "Depends on" lists what blocks *starting*; a dependency
+that only blocks closing a task is written "(N to close)".
 
 | Task | State | What unblocks an agent |
 |---|---|---|
@@ -50,8 +51,8 @@ this table, and update it when a step is done.
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
-| 023 | Depends on 013, which is not Done | 013 Done |
-| 024–027 | Wait on 023, and need sandbox accounts (manual steps) | 023 Done and the sandboxes |
+| 023 | Buildable: being built ahead of 013. Closing it needs one production run | 013 Done, for the close only |
+| 024–027 | A connector needs only 023's snapshot model and `ISourceConnector` (023's first slice). Recorded fixtures and the close need sandbox accounts (manual steps) | That slice of 023; the sandboxes for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
@@ -90,7 +91,7 @@ this table, and update it when a step is done.
 - **010 is P1** only because 011 (the differentiator) depends on it.
 - **015 is P1**: the meeting agent leads the public site ([ADR-017](../docs/adr/ADR-017-public-site.md)) and 017 depends on it.
 - **Import is P1** ([ADR-019](../docs/adr/ADR-019-import.md)): teams with history in another tool don't switch
-  without it. 023 waits for 013 so imports are tested against production storage and jobs; Jira and Azure DevOps
+  without it. 023 is built ahead of 013, but closes only after one run against production storage and jobs; Jira and Azure DevOps
   (024, 025) are the largest switcher pools. Linear, Trello and the rest (026, 027) are P2.
 - **P2 tasks** are independent of each other and can run in parallel once their dependencies are Done.
 

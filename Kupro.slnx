@@ -6,6 +6,7 @@
     <Project Path="src/Kupro.Api/Kupro.Api.csproj" />
     <Project Path="src/Kupro.AppHost/Kupro.AppHost.csproj" />
     <Project Path="src/Kupro.Cli/Kupro.Cli.csproj" />
+    <Project Path="src/Kupro.Import/Kupro.Import.csproj" />
     <Project Path="src/Kupro.ServiceDefaults/Kupro.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">

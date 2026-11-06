@@ -6,7 +6,7 @@ description: >-
   finds, and installs the Kupro skill.
 status: 'In progress'
 phase: 1
-depends_on: [005, 006, 013]
+depends_on: [005, 006]
 purpose: 'Implementation spec for task 020.'
 ---
 

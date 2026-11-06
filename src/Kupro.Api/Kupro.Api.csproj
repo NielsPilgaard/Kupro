@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kupro.Import\Kupro.Import.csproj" />
     <ProjectReference Include="..\Kupro.ServiceDefaults\Kupro.ServiceDefaults.csproj" />
   </ItemGroup>
 

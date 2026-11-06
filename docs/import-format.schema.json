@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kupro.app/schemas/import-format-1.json",
+  "title": "Kupro import snapshot, format 1",
+  "description": "Records of a Kupro import snapshot. snapshot.json is a header; each NDJSON part holds one record per line: items/ an item, relations/ a relation, comments/ a comment, attachments/ an attachment, changes/ a change. See docs/import-format.md.",
+  "$ref": "#/$defs/header",
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "description": "The source's own ID. References between records use it." },
+    "time": { "type": "string", "format": "date-time" },
+    "date": { "type": ["string", "null"], "format": "date" },
+    "optionalTime": { "type": ["string", "null"], "format": "date-time" },
+    "markup": { "enum": ["plain", "markdown", "html", "adf", "jira-wiki"] },
+    "header": {
+      "type": "object",
+      "properties": {
+        "format": { "const": 1 },
+        "source": { "$ref": "#/$defs/source" },
+        "createdAt": { "$ref": "#/$defs/time" },
+        "cursor": { "type": ["string", "null"], "description": "Opaque delta cursor for the next run." },
+        "projects": { "type": "array", "items": { "$ref": "#/$defs/project" } },
+        "people": { "type": "array", "items": { "$ref": "#/$defs/person" } },
+        "itemTypes": { "type": "array", "items": { "$ref": "#/$defs/itemType" } },
+        "statuses": { "type": "array", "items": { "$ref": "#/$defs/status" } },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+        "sprints": { "type": "array", "items": { "$ref": "#/$defs/sprint" } },
+        "versions": { "type": "array", "items": { "$ref": "#/$defs/version" } },
+        "counts": { "$ref": "#/$defs/counts" }
+      },
+      "required": ["format", "source", "createdAt"]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "description": "snapshot, csv, kupro, jira, azure-devops, linear, trello, github, monday, youtrack, or your own." },
+        "baseUrl": { "type": ["string", "null"], "format": "uri" }
+      },
+      "required": ["kind"]
+    },
+    "counts": {
+      "type": "object",
+      "description": "Records per part, for progress. Written by Kupro; a script may leave it out.",
+      "properties": {
+        "items": { "type": "integer" },
+        "relations": { "type": "integer" },
+        "comments": { "type": "integer" },
+        "attachments": { "type": "integer" },
+        "changes": { "type": "integer" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "key": { "type": ["string", "null"] },
+        "name": { "type": "string" },
+        "url": { "type": ["string", "null"] },
+        "process": { "type": ["string", "null"], "description": "Process or template name, e.g. Azure DevOps Agile." }
+      },
+      "required": ["id", "name"]
+    },
+    "person": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "email": { "type": ["string", "null"] }
+      },
+      "required": ["id", "name"]
+    },
+    "itemType": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "project": { "type": ["string", "null"] },
+        "level": { "type": ["integer", "null"], "description": "Hierarchy level, higher is bigger." }
+      },
+      "required": ["id", "name"]
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "category": { "type": ["string", "null"], "description": "The source's own status category." },
+        "itemType": { "type": ["string", "null"] },
+        "project": { "type": ["string", "null"] }
+      },
+      "required": ["id", "name"]
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "kind": { "enum": ["text", "number", "date", "select", "multi-select", "user"] },
+        "options": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "kind"]
+    },
+    "sprint": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "project": { "type": ["string", "null"], "description": "Leave out when the sprint spans projects." },
+        "start": { "$ref": "#/$defs/date" },
+        "end": { "$ref": "#/$defs/date" },
+        "closed": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "version": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "project": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "$ref": "#/$defs/date" },
+        "released": { "type": "boolean" }
+      },
+      "required": ["id", "project", "name"]
+    },
+    "item": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "key": { "type": ["string", "null"], "description": "The key the source shows, e.g. PROJ-123 or 4567." },
+        "project": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "descriptionMarkup": { "$ref": "#/$defs/markup" },
+        "parent": { "type": ["string", "null"] },
+        "assignee": { "type": ["string", "null"] },
+        "creator": { "type": ["string", "null"] },
+        "priority": { "type": ["string", "null"] },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "fields": {
+          "type": "object",
+          "description": "Field values by field ID: a string, a number, or an array of strings for multi-select.",
+          "additionalProperties": { "type": ["string", "number", "array"], "items": { "type": "string" } }
+        },
+        "estimateSeconds": { "type": ["integer", "null"] },
+        "points": { "type": ["number", "null"] },
+        "start": { "$ref": "#/$defs/date" },
+        "due": { "$ref": "#/$defs/date" },
+        "sprint": { "type": ["string", "null"] },
+        "versions": { "type": "array", "items": { "type": "string" } },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+        "url": { "type": ["string", "null"] },
+        "created": { "$ref": "#/$defs/time" },
+        "updated": { "$ref": "#/$defs/time" },
+        "resolved": { "$ref": "#/$defs/optionalTime" }
+      },
+      "required": ["id", "project", "type", "status", "title", "created", "updated"]
+    },
+    "link": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "title": { "type": ["string", "null"] }
+      },
+      "required": ["url"]
+    },
+    "relation": {
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "kind": { "enum": ["blocks", "relates", "duplicates"] },
+        "name": { "type": ["string", "null"], "description": "The source's link type name." }
+      },
+      "required": ["from", "to", "kind"]
+    },
+    "comment": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "item": { "type": "string" },
+        "author": { "type": ["string", "null"] },
+        "body": { "type": "string" },
+        "markup": { "$ref": "#/$defs/markup" },
+        "created": { "$ref": "#/$defs/time" },
+        "updated": { "$ref": "#/$defs/optionalTime" }
+      },
+      "required": ["id", "item", "body", "created"]
+    },
+    "attachment": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "item": { "type": "string" },
+        "fileName": { "type": "string" },
+        "contentType": { "type": ["string", "null"] },
+        "size": { "type": ["integer", "null"] },
+        "author": { "type": ["string", "null"] },
+        "created": { "$ref": "#/$defs/time" },
+        "url": { "type": ["string", "null"] },
+        "file": { "type": ["string", "null"], "description": "Path of the bytes inside the ZIP, under files/." }
+      },
+      "required": ["id", "item", "fileName", "created"]
+    },
+    "change": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "item": { "type": "string" },
+        "actor": { "type": ["string", "null"] },
+        "at": { "$ref": "#/$defs/time" },
+        "field": { "type": "string", "description": "An item property name (status, assignee) or a field ID." },
+        "from": { "type": ["string", "null"] },
+        "to": { "type": ["string", "null"] },
+        "fromText": { "type": ["string", "null"] },
+        "toText": { "type": ["string", "null"] }
+      },
+      "required": ["id", "item", "at", "field"]
+    }
+  }
+}

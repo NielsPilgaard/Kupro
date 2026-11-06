@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kupro.Import\Kupro.Import.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Kupro.Tests" />
     <EmbeddedResource Include="Skill/kupro/SKILL.md" LogicalName="Kupro.Cli.Skill.SKILL.md" />
   </ItemGroup>

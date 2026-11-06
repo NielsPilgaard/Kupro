@@ -4,9 +4,9 @@ description: >-
   The shared import pipeline every source plugs into: open snapshot format, saved mapping, dry-run plan, resumable
   commit, re-runs with per-field conflicts, placeholder members, key aliases, changelog replay, undo and finish. Ships
   with three sources that need no third-party API: snapshot upload, CSV and a Kupro export ZIP.
-status: 'Todo'
+status: 'In progress'
 phase: 1
-depends_on: [013, 016]
+depends_on: [016]
 purpose: 'Implementation spec for task 023.'
 ---
 
@@ -18,6 +18,14 @@ Decisions are in [ADR-019](../docs/adr/ADR-019-import.md). This task builds ever
 the pipeline, the wizard, people and placeholders, aliases, history replay, re-runs, undo, and three sources (snapshot
 upload, CSV, Kupro export). Jira ([task 024](024-import-jira.md)) and Azure DevOps ([task 025](025-import-azure-devops.md))
 then only add a connector, a markup converter and default mappings.
+
+**State**: building ahead of 013 (the owner relaxed the dependency on 2026-11-06). Nothing in the code needs
+production; local S3 and Testcontainers cover it. Closing the task still needs 013: one large import run on production
+storage and jobs (last item in Acceptance criteria).
+
+**Progress**: the snapshot format is done: `Kupro.Import` (model, chunked NDJSON ZIP writer and reader,
+`ISourceConnector`, the snapshot-upload connector), [import-format.md](../docs/import-format.md) with its schema, and
+`SnapshotTests`. Next: Data, then Pipeline.
 
 ## Scope
 
@@ -135,6 +143,8 @@ then only add a connector, a markup converter and default mappings.
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
 - [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
 - [ ] A Danish CSV in Windows-1252 keeps æøå.
+- [ ] After 013: one import of 10,000+ items with attachments runs on production, survives a container restart
+      mid-commit, and the storage-growth alert stays quiet. Noted in the PR.
 
 ## Out of scope
 
