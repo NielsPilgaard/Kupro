@@ -61,8 +61,9 @@ count asserted in integration tests for hot endpoints).
 
   Release build, API in-process, Postgres in Docker on a laptop, one client: relative cost, not production latency.
 - **IMP-002**: `PerfBudgetTests` runs `ANALYZE` after seeding, because autovacuum does that in production. It runs after
-  the parallel test classes, and an endpoint fails only when it is over budget on three attempts: load on the machine
-  slows every sample for seconds at a time, a regression stays.
+  the parallel test classes, and an endpoint fails only when it stays over budget through a retry window of 3 minutes,
+  shared by all endpoints: load on the machine, like a second test suite, passes; a regression stays. A machine that
+  stays overloaded past the window fails, since it can't measure the budget.
 - **IMP-003**: `WorkspaceCache` is the only way to reach `IFusionCache` (FusionCache, memory only, task 030). It prefixes
   each key with the workspace id and the workspace's generation, and runs each factory in its own scope pinned to the
   workspace, without the request's ExecutionContext.

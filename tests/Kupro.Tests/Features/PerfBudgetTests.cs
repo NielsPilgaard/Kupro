@@ -24,8 +24,9 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
     private readonly PostgresFixture _postgres = postgres;
     private const int IssueCount = 10_000;
     private const int Samples = 60;
-    private const int Attempts = 3;
-    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RetryWindow = TimeSpan.FromMinutes(3);
+    private readonly Stopwatch _retrying = new();
     private static readonly TimeSpan P99Budget = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan P50Budget = TimeSpan.FromMilliseconds(100);
     private static readonly string[] Projects = ["CORE", "WEB", "API", "OPS"];
@@ -165,23 +166,26 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         }
     }
 
-    private static bool IsOverBudget(double p50, double p99) =>
+    internal static bool IsOverBudget(double p50, double p99) =>
         p99 > P99Budget.TotalMilliseconds || p50 > P50Budget.TotalMilliseconds;
 
     /// <summary>
-    /// A busy machine slows every sample for a few seconds, and search spends 40% of its p50 budget on CPU, so one
-    /// breach proves nothing. A query regression is over budget on every attempt.
+    /// A busy machine slows every sample, for as long as a second test suite beside this one runs, so one breach proves
+    /// nothing. A query regression is over budget on every attempt. All endpoints share the window, which keeps a real
+    /// failure to a few minutes; a machine that stays overloaded past it fails, since it can't measure the budget.
     /// </summary>
-    private static async Task<(string, double, double)> MeasureAsync(string name, Func<Task> request)
+    private async Task<(string, double, double)> MeasureAsync(string name, Func<Task> request)
     {
         await request(); // warm up: JIT and query plan caches
         var (p50, p99) = await SampleAsync(request);
-        for (var attempt = 1; attempt < Attempts && IsOverBudget(p50, p99); attempt++)
+        _retrying.Start();
+        while (IsOverBudget(p50, p99) && _retrying.Elapsed < RetryWindow)
         {
             await Task.Delay(RetryDelay, Ct);
             (p50, p99) = await SampleAsync(request);
         }
 
+        _retrying.Stop();
         return (name, p50, p99);
     }
 
