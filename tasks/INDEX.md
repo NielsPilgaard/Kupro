@@ -36,6 +36,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | Todo |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | Todo |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
+| 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
 ## What an agent can pick up
 
@@ -51,6 +52,7 @@ this table, and update it when a step is done.
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
 | 023 | Depends on 013, which is not Done | 013 Done |
 | 024–027 | Wait on 023, and need sandbox accounts (manual steps) | 023 Done and the sandboxes |
+| 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
 
