@@ -156,6 +156,9 @@ internal sealed class IssueConfiguration : IEntityTypeConfiguration<Issue>
             + "setweight(to_tsvector('danish', coalesce(description, '')), 'B')",
             stored: true);
         builder.HasIndex(SearchVector).HasMethod("GIN");
+
+        // Typo-tolerant title match: serves <% from pg_trgm; btree_gin lets workspace_id lead (ADR-009).
+        builder.HasIndex(i => new { i.WorkspaceId, i.Title }).HasMethod("GIN").HasOperators("uuid_ops", "gin_trgm_ops");
     }
 
     /// <summary>Name of the stored <c>tsvector</c> column, for <c>EF.Property</c>.</summary>

@@ -93,6 +93,19 @@ count asserted in integration tests for hot endpoints).
   | MCP `get_plan` (full) | 15.8 / 32.2, 10 | 10.7 / 23.6, 3 | |
 
   The queries left on a hit are the access checks. MCP full stays slow on a hit because it serializes 244 KB.
+- **IMP-004**: Search cost must not grow with the workspace. Typo matching uses pg_trgm's `<%`, served by a GIN index on
+  `(workspace_id, title)`; `word_similarity(...) >= x` can't use an index, so `<%` replaces it, and every connection sets
+  its threshold to 0.5. Relevance ranks only the 1,000 most recently updated matches, because ranking costs CPU per match.
+  So a query with more matches can't page to the older ones by relevance; `sort=updated` reaches them all.
+  `SearchScaleTests` measures this and runs only when asked for (`-explicit only`).
+
+  | p50 ms on 100k issues with descriptions, one workspace, measured as in IMP-001 | Before | After |
+  |---|---:|---:|
+  | `q=issue` (every row matches) | 365 | 8 |
+  | `q=render` (a tenth of the rows) | 309 | 16 |
+  | `q=dependancy` (typo) | 170 | 18 |
+  | `q=login with sso` | 174 | 19 |
+  | `q=zzzqqqxx` (no match) | 149 | 3 |
 
 ## Related Decisions
 

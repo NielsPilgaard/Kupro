@@ -69,6 +69,7 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("pg_trgm");
+        modelBuilder.HasPostgresExtension("btree_gin");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(KuproDbContext).Assembly);
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()

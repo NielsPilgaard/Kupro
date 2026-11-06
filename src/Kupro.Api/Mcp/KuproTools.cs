@@ -109,7 +109,7 @@ public sealed partial class KuproTools(
         [Description("Label name, e.g. bug.")] string? label = null,
         [Description("Parent key: list its children.")] string? parent = null,
         [Description("Sprint id, `active`, or `none`.")] string? sprint = null,
-        [Description("relevance (default when searching), updated (default otherwise), created, priority or rank.")] IssueSort? sort = null,
+        [Description("relevance (default when searching; the 1,000 newest matches), updated (default otherwise), created, priority or rank.")] IssueSort? sort = null,
         [Description("Page size 1-200, default 25.")] int? limit = null,
         [Description("nextCursor from the previous call.")] string? cursor = null,
         [Description("Extra fields per row.")] IssueRowField[]? fields = null,

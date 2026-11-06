@@ -114,6 +114,24 @@ public sealed class SearchTests(PostgresFixture postgres) : ApiTestBase(postgres
     }
 
     [Fact]
+    public async Task Relevance_ranks_the_newest_matches_and_sort_by_updated_reaches_the_rest()
+    {
+        for (var batch = 0; batch < 10; batch++)
+        {
+            var items = Enumerable.Range(0, 100).Select(i => new CreateIssueRequest("WEB", $"Render filler {batch}-{i}")).ToList();
+            (await _client.PostAsJsonAsync($"{Ws}/issues/bulk", new CreateIssuesRequest(items), Json.Options, Ct)).EnsureSuccessStatusCode();
+        }
+
+        var ranked = await AllKeysAsync("&limit=200");
+        ranked.Count.ShouldBe(1000);
+        ranked.ShouldNotContain("KUP-1", "older than the 1,000 newest matches");
+
+        var updated = await AllKeysAsync("&limit=200&sort=updated");
+        updated.Count.ShouldBe(1003);
+        updated.ShouldContain("KUP-1");
+    }
+
+    [Fact]
     public async Task Search_never_crosses_workspaces()
     {
         var (other, otherWorkspace, _) = await NewWorkspaceAsync("Other");
@@ -123,6 +141,21 @@ public sealed class SearchTests(PostgresFixture postgres) : ApiTestBase(postgres
 
     private Task<IssuePage> SearchAsync(string q, string extra = "") =>
         GetAsync<IssuePage>(_client, $"{Ws}/issues?q={Uri.EscapeDataString(q)}{extra}");
+
+    private async Task<List<string>> AllKeysAsync(string extra)
+    {
+        var keys = new List<string>();
+        string? cursor = null;
+        do
+        {
+            var page = await SearchAsync("render", cursor is null ? extra : $"{extra}&cursor={Uri.EscapeDataString(cursor)}");
+            keys.AddRange(Keys(page));
+            cursor = page.NextCursor;
+        }
+        while (cursor is not null);
+
+        return keys;
+    }
 
     private static List<string> Keys(IssuePage page) => page.Items.Select(i => i.Key).ToList();
 }

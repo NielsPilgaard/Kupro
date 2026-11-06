@@ -32,7 +32,7 @@ public static class DatabaseExtensions
         builder.Services.AddScoped<WorkspaceContext>();
         builder.Services.AddDbContextFactory<KuproDbContext>(
             options => options
-                .UseNpgsql(builder.Configuration.GetConnectionString(ConnectionName))
+                .UseNpgsql(WithSearchSettings(builder.Configuration.GetConnectionString(ConnectionName)))
                 .UseSnakeCaseNamingConvention(),
             ServiceLifetime.Scoped);
 
@@ -40,6 +40,22 @@ public static class DatabaseExtensions
         builder.EnrichNpgsqlDbContext<KuproDbContext>();
 
         return builder;
+    }
+
+    /// <summary>
+    /// pg_trgm's <c>&lt;%</c> reads its threshold from a setting, and its default (0.6) misses one-letter typos in short
+    /// words. Set per connection, so it costs no round trip and a restored database keeps it.
+    /// </summary>
+    private static string? WithSearchSettings(string? connectionString)
+    {
+        if (connectionString is null)
+        {
+            return null;
+        }
+
+        var settings = new NpgsqlConnectionStringBuilder(connectionString);
+        settings.Options = $"{settings.Options} -c pg_trgm.word_similarity_threshold=0.5".Trim();
+        return settings.ConnectionString;
     }
 
     /// <summary>

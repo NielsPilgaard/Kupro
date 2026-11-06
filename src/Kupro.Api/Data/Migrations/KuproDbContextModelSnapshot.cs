@@ -22,6 +22,7 @@ namespace Kupro.Api.Data.Migrations
                 .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gin");
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
@@ -433,6 +434,12 @@ namespace Kupro.Api.Data.Migrations
 
                     b.HasIndex("WorkspaceId", "SprintId")
                         .HasDatabaseName("ix_issues_workspace_id_sprint_id");
+
+                    b.HasIndex("WorkspaceId", "Title")
+                        .HasDatabaseName("ix_issues_workspace_id_title");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("WorkspaceId", "Title"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("WorkspaceId", "Title"), new[] { "uuid_ops", "gin_trgm_ops" });
 
                     b.HasIndex("WorkspaceId", "Type")
                         .HasDatabaseName("ix_issues_workspace_id_type");

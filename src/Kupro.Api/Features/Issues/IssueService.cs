@@ -159,7 +159,7 @@ public sealed class IssueService(
             var key = text.Trim().ToUpperInvariant();
             issues = issues.Where(i => EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
                     .Matches(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
-                || KuproDbContext.WordSimilarity(text, i.Title) >= MinWordSimilarity
+                || EF.Functions.TrigramsAreWordSimilar(text, i.Title)
                 || i.Key == key);
 
             if (sort == IssueSort.Relevance)
@@ -167,6 +167,7 @@ public sealed class IssueService(
                 // Relevance is computed, so pages use an offset; deep paging through search results is rare.
                 var offset = (int)Math.Clamp(cursor?.Number ?? 0, 0, int.MaxValue);
                 var ranked = await issues
+                    .OrderByDescending(i => i.UpdatedAt).ThenByDescending(i => i.Id).Take(RankedMatches)
                     .OrderByDescending(i => (i.Key == key ? 2 : 0)
                         + EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
                             .Rank(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
@@ -181,8 +182,8 @@ public sealed class IssueService(
         return PageOf(page, query.Limit, last => Cursor.For(last, sort));
     }
 
-    /// <summary>Typo-tolerant title match threshold; pg_trgm's own default (0.6) misses one-letter typos in short words.</summary>
-    private const float MinWordSimilarity = 0.5f;
+    /// <summary>Ranking costs CPU per match, so a common word in a big workspace ranks only its newest matches (ADR-010 IMP-004).</summary>
+    private const int RankedMatches = 1000;
 
     private static IssuePage PageOf(List<IssueSummary> rows, int limit, Func<IssueSummary, string> next)
     {

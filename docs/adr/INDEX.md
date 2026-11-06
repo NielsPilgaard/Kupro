@@ -18,7 +18,7 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Licensing, open-core split | [ADR-007](ADR-007-licensing.md) | Accepted |
 | Work item model: types, hierarchy, states, effort, sprints, relations, milestones, project capacity | [ADR-008](ADR-008-work-item-model.md) | Accepted |
 | Multi-tenancy, workspace isolation | [ADR-009](ADR-009-multi-tenancy.md) | Accepted |
-| Performance budget and enforcement, workspace cache | [ADR-010](ADR-010-performance-budget.md) | Accepted |
+| Performance budget and enforcement, workspace cache, search at scale | [ADR-010](ADR-010-performance-budget.md) | Accepted |
 | Internationalization (English + Danish) | [ADR-011](ADR-011-i18n.md) | Accepted |
 | Local orchestration (Aspire), prod compose generation (`aspire publish`) | [ADR-012](ADR-012-aspire.md) | Accepted |
 | Seats, billing unit, member status, guests, billing access, meeting agent AI budget | [ADR-013](ADR-013-seats-billing.md) | Proposed |

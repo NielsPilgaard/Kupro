@@ -124,7 +124,7 @@ public enum IssueSort
     /// <summary>Manual board order.</summary>
     Rank,
 
-    /// <summary>Best match for the search text first; the default when <c>q</c> has free text.</summary>
+    /// <summary>Best match for the search text first, among the 1,000 most recently updated matches; the default when <c>q</c> has free text.</summary>
     Relevance,
 }
 
