@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import · 07 Source and Kupro trees side by side · Kupro prototype</title>
+<style>
+/* Kobber tokens, copied from web/src/styles/tokens.css (docs/design-guide.md). Light by default; the
+   prototype bar's theme button sets data-theme="dark". Fonts fall back to system faces: no web fonts here. */
+:root {
+  color-scheme: light;
+  --bg: #f2f4f3; --panel: #ffffff; --sunk: #e7ecea; --line: #d3dbd8; --ink: #16201d; --mute: #56655f;
+  --acc: #2c7a6a; --acc-ink: #246859; --on-acc: #ffffff; --side: #1c2a26; --side-ink: #cfe0da;
+  --prog: #b5651f; --rev: #6553a8; --ok: #3f8a3c; --warn: #a9801a; --bad: #b3393b;
+  --proj-verdigris: #2c7a6a; --proj-copper: #b5651f; --proj-plum: #6553a8; --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a; --proj-brick: #b3393b; --proj-slate: #56708a; --proj-fjord: #2f6f9f;
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+  --r1: 5px; --r2: 7px; --row: 34px; --nav-item: 28px; --topbar: 48px; --control: 30px; --sidebar: 212px;
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1); --dur-1: 120ms; --dur-2: 160ms;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514; --panel: #161f1d; --sunk: #0b100f; --line: #25322e; --ink: #e2ece8; --mute: #8fa29b;
+  --acc: #5bb8a3; --acc-ink: #6cc4af; --on-acc: #08130f; --side: #0b100f; --side-ink: #b7cac3;
+  --prog: #e08e52; --rev: #a194e6; --ok: #78c36f; --warn: #e3bc55; --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3; --proj-copper: #e08e52; --proj-plum: #a194e6; --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55; --proj-brick: #ee6e6e; --proj-slate: #93a9c0; --proj-fjord: #6faedc;
+}
+@media (prefers-reduced-motion: reduce) { :root { --dur-1: 0ms; --dur-2: 0ms; } }
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px;
+  -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+a { color: var(--acc-ink); }
+h1, h2, h3, h4, p { margin: 0; }
+h1 { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 700; }
+h2 { font-size: 16px; line-height: 22px; font-weight: 600; }
+h3 { font-size: 13px; font-weight: 600; }
+.display { font-family: var(--font-display); font-size: 28px; line-height: 32px; font-weight: 700; }
+.mono, code { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+code { background: var(--sunk); padding: 0 4px; border-radius: 4px; font-size: 12px; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.mute { color: var(--mute); }
+.sm { font-size: 12px; line-height: 16px; }
+.xs { font-size: 11px; line-height: 16px; }
+.md { font-size: 14px; line-height: 22px; }
+.strong { font-weight: 600; }
+.row { display: flex; align-items: center; gap: 8px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.grow { flex: 1; min-width: 0; }
+.wrap { flex-wrap: wrap; }
+.trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hidden { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+kbd { font-family: var(--font-mono); font-size: 11px; line-height: 16px; padding: 0 4px; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; color: var(--mute); background: var(--panel); }
+
+/* ---------- Prototype bar ---------- */
+.proto { display: flex; align-items: center; gap: 12px; padding: 4px 12px; background: var(--sunk);
+  border-bottom: 1px dashed var(--line); font-size: 12px; color: var(--mute); flex: none; }
+.proto b { color: var(--ink); }
+.proto .sp { flex: 1; }
+.proto button { background: none; border: 1px solid var(--line); border-radius: var(--r1); padding: 1px 8px; cursor: pointer; color: var(--mute); }
+
+/* ---------- Shell ---------- */
+.shell { flex: 1; display: flex; min-height: 0; }
+.side { width: var(--sidebar); flex: none; background: var(--side); color: var(--side-ink); padding: 8px;
+  display: flex; flex-direction: column; gap: 16px; }
+.side .ws { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 4px; font-weight: 600; }
+.side .nav { display: flex; flex-direction: column; gap: 2px; }
+.side .ni { display: flex; align-items: center; gap: 8px; height: var(--nav-item); padding: 0 8px; border-radius: var(--r1);
+  color: var(--side-ink); text-decoration: none; }
+.side .ni:hover { background: var(--side-sel); }
+.side .ni[aria-current='page'] { background: var(--side-sel); font-weight: 600; }
+.side kbd { background: transparent; color: inherit; border-color: var(--side-sel); }
+.side .ni .k { margin-left: auto; font-family: var(--font-mono); font-size: 11px; opacity: .6; }
+.side .hd { padding: 0 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .6; }
+.side .sq { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.side .sfoot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 12px; opacity: .85; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.topbar { height: var(--topbar); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  border-bottom: 1px solid var(--line); background: var(--bg); }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--mute); }
+.crumb b { color: var(--ink); font-weight: 600; }
+.content { flex: 1; overflow: auto; min-height: 0; }
+@media (max-width: 640px) { .side { display: none; } }
+
+/* ---------- Controls ---------- */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: var(--control); padding: 0 12px; border-radius: var(--r1);
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease); text-decoration: none; }
+.btn:hover { background: var(--sel); }
+.btn.primary { background: var(--acc); border-color: var(--acc); color: var(--on-acc); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.primary kbd { background: transparent; color: var(--on-acc); border-color: color-mix(in srgb, var(--on-acc) 45%, transparent); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--mute); }
+.btn.ghost:hover { color: var(--ink); background: var(--sel); }
+.btn.danger { color: var(--bad); }
+.btn.sm { height: 24px; padding: 0 8px; font-size: 12px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.input, select.input { height: var(--control); padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r1);
+  background: var(--panel); min-width: 0; }
+select.input { padding-right: 4px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field > span { font-size: 12px; font-weight: 600; }
+.field > small { font-size: 12px; color: var(--mute); }
+.seg { display: inline-flex; background: var(--sunk); border-radius: var(--r1); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; height: 26px; padding: 0 10px; border-radius: 4px; cursor: pointer; color: var(--mute); }
+.seg button[aria-pressed='true'] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+input[type=checkbox], input[type=radio] { accent-color: var(--acc); }
+.check input { accent-color: var(--acc); width: 14px; height: 14px; margin: 0; }
+
+/* ---------- Surfaces ---------- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); }
+.pad { padding: 16px; }
+.sunk { background: var(--sunk); }
+.hr { height: 1px; background: var(--line); border: 0; margin: 0; }
+.float { box-shadow: var(--shadow-float); }
+
+/* ---------- Tags, chips, pills, avatars ---------- */
+.tag { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; border-radius: var(--r1); font-size: 12px;
+  font-weight: 600; flex: none; }
+.tag.epic { color: var(--rev); background: color-mix(in srgb, var(--rev) 14%, transparent); }
+.tag.feature { color: var(--acc-ink); background: color-mix(in srgb, var(--acc-ink) 14%, transparent); }
+.tag.task { color: var(--mute); background: color-mix(in srgb, var(--mute) 14%, transparent); }
+.chip { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border-radius: var(--r1);
+  font-size: 11px; font-weight: 600; flex: none; color: var(--mute); background: color-mix(in srgb, var(--mute) 14%, transparent); }
+.chip.ok { color: var(--ink); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.chip.ok::before { content: '✓'; color: var(--ok); }
+.chip.warn { color: var(--ink); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.chip.warn::before { content: '!'; color: var(--warn); font-weight: 700; }
+.chip.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.chip.bad::before { content: '×'; }
+.chip.acc { color: var(--acc-ink); background: var(--sel); }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 19px; padding: 0 8px; border: 1px solid var(--line);
+  border-radius: 999px; font-size: 11px; color: var(--mute); flex: none; }
+.pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--mute); }
+.pill.bug::before { background: var(--bad); }
+.av { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; color: var(--on-acc); flex: none; }
+.av.ph { background: transparent !important; border: 1px dashed var(--mute); color: var(--mute); }
+.av.agent { border-radius: 6px; background: var(--ink); color: var(--bg); font-family: var(--font-mono); }
+.ring { flex: none; }
+.src { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--r1);
+  background: var(--sunk); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 10px; font-weight: 600; flex: none; }
+.src.lg { width: 40px; height: 40px; font-size: 12px; border-radius: var(--r2); }
+.warnline { color: var(--ink); display: flex; gap: 6px; align-items: flex-start; }
+.warnline::before { content: '!'; flex: none; width: 14px; height: 14px; border-radius: 3px; background: var(--warn); color: var(--panel);
+  font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-top: 2px; }
+.okline { display: flex; gap: 6px; align-items: flex-start; }
+.okline::before { content: '✓'; color: var(--ok); font-weight: 700; flex: none; }
+
+/* ---------- Tables ---------- */
+table.t { width: 100%; border-collapse: collapse; }
+table.t th { text-align: left; font-size: 12px; font-weight: 600; color: var(--mute); padding: 0 12px; height: 30px;
+  background: var(--sunk); border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t td { padding: 0 12px; height: var(--row); border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t tbody tr:hover td { background: color-mix(in srgb, var(--acc) 6%, transparent); }
+table.t .num, table.t th.num { text-align: right; }
+table.t th.num { font-family: inherit; }
+.arrow { color: var(--mute); }
+
+/* ---------- Progress ---------- */
+.bar { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); border-radius: 3px; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-family: var(--font-mono); font-size: 20px; line-height: 26px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--mute); }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; right: 16px; bottom: 16px; background: var(--ink); color: var(--bg); border-radius: var(--r2);
+  padding: 10px 14px; font-size: 12px; box-shadow: var(--shadow-float); max-width: 380px; z-index: 50; }
+
+/* ---------- Fold choice: two equal options ---------- */
+.foldopts { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.foldopts legend { font-weight: 600; font-size: 14px; padding: 0 0 8px; }
+.foldopt { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel); cursor: pointer; min-width: 0; }
+.foldopt:hover { border-color: var(--acc-ink); }
+.foldopt:has(input:checked) { border-color: var(--acc-ink); box-shadow: inset 0 0 0 1px var(--acc-ink); }
+.foldopt:has(input:focus-visible) { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+.foldopt:has(input:disabled) { cursor: default; }
+.foldopt .fmap { display: grid; grid-template-columns: auto 14px 1fr; gap: 2px 6px; font-size: 12px; }
+.foldopt .fmap .fl { color: var(--rev); font-weight: 600; }
+.foldopt .fcount { font-size: 12px; }
+.foldopt .fline { font-size: 12px; line-height: 16px; }
+.foldopt .fline b { font-weight: 600; margin-right: 4px; }
+@media (max-width: 720px) { .foldopts { grid-template-columns: 1fr; } }
+
+.wrapc { padding: 16px 24px 40px; display: flex; flex-direction: column; gap: 16px; max-width: 1260px; }
+.rail { display: flex; gap: 4px; flex-wrap: wrap; }
+.rail button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; height: 28px; padding: 0 12px; cursor: pointer; color: var(--mute); display: inline-flex; gap: 6px; align-items: center; }
+.rail button[aria-current='step'] { border-color: var(--acc-ink); color: var(--ink); font-weight: 600; background: var(--sel); }
+.rail button.done { color: var(--ink); }
+.rail button.done::before { content: '✓'; color: var(--ok); }
+.trees { display: grid; grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr); gap: 0; align-items: stretch; }
+.pane { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; display: flex; flex-direction: column; }
+.pane > header { height: 46px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--sunk); display: flex; align-items: center; gap: 8px; }
+.node { display: flex; align-items: center; gap: 6px; height: var(--row); padding-right: 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); cursor: default; position: relative; }
+.node:focus-visible { outline: 2px solid var(--acc-ink); outline-offset: -2px; }
+.node.hl { background: var(--sel); box-shadow: inset 2px 0 0 var(--acc-ink); }
+.node .k { font-family: var(--font-mono); font-size: 12px; color: var(--mute); width: 70px; flex: none; }
+.node .note { margin-left: auto; font-size: 11px; color: var(--mute); white-space: nowrap; }
+.node .note.w { color: var(--ink); background: color-mix(in srgb, var(--warn) 14%, transparent); padding: 0 6px; border-radius: var(--r1); }
+.node .guide { width: 16px; flex: none; align-self: stretch; border-left: 1px solid var(--line); margin-left: 10px; }
+.lvl { font-size: 11px; font-weight: 600; padding: 0 5px; height: 16px; display: inline-flex; align-items: center; border-radius: var(--r1); border: 1px solid var(--line); color: var(--mute); flex: none; }
+.map { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 10px; font-size: 12px; }
+.map .r { display: grid; grid-template-columns: 1fr 14px 1fr; align-items: center; gap: 4px; text-align: center; }
+.map .r .a { color: var(--mute); }
+.map .r.fold .a, .map .r.fold span:last-child { color: var(--warn); font-weight: 600; }
+.foldsel { display: flex; gap: 8px; flex-wrap: wrap; }
+.foldsel label { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel); cursor: pointer; max-width: 420px; }
+.foldsel label:has(input:checked) { border-color: var(--acc-ink); box-shadow: inset 0 0 0 1px var(--acc-ink); }
+.counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.counts > div { padding: 8px 12px; border-right: 1px solid var(--line); }
+.counts > div:last-child { border-right: 0; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mute); }
+@media (max-width: 960px) { .trees { grid-template-columns: 1fr; gap: 8px; } .map { flex-direction: row; flex-wrap: wrap; padding: 4px 0; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Main"></nav>
+  <div class="main">
+    <header class="topbar"><div class="crumb">Settings / Import / <b>Contoso (Azure DevOps)</b></div></header>
+    <div class="content"><div class="wrapc">
+      <nav class="rail" id="rail" aria-label="Import steps"></nav>
+      <div id="view" class="col" style="gap:16px"></div>
+    </div></div>
+  </div>
+</div>
+<script>
+/* Shared sample data and helpers (same in every mockup so the directions compare on equal terms). */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const fmt = (n) => Number(n).toLocaleString('en-GB');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+const STATES = ['Backlog', 'Todo', 'In Progress', 'In Review', 'Done', 'Canceled'];
+const TYPES = ['Epic', 'Feature', 'Task'];
+
+/* Azure DevOps Services org "Contoso", Agile process (plus one Scrum and one CMMI project). */
+const D = {
+  source: { kind: 'Azure DevOps Services', short: 'ADO', url: 'https://dev.azure.com/contoso', org: 'Contoso' },
+  projects: [
+    { id: 'web', name: 'Webshop', process: 'Agile', items: 4812, key: 'WEB', on: true, color: 'verdigris' },
+    { id: 'mob', name: 'Mobile App', process: 'Agile', items: 1904, key: 'MOB', on: true, color: 'copper' },
+    { id: 'plat', name: 'Platform', process: 'Scrum', items: 2377, key: 'PLAT', on: true, color: 'plum' },
+    { id: 'crm', name: 'Legacy CRM', process: 'CMMI', items: 611, key: 'CRM', on: false, color: 'slate' },
+  ],
+  /* Webshop (Agile). level = ADO backlog level. */
+  types: [
+    { src: 'Epic', level: 'Epics', n: 14, to: 'Epic' },
+    { src: 'Feature', level: 'Features', n: 96, to: 'Feature' },
+    { src: 'User Story', level: 'Stories', n: 1240, to: 'Task' },
+    { src: 'Bug', level: 'Stories', n: 512, to: 'Task', label: 'bug' },
+    { src: 'Issue', level: 'Stories', n: 18, to: 'Task' },
+    { src: 'Task', level: 'Tasks', n: 2870, to: 'Task' },
+    { src: 'Test Case', level: 'Test', n: 62, to: 'Skip' },
+  ],
+  states: [
+    { src: 'New', cat: 'Proposed', n: 1306, to: 'Todo', why: 'Category Proposed. 412 with no iteration go to Backlog.' },
+    { src: 'Active', cat: 'InProgress', n: 388, to: 'In Progress', why: 'Category InProgress' },
+    { src: 'Code Review', cat: 'InProgress', n: 41, to: 'In Review', why: 'Name contains "review"' },
+    { src: 'Resolved', cat: 'Resolved', n: 97, to: 'In Review', why: 'Category Resolved' },
+    { src: 'Closed', cat: 'Completed', n: 2779, to: 'Done', why: 'Category Completed' },
+    { src: 'Removed', cat: 'Removed', n: 139, to: 'Canceled', why: 'Category Removed' },
+  ],
+  /* match: email | name | none | bot. action: member | placeholder | invite | skip */
+  people: [
+    { name: 'Mette Sørensen', email: 'mette@contoso.dk', n: 1120, match: 'email', member: 'Mette Sørensen', action: 'member' },
+    { name: 'Jonas Kjær', email: 'jonas.kjaer@contoso.dk', n: 884, match: 'email', member: 'Jonas Kjær', action: 'member' },
+    { name: 'Freja Holm', email: 'freja@contoso.dk', n: 702, match: 'email', member: 'Freja Holm', action: 'member' },
+    { name: 'Ahmed Rahimi', email: 'ahmed.rahimi@contoso.dk', n: 655, match: 'email', member: 'Ahmed Rahimi', action: 'member' },
+    { name: 'Anna Berg', email: 'anna.berg@contoso.dk', n: 544, match: 'none', member: null, action: 'placeholder', note: 'No member with this email' },
+    { name: 'Ida Lund', email: 'ida.lund@contoso.dk', n: 431, match: 'email', member: 'Ida Lund', action: 'member' },
+    { name: 'Kasper Møller', email: 'kasper.m@contoso.onmicrosoft.com', n: 390, match: 'name', member: 'Kasper Møller', action: 'member', note: 'Member email is kasper@contoso.dk' },
+    { name: 'Lars Vestergaard', email: '', n: 301, match: 'none', member: null, action: 'placeholder', note: 'Email hidden by the source' },
+    { name: 'Sofie Bach', email: 'sofie.bach@partner.de', n: 212, match: 'name', member: 'Sofie Bach', action: 'member', note: 'Member email is sofie@contoso.dk' },
+    { name: 'Henrik Dahl', email: 'henrik.dahl@contoso.dk', n: 198, match: 'email', member: 'Henrik Dahl', action: 'member' },
+    { name: 'Peter Lindqvist', email: 'peter@lindqvist-consult.se', n: 77, match: 'none', member: null, action: 'placeholder', note: 'No member with this email' },
+    { name: 'Morten Krag', email: 'morten.krag@contoso.dk', n: 64, match: 'none', member: null, action: 'placeholder', note: 'No member with this email' },
+    { name: 'Project Collection Build Service', email: '', n: 1460, match: 'bot', member: null, action: 'skip', note: 'Service account' },
+  ],
+  peopleSummary: { total: 23, email: 14, name: 4, placeholder: 4, skip: 1 },
+  members: ['Mette Sørensen', 'Jonas Kjær', 'Freja Holm', 'Ahmed Rahimi', 'Ida Lund', 'Kasper Møller', 'Sofie Bach', 'Henrik Dahl'],
+  fields: [
+    { src: 'Area Path', kind: 'select', n: 4410, to: 'labels', on: true, note: '14 leaf names, e.g. checkout, search' },
+    { src: 'Tags', kind: 'multi-select', n: 2950, to: 'labels', on: true, note: '37 tags' },
+    { src: 'Iteration Path', kind: 'select', n: 6890, to: 'sprints', on: true, note: '96 dated iterations; 3 undated' },
+    { src: 'Value Area', kind: 'select', n: 4812, to: 'details', on: false, note: 'Business / Architectural' },
+    { src: 'Risk', kind: 'select', n: 210, to: 'details', on: false },
+    { src: 'Acceptance Criteria', kind: 'html', n: 980, to: 'description', on: true, note: 'Becomes an "Acceptance criteria" section' },
+  ],
+  /* Plan for the three ticked projects. fold: 'tasks' (default) or 'epics'. */
+  plan: {
+    tasks: { issues: 9007, epics: 29, features: 195, tasks: 8783, labelsFromEpics: 0, reparented: 5362, relations: 5362 },
+    epics: { issues: 8978, epics: 195, features: 2650, tasks: 6133, labelsFromEpics: 29, reparented: 63, relations: 63 },
+    issues: 9007, skipped: 86, comments: 17940, attachments: 2318, bytes: '3.4 GB', changes: 118260,
+    sprints: 96, labels: 52, effortItems: 6912, effortHours: 31480, pointsOnly: 1644, pointsSum: 5120, noEffort: 451,
+  },
+  perProject: [
+    { key: 'WEB', name: 'Webshop', issues: 4750, epics: 14, features: 96, tasks: 4640, skipped: 62 },
+    { key: 'MOB', name: 'Mobile App', issues: 1880, epics: 6, features: 41, tasks: 1833, skipped: 24 },
+    { key: 'PLAT', name: 'Platform', issues: 2377, epics: 9, features: 58, tasks: 2310, skipped: 0 },
+  ],
+  /* One branch of Webshop, used for tree and diff views. */
+  sample: [
+    { id: 1203, type: 'Epic', title: 'Checkout redesign', state: 'In Progress', depth: 0 },
+    { id: 3310, type: 'Feature', title: 'MobilePay and card payments', state: 'In Progress', depth: 1, parent: 1203 },
+    { id: 4567, type: 'User Story', title: 'As a shopper I can pay with MobilePay', state: 'In Progress', depth: 2, parent: 3310 },
+    { id: 4571, type: 'Task', title: 'Add MobilePay SDK to checkout service', state: 'Done', depth: 3, parent: 4567 },
+    { id: 4572, type: 'Task', title: 'Handle declined payment callback', state: 'In Progress', depth: 3, parent: 4567 },
+    { id: 4602, type: 'Bug', title: 'Order total rounds wrong in DKK', state: 'In Review', depth: 2, parent: 3310 },
+  ],
+  /* Elsewhere: a Jira Cloud project and a Trello board. */
+  jira: { site: 'nordlys.atlassian.net', project: 'Payments', key: 'PAY', items: 3140, promoted: 212,
+    types: [['Epic', 22, 'Epic'], ['Story', 1610, 'Task'], ['Task', 640, 'Task'], ['Bug', 418, 'Task + bug'], ['Sub-task', 450, 'Task']] },
+  trello: { board: 'Marketing site', key: 'MKT', cards: 186,
+    lists: [['Ideas', 34, 'Backlog'], ['To do', 21, 'Todo'], ['Doing', 6, 'In Progress'], ['Review', 4, 'In Review'], ['Live', 98, 'Done'], ['Parked', 23, '']] },
+  sources: [
+    { id: 'ado', name: 'Azure DevOps', short: 'ADO', sub: 'Services and Server', wave: 1 },
+    { id: 'jira', name: 'Jira', short: 'JRA', sub: 'Cloud and Data Center', wave: 1 },
+    { id: 'csv', name: 'CSV file', short: 'CSV', sub: 'Any tool that exports CSV', wave: 1 },
+    { id: 'snap', name: 'Snapshot', short: 'ZIP', sub: 'From kupro import --local or a script', wave: 1 },
+    { id: 'kupro', name: 'Kupro export', short: 'KUP', sub: 'Move a workspace', wave: 1 },
+    { id: 'linear', name: 'Linear', short: 'LIN', sub: 'Teams, projects, cycles', wave: 2 },
+    { id: 'trello', name: 'Trello', short: 'TRL', sub: 'Boards, lists, checklists', wave: 2 },
+    { id: 'github', name: 'GitHub Issues', short: 'GH', sub: 'Issues, sub-issues, Projects', wave: 3 },
+    { id: 'monday', name: 'Monday', short: 'MON', sub: 'Boards and subitems', wave: 3 },
+    { id: 'youtrack', name: 'YouTrack', short: 'YT', sub: 'Cloud and self-hosted', wave: 3 },
+  ],
+  conflicts: [
+    { key: 'WEB-4567', field: 'Title', kupro: 'Checkout: support MobilePay', source: 'As a shopper I can pay with MobilePay and Vipps', by: 'Ida Lund' },
+    { key: 'WEB-4602', field: 'Assignee', kupro: 'Ida Lund', source: 'Jonas Kjær', by: 'Freja Holm' },
+  ],
+};
+
+const STATE_SVG = {
+  Backlog: '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8"/>',
+  Todo: '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+  'In Progress': '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 3.8A3.2 3.2 0 0 1 7 10.2Z" fill="currentColor"/>',
+  'In Review': '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 7V3.8A3.2 3.2 0 1 1 3.8 7Z" fill="currentColor"/>',
+  Done: '<circle cx="7" cy="7" r="6.4" fill="currentColor"/><path d="M4.3 7.2l1.8 1.8 3.6-3.8" fill="none" stroke="var(--panel)" stroke-width="1.6" stroke-linecap="round"/>',
+  Canceled: '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+};
+const STATE_COLOR = { Backlog: 'var(--mute)', Todo: 'var(--ink)', 'In Progress': 'var(--prog)', 'In Review': 'var(--rev)', Done: 'var(--ok)', Canceled: 'var(--mute)' };
+const ring = (s) => STATE_SVG[s] ? `<svg class="ring" width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="${s}" style="color:${STATE_COLOR[s]}">${STATE_SVG[s]}</svg>` : '';
+const stateCell = (s) => s ? `<span class="row" style="gap:6px">${ring(s)}<span>${s}</span></span>` : '<span class="chip warn">Pick a state</span>';
+const tag = (t) => t === 'Epic' ? '<span class="tag epic">Epic</span>' : t === 'Feature' ? '<span class="tag feature">Feature</span>' : '';
+const typeCell = (t) => t === 'Skip' ? '<span class="mute">Skip</span>' : t === 'Task' ? '<span class="tag task">Task</span>' : tag(t);
+const AV = ['--proj-verdigris', '--proj-copper', '--proj-plum', '--proj-moss', '--proj-fjord', '--proj-slate'];
+const initials = (n) => n.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+const av = (name, ph) => {
+  const h = [...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  return ph ? `<span class="av ph" title="${esc(name)} (placeholder)" role="img" aria-label="${esc(name)}, placeholder">${initials(name)}</span>`
+    : `<span class="av" style="background:var(${AV[h % AV.length]})" title="${esc(name)}" role="img" aria-label="${esc(name)}">${initials(name)}</span>`;
+};
+const matchChip = (p) => ({ email: '<span class="chip ok">Email match</span>', name: '<span class="chip warn">Name match</span>',
+  none: '<span class="chip">No match</span>', bot: '<span class="chip">Service account</span>' })[p.match];
+const ACTION_LABEL = { member: 'Existing member', placeholder: 'Placeholder', invite: 'Invite on import', skip: 'Skip' };
+const peopleSelect = (p, i) => `<select class="input" data-person="${i}" aria-label="Kupro person for ${esc(p.name)}">
+  ${D.members.map((m) => `<option value="m:${esc(m)}" ${p.action === 'member' && p.member === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+  <option value="placeholder" ${p.action === 'placeholder' ? 'selected' : ''}>Placeholder: ${esc(p.name)}</option>
+  <option value="invite" ${p.action === 'invite' ? 'selected' : ''} ${p.email ? '' : 'disabled'}>Invite ${p.email ? esc(p.email) : '(no email)'}</option>
+  <option value="skip" ${p.action === 'skip' ? 'selected' : ''}>Skip, attribute to "Azure DevOps"</option></select>`;
+const stateSelect = (cur, label, allowEmpty) => `<select class="input" aria-label="${esc(label)}">${allowEmpty ? `<option value="" ${cur ? '' : 'selected'}>Pick a state</option>` : ''}${STATES.map((s) => `<option ${s === cur ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+const typeSelect = (cur, label) => `<select class="input" aria-label="${esc(label)}">${[...TYPES, ...(cur === 'Label' ? ['Label'] : []), 'Skip'].map((s) => `<option ${s === cur ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+
+const I = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  plan: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M17 14h-6M13 18H7"/>',
+  cycle: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-2.82-1.17l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3 13H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.17-2.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 2.82 1.17l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 21 11h0a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  import: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  chevd: '<path d="m6 9 6 6 6-6"/>',
+  arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+  term: '<path d="m4 17 6-6-6-6M12 19h8"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+};
+const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">${I[n]}</svg>`;
+const MARK = '<svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6.5" width="17" height="5" rx="2.5" fill="var(--side-ink)"/><rect x="9" y="13.5" width="20" height="5" rx="2.5" fill="var(--acc)"/><rect x="5" y="20.5" width="12" height="5" rx="2.5" fill="var(--side-ink)" opacity=".5"/></svg>';
+
+/* App shell sidebar. extra = projects created by the import, shown once it has run. */
+function sidebar(extra = []) {
+  const projs = [{ name: 'Operations', key: 'OPS', color: 'fjord' }, ...extra];
+  return `<div class="ws">${MARK}<span>Contoso</span></div>
+  <div class="nav">
+    <a class="ni" href="#" onclick="return false">${icon('search')}<span>Search</span><span class="k"><kbd>Ctrl K</kbd></span></a>
+    <a class="ni" href="#" onclick="return false">${icon('inbox')}<span>My issues</span></a>
+    <a class="ni" href="#" onclick="return false">${icon('plan')}<span>Delivery plan</span></a>
+    <a class="ni" href="#" onclick="return false">${icon('cycle')}<span>Sprints</span></a>
+  </div>
+  <div class="nav"><div class="hd">Projects</div>
+    ${projs.map((p) => `<a class="ni" href="#" onclick="return false"><span class="sq" style="background:var(--proj-${p.color})"></span><span class="trunc">${p.name}</span><span class="k">${p.key}</span></a>`).join('')}
+  </div>
+  <div class="nav"><div class="hd">Workspace</div>
+    <a class="ni" href="#" onclick="return false">${icon('users')}<span>Members</span></a>
+    <a class="ni" href="#" onclick="return false" aria-current="page">${icon('import')}<span>Import</span></a>
+    <a class="ni" href="#" onclick="return false">${icon('gear')}<span>Settings</span></a>
+  </div>
+  <div class="sfoot"><span class="dot"></span>1 agent working</div>`;
+}
+const IMPORTED_PROJECTS = [{ name: 'Webshop', key: 'WEB', color: 'verdigris' }, { name: 'Mobile App', key: 'MOB', color: 'copper' }, { name: 'Platform', key: 'PLAT', color: 'plum' }];
+
+/* Prototype bar: says what this is, links back, toggles theme. */
+function protoBar(n, title) {
+  const bar = document.createElement('div');
+  bar.className = 'proto';
+  bar.innerHTML = `<span><b>Prototype ${n} of 10</b> · ${esc(title)} · not the shipped UI, sample data only</span><span class="sp"></span>
+    <a href="index.html">All directions</a><button type="button" id="themeBtn" aria-pressed="false">Dark theme</button>`;
+  document.body.prepend(bar);
+  $('#themeBtn').addEventListener('click', (e) => {
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    e.target.setAttribute('aria-pressed', String(dark));
+    e.target.textContent = dark ? 'Light theme' : 'Dark theme';
+  });
+}
+let toastTimer;
+function toast(msg) {
+  let t = $('#toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.append(t); }
+  t.innerHTML = msg; t.classList.remove('hidden');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), 5000);
+}
+/* Fake a running import: calls onTick(pct) and onDone(). */
+function simulate(onTick, onDone, ms = 2600) {
+  const start = performance.now();
+  const step = (now) => {
+    const pct = Math.min(1, (now - start) / ms);
+    onTick(pct);
+    if (pct < 1) requestAnimationFrame(step); else onDone && onDone();
+  };
+  requestAnimationFrame(step);
+}
+const PHASES = ['Reading work items', 'Fitting hierarchy', 'Writing issues', 'Copying comments', 'Copying attachments', 'Replaying history'];
+const phaseAt = (pct) => PHASES[Math.min(PHASES.length - 1, Math.floor(pct * PHASES.length))];
+/* Platform uses Scrum: its own default maps (task 025, per-process defaults). */
+D.scrum = {
+  types: [
+    { src: 'Epic', level: 'Epics', n: 9, to: 'Epic' }, { src: 'Feature', level: 'Features', n: 58, to: 'Feature' },
+    { src: 'Product Backlog Item', level: 'Stories', n: 820, to: 'Task' }, { src: 'Bug', level: 'Stories', n: 377, to: 'Task', label: 'bug' },
+    { src: 'Impediment', level: 'Stories', n: 14, to: 'Task', label: 'impediment' }, { src: 'Task', level: 'Tasks', n: 1099, to: 'Task' },
+  ],
+  states: [
+    { src: 'New', cat: 'Proposed', n: 402, to: 'Todo', why: 'Category Proposed' }, { src: 'Approved', cat: 'Proposed', n: 118, to: 'Todo', why: 'Category Proposed' },
+    { src: 'Committed', cat: 'InProgress', n: 151, to: 'In Progress', why: 'Category InProgress' }, { src: 'In Test', cat: 'InProgress', n: 22, to: 'In Review', why: 'Name contains "test"' },
+    { src: 'Done', cat: 'Completed', n: 1610, to: 'Done', why: 'Category Completed' }, { src: 'Removed', cat: 'Removed', n: 74, to: 'Canceled', why: 'Category Removed' },
+  ],
+};
+const PROCESS = { Agile: { projects: 'Webshop, Mobile App', types: D.types, states: D.states }, Scrum: { projects: 'Platform', types: D.scrum.types, states: D.scrum.states } };
+/* Fold choice for ADO's four levels: 'tasks' (default) or 'epics' (Epic → label, everything moves up a level). */
+const foldType = (t, fold) => fold === 'epics' ? ({ Epic: 'Label', Feature: 'Epic', 'User Story': 'Feature', 'Product Backlog Item': 'Feature' }[t.src] || t.to) : t.to;
+
+/* The ADO four-level choice: two equal options, each with its own counts (owner: a team choice, not a buried default).
+   Keys match D.plan: 'tasks' = Keep Epics, 'epics' = Fold Epics. */
+const FOLD = {
+  tasks: { name: 'Keep Epics', map: [['Epic', 'Epic'], ['Feature', 'Feature'], ['User Story', 'Task'], ['Task', 'Task under the Feature']],
+    moves: `${fmt(D.plan.tasks.reparented)} ADO Tasks move up under their Feature, each with a <i>relates</i> link to its old Story`, labels: 'None',
+    good: 'Epics stay on the delivery plan', cost: 'Story → Task grouping becomes a link' },
+  epics: { name: 'Fold Epics', map: [['Epic', 'label'], ['Feature', 'Epic'], ['User Story', 'Feature'], ['Task', 'Task']],
+    moves: `${fmt(D.plan.epics.reparented)} items get a new parent, each with a <i>relates</i> link to the old one`, labels: `${D.plan.epics.labelsFromEpics} labels, one per old Epic, on its former Features`,
+    good: 'Stories keep their Tasks as children', cost: 'Old Epics leave the delivery plan' },
+};
+function foldOptions(cur, fn, opts = {}) {
+  const name = opts.name || 'fold';
+  return `<fieldset class="foldopts">${opts.legend === '' ? '' : `<legend>${opts.legend || 'Azure DevOps has four levels, Kupro has three. Which level folds?'}</legend>`}
+  ${Object.entries(FOLD).map(([k, f]) => { const c = D.plan[k]; return `<label class="foldopt"><span class="row"><input type="radio" name="${name}" value="${k}" ${cur === k ? 'checked' : ''} ${opts.disabled ? 'disabled' : ''} onchange="${fn}('${k}')"><b>${f.name}</b></span>
+    <span class="fmap">${f.map.map(([a, b]) => `<span>${a}</span><span class="arrow">→</span><span class="${b === 'label' ? 'fl' : ''}">${b}</span>`).join('')}</span>
+    <span class="fcount mono">${fmt(c.epics)} Epics · ${fmt(c.features)} Features · ${fmt(c.tasks)} Tasks</span>
+    <span class="fline"><b>Re-parents</b> ${f.moves}</span><span class="fline"><b>Labels</b> ${f.labels}</span>
+    <span class="fline mute">${f.good}. ${f.cost}.</span></label>`; }).join('')}</fieldset>`;
+}
+/* Jira Premium Initiatives (a level above Epic) get the same kind of choice (task 024). */
+D.jira.initiatives = 4;
+const INIT = {
+  label: { name: 'Initiative as a label', map: [['Initiative', 'label on its Epics'], ['Epic', 'Epic'], ['Story', 'Task, or Feature if it has sub-tasks'], ['Sub-task', 'Task']],
+    counts: [22, 212, 2906], moves: 'None', labels: '4 labels, one per Initiative, on 22 Epics' },
+  epic: { name: 'Initiative → Epic, Epic → Feature', map: [['Initiative', 'Epic'], ['Epic', 'Feature'], ['Story', 'Task'], ['Sub-task', 'Task under the Feature']],
+    counts: [4, 22, 3114], moves: '450 sub-tasks move up under their Feature, each with a <i>relates</i> link to its old Story', labels: 'None' },
+};
+function initiativeOptions(cur, fn, opts = {}) {
+  return `<fieldset class="foldopts"><legend>${opts.legend || 'Jira has Initiatives above Epics. Where do they go?'}</legend>
+  ${Object.entries(INIT).map(([k, f]) => `<label class="foldopt"><span class="row"><input type="radio" name="${opts.name || 'init'}" value="${k}" ${cur === k ? 'checked' : ''} ${opts.disabled ? 'disabled' : ''} onchange="${fn}('${k}')"><b>${f.name}</b></span>
+    <span class="fmap">${f.map.map(([a, b]) => `<span>${a}</span><span class="arrow">→</span><span class="${b.startsWith('label') ? 'fl' : ''}">${b}</span>`).join('')}</span>
+    <span class="fcount mono">${f.counts[0]} Epics · ${fmt(f.counts[1])} Features · ${fmt(f.counts[2])} Tasks</span>
+    <span class="fline"><b>Re-parents</b> ${f.moves}</span><span class="fline"><b>Labels</b> ${f.labels}</span></label>`).join('')}</fieldset>`;
+}
+/* Per-project counts under Fold Epics (Epics become labels, so each project has fewer issues). */
+D.perProjectEpics = [
+  { key: 'WEB', name: 'Webshop', issues: 4736, epics: 96, features: 1240, tasks: 3400, skipped: 62 },
+  { key: 'MOB', name: 'Mobile App', issues: 1874, epics: 41, features: 590, tasks: 1243, skipped: 24 },
+  { key: 'PLAT', name: 'Platform', issues: 2368, epics: 58, features: 820, tasks: 1490, skipped: 0 },
+];
+const perProject = (fold) => (fold === 'epics' ? D.perProjectEpics : D.perProject);
+
+protoBar('07', 'Source and Kupro trees side by side');
+$('#side').innerHTML = sidebar();
+const STEPS = ['Connect', 'Projects', 'Hierarchy', 'People and states', 'Plan', 'Import'];
+const S = { step: 2, reached: 3, fold: 'tasks', pct: 0, done: false };
+function setFold(k) { S.fold = k; draw(); $('.foldopt input:checked').focus(); }
+const SRC = [
+  [1203, 'Epics', 'Epic', 'Checkout redesign', 'In Progress', 0], [3310, 'Features', 'Feature', 'MobilePay and card payments', 'In Progress', 1],
+  [4567, 'Stories', 'User Story', 'As a shopper I can pay with MobilePay', 'In Progress', 2], [4571, 'Tasks', 'Task', 'Add MobilePay SDK to checkout service', 'Done', 3],
+  [4572, 'Tasks', 'Task', 'Handle declined payment callback', 'In Progress', 3], [4602, 'Stories', 'Bug', 'Order total rounds wrong in DKK', 'In Review', 2],
+  [1188, 'Epics', 'Epic', 'Search that finds things', 'Todo', 0], [4390, 'Stories', 'User Story', 'Typo-tolerant product search', 'Todo', 1], [4391, 'Tasks', 'Task', 'Add trigram index on product titles', 'Todo', 2],
+];
+const DST = {
+  tasks: [
+    [1203, 'Epic', 'Checkout redesign', 'In Progress', 0], [3310, 'Feature', 'MobilePay and card payments', 'In Progress', 1],
+    [4567, '', 'As a shopper I can pay with MobilePay', 'In Progress', 2], [4571, '', 'Add MobilePay SDK to checkout service', 'Done', 2, 'moved up · relates WEB-4567', 1],
+    [4572, '', 'Handle declined payment callback', 'In Progress', 2, 'moved up · relates WEB-4567', 1], [4602, '', 'Order total rounds wrong in DKK', 'In Review', 2, 'label bug'],
+    [1188, 'Epic', 'Search that finds things', 'Todo', 0], [4390, 'Feature', 'Typo-tolerant product search', 'Todo', 1, 'promoted: has children', 1], [4391, '', 'Add trigram index on product titles', 'Todo', 2],
+  ],
+  epics: [
+    [3310, 'Epic', 'MobilePay and card payments', 'In Progress', 0, 'label checkout-redesign'], [4567, 'Feature', 'As a shopper I can pay with MobilePay', 'In Progress', 1],
+    [4571, '', 'Add MobilePay SDK to checkout service', 'Done', 2], [4572, '', 'Handle declined payment callback', 'In Progress', 2],
+    [4602, '', 'Order total rounds wrong in DKK', 'In Review', 1, 'label bug'], [4390, 'Feature', 'Typo-tolerant product search', 'Todo', 0, 'no epic · label search-that-finds-things', 1], [4391, '', 'Add trigram index on product titles', 'Todo', 1],
+  ],
+};
+const guides = (d) => '<span class="guide"></span>'.repeat(d);
+const srcTree = () => SRC.map(([id, lvl, t, ti, s, d]) => `<div class="node" tabindex="0" data-id="${id}">${guides(d)}<span style="width:6px"></span>${ring(s)}<span class="k">#${id}</span><span class="lvl">${t}</span><span class="trunc">${ti}</span></div>`).join('');
+const dstTree = () => DST[S.fold].map(([id, t, ti, s, d, note, w]) => `<div class="node" tabindex="0" data-id="${id}">${guides(d)}<span style="width:6px"></span>${ring(s)}<span class="k">WEB-${id}</span>${tag(t)}<span class="trunc">${ti}</span>${note ? `<span class="note ${w ? 'w' : ''}">${note}</span>` : ''}</div>`).join('')
+  + (S.fold === 'epics' ? `<div class="node"><span style="width:10px"></span><span class="pill">checkout-redesign</span><span class="pill">search-that-finds-things</span><span class="note">Epics #1203, #1188 became labels</span></div>` : '');
+const levelMap = () => (S.fold === 'tasks'
+  ? [['Epics', 'Epic'], ['Features', 'Feature'], ['Stories', 'Task'], ['Tasks', 'Task under Feature', 1]]
+  : [['Epics', 'label', 1], ['Features', 'Epic'], ['Stories', 'Feature'], ['Tasks', 'Task']])
+  .map(([a, b, f]) => `<div class="r ${f ? 'fold' : ''}"><span>${a}</span><span class="a">→</span><span>${b}</span></div>`).join('');
+
+const views = {
+  Connect: () => `<div class="card pad col" style="max-width:560px"><h2>Connect</h2><label class="field"><span>Organization URL</span><input class="input" value="${D.source.url}"></label><label class="field"><span>Personal access token</span><input class="input" type="password" value="••••••••••••••••••"></label><span class="okline">Connected · 4 projects · Agile, Scrum, CMMI</span><button class="btn primary" style="align-self:flex-start" onclick="go(1)">Continue</button></div>`,
+  Projects: () => `<div class="card" style="overflow:hidden"><table class="t"><thead><tr><th></th><th>Project</th><th>Process</th><th class="num">Items</th><th>Key</th></tr></thead><tbody>${D.projects.map((p) => `<tr><td><input type="checkbox" ${p.on ? 'checked' : ''} aria-label="Import ${p.name}"></td><td>${p.name}</td><td class="mute">${p.process}</td><td class="num">${fmt(p.items)}</td><td class="mono">${p.key}</td></tr>`).join('')}</tbody></table></div><button class="btn primary" style="align-self:flex-start" onclick="go(2)">Continue</button>`,
+  Hierarchy: () => {
+    const f = D.plan[S.fold];
+    return `<div class="col" style="gap:4px"><h1>How your hierarchy lands</h1><p class="mute">Azure DevOps has four levels, Kupro three. Pick which level folds and watch real work items from Webshop move. Hover or focus an item to find it on the other side.</p></div>
+    ${foldOptions(S.fold, 'setFold', { legend: 'A team choice: two ways to fit four levels into three' })}
+    <div class="trees"><div class="pane"><header><span class="src">ADO</span><b>In Azure DevOps</b><span class="grow"></span><span class="xs mute">4 levels</span></header>${srcTree()}</div>
+      <div class="map" aria-label="Level mapping">${levelMap()}</div>
+      <div class="pane"><header>${MARK.replaceAll('var(--side-ink)', 'var(--ink)')}<b>In Kupro</b><span class="grow"></span><span class="xs mute">3 types</span></header>${dstTree()}</div></div>
+    <div class="legend"><span><span class="note w" style="padding:0 6px;border-radius:5px;background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--ink)">moved</span> changed parent, kept a relates link</span><span>Numbers stay: #4571 → WEB-4571</span></div>
+    <div class="card counts"><div class="stat"><b>${fmt(f.epics)}</b><span>Epics</span></div><div class="stat"><b>${fmt(f.features)}</b><span>Features</span></div><div class="stat"><b>${fmt(f.tasks)}</b><span>Tasks</span></div><div class="stat"><b>${fmt(f.reparented)}</b><span>moved, all 3 projects</span></div></div>
+    <div class="row"><button class="btn" onclick="go(1)">Back</button><span class="grow"></span><button class="btn primary" onclick="go(3)">Continue</button></div>`;
+  },
+  'People and states': () => `<div class="row" style="align-items:flex-start;gap:16px;flex-wrap:wrap"><div class="card grow" style="overflow:hidden;min-width:320px"><table class="t"><thead><tr><th>Person</th><th>Match</th><th>In Kupro</th></tr></thead><tbody>${D.people.filter((p) => p.match !== 'email').map((p) => `<tr><td><div class="row">${av(p.name, !p.member)}${p.name}</div></td><td>${matchChip(p)}</td><td>${peopleSelect(p, D.people.indexOf(p))}</td></tr>`).join('')}</tbody></table></div>
+    <div class="card grow" style="overflow:hidden;min-width:320px"><table class="t"><thead><tr><th>State</th><th class="num">Items</th><th>Kupro</th></tr></thead><tbody>${D.states.map((s) => `<tr><td>${s.src} <span class="xs mute">${s.cat}</span></td><td class="num">${fmt(s.n)}</td><td>${stateSelect(s.to, s.src)}</td></tr>`).join('')}</tbody></table></div></div>
+    <div class="row"><button class="btn" onclick="go(2)">Back</button><span class="grow"></span><button class="btn primary" onclick="go(4)">Run dry run</button></div>`,
+  Plan: () => { const f = D.plan[S.fold]; return `<h1>Plan</h1><div class="card counts"><div class="stat"><b>${fmt(D.plan[S.fold].issues)}</b><span>issues</span></div><div class="stat"><b>${fmt(f.reparented)}</b><span>moved</span></div><div class="stat"><b>4</b><span>placeholders</span></div><div class="stat"><b>${D.plan.bytes}</b><span>attachments</span></div></div>
+    <div class="card" style="overflow:hidden"><table class="t"><thead><tr><th>Project</th><th class="num">Epics</th><th class="num">Features</th><th class="num">Tasks</th><th class="num">Skipped</th></tr></thead><tbody>${perProject(S.fold).map((p) => `<tr><td><span class="mono mute">${p.key}</span> ${p.name}</td><td class="num">${p.epics}</td><td class="num">${p.features}</td><td class="num">${fmt(p.tasks)}</td><td class="num">${p.skipped}</td></tr>`).join('')}</tbody></table></div>
+    <span class="warnline">${fmt(D.plan.pointsOnly)} items import without effort (no hours per point set).</span>
+    <div class="row"><button class="btn" onclick="go(2)">Change the fold</button><span class="grow"></span><button class="btn primary" onclick="go(5)">Import ${fmt(D.plan[S.fold].issues)} issues</button></div>`; },
+  Import: () => S.done ? `<h1>Imported</h1><span class="okline">${fmt(D.plan[S.fold].issues)} issues in WEB, MOB and PLAT · 0 conflicts</span><label class="check"><input type="checkbox" checked> Sync every hour</label><div class="row wrap"><button class="btn" onclick="toast('Sync started')">${icon('refresh')} Sync now</button><button class="btn danger" onclick="toast('Undo confirm')">Undo</button><button class="btn" onclick="toast('Finish confirm')">Finish migration</button></div>`
+    : `<h1>Importing</h1><div class="card pad col"><div class="row"><b>${phaseAt(S.pct)}</b><span class="grow"></span><span class="mono">${fmt(Math.round(S.pct * D.plan[S.fold].issues))} / ${fmt(D.plan[S.fold].issues)}</span></div><div class="bar"><i style="width:${S.pct * 100}%"></i></div></div>`,
+};
+function go(i) { S.step = i; S.reached = Math.max(S.reached, i); draw(); if (STEPS[i] === 'Import' && !S.done) simulate((p) => { S.pct = p; draw(); }, () => { S.done = true; $('#side').innerHTML = sidebar(IMPORTED_PROJECTS); draw(); }); }
+function draw() {
+  $('#rail').innerHTML = STEPS.map((s, i) => `<button ${i === S.step ? 'aria-current="step"' : ''} class="${i < S.reached && i !== S.step ? 'done' : ''}" ${i > S.reached ? 'disabled' : ''} onclick="go(${i})">${s}</button>`).join('');
+  $('#view').innerHTML = views[STEPS[S.step]]();
+}
+const hl = (id, on) => $$(`.node[data-id="${id}"]`).forEach((n) => n.classList.toggle('hl', on));
+['mouseover', 'focusin'].forEach((ev) => document.addEventListener(ev, (e) => { const n = e.target.closest('.node[data-id]'); $$('.node.hl').forEach((x) => x.classList.remove('hl')); if (n) hl(n.dataset.id, true); }));
+draw();
+</script>
+</body>
+</html>

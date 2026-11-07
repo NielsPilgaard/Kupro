@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import · 01 Stepper wizard · Kupro prototype</title>
+<style>
+/* Kobber tokens, copied from web/src/styles/tokens.css (docs/design-guide.md). Light by default; the
+   prototype bar's theme button sets data-theme="dark". Fonts fall back to system faces: no web fonts here. */
+:root {
+  color-scheme: light;
+  --bg: #f2f4f3; --panel: #ffffff; --sunk: #e7ecea; --line: #d3dbd8; --ink: #16201d; --mute: #56655f;
+  --acc: #2c7a6a; --acc-ink: #246859; --on-acc: #ffffff; --side: #1c2a26; --side-ink: #cfe0da;
+  --prog: #b5651f; --rev: #6553a8; --ok: #3f8a3c; --warn: #a9801a; --bad: #b3393b;
+  --proj-verdigris: #2c7a6a; --proj-copper: #b5651f; --proj-plum: #6553a8; --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a; --proj-brick: #b3393b; --proj-slate: #56708a; --proj-fjord: #2f6f9f;
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+  --r1: 5px; --r2: 7px; --row: 34px; --nav-item: 28px; --topbar: 48px; --control: 30px; --sidebar: 212px;
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1); --dur-1: 120ms; --dur-2: 160ms;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514; --panel: #161f1d; --sunk: #0b100f; --line: #25322e; --ink: #e2ece8; --mute: #8fa29b;
+  --acc: #5bb8a3; --acc-ink: #6cc4af; --on-acc: #08130f; --side: #0b100f; --side-ink: #b7cac3;
+  --prog: #e08e52; --rev: #a194e6; --ok: #78c36f; --warn: #e3bc55; --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3; --proj-copper: #e08e52; --proj-plum: #a194e6; --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55; --proj-brick: #ee6e6e; --proj-slate: #93a9c0; --proj-fjord: #6faedc;
+}
+@media (prefers-reduced-motion: reduce) { :root { --dur-1: 0ms; --dur-2: 0ms; } }
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px;
+  -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+a { color: var(--acc-ink); }
+h1, h2, h3, h4, p { margin: 0; }
+h1 { font-family: var(--font-display); font-size: 20px; line-height: 26px; font-weight: 700; }
+h2 { font-size: 16px; line-height: 22px; font-weight: 600; }
+h3 { font-size: 13px; font-weight: 600; }
+.display { font-family: var(--font-display); font-size: 28px; line-height: 32px; font-weight: 700; }
+.mono, code { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+code { background: var(--sunk); padding: 0 4px; border-radius: 4px; font-size: 12px; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.mute { color: var(--mute); }
+.sm { font-size: 12px; line-height: 16px; }
+.xs { font-size: 11px; line-height: 16px; }
+.md { font-size: 14px; line-height: 22px; }
+.strong { font-weight: 600; }
+.row { display: flex; align-items: center; gap: 8px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.grow { flex: 1; min-width: 0; }
+.wrap { flex-wrap: wrap; }
+.trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hidden { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+kbd { font-family: var(--font-mono); font-size: 11px; line-height: 16px; padding: 0 4px; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; color: var(--mute); background: var(--panel); }
+
+/* ---------- Prototype bar ---------- */
+.proto { display: flex; align-items: center; gap: 12px; padding: 4px 12px; background: var(--sunk);
+  border-bottom: 1px dashed var(--line); font-size: 12px; color: var(--mute); flex: none; }
+.proto b { color: var(--ink); }
+.proto .sp { flex: 1; }
+.proto button { background: none; border: 1px solid var(--line); border-radius: var(--r1); padding: 1px 8px; cursor: pointer; color: var(--mute); }
+
+/* ---------- Shell ---------- */
+.shell { flex: 1; display: flex; min-height: 0; }
+.side { width: var(--sidebar); flex: none; background: var(--side); color: var(--side-ink); padding: 8px;
+  display: flex; flex-direction: column; gap: 16px; }
+.side .ws { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 4px; font-weight: 600; }
+.side .nav { display: flex; flex-direction: column; gap: 2px; }
+.side .ni { display: flex; align-items: center; gap: 8px; height: var(--nav-item); padding: 0 8px; border-radius: var(--r1);
+  color: var(--side-ink); text-decoration: none; }
+.side .ni:hover { background: var(--side-sel); }
+.side .ni[aria-current='page'] { background: var(--side-sel); font-weight: 600; }
+.side kbd { background: transparent; color: inherit; border-color: var(--side-sel); }
+.side .ni .k { margin-left: auto; font-family: var(--font-mono); font-size: 11px; opacity: .6; }
+.side .hd { padding: 0 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .6; }
+.side .sq { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.side .sfoot { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 12px; opacity: .85; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.topbar { height: var(--topbar); flex: none; display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  border-bottom: 1px solid var(--line); background: var(--bg); }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--mute); }
+.crumb b { color: var(--ink); font-weight: 600; }
+.content { flex: 1; overflow: auto; min-height: 0; }
+@media (max-width: 640px) { .side { display: none; } }
+
+/* ---------- Controls ---------- */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: var(--control); padding: 0 12px; border-radius: var(--r1);
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease); text-decoration: none; }
+.btn:hover { background: var(--sel); }
+.btn.primary { background: var(--acc); border-color: var(--acc); color: var(--on-acc); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.primary kbd { background: transparent; color: var(--on-acc); border-color: color-mix(in srgb, var(--on-acc) 45%, transparent); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--mute); }
+.btn.ghost:hover { color: var(--ink); background: var(--sel); }
+.btn.danger { color: var(--bad); }
+.btn.sm { height: 24px; padding: 0 8px; font-size: 12px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.input, select.input { height: var(--control); padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r1);
+  background: var(--panel); min-width: 0; }
+select.input { padding-right: 4px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field > span { font-size: 12px; font-weight: 600; }
+.field > small { font-size: 12px; color: var(--mute); }
+.seg { display: inline-flex; background: var(--sunk); border-radius: var(--r1); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; height: 26px; padding: 0 10px; border-radius: 4px; cursor: pointer; color: var(--mute); }
+.seg button[aria-pressed='true'] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+input[type=checkbox], input[type=radio] { accent-color: var(--acc); }
+.check input { accent-color: var(--acc); width: 14px; height: 14px; margin: 0; }
+
+/* ---------- Surfaces ---------- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); }
+.pad { padding: 16px; }
+.sunk { background: var(--sunk); }
+.hr { height: 1px; background: var(--line); border: 0; margin: 0; }
+.float { box-shadow: var(--shadow-float); }
+
+/* ---------- Tags, chips, pills, avatars ---------- */
+.tag { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; border-radius: var(--r1); font-size: 12px;
+  font-weight: 600; flex: none; }
+.tag.epic { color: var(--rev); background: color-mix(in srgb, var(--rev) 14%, transparent); }
+.tag.feature { color: var(--acc-ink); background: color-mix(in srgb, var(--acc-ink) 14%, transparent); }
+.tag.task { color: var(--mute); background: color-mix(in srgb, var(--mute) 14%, transparent); }
+.chip { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border-radius: var(--r1);
+  font-size: 11px; font-weight: 600; flex: none; color: var(--mute); background: color-mix(in srgb, var(--mute) 14%, transparent); }
+.chip.ok { color: var(--ink); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.chip.ok::before { content: '✓'; color: var(--ok); }
+.chip.warn { color: var(--ink); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.chip.warn::before { content: '!'; color: var(--warn); font-weight: 700; }
+.chip.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.chip.bad::before { content: '×'; }
+.chip.acc { color: var(--acc-ink); background: var(--sel); }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 19px; padding: 0 8px; border: 1px solid var(--line);
+  border-radius: 999px; font-size: 11px; color: var(--mute); flex: none; }
+.pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--mute); }
+.pill.bug::before { background: var(--bad); }
+.av { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; color: var(--on-acc); flex: none; }
+.av.ph { background: transparent !important; border: 1px dashed var(--mute); color: var(--mute); }
+.av.agent { border-radius: 6px; background: var(--ink); color: var(--bg); font-family: var(--font-mono); }
+.ring { flex: none; }
+.src { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--r1);
+  background: var(--sunk); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 10px; font-weight: 600; flex: none; }
+.src.lg { width: 40px; height: 40px; font-size: 12px; border-radius: var(--r2); }
+.warnline { color: var(--ink); display: flex; gap: 6px; align-items: flex-start; }
+.warnline::before { content: '!'; flex: none; width: 14px; height: 14px; border-radius: 3px; background: var(--warn); color: var(--panel);
+  font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-top: 2px; }
+.okline { display: flex; gap: 6px; align-items: flex-start; }
+.okline::before { content: '✓'; color: var(--ok); font-weight: 700; flex: none; }
+
+/* ---------- Tables ---------- */
+table.t { width: 100%; border-collapse: collapse; }
+table.t th { text-align: left; font-size: 12px; font-weight: 600; color: var(--mute); padding: 0 12px; height: 30px;
+  background: var(--sunk); border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t td { padding: 0 12px; height: var(--row); border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t tbody tr:hover td { background: color-mix(in srgb, var(--acc) 6%, transparent); }
+table.t .num, table.t th.num { text-align: right; }
+table.t th.num { font-family: inherit; }
+.arrow { color: var(--mute); }
+
+/* ---------- Progress ---------- */
+.bar { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); border-radius: 3px; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-family: var(--font-mono); font-size: 20px; line-height: 26px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--mute); }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; right: 16px; bottom: 16px; background: var(--ink); color: var(--bg); border-radius: var(--r2);
+  padding: 10px 14px; font-size: 12px; box-shadow: var(--shadow-float); max-width: 380px; z-index: 50; }
+
+/* ---------- Fold choice: two equal options ---------- */
+.foldopts { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.foldopts legend { font-weight: 600; font-size: 14px; padding: 0 0 8px; }
+.foldopt { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel); cursor: pointer; min-width: 0; }
+.foldopt:hover { border-color: var(--acc-ink); }
+.foldopt:has(input:checked) { border-color: var(--acc-ink); box-shadow: inset 0 0 0 1px var(--acc-ink); }
+.foldopt:has(input:focus-visible) { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+.foldopt:has(input:disabled) { cursor: default; }
+.foldopt .fmap { display: grid; grid-template-columns: auto 14px 1fr; gap: 2px 6px; font-size: 12px; }
+.foldopt .fmap .fl { color: var(--rev); font-weight: 600; }
+.foldopt .fcount { font-size: 12px; }
+.foldopt .fline { font-size: 12px; line-height: 16px; }
+.foldopt .fline b { font-weight: 600; margin-right: 4px; }
+@media (max-width: 720px) { .foldopts { grid-template-columns: 1fr; } }
+
+.wiz { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; padding: 24px; max-width: 1180px; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; }
+.steps button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 8px;
+  border-radius: var(--r1); cursor: pointer; color: var(--mute); }
+.steps button:hover:not(:disabled) { background: var(--sel); }
+.steps button:disabled { cursor: default; opacity: .55; }
+.steps button[aria-current='step'] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 2px 0 0 var(--acc-ink); }
+.steps .n { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; display: inline-flex; align-items: center;
+  justify-content: center; font-family: var(--font-mono); font-size: 11px; flex: none; }
+.steps .done .n { background: var(--ok); border-color: var(--ok); color: var(--panel); }
+.steps button:focus-visible { outline: 2px solid var(--acc-ink); }
+.body { display: flex; flex-direction: column; gap: 20px; max-width: 860px; min-width: 0; }
+.foot { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 16px; }
+.srcgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.srcopt { display: flex; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel); cursor: pointer; }
+.srcopt:has(input:checked) { border-color: var(--acc-ink); box-shadow: inset 0 0 0 1px var(--acc-ink); background: var(--sel); }
+.srcopt:has(input:focus-visible) { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+.srcopt input { position: absolute; opacity: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.how { padding: 12px 16px; }
+.how ol { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 860px) { .wiz { grid-template-columns: 1fr; } .steps { flex-direction: row; overflow-x: auto; position: static; } .steps .lbl { display: none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Main"></nav>
+  <div class="main">
+    <header class="topbar"><div class="crumb">Settings / <b>Import from Azure DevOps</b></div><span class="grow"></span>
+      <span class="sm mute">Saved as draft · resume any time</span></header>
+    <div class="content"><div class="wiz">
+      <ol class="steps" id="steps" aria-label="Import steps"></ol>
+      <section class="body" id="body" aria-live="polite"></section>
+    </div></div>
+  </div>
+</div>
+<script>
+/* Shared sample data and helpers (same in every mockup so the directions compare on equal terms). */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const fmt = (n) => Number(n).toLocaleString('en-GB');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+const STATES = ['Backlog', 'Todo', 'In Progress', 'In Review', 'Done', 'Canceled'];
+const TYPES = ['Epic', 'Feature', 'Task'];
+
+/* Azure DevOps Services org "Contoso", Agile process (plus one Scrum and one CMMI project). */
+const D = {
+  source: { kind: 'Azure DevOps Services', short: 'ADO', url: 'https://dev.azure.com/contoso', org: 'Contoso' },
+  projects: [
+    { id: 'web', name: 'Webshop', process: 'Agile', items: 4812, key: 'WEB', on: true, color: 'verdigris' },
+    { id: 'mob', name: 'Mobile App', process: 'Agile', items: 1904, key: 'MOB', on: true, color: 'copper' },
+    { id: 'plat', name: 'Platform', process: 'Scrum', items: 2377, key: 'PLAT', on: true, color: 'plum' },
+    { id: 'crm', name: 'Legacy CRM', process: 'CMMI', items: 611, key: 'CRM', on: false, color: 'slate' },
+  ],
+  /* Webshop (Agile). level = ADO backlog level. */
+  types: [
+    { src: 'Epic', level: 'Epics', n: 14, to: 'Epic' },
+    { src: 'Feature', level: 'Features', n: 96, to: 'Feature' },
+    { src: 'User Story', level: 'Stories', n: 1240, to: 'Task' },
+    { src: 'Bug', level: 'Stories', n: 512, to: 'Task', label: 'bug' },
+    { src: 'Issue', level: 'Stories', n: 18, to: 'Task' },
+    { src: 'Task', level: 'Tasks', n: 2870, to: 'Task' },
+    { src: 'Test Case', level: 'Test', n: 62, to: 'Skip' },
+  ],
+  states: [
+    { src: 'New', cat: 'Proposed', n: 1306, to: 'Todo', why: 'Category Proposed. 412 with no iteration go to Backlog.' },
+    { src: 'Active', cat: 'InProgress', n: 388, to: 'In Progress', why: 'Category InProgress' },
+    { src: 'Code Review', cat: 'InProgress', n: 41, to: 'In Review', why: 'Name contains "review"' },
+    { src: 'Resolved', cat: 'Resolved', n: 97, to: 'In Review', why: 'Category Resolved' },
+    { src: 'Closed', cat: 'Completed', n: 2779, to: 'Done', why: 'Category Completed' },
+    { src: 'Removed', cat: 'Removed', n: 139, to: 'Canceled', why: 'Category Removed' },
+  ],
+  /* match: email | name | none | bot. action: member | placeholder | invite | skip */
+  people: [
+    { name: 'Mette Sørensen', email: 'mette@contoso.dk', n: 1120, match: 'email', member: 'Mette Sørensen', action: 'member' },
+    { name: 'Jonas Kjær', email: 'jonas.kjaer@contoso.dk', n: 884, match: 'email', member: 'Jonas Kjær', action: 'member' },
+    { name: 'Freja Holm', email: 'freja@contoso.dk', n: 702, match: 'email', member: 'Freja Holm', action: 'member' },
+    { name: 'Ahmed Rahimi', email: 'ahmed.rahimi@contoso.dk', n: 655, match: 'email', member: 'Ahmed Rahimi', action: 'member' },
+    { name: 'Anna Berg', email: 'anna.berg@contoso.dk', n: 544, match: 'none', member: null, action: 'placeholder', note: 'No member with this email' },
+    { name: 'Ida Lund', email: 'ida.lund@contoso.dk', n: 431, match: 'email', member: 'Ida Lund', action: 'member' },
+    { name: 'Kasper Møller', email: 'kasper.m@contoso.onmicrosoft.com', n: 390, match: 'name', member: 'Kasper Møller', action: 'member', note: 'Member email is kasper@contoso.dk' },
+    { name: 'Lars Vestergaard', email: '', n: 301, match: 'none', member: null, action: 'placeholder', note: 'Email hidden by the source' },
+    { name: 'Sofie Bach', email: 'sofie.bach@partner.de', n: 212, match: 'name', member: 'Sofie Bach', action: 'member', note: 'Member email is sofie@contoso.dk' },
+    { name: 'Henrik Dahl', email: 'henrik.dahl@contoso.dk', n: 198, match: 'email', member: 'Henrik Dahl', action: 'member' },
+    { name: 'Peter Lindqvist', email: 'peter@lindqvist-consult.se', n: 77, match: 'none', member: null, action: 'placeholder', note: 'No member with this email' },
+    { name: 'Morten Krag', email: 'morten.krag@contoso.dk', n: 64, match: 'none', member: null, action: 'placeholder', note: 'No member with this email' },
+    { name: 'Project Collection Build Service', email: '', n: 1460, match: 'bot', member: null, action: 'skip', note: 'Service account' },
+  ],
+  peopleSummary: { total: 23, email: 14, name: 4, placeholder: 4, skip: 1 },
+  members: ['Mette Sørensen', 'Jonas Kjær', 'Freja Holm', 'Ahmed Rahimi', 'Ida Lund', 'Kasper Møller', 'Sofie Bach', 'Henrik Dahl'],
+  fields: [
+    { src: 'Area Path', kind: 'select', n: 4410, to: 'labels', on: true, note: '14 leaf names, e.g. checkout, search' },
+    { src: 'Tags', kind: 'multi-select', n: 2950, to: 'labels', on: true, note: '37 tags' },
+    { src: 'Iteration Path', kind: 'select', n: 6890, to: 'sprints', on: true, note: '96 dated iterations; 3 undated' },
+    { src: 'Value Area', kind: 'select', n: 4812, to: 'details', on: false, note: 'Business / Architectural' },
+    { src: 'Risk', kind: 'select', n: 210, to: 'details', on: false },
+    { src: 'Acceptance Criteria', kind: 'html', n: 980, to: 'description', on: true, note: 'Becomes an "Acceptance criteria" section' },
+  ],
+  /* Plan for the three ticked projects. fold: 'tasks' (default) or 'epics'. */
+  plan: {
+    tasks: { issues: 9007, epics: 29, features: 195, tasks: 8783, labelsFromEpics: 0, reparented: 5362, relations: 5362 },
+    epics: { issues: 8978, epics: 195, features: 2650, tasks: 6133, labelsFromEpics: 29, reparented: 63, relations: 63 },
+    issues: 9007, skipped: 86, comments: 17940, attachments: 2318, bytes: '3.4 GB', changes: 118260,
+    sprints: 96, labels: 52, effortItems: 6912, effortHours: 31480, pointsOnly: 1644, pointsSum: 5120, noEffort: 451,
+  },
+  perProject: [
+    { key: 'WEB', name: 'Webshop', issues: 4750, epics: 14, features: 96, tasks: 4640, skipped: 62 },
+    { key: 'MOB', name: 'Mobile App', issues: 1880, epics: 6, features: 41, tasks: 1833, skipped: 24 },
+    { key: 'PLAT', name: 'Platform', issues: 2377, epics: 9, features: 58, tasks: 2310, skipped: 0 },
+  ],
+  /* One branch of Webshop, used for tree and diff views. */
+  sample: [
+    { id: 1203, type: 'Epic', title: 'Checkout redesign', state: 'In Progress', depth: 0 },
+    { id: 3310, type: 'Feature', title: 'MobilePay and card payments', state: 'In Progress', depth: 1, parent: 1203 },
+    { id: 4567, type: 'User Story', title: 'As a shopper I can pay with MobilePay', state: 'In Progress', depth: 2, parent: 3310 },
+    { id: 4571, type: 'Task', title: 'Add MobilePay SDK to checkout service', state: 'Done', depth: 3, parent: 4567 },
+    { id: 4572, type: 'Task', title: 'Handle declined payment callback', state: 'In Progress', depth: 3, parent: 4567 },
+    { id: 4602, type: 'Bug', title: 'Order total rounds wrong in DKK', state: 'In Review', depth: 2, parent: 3310 },
+  ],
+  /* Elsewhere: a Jira Cloud project and a Trello board. */
+  jira: { site: 'nordlys.atlassian.net', project: 'Payments', key: 'PAY', items: 3140, promoted: 212,
+    types: [['Epic', 22, 'Epic'], ['Story', 1610, 'Task'], ['Task', 640, 'Task'], ['Bug', 418, 'Task + bug'], ['Sub-task', 450, 'Task']] },
+  trello: { board: 'Marketing site', key: 'MKT', cards: 186,
+    lists: [['Ideas', 34, 'Backlog'], ['To do', 21, 'Todo'], ['Doing', 6, 'In Progress'], ['Review', 4, 'In Review'], ['Live', 98, 'Done'], ['Parked', 23, '']] },
+  sources: [
+    { id: 'ado', name: 'Azure DevOps', short: 'ADO', sub: 'Services and Server', wave: 1 },
+    { id: 'jira', name: 'Jira', short: 'JRA', sub: 'Cloud and Data Center', wave: 1 },
+    { id: 'csv', name: 'CSV file', short: 'CSV', sub: 'Any tool that exports CSV', wave: 1 },
+    { id: 'snap', name: 'Snapshot', short: 'ZIP', sub: 'From kupro import --local or a script', wave: 1 },
+    { id: 'kupro', name: 'Kupro export', short: 'KUP', sub: 'Move a workspace', wave: 1 },
+    { id: 'linear', name: 'Linear', short: 'LIN', sub: 'Teams, projects, cycles', wave: 2 },
+    { id: 'trello', name: 'Trello', short: 'TRL', sub: 'Boards, lists, checklists', wave: 2 },
+    { id: 'github', name: 'GitHub Issues', short: 'GH', sub: 'Issues, sub-issues, Projects', wave: 3 },
+    { id: 'monday', name: 'Monday', short: 'MON', sub: 'Boards and subitems', wave: 3 },
+    { id: 'youtrack', name: 'YouTrack', short: 'YT', sub: 'Cloud and self-hosted', wave: 3 },
+  ],
+  conflicts: [
+    { key: 'WEB-4567', field: 'Title', kupro: 'Checkout: support MobilePay', source: 'As a shopper I can pay with MobilePay and Vipps', by: 'Ida Lund' },
+    { key: 'WEB-4602', field: 'Assignee', kupro: 'Ida Lund', source: 'Jonas Kjær', by: 'Freja Holm' },
+  ],
+};
+
+const STATE_SVG = {
+  Backlog: '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.2 1.8"/>',
+  Todo: '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+  'In Progress': '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 3.8A3.2 3.2 0 0 1 7 10.2Z" fill="currentColor"/>',
+  'In Review': '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 7V3.8A3.2 3.2 0 1 1 3.8 7Z" fill="currentColor"/>',
+  Done: '<circle cx="7" cy="7" r="6.4" fill="currentColor"/><path d="M4.3 7.2l1.8 1.8 3.6-3.8" fill="none" stroke="var(--panel)" stroke-width="1.6" stroke-linecap="round"/>',
+  Canceled: '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+};
+const STATE_COLOR = { Backlog: 'var(--mute)', Todo: 'var(--ink)', 'In Progress': 'var(--prog)', 'In Review': 'var(--rev)', Done: 'var(--ok)', Canceled: 'var(--mute)' };
+const ring = (s) => STATE_SVG[s] ? `<svg class="ring" width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="${s}" style="color:${STATE_COLOR[s]}">${STATE_SVG[s]}</svg>` : '';
+const stateCell = (s) => s ? `<span class="row" style="gap:6px">${ring(s)}<span>${s}</span></span>` : '<span class="chip warn">Pick a state</span>';
+const tag = (t) => t === 'Epic' ? '<span class="tag epic">Epic</span>' : t === 'Feature' ? '<span class="tag feature">Feature</span>' : '';
+const typeCell = (t) => t === 'Skip' ? '<span class="mute">Skip</span>' : t === 'Task' ? '<span class="tag task">Task</span>' : tag(t);
+const AV = ['--proj-verdigris', '--proj-copper', '--proj-plum', '--proj-moss', '--proj-fjord', '--proj-slate'];
+const initials = (n) => n.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+const av = (name, ph) => {
+  const h = [...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  return ph ? `<span class="av ph" title="${esc(name)} (placeholder)" role="img" aria-label="${esc(name)}, placeholder">${initials(name)}</span>`
+    : `<span class="av" style="background:var(${AV[h % AV.length]})" title="${esc(name)}" role="img" aria-label="${esc(name)}">${initials(name)}</span>`;
+};
+const matchChip = (p) => ({ email: '<span class="chip ok">Email match</span>', name: '<span class="chip warn">Name match</span>',
+  none: '<span class="chip">No match</span>', bot: '<span class="chip">Service account</span>' })[p.match];
+const ACTION_LABEL = { member: 'Existing member', placeholder: 'Placeholder', invite: 'Invite on import', skip: 'Skip' };
+const peopleSelect = (p, i) => `<select class="input" data-person="${i}" aria-label="Kupro person for ${esc(p.name)}">
+  ${D.members.map((m) => `<option value="m:${esc(m)}" ${p.action === 'member' && p.member === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+  <option value="placeholder" ${p.action === 'placeholder' ? 'selected' : ''}>Placeholder: ${esc(p.name)}</option>
+  <option value="invite" ${p.action === 'invite' ? 'selected' : ''} ${p.email ? '' : 'disabled'}>Invite ${p.email ? esc(p.email) : '(no email)'}</option>
+  <option value="skip" ${p.action === 'skip' ? 'selected' : ''}>Skip, attribute to "Azure DevOps"</option></select>`;
+const stateSelect = (cur, label, allowEmpty) => `<select class="input" aria-label="${esc(label)}">${allowEmpty ? `<option value="" ${cur ? '' : 'selected'}>Pick a state</option>` : ''}${STATES.map((s) => `<option ${s === cur ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+const typeSelect = (cur, label) => `<select class="input" aria-label="${esc(label)}">${[...TYPES, ...(cur === 'Label' ? ['Label'] : []), 'Skip'].map((s) => `<option ${s === cur ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+
+const I = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  plan: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M17 14h-6M13 18H7"/>',
+  cycle: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-2.82-1.17l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3 13H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.17-2.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 2.82 1.17l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 21 11h0a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  import: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  chevd: '<path d="m6 9 6 6 6-6"/>',
+  arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+  term: '<path d="m4 17 6-6-6-6M12 19h8"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+};
+const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">${I[n]}</svg>`;
+const MARK = '<svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6.5" width="17" height="5" rx="2.5" fill="var(--side-ink)"/><rect x="9" y="13.5" width="20" height="5" rx="2.5" fill="var(--acc)"/><rect x="5" y="20.5" width="12" height="5" rx="2.5" fill="var(--side-ink)" opacity=".5"/></svg>';
+
+/* App shell sidebar. extra = projects created by the import, shown once it has run. */
+function sidebar(extra = []) {
+  const projs = [{ name: 'Operations', key: 'OPS', color: 'fjord' }, ...extra];
+  return `<div class="ws">${MARK}<span>Contoso</span></div>
+  <div class="nav">
+    <a class="ni" href="#" onclick="return false">${icon('search')}<span>Search</span><span class="k"><kbd>Ctrl K</kbd></span></a>
+    <a class="ni" href="#" onclick="return false">${icon('inbox')}<span>My issues</span></a>
+    <a class="ni" href="#" onclick="return false">${icon('plan')}<span>Delivery plan</span></a>
+    <a class="ni" href="#" onclick="return false">${icon('cycle')}<span>Sprints</span></a>
+  </div>
+  <div class="nav"><div class="hd">Projects</div>
+    ${projs.map((p) => `<a class="ni" href="#" onclick="return false"><span class="sq" style="background:var(--proj-${p.color})"></span><span class="trunc">${p.name}</span><span class="k">${p.key}</span></a>`).join('')}
+  </div>
+  <div class="nav"><div class="hd">Workspace</div>
+    <a class="ni" href="#" onclick="return false">${icon('users')}<span>Members</span></a>
+    <a class="ni" href="#" onclick="return false" aria-current="page">${icon('import')}<span>Import</span></a>
+    <a class="ni" href="#" onclick="return false">${icon('gear')}<span>Settings</span></a>
+  </div>
+  <div class="sfoot"><span class="dot"></span>1 agent working</div>`;
+}
+const IMPORTED_PROJECTS = [{ name: 'Webshop', key: 'WEB', color: 'verdigris' }, { name: 'Mobile App', key: 'MOB', color: 'copper' }, { name: 'Platform', key: 'PLAT', color: 'plum' }];
+
+/* Prototype bar: says what this is, links back, toggles theme. */
+function protoBar(n, title) {
+  const bar = document.createElement('div');
+  bar.className = 'proto';
+  bar.innerHTML = `<span><b>Prototype ${n} of 10</b> · ${esc(title)} · not the shipped UI, sample data only</span><span class="sp"></span>
+    <a href="index.html">All directions</a><button type="button" id="themeBtn" aria-pressed="false">Dark theme</button>`;
+  document.body.prepend(bar);
+  $('#themeBtn').addEventListener('click', (e) => {
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    e.target.setAttribute('aria-pressed', String(dark));
+    e.target.textContent = dark ? 'Light theme' : 'Dark theme';
+  });
+}
+let toastTimer;
+function toast(msg) {
+  let t = $('#toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.append(t); }
+  t.innerHTML = msg; t.classList.remove('hidden');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), 5000);
+}
+/* Fake a running import: calls onTick(pct) and onDone(). */
+function simulate(onTick, onDone, ms = 2600) {
+  const start = performance.now();
+  const step = (now) => {
+    const pct = Math.min(1, (now - start) / ms);
+    onTick(pct);
+    if (pct < 1) requestAnimationFrame(step); else onDone && onDone();
+  };
+  requestAnimationFrame(step);
+}
+const PHASES = ['Reading work items', 'Fitting hierarchy', 'Writing issues', 'Copying comments', 'Copying attachments', 'Replaying history'];
+const phaseAt = (pct) => PHASES[Math.min(PHASES.length - 1, Math.floor(pct * PHASES.length))];
+/* Platform uses Scrum: its own default maps (task 025, per-process defaults). */
+D.scrum = {
+  types: [
+    { src: 'Epic', level: 'Epics', n: 9, to: 'Epic' }, { src: 'Feature', level: 'Features', n: 58, to: 'Feature' },
+    { src: 'Product Backlog Item', level: 'Stories', n: 820, to: 'Task' }, { src: 'Bug', level: 'Stories', n: 377, to: 'Task', label: 'bug' },
+    { src: 'Impediment', level: 'Stories', n: 14, to: 'Task', label: 'impediment' }, { src: 'Task', level: 'Tasks', n: 1099, to: 'Task' },
+  ],
+  states: [
+    { src: 'New', cat: 'Proposed', n: 402, to: 'Todo', why: 'Category Proposed' }, { src: 'Approved', cat: 'Proposed', n: 118, to: 'Todo', why: 'Category Proposed' },
+    { src: 'Committed', cat: 'InProgress', n: 151, to: 'In Progress', why: 'Category InProgress' }, { src: 'In Test', cat: 'InProgress', n: 22, to: 'In Review', why: 'Name contains "test"' },
+    { src: 'Done', cat: 'Completed', n: 1610, to: 'Done', why: 'Category Completed' }, { src: 'Removed', cat: 'Removed', n: 74, to: 'Canceled', why: 'Category Removed' },
+  ],
+};
+const PROCESS = { Agile: { projects: 'Webshop, Mobile App', types: D.types, states: D.states }, Scrum: { projects: 'Platform', types: D.scrum.types, states: D.scrum.states } };
+/* Fold choice for ADO's four levels: 'tasks' (default) or 'epics' (Epic → label, everything moves up a level). */
+const foldType = (t, fold) => fold === 'epics' ? ({ Epic: 'Label', Feature: 'Epic', 'User Story': 'Feature', 'Product Backlog Item': 'Feature' }[t.src] || t.to) : t.to;
+
+/* The ADO four-level choice: two equal options, each with its own counts (owner: a team choice, not a buried default).
+   Keys match D.plan: 'tasks' = Keep Epics, 'epics' = Fold Epics. */
+const FOLD = {
+  tasks: { name: 'Keep Epics', map: [['Epic', 'Epic'], ['Feature', 'Feature'], ['User Story', 'Task'], ['Task', 'Task under the Feature']],
+    moves: `${fmt(D.plan.tasks.reparented)} ADO Tasks move up under their Feature, each with a <i>relates</i> link to its old Story`, labels: 'None',
+    good: 'Epics stay on the delivery plan', cost: 'Story → Task grouping becomes a link' },
+  epics: { name: 'Fold Epics', map: [['Epic', 'label'], ['Feature', 'Epic'], ['User Story', 'Feature'], ['Task', 'Task']],
+    moves: `${fmt(D.plan.epics.reparented)} items get a new parent, each with a <i>relates</i> link to the old one`, labels: `${D.plan.epics.labelsFromEpics} labels, one per old Epic, on its former Features`,
+    good: 'Stories keep their Tasks as children', cost: 'Old Epics leave the delivery plan' },
+};
+function foldOptions(cur, fn, opts = {}) {
+  const name = opts.name || 'fold';
+  return `<fieldset class="foldopts">${opts.legend === '' ? '' : `<legend>${opts.legend || 'Azure DevOps has four levels, Kupro has three. Which level folds?'}</legend>`}
+  ${Object.entries(FOLD).map(([k, f]) => { const c = D.plan[k]; return `<label class="foldopt"><span class="row"><input type="radio" name="${name}" value="${k}" ${cur === k ? 'checked' : ''} ${opts.disabled ? 'disabled' : ''} onchange="${fn}('${k}')"><b>${f.name}</b></span>
+    <span class="fmap">${f.map.map(([a, b]) => `<span>${a}</span><span class="arrow">→</span><span class="${b === 'label' ? 'fl' : ''}">${b}</span>`).join('')}</span>
+    <span class="fcount mono">${fmt(c.epics)} Epics · ${fmt(c.features)} Features · ${fmt(c.tasks)} Tasks</span>
+    <span class="fline"><b>Re-parents</b> ${f.moves}</span><span class="fline"><b>Labels</b> ${f.labels}</span>
+    <span class="fline mute">${f.good}. ${f.cost}.</span></label>`; }).join('')}</fieldset>`;
+}
+/* Jira Premium Initiatives (a level above Epic) get the same kind of choice (task 024). */
+D.jira.initiatives = 4;
+const INIT = {
+  label: { name: 'Initiative as a label', map: [['Initiative', 'label on its Epics'], ['Epic', 'Epic'], ['Story', 'Task, or Feature if it has sub-tasks'], ['Sub-task', 'Task']],
+    counts: [22, 212, 2906], moves: 'None', labels: '4 labels, one per Initiative, on 22 Epics' },
+  epic: { name: 'Initiative → Epic, Epic → Feature', map: [['Initiative', 'Epic'], ['Epic', 'Feature'], ['Story', 'Task'], ['Sub-task', 'Task under the Feature']],
+    counts: [4, 22, 3114], moves: '450 sub-tasks move up under their Feature, each with a <i>relates</i> link to its old Story', labels: 'None' },
+};
+function initiativeOptions(cur, fn, opts = {}) {
+  return `<fieldset class="foldopts"><legend>${opts.legend || 'Jira has Initiatives above Epics. Where do they go?'}</legend>
+  ${Object.entries(INIT).map(([k, f]) => `<label class="foldopt"><span class="row"><input type="radio" name="${opts.name || 'init'}" value="${k}" ${cur === k ? 'checked' : ''} ${opts.disabled ? 'disabled' : ''} onchange="${fn}('${k}')"><b>${f.name}</b></span>
+    <span class="fmap">${f.map.map(([a, b]) => `<span>${a}</span><span class="arrow">→</span><span class="${b.startsWith('label') ? 'fl' : ''}">${b}</span>`).join('')}</span>
+    <span class="fcount mono">${f.counts[0]} Epics · ${fmt(f.counts[1])} Features · ${fmt(f.counts[2])} Tasks</span>
+    <span class="fline"><b>Re-parents</b> ${f.moves}</span><span class="fline"><b>Labels</b> ${f.labels}</span></label>`).join('')}</fieldset>`;
+}
+/* Per-project counts under Fold Epics (Epics become labels, so each project has fewer issues). */
+D.perProjectEpics = [
+  { key: 'WEB', name: 'Webshop', issues: 4736, epics: 96, features: 1240, tasks: 3400, skipped: 62 },
+  { key: 'MOB', name: 'Mobile App', issues: 1874, epics: 41, features: 590, tasks: 1243, skipped: 24 },
+  { key: 'PLAT', name: 'Platform', issues: 2368, epics: 58, features: 820, tasks: 1490, skipped: 0 },
+];
+const perProject = (fold) => (fold === 'epics' ? D.perProjectEpics : D.perProject);
+
+protoBar('01', 'Classic stepper wizard');
+$('#side').innerHTML = sidebar();
+const STEPS = ['Source', 'Connect', 'Scope', 'People', 'Types & states', 'Fields & effort', 'Plan', 'Import', 'Report'];
+const S = { step: 0, reached: 0, connected: false, fold: 'tasks', factor: '', proc: 'Agile' };
+function setFold(k) { S.fold = k; render(); $('.foldopt input:checked').focus(); }
+
+function nav(i) { if (i <= S.reached) { S.step = i; render(); } }
+function next() { S.step = Math.min(STEPS.length - 1, S.step + 1); S.reached = Math.max(S.reached, S.step); render(); }
+function back() { S.step = Math.max(0, S.step - 1); render(); }
+
+function footer(nextLabel, opts = {}) {
+  return `<div class="foot">${S.step > 0 && !opts.noBack ? '<button class="btn" onclick="back()">Back</button>' : ''}<span class="grow"></span>
+    ${opts.extra || ''}<button class="btn primary" onclick="next()" ${opts.disabled ? 'disabled' : ''}>${nextLabel} <kbd>Ctrl ↵</kbd></button></div>`;
+}
+
+const views = [
+  () => `<div class="col"><h1>Where are you coming from?</h1><p class="mute">Kupro reads from the source and never writes to it. You can run the import again until you finish the migration.</p></div>
+    <div class="srcgrid" role="radiogroup" aria-label="Source">${D.sources.map((s) => `<label class="srcopt"><input type="radio" name="src" value="${s.id}" ${s.id === 'ado' ? 'checked' : ''}>
+      <span class="src lg">${s.short}</span><span class="col" style="gap:2px"><b>${s.name}</b><span class="sm mute">${s.sub}</span></span></label>`).join('')}</div>
+    ${footer('Continue')}`,
+  () => `<div class="col"><h1>Connect to Azure DevOps</h1><p class="mute">A personal access token with read access. It's encrypted, never shown again, and deleted when you finish the migration.</p></div>
+    <div class="seg" role="group" aria-label="Edition"><button aria-pressed="true">Services (dev.azure.com)</button><button aria-pressed="false">Server</button></div>
+    <label class="field"><span>Organization URL</span><input class="input" value="${D.source.url}" style="max-width:420px"></label>
+    <label class="field"><span>Personal access token</span><input class="input" type="password" value="••••••••••••••••••••••••••••••" style="max-width:420px" autocomplete="off">
+      <small>Scopes: Work Items (Read), Project and Team (Read)</small></label>
+    <div class="card how sm"><b>Where to get a token</b><ol><li>In Azure DevOps, open User settings → Personal access tokens.</li><li>Click New Token, pick your organization and an expiry of 90 days.</li><li>Under Scopes choose Custom defined, then Work Items: Read and Project and Team: Read.</li><li>Copy the token and paste it here.</li></ol></div>
+    <p class="sm mute">Server behind a VPN? Run <code>kupro import azure-devops --url https://tfs.contoso.local/DefaultCollection --local</code> on a machine that can reach it. The token stays on that machine.</p>
+    <div class="row">${S.connected ? `<span class="okline">Connected as Mette Sørensen · 4 projects · API 7.1</span>` : `<button class="btn" onclick="S.connected=true;render()">Check connection</button>`}</div>
+    ${footer('Continue', { disabled: !S.connected })}`,
+  () => `<div class="col"><h1>What should come across?</h1><p class="mute">Each Azure DevOps project becomes a Kupro project. Work item numbers are kept under the key you pick: #4567 becomes WEB-4567.</p></div>
+    <div class="card"><table class="t"><thead><tr><th></th><th>Azure DevOps project</th><th>Process</th><th class="num">Work items</th><th>Into</th><th>Key</th></tr></thead><tbody>
+    ${D.projects.map((p) => `<tr><td><input type="checkbox" class="check" ${p.on ? 'checked' : ''} aria-label="Import ${p.name}"></td><td class="strong">${p.name}</td><td class="mute">${p.process}</td><td class="num">${fmt(p.items)}</td>
+      <td><select class="input" aria-label="Target for ${p.name}"><option>New project</option><option>Existing: Operations</option><option>Merge with another source project</option></select></td>
+      <td><input class="input mono" value="${p.key}" style="width:72px" aria-label="Key for ${p.name}"></td></tr>`).join('')}</tbody></table></div>
+    <div class="row wrap" style="gap:16px"><label class="field"><span>Closed work items</span><select class="input"><option>All of them</option><option>Closed in the last 24 months</option><option>Closed in the last 12 months</option></select></label>
+      <label class="field"><span>Test plan items</span><select class="input"><option>Skip (Test Case, Shared Steps)</option><option>Import as Tasks</option></select></label></div>
+    ${footer('Continue')}`,
+  () => `<div class="col"><h1>Match people</h1><p class="mute">${D.peopleSummary.total} people appear on the selected work items. Placeholders keep names on history without a login or a seat. You can invite or merge them later.</p></div>
+    <div class="row wrap"><span class="chip ok">${D.peopleSummary.email} by email</span><span class="chip warn">${D.peopleSummary.name} by name, check these</span><span class="chip">${D.peopleSummary.placeholder} placeholders</span><span class="chip">${D.peopleSummary.skip} skipped</span></div>
+    <div class="card"><table class="t"><thead><tr><th>In Azure DevOps</th><th class="num">Items</th><th>Match</th><th>In Kupro</th></tr></thead><tbody>
+    ${D.people.map((p, i) => `<tr><td><div class="row">${av(p.name, p.match !== 'email' && p.match !== 'name')}<div class="col" style="gap:0"><span>${p.name}</span><span class="xs mute">${p.email || 'no email'}</span></div></div></td>
+      <td class="num">${fmt(p.n)}</td><td>${matchChip(p)}</td><td>${peopleSelect(p, i)}</td></tr>`).join('')}
+    <tr><td colspan="4" class="mute sm">8 more matched by email</td></tr></tbody></table></div>
+    ${footer('Continue')}`,
+  () => `<div class="col"><h1>Types and states</h1><p class="mute">Kupro has three types (Epic, Feature, Task) and one workflow. Defaults follow the Agile process.</p></div>
+    ${foldOptions(S.fold, 'setFold')}
+    <div class="row"><div class="seg" role="group" aria-label="Process">${Object.keys(PROCESS).map((k) => `<button aria-pressed="${S.proc === k}" onclick="S.proc='${k}';render()">${k} · ${PROCESS[k].projects}</button>`).join('')}</div>
+      <span class="sm mute">Each process has its own defaults.</span></div>
+    <div class="card"><table class="t"><thead><tr><th>Work item type</th><th>Backlog level</th><th class="num">Items</th><th>Kupro type</th><th>Adds label</th></tr></thead><tbody>
+    ${PROCESS[S.proc].types.map((t) => `<tr><td>${t.src}</td><td class="mute">${t.level}</td><td class="num">${fmt(t.n)}</td><td>${typeSelect(foldType(t, S.fold), t.src)}</td><td>${t.label ? `<span class="pill bug">${t.label}</span>` : ''}${S.fold === 'epics' && t.src === 'Epic' ? '<span class="pill">epic name</span>' : ''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="card"><table class="t"><thead><tr><th>State</th><th>Category</th><th class="num">Items</th><th>Kupro state</th><th>Why</th></tr></thead><tbody>
+    ${PROCESS[S.proc].states.map((s) => `<tr><td>${s.src}</td><td class="mute">${s.cat}</td><td class="num">${fmt(s.n)}</td><td>${stateSelect(s.to, s.src)}</td><td class="sm mute">${s.why}</td></tr>`).join('')}</tbody></table></div>
+    ${footer('Continue')}`,
+  () => `<div class="col"><h1>Fields and effort</h1><p class="mute">Ticked fields become labels or sprints. Everything else lands in an "Imported from Azure DevOps" block at the end of each description. Nothing is dropped.</p></div>
+    <div class="card"><table class="t"><thead><tr><th></th><th>Field</th><th>Kind</th><th class="num">Items</th><th>Becomes</th><th></th></tr></thead><tbody>
+    ${D.fields.map((f) => `<tr><td><input type="checkbox" class="check" ${f.on ? 'checked' : ''} aria-label="Use ${f.src}"></td><td>${f.src}</td><td class="mute">${f.kind}</td><td class="num">${fmt(f.n)}</td><td>${f.on ? f.to : 'details block'}</td><td class="sm mute">${f.note || ''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="col"><h2>Effort</h2>
+      <p class="mute">${fmt(D.plan.effortItems)} items have an Original Estimate: ${fmt(D.plan.effortHours)} h, imported as is. ${fmt(D.plan.pointsOnly)} items only have story points.</p>
+      <label class="field"><span>Hours per story point</span><input class="input mono" style="width:120px" placeholder="e.g. 6" value="${S.factor}" oninput="S.factor=this.value">
+        <small>No default. Leave blank to import those items without effort; the points stay in the details block.</small></label></div>
+    <div class="col"><h2>Priority</h2><p class="sm mute">1 → High, 2 → Medium, 3 and 4 → Low. Bugs with Severity "1 - Critical" → Urgent. <a href="#" onclick="return false">Change</a></p></div>
+    ${footer('Run dry run')}`,
+  () => {
+    const f = D.plan[S.fold];
+    return `<div class="col"><h1>Plan</h1><p class="mute">A dry run against your workspace. Nothing has been written yet.</p></div>
+    <div class="stats card pad">
+      <div class="stat"><b>${fmt(D.plan[S.fold].issues)}</b><span>issues to create</span></div>
+      <div class="stat"><b>${fmt(f.reparented)}</b><span>re-parented, related to old parent</span></div>
+      <div class="stat"><b>${fmt(D.peopleSummary.placeholder)}</b><span>placeholders</span></div>
+      <div class="stat"><b>${D.plan.bytes}</b><span>${fmt(D.plan.attachments)} attachments</span></div>
+      <div class="stat"><b>${fmt(f.epics)}</b><span>Epics</span></div><div class="stat"><b>${fmt(f.features)}</b><span>Features</span></div>
+      <div class="stat"><b>${fmt(f.tasks)}</b><span>Tasks</span></div><div class="stat"><b>${fmt(D.plan.skipped)}</b><span>skipped (test items)</span></div>
+      <div class="stat"><b>${fmt(D.plan.comments)}</b><span>comments</span></div><div class="stat"><b>${fmt(D.plan.changes)}</b><span>history entries</span></div>
+      <div class="stat"><b>${D.plan.sprints}</b><span>sprints</span></div><div class="stat"><b>${D.plan.labels + f.labelsFromEpics}</b><span>labels</span></div>
+    </div>
+    <div class="col">${S.factor ? '' : `<span class="warnline">${fmt(D.plan.pointsOnly)} items have story points but no hours per point. They import without effort.</span>`}
+      <span class="warnline">3 iterations have no dates and become labels, not sprints.</span>
+      <span class="okline">Effort: ${fmt(D.plan.effortHours)} h against 3 projects with no capacity set yet.</span></div>
+    <div class="card"><table class="t"><thead><tr><th>Project</th><th class="num">Issues</th><th class="num">Epics</th><th class="num">Features</th><th class="num">Tasks</th><th class="num">Skipped</th></tr></thead><tbody>
+    ${perProject(S.fold).map((p) => `<tr><td><span class="mono mute">${p.key}</span> ${p.name}</td><td class="num">${fmt(p.issues)}</td><td class="num">${p.epics}</td><td class="num">${p.features}</td><td class="num">${fmt(p.tasks)}</td><td class="num">${p.skipped}</td></tr>`).join('')}</tbody></table></div>
+    ${footer('Import ' + fmt(D.plan[S.fold].issues) + ' issues')}`;
+  },
+  () => `<div class="col"><h1>Importing</h1><p class="mute">You can leave this page. Kupro emails you when the import is done.</p></div>
+    <div class="card pad col" style="gap:12px"><div class="row"><b id="ph">Reading work items</b><span class="grow"></span><span class="mono" id="cnt">0 / ${fmt(D.plan[S.fold].issues)}</span></div>
+      <div class="bar"><i id="pb" style="width:0%"></i></div><span class="sm mute" id="eta">About 9 minutes left</span></div>
+    <div class="foot"><span class="grow"></span><button class="btn primary" id="seeReport" disabled onclick="next()">See report</button></div>`,
+  () => `<div class="col"><h1>Imported ${fmt(D.plan[S.fold].issues)} issues</h1><p class="mute">Run 1 · finished 14:32 · took 8 min 41 s</p></div>
+    <div class="stats card pad"><div class="stat"><b>${fmt(D.plan[S.fold].issues)}</b><span>created</span></div><div class="stat"><b>0</b><span>conflicts</span></div>
+      <div class="stat"><b>${fmt(D.plan[S.fold].reparented)}</b><span>re-parented</span></div><div class="stat"><b>${fmt(D.plan.skipped)}</b><span>skipped</span></div></div>
+    <div class="row wrap">${perProject(S.fold).map((p) => `<a class="btn" href="#" onclick="return false"><span class="mono mute">${p.key}</span> Open ${p.name}</a>`).join('')}</div>
+    <div class="card pad col"><h2>Keep it in sync</h2><p class="mute">Your team can keep working in Azure DevOps. Each run picks up what changed. Edits made in Kupro win.</p>
+      <label class="check"><input type="checkbox" checked> Sync every hour until I finish the migration</label>
+      <div class="row wrap"><button class="btn" onclick="toast('Sync started · 38 changed work items found')">${icon('refresh')} Sync now</button><button class="btn danger" onclick="toast('Undo would delete 9,007 issues. Confirm dialog goes here.')">${icon('undo')} Undo import</button>
+        <span class="grow"></span><button class="btn" onclick="toast('Finish migration: stops sync, deletes the token. Confirm dialog goes here.')">${icon('flag')} Finish migration</button></div></div>
+    <p class="sm mute">Same from the CLI: <code>kupro import report 7</code> · agents can read it through the MCP <code>imports</code> tool.</p>`,
+];
+
+function render() {
+  $('#steps').innerHTML = STEPS.map((s, i) => `<li><button ${i > S.reached ? 'disabled' : ''} class="${i < S.reached && i !== S.step ? 'done' : ''}" ${i === S.step ? 'aria-current="step"' : ''} onclick="nav(${i})">
+    <span class="n">${i < S.reached && i !== S.step ? '✓' : i + 1}</span><span class="lbl">${s}</span></button></li>`).join('');
+  $('#body').innerHTML = views[S.step]();
+  if (STEPS[S.step] === 'Import') {
+    simulate((p) => { $('#pb').style.width = p * 100 + '%'; $('#cnt').textContent = fmt(Math.round(p * D.plan[S.fold].issues)) + ' / ' + fmt(D.plan[S.fold].issues); $('#ph').textContent = phaseAt(p);
+      $('#eta').textContent = p < 1 ? `About ${Math.max(1, Math.round(9 * (1 - p)))} minutes left` : 'Done'; }, () => { $('#seeReport').disabled = false; $('#seeReport').focus(); });
+  }
+  const h = $('#body h1'); if (h) { h.tabIndex = -1; }
+}
+document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { const b = $('#body .foot .btn.primary'); if (b && !b.disabled) b.click(); } });
+render();
+</script>
+</body>
+</html>

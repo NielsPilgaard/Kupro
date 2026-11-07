@@ -32,6 +32,7 @@ tests/
 ├── Kupro.Tests/        # xUnit + Testcontainers integration tests
 └── e2e/                    # Playwright
 docs/                       # product.md, delivery-plan.md, adr/
+prototypes/<feature>/       # clickable HTML UI prototypes, made before UI code; not shipped
 tasks/                      # numbered task specs
 ```
 
@@ -47,6 +48,9 @@ tasks/                      # numbered task specs
 8. **Design tokens**: no hex/rgb/font names in components — tokens from [design-guide.md](docs/design-guide.md) only.
 9. **Minimal diffs**: don't reformat code you didn't change.
 10. **Docs**: ADRs and tasks follow the progressive-disclosure convention (frontmatter `description`, TL;DR). Decisions live in ADRs only — link, don't restate.
+11. **Prototype before UI code**: a new screen, flow or major UI change starts as several clickable HTML prototypes in
+    `prototypes/<feature>/` (self-contained, design-guide tokens). The owner picks one and the task file records the
+    pick before any `web/` code is written. Small changes to existing screens are exempt.
 
 ## Security
 
