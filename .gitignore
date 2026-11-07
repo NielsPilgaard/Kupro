@@ -32,3 +32,6 @@ Thumbs.db
 
 # Private notes (owner checklists, never committed)
 notes/
+
+# Claude Code agent worktrees
+.claude/worktrees/
