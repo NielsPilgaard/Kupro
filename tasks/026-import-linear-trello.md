@@ -3,7 +3,7 @@ title: 'Task 026: Import from Linear and Trello'
 description: >-
   Wave 2 connectors for the import framework: Linear (GraphQL; teams, projects, cycles, sub-issues, history) and
   Trello (boards, lists, cards, checklists, actions), with their default mappings.
-status: 'Todo'
+status: 'In progress'
 phase: 1
 depends_on: [023]
 purpose: 'Implementation spec for task 026.'
@@ -16,6 +16,31 @@ purpose: 'Implementation spec for task 026.'
 Decisions are in [ADR-019](../docs/adr/ADR-019-import.md); the pipeline is [task 023](023-import-framework.md). Two
 connectors for the startup audience. Linear's model is closest to Kupro's; Trello's is the furthest, so its
 wizard leans on hand mapping of lists.
+
+**Progress**: Trello's reading side is done: `Kupro.Import/Trello` (`TrelloConnector`, client, reading) and
+`TrelloConnectorTests` against `FakeTrello`, a fake that serves the API 1 response shapes and enforces its page
+limits. Key and token go in the OAuth header, to `api.trello.com` only; uploads on `trello.com` are fetched from there.
+The connector reports Trello's own terms: lists as per-board statuses (archived lists have category `archived`), cards
+as `card` items keyed by `idShort`, checklists as a Markdown task list in the description, checklist items with a
+member or due date also as `checkItem` items under the card, the `archived`, `dueComplete` and `members` fields, and
+custom fields. Cards and actions are paged by ID with `before`; the delta reads actions `since` the cursor, while
+creators and archive times come from a full read of the creation and archive actions. Linear is not started.
+
+**Next** for Trello, each waits on a slice of [task 023](023-import-framework.md):
+
+- Default list mapping by name, archived cards to Canceled or skipped, the epic source and checklist items to Tasks
+  need 023's mapping model. Promoted items are also still in the description's task list; the pipeline drops those
+  lines or keeps them.
+- Label colours need a place in the snapshot (an optional `labels` list in the header); today a colour-only label
+  comes as its colour name and a named label's colour is not read across.
+- `@username` mentions and card links (`trello.com/c/…`) need its `MarkupConverter`.
+- Keys (`idShort` under the owner's key) and card URL aliases need its pipeline.
+- The authorize link and token storage need the wizard; Kupro's API key is a manual step.
+- `kupro import trello --local` needs the import CLI group, and the site page needs the wizard.
+
+A comment edited after the cursor keeps its action date, so only a full run picks up the edit. Attachments not on
+Trello are fetched without credentials: in the API that needs the same private-address guard (SSRF) as task 025's base
+URL. Recorded fixtures need a Trello sandbox board (a manual step); until then the fake stands in for them.
 
 ## Scope
 
