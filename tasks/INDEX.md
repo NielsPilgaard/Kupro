@@ -41,9 +41,9 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-07. The build order above is not the same as what is buildable: **023 and the connectors 024, 027 and
-Linear (026) are buildable by an agent now**. The 025 and Trello (026) connectors are done; the rest of those tasks
-waits on 023. Every other open row waits on a person, directly or through a dependency. Don't spend a session
+Checked 2026-11-07. The build order above is not the same as what is buildable: **023 (except its web UI) and the connectors
+024 and 027 are buildable by an agent now**. The 025 and 026 connectors are done; the rest of those tasks waits on
+023. Every other open row waits on a person, directly or through a dependency. Don't spend a session
 re-deriving this; read this table, and update it when a step is done. "Depends on" lists what blocks *starting*; a dependency
 that only blocks closing a task is written "(N to close)".
 
@@ -55,8 +55,8 @@ that only blocks closing a task is written "(N to close)".
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
 | 023 | Buildable: being built ahead of 013, except its web UI, which waits on 033. Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
 | 033 | Owner decision: which import UI prototype to build. An agent asks the owner and waits; it never picks | The owner's answer |
-| 024, 026 Linear, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
-| 025, 026 Trello | Connectors (reading) done. Default mappings, fold, markup rewriting, keys, CLI and site page wait on 023's pipeline and surfaces | 023's mapping model, `MarkupConverter` and import CLI; the sandbox for the close |
+| 024, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
+| 025, 026 | Connectors (reading) done. Default mappings, fold, markup rewriting, keys, CLI and site page wait on 023's pipeline and surfaces | 023's mapping model, `MarkupConverter` and import CLI; the sandbox for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
