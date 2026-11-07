@@ -301,7 +301,7 @@ const D = {
   /* Plan for the three ticked projects. fold: 'tasks' (default) or 'epics'. */
   plan: {
     tasks: { issues: 9007, epics: 29, features: 195, tasks: 8783, labelsFromEpics: 0, reparented: 5362, relations: 5362 },
-    epics: { issues: 8978, epics: 195, features: 2650, tasks: 6133, labelsFromEpics: 29, reparented: 63, relations: 63 },
+    epics: { issues: 9007, epics: 224, features: 2650, tasks: 6133, labelsFromEpics: 29, reparented: 63, relations: 63 },
     issues: 9007, skipped: 86, comments: 17940, attachments: 2318, bytes: '3.4 GB', changes: 118260,
     sprints: 96, labels: 52, effortItems: 6912, effortHours: 31480, pointsOnly: 1644, pointsSum: 5120, noEffort: 451,
   },
@@ -467,7 +467,7 @@ D.scrum = {
   ],
 };
 const PROCESS = { Agile: { projects: 'Webshop, Mobile App', types: D.types, states: D.states }, Scrum: { projects: 'Platform', types: D.scrum.types, states: D.scrum.states } };
-/* Fold choice for ADO's four levels: 'tasks' (default) or 'epics' (Epic → label, everything moves up a level). */
+/* Fold choice for ADO's four levels: 'tasks' (default) or 'epics' (Epic → childless Epic + label, everything moves up a level). */
 const foldType = (t, fold) => fold === 'epics' ? ({ Epic: 'Label', Feature: 'Epic', 'User Story': 'Feature', 'Product Backlog Item': 'Feature' }[t.src] || t.to) : t.to;
 
 /* The ADO four-level choice: two equal options, each with its own counts (owner: a team choice, not a buried default).
@@ -476,7 +476,7 @@ const FOLD = {
   tasks: { name: 'Keep Epics', map: [['Epic', 'Epic'], ['Feature', 'Feature'], ['User Story', 'Task'], ['Task', 'Task under the Feature']],
     moves: `${fmt(D.plan.tasks.reparented)} ADO Tasks move up under their Feature, each with a <i>relates</i> link to its old Story`, labels: 'None',
     good: 'Epics stay on the delivery plan', cost: 'Story → Task grouping becomes a link' },
-  epics: { name: 'Fold Epics', map: [['Epic', 'label'], ['Feature', 'Epic'], ['User Story', 'Feature'], ['Task', 'Task']],
+  epics: { name: 'Fold Epics', map: [['Epic', 'Epic, no children, + label'], ['Feature', 'Epic'], ['User Story', 'Feature'], ['Task', 'Task']],
     moves: `${fmt(D.plan.epics.reparented)} items get a new parent, each with a <i>relates</i> link to the old one`, labels: `${D.plan.epics.labelsFromEpics} labels, one per old Epic, on its former Features`,
     good: 'Stories keep their Tasks as children', cost: 'Old Epics leave the delivery plan' },
 };
@@ -492,7 +492,7 @@ function foldOptions(cur, fn, opts = {}) {
 /* Jira Premium Initiatives (a level above Epic) get the same kind of choice (task 024). */
 D.jira.initiatives = 4;
 const INIT = {
-  label: { name: 'Initiative as a label', map: [['Initiative', 'label on its Epics'], ['Epic', 'Epic'], ['Story', 'Task, or Feature if it has sub-tasks'], ['Sub-task', 'Task']],
+  label: { name: 'Initiative as a label', map: [['Initiative', 'Epic, no children, + label on its Epics'], ['Epic', 'Epic'], ['Story', 'Task, or Feature if it has sub-tasks'], ['Sub-task', 'Task']],
     counts: [22, 212, 2906], moves: 'None', labels: '4 labels, one per Initiative, on 22 Epics' },
   epic: { name: 'Initiative → Epic, Epic → Feature', map: [['Initiative', 'Epic'], ['Epic', 'Feature'], ['Story', 'Task'], ['Sub-task', 'Task under the Feature']],
     counts: [4, 22, 3114], moves: '450 sub-tasks move up under their Feature, each with a <i>relates</i> link to its old Story', labels: 'None' },
@@ -504,11 +504,11 @@ function initiativeOptions(cur, fn, opts = {}) {
     <span class="fcount mono">${f.counts[0]} Epics · ${fmt(f.counts[1])} Features · ${fmt(f.counts[2])} Tasks</span>
     <span class="fline"><b>Re-parents</b> ${f.moves}</span><span class="fline"><b>Labels</b> ${f.labels}</span></label>`).join('')}</fieldset>`;
 }
-/* Per-project counts under Fold Epics (Epics become labels, so each project has fewer issues). */
+/* Per-project counts under Fold Epics (old Epics stay as childless Epics, so totals match Keep Epics). */
 D.perProjectEpics = [
-  { key: 'WEB', name: 'Webshop', issues: 4736, epics: 96, features: 1240, tasks: 3400, skipped: 62 },
-  { key: 'MOB', name: 'Mobile App', issues: 1874, epics: 41, features: 590, tasks: 1243, skipped: 24 },
-  { key: 'PLAT', name: 'Platform', issues: 2368, epics: 58, features: 820, tasks: 1490, skipped: 0 },
+  { key: 'WEB', name: 'Webshop', issues: 4750, epics: 110, features: 1240, tasks: 3400, skipped: 62 },
+  { key: 'MOB', name: 'Mobile App', issues: 1880, epics: 47, features: 590, tasks: 1243, skipped: 24 },
+  { key: 'PLAT', name: 'Platform', issues: 2377, epics: 67, features: 820, tasks: 1490, skipped: 0 },
 ];
 const perProject = (fold) => (fold === 'epics' ? D.perProjectEpics : D.perProject);
 

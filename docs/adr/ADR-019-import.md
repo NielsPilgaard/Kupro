@@ -59,7 +59,9 @@ Kupro's shape, show the owner how before writing anything, and never silently lo
 2. **Mapping**: the owner's choices (people, projects, types, states, fields, effort factor, scope filter), with
    defaults the connector proposes. Saved on the import and reused on every run. Changing it applies from the next run.
 3. **Plan**: a dry run against current Kupro data: counts to create/update, re-parented items, conflicts, skipped
-   items, attachment volume. Shown before the first commit and in every run report.
+   items, attachment volume, plus up to 5 sample items per count so the owner sees real examples. It runs as an
+   `import_run` of kind dry-run over the stored snapshot, so re-planning after a mapping edit doesn't read the source
+   again. Shown before the first commit and in every run report.
 4. **Commit**: applies the plan in batches, resumable after a restart, like `ExportJob` ([task 016](../../tasks/completed/016-workspace-export.md)).
 
 Connectors live in a shared `Kupro.Import` library referenced by the API and the CLI. It must be AOT-safe
@@ -73,13 +75,18 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
 - OAuth "Connect" buttons are a later polish, not a requirement.
 - Tokens are encrypted with ASP.NET Data Protection (keys persisted in Postgres) and deleted on Finish, on Undo, or
   after 90 days without a run.
+- **Rejected token** (expired or revoked PAT mid-migration): the run fails with "token rejected", auto-sync pauses and
+  the owner is emailed. The owner pastes a new token on the import; the next run continues from the saved cursor.
 - **Behind a VPN**: `kupro import <source> --local` runs the same connector on the user's machine and uploads the
   snapshot. The token never reaches Kupro.
 
 ### People
 
 - The wizard's People step matches every source user to a member by email, then by name. Per user the owner picks: an
-  existing member, invite (email sent on commit, opt-in per person), or **placeholder**.
+  existing member, invite (email sent on commit, opt-in per person), **placeholder**, or **skip**.
+- **Skip** is for bots and service accounts. Nothing they wrote is dropped: their comments and changes are authored by
+  one shared placeholder per import ("Skipped users from Jira"), with the original name kept on each entry. Items
+  assigned to them come across unassigned. Connectors default app and bot accounts to skip.
 - **Placeholder** is a new member status ([ADR-013](ADR-013-seats-billing.md)): a display name and optional email,
   no login, no seat, not counted in the guest cap. It can be an assignee, author and actor like any member.
 - Inviting a placeholder turns that same row into `invited`, then `active`, so its history follows. If the person is
@@ -93,19 +100,30 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
   ADO Epic → Epic, Feature → Feature, User Story/PBI/Requirement → Task).
 - **Hierarchy fit**: after mapping, a Task with children is promoted to Feature when its parent allows (Jira
   Epic > Story > Sub-task becomes Epic > Feature > Task). An item still too deep goes under its nearest valid
-  ancestor, with a `relates` relation to its old parent. For ADO's four levels the owner picks which level folds
-  (default: ADO Task becomes a Task under the Feature, related to its Story). Trello checklist items and Monday
-  subitems without their own data become a Markdown checklist in the description. The plan counts every re-parented item.
+  ancestor, with a `relates` relation to its old parent. Trello checklist items and Monday subitems without their own
+  data become a Markdown checklist in the description. The plan counts every re-parented item.
+- **Four levels** (ADO Epic > Feature > Story > Task, Jira Initiative > Epic > Story > Sub-task, Linear initiatives):
+  the team picks, per import, which end folds. Both are equal choices, shown side by side with their own plan
+  counts; the connector only preselects one. Mapping field `fold`:
+  - `bottom` (keep the top): the top three levels map one to one and the bottom level's items become Tasks under
+    their grandparent, each with a `relates` relation to its old parent.
+  - `top` (fold the top): the lower three levels move up one Kupro level. A top-level item still comes across, as an
+    Epic with no children, related (`relates`) to each of its old children, which also get a label with its name. Its
+    description, comments, history, attachments and aliases are kept like any item's.
+  - Changing `fold` after the first run applies to items imported from then on. Items already imported keep their
+    shape; the plan lists how many differ.
 - **States**: mapped by the source's own category where it has one (Jira status category, ADO state category, Linear
   state type, YouTrack resolved flag), refined by name hints ("review" → In Review, "won't do" → Canceled). Trello
-  lists and Monday status labels are mapped by hand in the wizard. All defaults are editable.
+  lists and Monday status labels are mapped by hand in the wizard. A status with no category and no name hint
+  defaults to Todo and is flagged in the plan for a look; no item is skipped for its status. All defaults are editable.
 - **Priority**: per-source default map, editable.
 - **Other fields**: the owner ticks which select-type fields (components, area paths, custom selects) become labels.
   A source version or release with a date becomes a milestone. Everything else goes into a collapsed "Imported from
   <source>" block at the end of the description: a field/value table and a link to the original. Nothing is dropped.
 - **Effort**: source time estimates first (Jira original estimate, ADO Original Estimate, YouTrack Estimation).
   Otherwise points × an "hours per point" factor the owner must enter (no default). Blank imports no effort. The plan
-  shows total hours against project capacity. Original points go into the details block.
+  shows total hours, against capacity when the target is an existing project with capacity set (a new project has
+  none yet). Original points go into the details block.
 - **Sprints**: Kupro sprints are per project ([ADR-008](ADR-008-work-item-model.md)). A source sprint spanning
   projects becomes one sprint per project with the same name and dates. ADO iteration paths → sprints.
 - **Markup**: Jira ADF (Cloud), Jira wiki markup (Data Center) and ADO HTML convert to Markdown. A construct the
@@ -140,6 +158,9 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
 
 - Each imported item remembers the last value imported per field. A re-run updates a field only if Kupro still holds
   that value. If someone changed it in Kupro, Kupro wins and the run report lists the conflict with both values.
+- The owner resolves a conflict with **Keep Kupro's** (the default; it just closes the conflict) or **Use source**
+  (applies the source value as an import update). A resolved conflict comes back only if the source value changes
+  again. Open conflicts carry over from run to run until resolved or Finish.
 - New source comments and changes are appended. An item deleted in the source is left alone and flagged in the report.
 - **Undo import** deletes what the import created: issues, comments, attachments, labels and milestones it made, and
   placeholders nothing else references. Offered until Finish, with a warning listing issues edited in Kupro since.
@@ -150,6 +171,8 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
 ### Who and where
 
 - **Owners only**, like export: an import stores a source token and creates members.
+- **Email** (EN/DA) to the owner: when the first commit finishes, when any run fails, and when auto-sync turns itself
+  off. Successful later runs only show in the import's history.
 - **Surfaces** ([ADR-001](ADR-001-agent-parity.md)): web wizard and REST do everything; CLI `kupro import ...` does
   everything except the interactive People step, which it takes as a mapping file. MCP gets one read-only `imports`
   tool (list imports, read plans, run reports and conflicts) so an agent can help triage. Starting a run and handling
@@ -232,7 +255,7 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
   is tested against recorded API fixtures; no live calls in CI.
 - **IMP-004**: Jira Cloud search uses `/rest/api/3/search/jql` (token pagination, eventually consistent, so the
   delta overlap). An ADO WIQL query returns at most 20,000 IDs, so connectors query in ID ranges.
-- **IMP-005**: The MCP tool count goes from 22 to 23 with `imports` (ADR-001 IMP-003).
+- **IMP-005**: The MCP tool count goes from 19 to 20 with `imports` (ADR-001 IMP-003).
 
 ## Related Decisions
 

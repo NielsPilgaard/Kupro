@@ -75,9 +75,11 @@ when the connector runs in the API (SSRF). The CLI's `--local` mode is exempt.
   - CMMI: as Agile with Requirement → Task, Change Request/Risk/Review → Task + label of the same name.
   - Inherited processes: start from the parent process's map; custom types default to Task.
   - Test Plan, Test Suite, Test Case, Shared Steps, Shared Parameter: unticked.
-- **Fold** (four levels): default keeps Epic and Feature, maps Story-level to Task, and puts Task-level items as Tasks
-  under the Feature with a `relates` relation to their Story. The owner can instead fold Epics (Epic → label, Feature
-  → Epic, Story → Feature, Task → Task). The plan shows both counts so the choice is informed.
+- **Fold** (four levels): the team picks `fold` ([ADR-019](../docs/adr/ADR-019-import.md) Shape); both options are
+  shown side by side with their plan counts. `bottom` (preselected) keeps Epic and Feature, maps Story-level to Task,
+  and puts Task-level items as Tasks under the Feature with a `relates` relation to their Story. `top` folds Epics:
+  Feature → Epic, Story → Feature, Task → Task, and each ADO Epic comes across as a childless Epic related to its old
+  Features, which get a label with its name, so nothing is lost.
 - **States**: Proposed → Todo (state "New" with no iteration → Backlog), InProgress → In Progress (name contains
   "review", "test", "resolved" → In Review), Resolved → In Review, Completed → Done, Removed → Canceled.
 - **Priority**: 1 → High, 2 → Medium, 3 and 4 → Low. Bug `Severity` "1 - Critical" → Urgent.

@@ -58,11 +58,14 @@ storage and jobs (last item in Acceptance criteria).
 ### Pipeline
 
 - **Describe**: the connector returns projects, people, types, statuses and fields for the wizard.
-- **Mapping** (saved JSON on `import`): project targets (new / existing / merge), people, type map, state map,
-  priority map, which fields become labels, which versions become milestones, effort (hours per point, or none),
-  scope filter (projects; closed items older than N months, default all), ADO-style level folding.
-- **Plan** (dry run): runs the whole mapping and hierarchy fit without writing, and reports counts, conflicts,
-  re-parented items, folded checklists, skipped items, attachment count and bytes.
+- **Mapping** (saved JSON on `import`): project targets (new / existing / merge), people (member / invite /
+  placeholder / skip), type map, state map, priority map, which fields become labels, which versions become
+  milestones, effort (hours per point, or none), scope filter (projects; closed items older than N months, default
+  all), and `fold` (`bottom` / `top`) for four-level sources ([ADR-019](../docs/adr/ADR-019-import.md) Shape).
+- **Plan** (dry run): an `import_run` of kind dry-run over the stored snapshot, so re-planning after a mapping edit
+  doesn't read the source. Runs the whole mapping and hierarchy fit without writing, and reports counts, conflicts,
+  re-parented items, folded checklists, skipped items, statuses flagged for a look, attachment count and bytes, with
+  up to 5 sample items per count. For a four-level source it reports counts for both `fold` values.
 - **Commit**: `ImportJob`, in its own queue: one import per workspace at a time, `Imports:MaxConcurrent` across
   workspaces (default 2). Batches of 500 items, resumable from `imported_item` after a restart. Honours `Retry-After`.
 - Writes go through the feature services' bulk paths (ADR-019 IMP-002) with explicit actor, timestamps and
@@ -77,6 +80,12 @@ storage and jobs (last item in Acceptance criteria).
   edits as a marker only), one `imported` entry per issue, `reimported` entries with diffs on re-runs.
 - **Re-runs**: delta from the saved cursor with a 10-minute overlap; per-field "Kupro wins" using
   `imported_item.last_values`; conflicts, source deletions and alias collisions in the run report.
+- **Conflicts**: stored per item and field until resolved: Keep Kupro's or Use source. A resolved conflict reopens
+  only when the source value changes again.
+- **Skipped people**: one shared placeholder per import authors their comments and changes, with the source name kept
+  on each entry; their assignments are left empty.
+- **Rejected token**: the run fails, auto-sync pauses, the owner is emailed; a replaced token resumes from the cursor.
+- **Email** (EN/DA): first commit finished, any run failed, auto-sync turned off.
 - **Auto-sync**: an hourly scheduler for imports with the flag on; turns itself off after 30 days with no change on
   either side and emails the owner (EN/DA).
 - **Undo** (until Finish): deletes everything the import created, listed per entity in `imported_item`. Warns with the
@@ -106,15 +115,23 @@ storage and jobs (last item in Acceptance criteria).
 ### Surfaces
 
 - REST under `/workspaces/{ws}/imports`: create (source kind, base URL, token or upload), describe, get/put mapping,
-  plan, run, list runs, get report, set auto-sync, undo, finish. Owners only; agent tokens 403; other workspaces 404.
+  plan, run, list runs, get report, set auto-sync, replace token, list and resolve conflicts, undo, finish. Owners
+  only; agent tokens 403; other workspaces 404.
 - CLI: `kupro import csv <file>`, `kupro import snapshot <file>`, `kupro import kupro <export.zip>`, `kupro import
-  list`, `kupro import plan <id>`, `kupro import run <id> [--no-wait]`, `kupro import report <id>`, `kupro import
-  mapping <id> [--set file.json]`, `kupro import undo <id>`, `kupro import finish <id>`. The People step is a mapping
-  file: `kupro import mapping <id>` prints the proposed one.
-- MCP: one read-only `imports` tool (list, plan, report, conflicts). Tool budget 19 → 20 (ADR-001 IMP-003).
-- Web: Settings → Import (owners), a wizard: Source → Connect → Scope → People → Types & states → Fields & effort →
-  Plan → Import → Report. The empty state of a new workspace offers "Coming from Jira or Azure DevOps? Import". All
-  strings in the locale files (EN/DA).
+  create <source> --url <url>` (a server-side connector import; token from stdin or `KUPRO_IMPORT_TOKEN`, never an
+  argument), `kupro import list`, `kupro import plan <id>`, `kupro import run <id> [--no-wait]` (also "sync now"),
+  `kupro import report <id>`, `kupro import mapping <id> [--set file.json]`, `kupro import sync <id> --auto on|off`,
+  `kupro import token <id>` (stdin), `kupro import conflicts <id> [--keep <conflict> | --use-source <conflict>]`,
+  `kupro import undo <id>`, `kupro import finish <id>`. The People step is a mapping file: `kupro import mapping <id>`
+  prints the proposed one. Each connector task adds `kupro import <source> --local`.
+- MCP: one read-only `imports` tool (list, plan, report, conflicts). Tool budget 19 → 20 (ADR-001 IMP-003). Starting
+  runs, resolving conflicts and tokens stay off MCP (ADR-019 Who and where); the parity test records the opt-out.
+- Web: Settings → Import (owners). **The layout waits on the owner's pick in [task 033](033-import-ui-direction.md)**;
+  don't write `web/` code for it before then. Whatever the direction, it covers: source, connect, scope, people,
+  types & states (with the `fold` choice as two equal options for four-level sources), fields & effort, plan,
+  import, report, conflicts, and the list of imports with Sync now, auto-sync, Undo and Finish. Command palette:
+  "Import from…", "Sync import now", "Open import report". The empty state of a new workspace offers "Coming from
+  Jira or Azure DevOps? Import". All strings in the locale files (EN/DA).
 
 ### Ops
 
@@ -132,6 +149,11 @@ storage and jobs (last item in Acceptance criteria).
       re-parented item has a `relates` relation to its old parent and is counted in the plan.
 - [ ] Re-run: a source change to a field untouched in Kupro is applied; one edited in Kupro is kept and reported as a
       conflict; nothing is duplicated; a native issue taking the next number causes an alias, not a failure.
+- [ ] Conflicts: Use source applies the source value, Keep Kupro's closes it; a resolved conflict reopens only when
+      the source value changes again.
+- [ ] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
+      top-level items exist as Epics with their comments, history and aliases.
+- [ ] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
 - [ ] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
       reference (guard test over member foreign keys).
 - [ ] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and

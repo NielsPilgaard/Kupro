@@ -58,9 +58,10 @@ Center ends on 28 March 2029.
 ### Default mappings
 
 - **Types**: Epic → Epic; Story, Task, Improvement, New Feature → Task; Bug → Task + `bug`; Sub-task → Task (fit
-  promotes its parent to Feature). Initiative (Premium, a level above Epic) folds like ADO's four levels: default
-  is a label with the initiative's name on its epics; the owner can instead make Initiatives Epics and Epics
-  Features. Jira Service Management request types are listed but unticked.
+  promotes its parent to Feature). Initiative (Premium, a level above Epic) makes four levels, so the team picks
+  `fold` ([ADR-019](../docs/adr/ADR-019-import.md) Shape): `top` (preselected) keeps Epics as Epics, and each
+  Initiative comes across as a childless Epic related to its epics, which get a label with its name; `bottom` makes
+  Initiatives Epics and Epics Features. Jira Service Management request types are listed but unticked.
 - **States**: category `new` → Todo (name contains "backlog" → Backlog), `indeterminate` → In Progress (name contains
   "review", "QA", "test" → In Review), `done` → Done (resolution or name like "won't", "cancel", "duplicate",
   "rejected" → Canceled).
