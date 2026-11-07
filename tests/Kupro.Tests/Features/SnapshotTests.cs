@@ -169,6 +169,23 @@ public sealed class SnapshotTests
     }
 
     [Fact]
+    public async Task Optional_lists_left_out_by_a_script_read_as_empty()
+    {
+        using var zip = Zip(
+            ("snapshot.json", """{"format":1,"source":{"kind":"script"},"createdAt":"2026-11-06T00:00:00Z"}"""),
+            ("items/000001.ndjson", """{"id":"1","project":"p","type":"t","status":"s","title":"ok","created":"2026-01-01T00:00:00Z","updated":"2026-01-01T00:00:00Z"}"""));
+        await using var snapshot = await SnapshotReader.OpenAsync(zip, Ct);
+
+        snapshot.Header.Projects.ShouldBeEmpty();
+        snapshot.Header.Sprints.ShouldBeEmpty();
+        snapshot.Header.Counts.ShouldNotBeNull();
+        var item = await snapshot.ReadItemsAsync(Ct).SingleAsync(Ct);
+        item.Labels.ShouldBeEmpty();
+        item.Fields.ShouldBeEmpty();
+        item.Links.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Attachment_file_must_be_under_files()
     {
         using var zip = Zip(("snapshot.json", """{"format":1,"source":{"kind":"script"},"createdAt":"2026-11-06T00:00:00Z"}"""));

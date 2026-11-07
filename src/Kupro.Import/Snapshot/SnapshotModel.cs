@@ -6,6 +6,8 @@ namespace Kupro.Import.Snapshot;
 // The Kupro import format, version 1 (ADR-019, docs/import-format.md). Public: the CLI, agents and customer scripts
 // write it, so a change here is a format change. Adding an optional property is compatible; anything else needs a new
 // format number. Every reference between records is the source's own ID as a string.
+// Optional lists are settable, not init: source generation assigns init members like constructor arguments, so a
+// script that leaves out "labels" would read back null instead of the empty default.
 
 /// <summary>A record a connector streams while reading. Each kind goes into its own part of the snapshot.</summary>
 public interface ISnapshotRecord;
@@ -38,11 +40,11 @@ public static class SourceKinds
 public sealed record SourceDescription
 {
     public required SnapshotSource Source { get; init; }
-    public IReadOnlyList<SourceProject> Projects { get; init; } = [];
-    public IReadOnlyList<SourcePerson> People { get; init; } = [];
-    public IReadOnlyList<SourceItemType> ItemTypes { get; init; } = [];
-    public IReadOnlyList<SourceStatus> Statuses { get; init; } = [];
-    public IReadOnlyList<SourceField> Fields { get; init; } = [];
+    public IReadOnlyList<SourceProject> Projects { get; set; } = [];
+    public IReadOnlyList<SourcePerson> People { get; set; } = [];
+    public IReadOnlyList<SourceItemType> ItemTypes { get; set; } = [];
+    public IReadOnlyList<SourceStatus> Statuses { get; set; } = [];
+    public IReadOnlyList<SourceField> Fields { get; set; } = [];
 }
 
 /// <summary><c>snapshot.json</c>: the reference data and counts. Items and history are in the NDJSON parts.</summary>
@@ -55,14 +57,14 @@ public sealed record SnapshotHeader
     /// <summary>Opaque delta cursor for the next run (a time, a sync token). Null when the source has no delta.</summary>
     public string? Cursor { get; init; }
 
-    public IReadOnlyList<SourceProject> Projects { get; init; } = [];
-    public IReadOnlyList<SourcePerson> People { get; init; } = [];
-    public IReadOnlyList<SourceItemType> ItemTypes { get; init; } = [];
-    public IReadOnlyList<SourceStatus> Statuses { get; init; } = [];
-    public IReadOnlyList<SourceField> Fields { get; init; } = [];
-    public IReadOnlyList<SourceSprint> Sprints { get; init; } = [];
-    public IReadOnlyList<SourceVersion> Versions { get; init; } = [];
-    public SnapshotCounts Counts { get; init; } = new();
+    public IReadOnlyList<SourceProject> Projects { get; set; } = [];
+    public IReadOnlyList<SourcePerson> People { get; set; } = [];
+    public IReadOnlyList<SourceItemType> ItemTypes { get; set; } = [];
+    public IReadOnlyList<SourceStatus> Statuses { get; set; } = [];
+    public IReadOnlyList<SourceField> Fields { get; set; } = [];
+    public IReadOnlyList<SourceSprint> Sprints { get; set; } = [];
+    public IReadOnlyList<SourceVersion> Versions { get; set; } = [];
+    public SnapshotCounts Counts { get; set; } = new();
 }
 
 public sealed record SnapshotCounts
@@ -143,7 +145,7 @@ public sealed record SourceField
     public required string Id { get; init; }
     public required string Name { get; init; }
     public required FieldKind Kind { get; init; }
-    public IReadOnlyList<string> Options { get; init; } = [];
+    public IReadOnlyList<string> Options { get; set; } = [];
 }
 
 /// <summary>A sprint or iteration. Without <see cref="Project"/> it can span projects; import splits it per project.</summary>
@@ -210,18 +212,18 @@ public sealed record SourceItem : ISnapshotRecord
     /// <summary>The source's priority as it names it ("High", "2"); mapped per source.</summary>
     public string? Priority { get; init; }
 
-    public IReadOnlyList<string> Labels { get; init; } = [];
+    public IReadOnlyList<string> Labels { get; set; } = [];
 
     /// <summary>Values of <see cref="SourceField"/>s by field ID.</summary>
-    public IReadOnlyDictionary<string, JsonElement> Fields { get; init; } = new Dictionary<string, JsonElement>();
+    public IReadOnlyDictionary<string, JsonElement> Fields { get; set; } = new Dictionary<string, JsonElement>();
 
     public long? EstimateSeconds { get; init; }
     public decimal? Points { get; init; }
     public DateOnly? Start { get; init; }
     public DateOnly? Due { get; init; }
     public string? Sprint { get; init; }
-    public IReadOnlyList<string> Versions { get; init; } = [];
-    public IReadOnlyList<SourceLink> Links { get; init; } = [];
+    public IReadOnlyList<string> Versions { get; set; } = [];
+    public IReadOnlyList<SourceLink> Links { get; set; } = [];
     public string? Url { get; init; }
     public required DateTimeOffset Created { get; init; }
     public required DateTimeOffset Updated { get; init; }
