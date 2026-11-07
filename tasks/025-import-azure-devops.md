@@ -4,7 +4,7 @@ description: >-
   Azure DevOps Boards connector for the import framework: Services and Server, per-process default type and state
   mappings, four-level hierarchy folding, iterations as sprints, area paths as labels, comments, attachments and
   work item revisions as changelog.
-status: 'Todo'
+status: 'In progress'
 phase: 1
 depends_on: [023]
 purpose: 'Implementation spec for task 025.'
@@ -17,6 +17,23 @@ purpose: 'Implementation spec for task 025.'
 Decisions are in [ADR-019](../docs/adr/ADR-019-import.md); the pipeline is [task 023](023-import-framework.md). This
 task adds `AzureDevOpsConnector` for Boards on Azure DevOps Services and Server, and default mappings per process
 (Basic, Agile, Scrum, CMMI and inherited ones). The hard part is the four-level hierarchy.
+
+**Progress**: the reading side is done: `Kupro.Import/AzureDevOps` (`AzureDevOpsConnector`, client, reading) and
+`AzureDevOpsConnectorTests` against `FakeAzureDevOps`, a fake that serves the 7.1 response shapes. It covers Access,
+Reading and the HTML assembly of the three description fields. The connector reports the source's own terms: process
+name (inherited processes resolve to their parent), type backlog levels, state categories. The pipeline maps them.
+
+**Next**, each waits on a slice of [task 023](023-import-framework.md):
+
+- Default mappings and the fold choice need 023's mapping model.
+- Mention and `#id` rewriting need its `MarkupConverter`.
+- Keys and aliases need its pipeline.
+- `kupro import azure-devops --local` needs the import CLI group.
+- The site page needs the wizard, so it doesn't describe steps that don't exist yet.
+
+Recorded fixtures need the sandbox (a manual step). Until then the fake stands in for them: replace or check it
+against a recording when one exists. The API surface must also stop the base URL from reaching private addresses
+when the connector runs in the API (SSRF). The CLI's `--local` mode is exempt.
 
 ## Scope
 

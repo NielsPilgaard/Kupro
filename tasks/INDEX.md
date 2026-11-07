@@ -33,15 +33,16 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 | 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 016 (013 to close) | In progress |
 | 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
-| 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | Todo |
+| 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | Todo |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
 | 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
 ## What an agent can pick up
 
-Checked 2026-11-06. The build order above is not the same as what is buildable: **only 023 is buildable by an agent
-now**. Every other open row waits on a person, directly or through a dependency. Don't spend a session re-deriving
+Checked 2026-11-06. The build order above is not the same as what is buildable: **023 and the connectors 024, 026 and
+027 are buildable by an agent now**. 025's connector is done and the rest of it waits on 023. Every other open row
+waits on a person, directly or through a dependency. Don't spend a session re-deriving
 this; read this table, and update it when a step is done. "Depends on" lists what blocks *starting*; a dependency
 that only blocks closing a task is written "(N to close)".
 
@@ -52,7 +53,8 @@ that only blocks closing a task is written "(N to close)".
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
 | 023 | Buildable: being built ahead of 013. Closing it needs one production run | 013 Done, for the close only |
-| 024–027 | A connector needs only 023's snapshot model and `ISourceConnector` (023's first slice). Recorded fixtures and the close need sandbox accounts (manual steps) | That slice of 023; the sandboxes for the close |
+| 024, 026, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
+| 025 | Connector (reading) done. Default mappings, fold, markup rewriting, keys, CLI and site page wait on 023's pipeline and surfaces | 023's mapping model, `MarkupConverter` and import CLI; the sandbox for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
