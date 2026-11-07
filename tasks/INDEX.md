@@ -32,6 +32,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006 (013 to close) | In progress |
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 | 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 016 (013 to close) | In progress |
+| 33 | [033 Pick the import UI direction](033-import-ui-direction.md) | P1 | 1 | — | Waiting on owner |
 | 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | In progress |
@@ -52,7 +53,8 @@ that only blocks closing a task is written "(N to close)".
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
-| 023 | Buildable: being built ahead of 013. Closing it needs one production run | 013 Done, for the close only |
+| 023 | Buildable: being built ahead of 013, except its web UI, which waits on 033. Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
+| 033 | Owner decision: which import UI prototype to build. An agent asks the owner and waits; it never picks | The owner's answer |
 | 024, 026 Linear, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
 | 025, 026 Trello | Connectors (reading) done. Default mappings, fold, markup rewriting, keys, CLI and site page wait on 023's pipeline and surfaces | 023's mapping model, `MarkupConverter` and import CLI; the sandbox for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
