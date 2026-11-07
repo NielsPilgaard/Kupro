@@ -24,7 +24,21 @@ The connector reports Trello's own terms: lists as per-board statuses (archived 
 as `card` items keyed by `idShort`, checklists as a Markdown task list in the description, checklist items with a
 member or due date also as `checkItem` items under the card, the `archived`, `dueComplete` and `members` fields, and
 custom fields. Cards and actions are paged by ID with `before`; the delta reads actions `since` the cursor, while
-creators and archive times come from a full read of the creation and archive actions. Linear is not started.
+creators and archive times come from a full read of the creation and archive actions.
+
+Linear's reading side is done too: `Kupro.Import/Linear` (`LinearConnector`, GraphQL client, queries, reading) and
+`LinearConnectorTests` against `FakeLinear`, a small GraphQL executor that pages connections (`first` ≤ 250), prices
+each query the way Linear documents and rejects one over 10,000 points. A personal API key goes bare in
+`Authorization`, an OAuth token as `Bearer`, to `api.linear.app` only, and to `uploads.linear.app` for files. The
+connector reports Linear's own terms: teams as projects with their key, workflow states with their type as category,
+issues as `issue` items keyed `ENG-123` with sub-issues under their parent issue, Linear projects as `project` items
+(lead, target date, labels, initiatives in a field) that parent top-level issues, milestones as versions, cycles as
+sprints, grouped labels as `Group/Label`, priorities by Linear's names, estimates as points, `blocks`, `related` and
+`duplicate` relations (`similar` suggestions are skipped), history as changes, comments with their replies, and files
+pasted into Markdown as attachments. Issues come 50 a page with their history, relations and attachments nested (about
+7,000 points), and a nested list that overflows is paged on its own; comments are paged per team. The delta filters
+`updatedAt` on projects, issues and comments. The client waits out `RATELIMITED` (`Retry-After`, else the
+`X-RateLimit-*` resets) and stops before the hourly requests run out.
 
 **Next** for Trello, each waits on a slice of [task 023](023-import-framework.md):
 
@@ -41,6 +55,23 @@ creators and archive times come from a full read of the creation and archive act
 A comment edited after the cursor keeps its action date, so only a full run picks up the edit. Attachments not on
 Trello are fetched without credentials: in the API that needs the same private-address guard (SSRF) as task 025's base
 URL. Recorded fixtures need a Trello sandbox board (a manual step); until then the fake stands in for them.
+
+**Next** for Linear, each also waits on a slice of [task 023](023-import-framework.md):
+
+- Default mappings need 023's mapping model: state types to states (with the "review" hint), priority names, Linear
+  projects to Epics (and a home team for one that spans teams; today it goes under the first team in scope), issues
+  with sub-issues to Features through Hierarchy fit, initiatives to labels, and the points factor.
+- Reply threads need a place in the snapshot (an optional `parent` on comments). Kupro's comments are flat, so today a
+  reply is a comment in time order and loses what it answers.
+- Mentions and issue URLs (`linear.app/<org>/issue/ENG-123`) need its `MarkupConverter`. Pasted files are attachments
+  already, so inline images can point at the copies.
+- Keys (`ENG-123`, and the new key after a move to another team) and aliases need its pipeline.
+- Project history, milestone changes in issue history and project updates are not read yet.
+- Key storage and the "where to get it" step need the wizard; `kupro import linear --local` needs the import CLI group,
+  and the site page needs the wizard.
+
+Recorded fixtures need a Linear sandbox workspace (a manual step); until then the fake stands in for them. Files
+outside Linear are fetched without credentials, so the API needs the same private-address guard as Trello's.
 
 ## Scope
 
