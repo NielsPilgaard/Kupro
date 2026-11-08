@@ -58,6 +58,11 @@
     "feature": "Feature",
     "epic": "Epic"
   },
+  "typeHint": {
+    "task": "The work itself",
+    "feature": "Ships within weeks, shown on the plan",
+    "epic": "A theme of a quarter or more"
+  },
   "priority": {
     "none": "No priority",
     "low": "Low",

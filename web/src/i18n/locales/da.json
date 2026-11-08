@@ -58,6 +58,11 @@
     "feature": "Feature",
     "epic": "Epic"
   },
+  "typeHint": {
+    "task": "Selve arbejdet",
+    "feature": "Leveres inden for uger, vises i planen",
+    "epic": "Et tema over et kvartal eller mere"
+  },
   "priority": {
     "none": "Ingen prioritet",
     "low": "Lav",

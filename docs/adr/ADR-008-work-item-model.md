@@ -17,7 +17,8 @@ description: >-
 ## TL;DR
 
 - Workspace → Projects → Issues. Issue key `PROJ-123`.
-- Types: **Epic → Feature → Task** (strict parent/child). Types are filterable and searchable.
+- Types: **Epic → Feature → Task** (strict parent/child). Types are filterable and searchable. Parents are optional;
+  two levels (Epic → Task) is fully supported. Projects are not epics.
 - Fixed workflow: Backlog, Todo, In Progress, In Review, Done, Canceled.
 - Effort in **hours**, on every type. Bug = label on Task. Only people can be assignees.
 - Sprints per project, issue in ≤ 1 sprint.
@@ -41,7 +42,7 @@ dependencies to be first-class. Types make top-level work (epics) easy to find.
 |---|---|
 | key, title, description | Description is Markdown with images and links |
 | type | Epic / Feature / Task |
-| parent | Epic ← Feature ← Task; Task may also sit directly under Epic |
+| parent | Epic ← Feature ← Task; Task may also sit directly under Epic. Every parent is optional (see Using the types) |
 | state | Fixed workflow above |
 | assignee | Single human member. The assignee answers for the work; agents act on issues but are never assignees |
 | priority | None, Low, Medium, High, Urgent |
@@ -51,6 +52,17 @@ dependencies to be first-class. Types make top-level work (epics) easy to find.
 | sprint | Optional |
 | relations | blocks, relates, duplicates |
 | comments, attachments, activity | Activity log is append-only, includes actor (human/agent) |
+
+### Using the types
+
+- **Epic**: a theme of a quarter or more. **Feature**: ships within weeks, a bar on the delivery plan. **Task**: the
+  work. The create dialog shows the line for the chosen type.
+- Every parent is optional, and two levels (**Epic → Task**) is a fully supported way to work: a team that never
+  creates a Feature needs no setting, and the delivery plan shows its epics as bars.
+- New issues default to Task, so filing work never asks for a type. The type can change later (a task that grows
+  becomes a Feature); the change is checked against the parent and children.
+- Projects are not epics. A project is long-lived and owns the key, sprints, capacity and members; time-boxed
+  deliverables are epics (Linear projects import as epics, [ADR-019](ADR-019-import.md)).
 
 ### Sprints
 

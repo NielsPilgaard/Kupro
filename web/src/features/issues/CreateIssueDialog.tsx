@@ -171,6 +171,9 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
               className={`${field} min-w-32 flex-1`}
             />
           </div>
+          <p className="text-sm text-mute">
+            {t(`type.${type}`)}: {t(`typeHint.${type}`)}
+          </p>
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" onClick={() => ui.setCreateOpen(false)}>
               {t('common.cancel')}
