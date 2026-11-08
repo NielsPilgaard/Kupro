@@ -25,7 +25,10 @@ storage and jobs (last item in Acceptance criteria).
 
 **Progress**: the snapshot format is done: `Kupro.Import` (model, chunked NDJSON ZIP writer and reader,
 `ISourceConnector`, the snapshot-upload connector), [import-format.md](../docs/import-format.md) with its schema, and
-`SnapshotTests`. Next: Data, then Pipeline.
+`SnapshotTests`. Data is done too: the four import tables (`Features/Imports`, class `WorkspaceImport` for `import`,
+since `Import` collides with the `Kupro.Import` namespace), `ImportTokens` with Data Protection keys in their own bucket, and
+placeholder members with invite and merge on REST, CLI and the Members page. Next: Pipeline. It adds the per-field
+conflict table.
 
 ## Scope
 
@@ -48,7 +51,9 @@ storage and jobs (last item in Acceptance criteria).
 - Tables from ADR-019 IMP-001: `import`, `import_run`, `imported_item`, `issue_alias`. All tenant-owned and added to
   the export ([task 016](completed/016-workspace-export.md)) or to `ExportWriter.NotExported` with a reason (the
   encrypted token is not exported).
-- Data Protection keys persisted to Postgres. The token is encrypted at rest and never returned by any endpoint.
+- Data Protection keys persisted to their own Object Storage bucket (`KeyStorage__*`), never Postgres. The token is
+  encrypted at rest and never returned by any endpoint. Without key storage `ImportTokens.Enabled` is false and
+  importing with a token answers 503, like attachments without storage.
 - `MemberStatus.Placeholder` with `Member.DisplayName` and optional `Member.PlaceholderEmail`. Seat count, guest cap,
   idle-seat flag and authorization ignore placeholders (they can't sign in). Members page shows them in their own
   group with "Invite" and "Merge into…" ([ADR-013](../docs/adr/ADR-013-seats-billing.md)).
@@ -154,7 +159,7 @@ storage and jobs (last item in Acceptance criteria).
 - [ ] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
       top-level items exist as Epics with their comments, history and aliases.
 - [ ] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
-- [ ] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
+- [x] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
       reference (guard test over member foreign keys).
 - [ ] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and
       time; unmapped field changes show as source changes. Feed paging returns all 5,000 entries of a large issue

@@ -37,10 +37,14 @@ public enum MemberStatus
     Invited,
     Active,
     Deactivated,
+
+    /// <summary>A person from an imported tracker: no login, no seat, outside the guest cap (ADR-013, ADR-019).</summary>
+    Placeholder,
 }
 
 /// <summary>
-/// A human or agent in a workspace. Never deleted: deactivation keeps history and attribution (ADR-013).
+/// A human or agent in a workspace. Never deleted: deactivation keeps history and attribution (ADR-013). The one
+/// exception is a placeholder merged into a member, once every reference has moved to that member.
 /// Agents act on behalf of <see cref="UserId"/>, their owner.
 /// </summary>
 public sealed class Member : ITenantOwned
@@ -49,13 +53,19 @@ public sealed class Member : ITenantOwned
     public Guid WorkspaceId { get; set; }
     public MemberKind Kind { get; set; }
 
-    /// <summary>Human: the user. Agent: the owning user. Null only for a pending invite.</summary>
+    /// <summary>Human: the user. Agent: the owning user. Null for a pending invite and a placeholder.</summary>
     public Guid? UserId { get; set; }
 
     public string? AgentName { get; set; }
 
     /// <summary>Lower-cased email the invite was sent to.</summary>
     public string? InviteEmail { get; set; }
+
+    /// <summary>A placeholder's name from the source, kept while it is invited; the user's own name takes over on joining.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>Lower-cased email from the source, when it had one. The default address for inviting the placeholder.</summary>
+    public string? PlaceholderEmail { get; set; }
 
     public WorkspaceRole Role { get; set; }
 
@@ -90,6 +100,8 @@ internal sealed class MemberConfiguration : IEntityTypeConfiguration<Member>
         builder.Property(m => m.Status).HasConversion<string>().HasMaxLength(16);
         builder.Property(m => m.AgentName).HasMaxLength(64);
         builder.Property(m => m.InviteEmail).HasMaxLength(320);
+        builder.Property(m => m.DisplayName).HasMaxLength(200);
+        builder.Property(m => m.PlaceholderEmail).HasMaxLength(320);
 
         // Seat count (ADR-013 IMP-003); workspace_id first, as in every tenant index (ADR-009).
         builder.HasIndex(m => new { m.WorkspaceId, m.Kind, m.Status });

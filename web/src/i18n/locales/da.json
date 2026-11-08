@@ -457,6 +457,13 @@
     "deactivate": "Deaktiver",
     "deactivateTitle": "Deaktiver {{name}}",
     "deactivateConfirm": "Deaktiver {{name}}? Adgang og API-tokens bliver tilbagekaldt, også for personens agenter. Navnet bliver stående i historikken.",
+    "placeholders": "Fra importer",
+    "placeholdersHint": "Personer fra et importeret system. De kan ikke logge ind og bruger ingen plads.",
+    "invitePlaceholder": "Inviter",
+    "mergeInto": "Flet ind i…",
+    "mergeTarget": "Flet {{name}} ind i",
+    "mergeConfirm": "Alt, hvad {{name}} har gjort, flyttes til den person, du vælger, og {{name}} fjernes. Det kan ikke fortrydes.",
+    "merge": "Flet",
     "errors": {
       "guestLimit": "Alle gratis gæstepladser er brugt ({{count}} af {{limit}}, 5 pr. plads). Tilføj en plads eller deaktiver en gæst først.",
       "alreadyMember": "Den e-mail er allerede medlem eller inviteret.",

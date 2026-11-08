@@ -44,7 +44,7 @@ public sealed class WorkspacesController(WorkspaceService workspaces) : Controll
 [Route("api/v1/workspaces/{workspace}/members")]
 public sealed class MembersController(WorkspaceService workspaces) : ControllerBase
 {
-    /// <summary>List members, including pending invites and deactivated members.</summary>
+    /// <summary>List members, including pending invites, deactivated members and placeholders from imports.</summary>
     [HttpGet(Name = "listMembers")]
     public Task<IReadOnlyList<MemberResponse>> List(CancellationToken ct) => workspaces.ListMembersAsync(ct);
 
@@ -89,6 +89,39 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
     public async Task<IActionResult> Deactivate(Guid memberId, CancellationToken ct) =>
         ToResult(await workspaces.DeactivateMemberAsync(memberId, ct));
 
+    /// <summary>Invite the person behind a placeholder from an import. The same member joins, so their history follows.</summary>
+    [HttpPost("{memberId:guid}/invite", Name = "invitePlaceholder")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
+    [WorkspaceRole(WorkspaceRole.Owner)]
+    [ProducesResponseType<MemberResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MemberResponse>> InvitePlaceholder(Guid memberId, InvitePlaceholderRequest request, CancellationToken ct)
+    {
+        var (result, member, limit) = await workspaces.InvitePlaceholderAsync(memberId, request, ct);
+        return result switch
+        {
+            MemberChangeResult.Ok => member!,
+            MemberChangeResult.GuestLimitReached => this.GuestLimitProblem(limit!),
+            MemberChangeResult.AlreadyMember => this.Problem(StatusCodes.Status409Conflict, "already_member",
+                "That email is already a member or invited. Merge the placeholder into them instead."),
+            MemberChangeResult.EmailRequired => this.Problem(StatusCodes.Status400BadRequest, "email_required",
+                "This placeholder has no email from the source. Say where to send the invite."),
+            _ => this.Problem(StatusCodes.Status404NotFound, "member_not_found"),
+        };
+    }
+
+    /// <summary>Merge a placeholder from an import into a person: every reference moves to them and the placeholder is deleted.</summary>
+    [HttpPost("{memberId:guid}/merge", Name = "mergePlaceholder")]
+    [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
+    [WorkspaceRole(WorkspaceRole.Owner)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MergePlaceholder(Guid memberId, MergePlaceholderRequest request, CancellationToken ct) =>
+        ToResult(await workspaces.MergePlaceholderAsync(memberId, request, ct));
+
     private IActionResult ToResult(MemberChangeResult result) => result switch
     {
         MemberChangeResult.Ok => NoContent(),
@@ -96,6 +129,10 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
             "A workspace needs at least one active owner."),
         MemberChangeResult.BillingAccessHumansOnly => this.Problem(StatusCodes.Status400BadRequest,
             "billing_access_humans_only", "Billing access is for people, not agents."),
+        MemberChangeResult.IsPlaceholder => this.Problem(StatusCodes.Status409Conflict, "member_is_placeholder",
+            "A placeholder has no access to change. Invite it or merge it into a member."),
+        MemberChangeResult.InvalidMergeTarget => this.Problem(StatusCodes.Status400BadRequest, "invalid_merge_target",
+            "Merge into an active person or another placeholder."),
         _ => this.Problem(StatusCodes.Status404NotFound, "member_not_found"),
     };
 }

@@ -8,6 +8,7 @@ using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Exports;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Meetings;
 using Kupro.Api.Features.Plan;
@@ -17,6 +18,9 @@ using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Mcp;
 using Kupro.Api.Tenancy;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,6 +50,19 @@ builder.Services.AddScoped<AttachmentService>();
 builder.Services.AddScoped<ExportService>();
 builder.Services.AddSingleton<ExportSignal>();
 builder.Services.AddHostedService<ExportJob>();
+// Keys sit in their own bucket, so a database dump alone can't decrypt the source tokens in it (ADR-019).
+builder.Services.AddKeyedSingleton(ImportTokens.KeyStorage, (services, _) => new ObjectStorage(Options.Create(
+    services.GetRequiredService<IConfiguration>().GetSection(ImportTokens.KeyStorage).Get<StorageOptions>() ?? new())));
+builder.Services.AddDataProtection().SetApplicationName("Kupro");
+builder.Services.AddOptions<KeyManagementOptions>().Configure<IServiceProvider>((options, services) =>
+{
+    var keys = services.GetRequiredKeyedService<ObjectStorage>(ImportTokens.KeyStorage);
+    if (keys.Enabled)
+    {
+        options.XmlRepository = new S3KeyRepository(keys);
+    }
+});
+builder.Services.AddSingleton<ImportTokens>();
 builder.Services.AddScoped<RealtimeEvents>();
 builder.Services.AddSingleton<WorkspaceConnections>();
 builder.Services.AddScoped<MeetingService>();

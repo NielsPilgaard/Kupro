@@ -73,8 +73,9 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
   token), Jira Data Center (personal access token), Azure DevOps (PAT, Work Items read), YouTrack (permanent token),
   Linear (API key), Monday (API token). Trello uses one Kupro API key and the user's click on Trello's authorize link.
 - OAuth "Connect" buttons are a later polish, not a requirement.
-- Tokens are encrypted with ASP.NET Data Protection (keys persisted in Postgres) and deleted on Finish, on Undo, or
-  after 90 days without a run.
+- Tokens are encrypted with ASP.NET Data Protection and deleted on Finish, on Undo, or after 90 days without a run.
+  Keys live in their own Object Storage bucket with their own S3 user, not in Postgres, so a database dump or SQL
+  injection alone can't decrypt the tokens. Losing the keys only means pasting the tokens again.
 - **Rejected token** (expired or revoked PAT mid-migration): the run fails with "token rejected", auto-sync pauses and
   the owner is emailed. The owner pastes a new token on the import; the next run continues from the saved cursor.
 - **Behind a VPN**: `kupro import <source> --local` runs the same connector on the user's machine and uploads the

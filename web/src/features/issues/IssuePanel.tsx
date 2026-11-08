@@ -14,7 +14,7 @@ import {
 } from '../../api/gen/@tanstack/react-query.gen';
 import type { IssueDetail, IssueType, RelationKind, UpdateIssueRequest } from '../../api/gen/types.gen';
 import { useMarkdownUpload } from '../../api/attachments';
-import { useIssue, useMembers, useUpdateIssue } from '../../api/issues';
+import { isAssignable, useIssue, useMembers, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
 import { Picker, type PickerOption } from '../../components/Picker';
 import { Avatar, Button, Kbd, LabelPill, PriorityIcon, StatusRing, TypeIcon, TypeTag } from '../../components/ui';
@@ -159,7 +159,7 @@ function IssueBody({
   const assignees: PickerOption[] = [
     { value: NONE, label: t('issue.unassigned'), icon: <Avatar member={null} size={20} /> },
     ...(members ?? [])
-      .filter((m) => m.status === 'active' && m.kind === 'human')
+      .filter(isAssignable)
       .map((m) => ({ value: m.id, label: m.name, icon: <Avatar member={{ id: m.id, name: m.name, kind: m.kind }} size={20} /> })),
   ];
   const labelNames = [...new Set([...issue.labels, ...(labels ?? []).map((l) => l.name)])];

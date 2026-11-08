@@ -184,7 +184,7 @@
         "tags": [
           "Members"
         ],
-        "summary": "List members, including pending invites and deactivated members.",
+        "summary": "List members, including pending invites, deactivated members and placeholders from imports.",
         "operationId": "listMembers",
         "parameters": [
           {
@@ -424,6 +424,187 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/members/{memberId}/invite": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Invite the person behind a placeholder from an import. The same member joins, so their history follows.",
+        "operationId": "invitePlaceholder",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitePlaceholderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitePlaceholderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitePlaceholderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/members/{memberId}/merge": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Merge a placeholder from an import into a person: every reference moves to them and the placeholder is deleted.",
+        "operationId": "mergePlaceholder",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergePlaceholderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergePlaceholderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergePlaceholderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5334,6 +5515,32 @@
           }
         }
       },
+      "InvitePlaceholderRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "Role they get on accepting.",
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Where to send the invite. Omit to use the email the placeholder came with from the source."
+          },
+          "canManageBilling": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Grant billing access (see usage and cost, manage the subscription)."
+          }
+        }
+      },
       "InviteResponse": {
         "required": [
           "memberId",
@@ -6083,7 +6290,7 @@
               "null",
               "string"
             ],
-            "description": "Email for humans and invites."
+            "description": "Email for humans and invites; for a placeholder, the one from the source if it had one."
           },
           "role": {
             "description": "Workspace role.",
@@ -6094,7 +6301,7 @@
             "description": "Billing access granted by an Owner. Owners have billing access regardless."
           },
           "status": {
-            "description": "Invited, active or deactivated.",
+            "description": "Invited, active, deactivated or placeholder (a person from an import, with no login and no seat).",
             "$ref": "#/components/schemas/MemberStatus"
           },
           "ownerName": {
@@ -6118,7 +6325,8 @@
         "enum": [
           "invited",
           "active",
-          "deactivated"
+          "deactivated",
+          "placeholder"
         ]
       },
       "MeResponse": {
@@ -6159,6 +6367,19 @@
               "string"
             ],
             "description": "Agent name when the caller is an agent token acting for this user; otherwise null."
+          }
+        }
+      },
+      "MergePlaceholderRequest": {
+        "required": [
+          "intoMemberId"
+        ],
+        "type": "object",
+        "properties": {
+          "intoMemberId": {
+            "type": "string",
+            "description": "The person who gets the placeholder's history: an active person or another placeholder.",
+            "format": "uuid"
           }
         }
       },

@@ -60,13 +60,24 @@ public sealed record InviteMemberRequest(
 /// <param name="CanManageBilling">Grant or revoke billing access; unchanged when omitted. People only.</param>
 public sealed record UpdateMemberRequest(WorkspaceRole? Role = null, bool? CanManageBilling = null);
 
+/// <param name="Email">Where to send the invite. Omit to use the email the placeholder came with from the source.</param>
+/// <param name="Role">Role they get on accepting.</param>
+/// <param name="CanManageBilling">Grant billing access (see usage and cost, manage the subscription).</param>
+public sealed record InvitePlaceholderRequest(
+    WorkspaceRole Role,
+    [EmailAddress, StringLength(320)] string? Email = null,
+    bool? CanManageBilling = null);
+
+/// <param name="IntoMemberId">The person who gets the placeholder's history: an active person or another placeholder.</param>
+public sealed record MergePlaceholderRequest(Guid IntoMemberId);
+
 /// <param name="Id">Member id.</param>
 /// <param name="Kind">Human or agent.</param>
 /// <param name="Name">Display name; the agent name for agents, the email for pending invites.</param>
-/// <param name="Email">Email for humans and invites.</param>
+/// <param name="Email">Email for humans and invites; for a placeholder, the one from the source if it had one.</param>
 /// <param name="Role">Workspace role.</param>
 /// <param name="CanManageBilling">Billing access granted by an Owner. Owners have billing access regardless.</param>
-/// <param name="Status">Invited, active or deactivated.</param>
+/// <param name="Status">Invited, active, deactivated or placeholder (a person from an import, with no login and no seat).</param>
 /// <param name="OwnerName">For agents: the person the agent acts for.</param>
 /// <param name="JoinedAt">When the member became active.</param>
 public sealed record MemberResponse(
@@ -109,6 +120,9 @@ public enum MemberChangeResult
     AlreadyMember,
     GuestLimitReached,
     BillingAccessHumansOnly,
+    IsPlaceholder,
+    EmailRequired,
+    InvalidMergeTarget,
 }
 
 /// <summary>Guests counted against the cap, and the cap, when a new guest is refused.</summary>
@@ -295,8 +309,8 @@ public sealed class WorkspaceService(
                 x.Member.Id,
                 x.Member.Kind,
                 x.Member.Kind == MemberKind.Agent ? x.Member.AgentName!
-                    : x.User != null ? x.User.DisplayName : x.Member.InviteEmail!,
-                x.Member.Kind == MemberKind.Agent ? null : x.User != null ? x.User.Email : x.Member.InviteEmail,
+                    : x.User != null ? x.User.DisplayName : x.Member.DisplayName ?? x.Member.InviteEmail!,
+                x.Member.Kind == MemberKind.Agent ? null : x.User != null ? x.User.Email : x.Member.InviteEmail ?? x.Member.PlaceholderEmail,
                 x.Member.Role,
                 x.Member.CanManageBilling,
                 x.Member.Status,
@@ -320,11 +334,7 @@ public sealed class WorkspaceService(
 
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
-            var taken = await db.Members.AnyAsync(m =>
-                (m.Status == MemberStatus.Invited && m.InviteEmail == inviteEmail)
-                || (m.Kind == MemberKind.Human && m.Status != MemberStatus.Invited
-                    && db.Users.Any(u => u.Id == m.UserId && u.Email == inviteEmail)), ct);
-            if (taken)
+            if (await IsEmailTakenAsync(db, inviteEmail, ct))
             {
                 return (MemberChangeResult.AlreadyMember, null, null);
             }
@@ -342,15 +352,124 @@ public sealed class WorkspaceService(
             workspaceName = await db.Workspaces.Where(w => w.Id == workspaceId).Select(w => w.Name).SingleAsync(ct);
         }
 
-        await email.SendAsync(new EmailMessage(
-            inviteEmail,
-            $"You're invited to {workspaceName} on Kupro",
-            $"Sign in to Kupro with {inviteEmail} to accept. Workspace: {workspace.Slug}."), ct);
+        await SendInviteAsync(inviteEmail, workspaceName, ct);
 
         return (MemberChangeResult.Ok, new MemberResponse(
             invite.Id, invite.Kind, inviteEmail, inviteEmail, invite.Role, invite.CanManageBilling, invite.Status, null, null),
             null);
     }
+
+    /// <summary>
+    /// Adds a person from an imported tracker to the caller's DbContext, so it commits with the import's batch: no
+    /// login, no seat, outside the guest cap (ADR-013). Its role only matters once it is invited.
+    /// </summary>
+    internal Member AddPlaceholder(KuproDbContext db, string displayName, string? placeholderEmail)
+    {
+        var placeholder = NewMember(workspace.RequireWorkspaceId(), MemberKind.Human, null, WorkspaceRole.Member,
+            MemberStatus.Placeholder, clock.GetUtcNow());
+        placeholder.DisplayName = displayName.Trim();
+        placeholder.PlaceholderEmail = placeholderEmail?.Trim().ToLowerInvariant();
+        db.Members.Add(placeholder);
+        return placeholder;
+    }
+
+    /// <summary>
+    /// Invites the person behind a placeholder. The same row becomes the invite, then the active member, so the
+    /// history they brought along follows them (ADR-019). Counts under the guest cap like any invite.
+    /// </summary>
+    public async Task<(MemberChangeResult Result, MemberResponse? Member, GuestLimit? Limit)> InvitePlaceholderAsync(
+        Guid memberId, InvitePlaceholderRequest request, CancellationToken ct)
+    {
+        string inviteEmail;
+        string workspaceName;
+        Member invite;
+
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            var placeholder = await db.Members.SingleOrDefaultAsync(m => m.Id == memberId && m.Status == MemberStatus.Placeholder, ct);
+            if (placeholder is null)
+            {
+                return (MemberChangeResult.NotFound, null, null);
+            }
+
+            if ((request.Email?.Trim().ToLowerInvariant() ?? placeholder.PlaceholderEmail) is not { } address)
+            {
+                return (MemberChangeResult.EmailRequired, null, null);
+            }
+
+            inviteEmail = address;
+            if (await IsEmailTakenAsync(db, inviteEmail, ct))
+            {
+                return (MemberChangeResult.AlreadyMember, null, null);
+            }
+
+            invite = placeholder;
+            invite.Status = MemberStatus.Invited;
+            invite.InviteEmail = inviteEmail;
+            invite.PlaceholderEmail = null;
+            invite.Role = request.Role;
+            invite.CanManageBilling = request.CanManageBilling ?? false;
+            var limit = await SaveUnlessGuestLimitAsync(db, invite, request.Role == WorkspaceRole.Guest, accepting: false, ct);
+            if (limit is not null)
+            {
+                return (MemberChangeResult.GuestLimitReached, null, limit);
+            }
+
+            workspaceName = await db.Workspaces.Where(w => w.Id == invite.WorkspaceId).Select(w => w.Name).SingleAsync(ct);
+        }
+
+        await SendInviteAsync(inviteEmail, workspaceName, ct);
+
+        return (MemberChangeResult.Ok, new MemberResponse(
+            invite.Id, invite.Kind, invite.DisplayName!, inviteEmail, invite.Role, invite.CanManageBilling, invite.Status, null, null),
+            null);
+    }
+
+    /// <summary>
+    /// Merges a placeholder into a person who is already here: every reference moves to them in one transaction, then
+    /// the placeholder row is deleted (ADR-019).
+    /// </summary>
+    public async Task<MemberChangeResult> MergePlaceholderAsync(Guid memberId, MergePlaceholderRequest request, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (!await db.Members.AnyAsync(m => m.Id == memberId && m.Status == MemberStatus.Placeholder, ct))
+        {
+            return MemberChangeResult.NotFound;
+        }
+
+        var into = request.IntoMemberId;
+        var validTarget = into != memberId && await db.Members.AnyAsync(m => m.Id == into && m.Kind == MemberKind.Human
+            && (m.Status == MemberStatus.Active || m.Status == MemberStatus.Placeholder), ct);
+        if (!validTarget)
+        {
+            return MemberChangeResult.InvalidMergeTarget;
+        }
+
+        // Retrying execution strategy: the transaction must run inside it as one retriable unit.
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await MemberMerge.MoveReferencesAsync(db, workspace.RequireWorkspaceId(), memberId, into, ct);
+            await db.Members.Where(m => m.Id == memberId).ExecuteDeleteAsync(ct);
+            await tx.CommitAsync(ct);
+        });
+
+        // No realtime event for this write: the plan shows assignees by member.
+        cache.Invalidate();
+        return MemberChangeResult.Ok;
+    }
+
+    private static Task<bool> IsEmailTakenAsync(KuproDbContext db, string inviteEmail, CancellationToken ct) =>
+        db.Members.AnyAsync(m =>
+            (m.Status == MemberStatus.Invited && m.InviteEmail == inviteEmail)
+            || (m.Kind == MemberKind.Human && m.Status != MemberStatus.Invited
+                && db.Users.Any(u => u.Id == m.UserId && u.Email == inviteEmail)), ct);
+
+    private Task SendInviteAsync(string inviteEmail, string workspaceName, CancellationToken ct) =>
+        email.SendAsync(new EmailMessage(
+            inviteEmail,
+            $"You're invited to {workspaceName} on Kupro",
+            $"Sign in to Kupro with {inviteEmail} to accept. Workspace: {workspace.Slug}."), ct);
 
     /// <summary>
     /// Changes a person's role or billing access. Demoting someone to Guest counts as a new guest under the cap.
@@ -369,6 +488,11 @@ public sealed class WorkspaceService(
         {
             // An agent's role follows its owner's, and billing access is for people only.
             return (request.CanManageBilling is null ? MemberChangeResult.NotFound : MemberChangeResult.BillingAccessHumansOnly, null);
+        }
+
+        if (member.Status == MemberStatus.Placeholder)
+        {
+            return (MemberChangeResult.IsPlaceholder, null);
         }
 
         var role = request.Role ?? member.Role;
@@ -401,6 +525,11 @@ public sealed class WorkspaceService(
         if (member.Status == MemberStatus.Deactivated)
         {
             return MemberChangeResult.Ok;
+        }
+
+        if (member.Status == MemberStatus.Placeholder)
+        {
+            return MemberChangeResult.IsPlaceholder;
         }
 
         if (member.Role == WorkspaceRole.Owner && member.Kind == MemberKind.Human && await IsLastOwnerAsync(db, member, ct))
@@ -490,6 +619,7 @@ public sealed class WorkspaceService(
         invite.Status = MemberStatus.Active;
         invite.JoinedAt = clock.GetUtcNow();
         invite.InviteEmail = null;
+        invite.DisplayName = null; // Was a placeholder: from here on the user's own name shows on their history.
         var limit = await SaveUnlessGuestLimitAsync(db, invite, invite.Role == WorkspaceRole.Guest, accepting: true, ct);
         if (limit is not null)
         {

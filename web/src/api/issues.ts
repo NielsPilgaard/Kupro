@@ -117,6 +117,11 @@ export function useMembers(workspace: string) {
   return useQuery({ ...listMembersOptions({ path: { workspace } }), staleTime: 60_000 });
 }
 
+/** Who can be assigned: people answer for the work (ADR-008), and a placeholder from an import is a person (ADR-019). */
+export function isAssignable(member: { kind: string; status: string }) {
+  return member.kind === 'human' && (member.status === 'active' || member.status === 'placeholder');
+}
+
 export const isIssueList = (q: Query) => (q.queryKey[0] as { _id?: string } | undefined)?._id === 'listIssues';
 
 /** Issue keys repeat across workspaces, so another workspace's lists must not be read or patched. */

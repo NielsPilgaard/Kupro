@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, listIssuesOptions, listLabelsOptions, listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
 import type { IssuePriority, IssueState } from '../../api/gen/types.gen';
-import { useIssues, useMembers, useUpdateIssue } from '../../api/issues';
+import { isAssignable, useIssues, useMembers, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
 import { Avatar, Kbd, LabelPill, PriorityIcon, StatusRing } from '../../components/ui';
 import { cliFor, priorities, states } from '../../lib/issues';
@@ -93,7 +93,7 @@ export function CommandPalette({ workspace }: { workspace: string }) {
           { id: 'assign:none', label: t('issue.unassigned'), icon: <Avatar member={null} size={16} />, run: () => change({ clear: ['assignee'] }) },
           // Assignees are people: they answer for the work (ADR-008).
           ...(members ?? [])
-            .filter((m) => m.status === 'active' && m.kind === 'human')
+            .filter(isAssignable)
             .map((m) => ({
               id: `assign:${m.id}`,
               label: m.name,

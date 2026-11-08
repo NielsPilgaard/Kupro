@@ -8,8 +8,10 @@ import {
   getWorkspaceOptions,
   getWorkspaceQueryKey,
   inviteMemberMutation,
+  invitePlaceholderMutation,
   listMembersOptions,
   listMembersQueryKey,
+  mergePlaceholderMutation,
   updateMemberMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
 import { Topbar } from '../../app/AppShell';
@@ -34,6 +36,7 @@ export function MembersPage() {
   const active = people.filter((m) => m.status === 'active');
   const agents = members?.filter((m) => m.kind === 'agent' && m.status === 'active') ?? [];
   const invited = people.filter((m) => m.status === 'invited');
+  const placeholders = people.filter((m) => m.status === 'placeholder');
   const deactivated = members?.filter((m) => m.status === 'deactivated') ?? [];
   // Only the latest action's error shows, so an old one doesn't linger after other changes succeed.
   const [lastAction, setLastAction] = useState<string | null>(null);
@@ -57,6 +60,17 @@ export function MembersPage() {
         <MemberList title={t('members.people')} members={active} {...list} />
         {agents.length > 0 && <MemberList title={t('members.agents')} members={agents} {...list} />}
         {isOwner && invited.length > 0 && <MemberList title={t('members.invited')} members={invited} {...list} />}
+        {placeholders.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-lg font-semibold">{t('members.placeholders')}</h2>
+            <p className="text-sm text-mute">{t('members.placeholdersHint')}</p>
+            <ul className="flex flex-col">
+              {placeholders.map((m) => (
+                <PlaceholderRow key={m.id} member={m} targets={[...active, ...placeholders].filter((o) => o.id !== m.id)} {...list} />
+              ))}
+            </ul>
+          </section>
+        )}
         {isOwner && deactivated.length > 0 && <MemberList title={t('members.deactivated')} members={deactivated} {...list} />}
       </main>
     </>
@@ -244,6 +258,115 @@ function MemberRow({ member, workspace, isOwner, lastAction, onAction }: RowProp
           >
             {t('members.deactivate')}
           </Button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-bad">
+          {errorText(t, error)}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/** A person from an import. An owner invites them, and the same member joins, or merges them into someone already here (ADR-019). */
+function PlaceholderRow({ member, targets, workspace, isOwner, lastAction, onAction }: RowProps & { member: MemberResponse; targets: MemberResponse[] }) {
+  const { t } = useTranslation();
+  const refresh = useRefresh(workspace);
+  const [open, setOpen] = useState<'invite' | 'merge' | null>(null);
+  const [email, setEmail] = useState(member.email ?? '');
+  const [role, setRole] = useState<WorkspaceRole>('member');
+  const [into, setInto] = useState('');
+  const invite = useMutation({ ...invitePlaceholderMutation(), onSettled: refresh });
+  const merge = useMutation({ ...mergePlaceholderMutation(), onSettled: refresh });
+  const path = { workspace, memberId: member.id };
+  const failed = open === 'invite' ? invite.isError : merge.isError;
+  const error = lastAction === member.id && failed ? ((open === 'invite' ? invite.error : merge.error) as Problem) : null;
+  const control = 'h-[var(--control)] rounded-r1 border border-line bg-panel px-2';
+
+  return (
+    <li className="flex flex-col gap-1 border-b border-line py-2" data-testid="member-row">
+      <div className="flex min-h-[var(--row)] flex-wrap items-center gap-3">
+        <Avatar member={member} />
+        <span className="flex min-w-0 flex-1 basis-48 flex-col">
+          <span className="truncate font-semibold">{member.name}</span>
+          {member.email && <span className="truncate text-sm text-mute">{member.email}</span>}
+        </span>
+        {isOwner && (
+          <>
+            <Button variant="ghost" className="h-7 px-2" onClick={() => setOpen('invite')}>
+              {t('members.invitePlaceholder')}
+            </Button>
+            <Button variant="ghost" className="h-7 px-2" onClick={() => setOpen('merge')} disabled={targets.length === 0}>
+              {t('members.mergeInto')}
+            </Button>
+          </>
+        )}
+      </div>
+      {open === 'invite' && (
+        <form
+          className="flex flex-wrap items-end gap-3 rounded-r1 bg-sel p-2 text-sm"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            onAction(member.id);
+            invite.mutate({ path, body: { email: email.trim(), role } });
+          }}
+        >
+          <label className="flex min-w-48 flex-1 flex-col gap-1">
+            <span className="font-semibold">{t('members.email')}</span>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={control} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-semibold">{t('members.role')}</span>
+            <select value={role} onChange={(e) => setRole(e.target.value as WorkspaceRole)} className={control}>
+              {roles.map((r) => (
+                <option key={r} value={r} title={t(`role.${r}Hint`)}>
+                  {t(`role.${r}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button variant="ghost" onClick={() => setOpen(null)}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="primary" type="submit" disabled={invite.isPending || !email.trim()}>
+            {t('members.sendInvite')}
+          </Button>
+        </form>
+      )}
+      {open === 'merge' && (
+        <div role="alertdialog" aria-label={t('members.mergeTarget', { name: member.name })} className="flex flex-col gap-2 rounded-r1 bg-sel p-2 text-sm">
+          <span>{t('members.mergeConfirm', { name: member.name })}</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={into}
+              aria-label={t('members.mergeTarget', { name: member.name })}
+              onChange={(e) => setInto(e.target.value)}
+              className={`${control} min-w-48 flex-1`}
+            >
+              <option value="" disabled>
+                {t('members.mergeTarget', { name: member.name })}
+              </option>
+              {targets.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+            <Button variant="ghost" onClick={() => setOpen(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={merge.isPending || !into}
+              onClick={() => {
+                onAction(member.id);
+                merge.mutate({ path, body: { intoMemberId: into } });
+              }}
+            >
+              {t('members.merge')}
+            </Button>
+          </div>
         </div>
       )}
       {error && (

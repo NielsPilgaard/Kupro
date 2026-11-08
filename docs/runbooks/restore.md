@@ -215,6 +215,7 @@ them (within 35 days, DPA).
 | WAL not yet in the repo | Docker volume `kupro-wal-receive` |
 | Backups (encrypted) | pgBackRest repo bucket in OVHcloud Object Storage (`BACKUP_S3_BUCKET`) |
 | Status, history, migration list | Ops bucket (`BACKUP_OPS_BUCKET`: `status.json`, `history/`, `migrations.json`) |
+| Data Protection keys (not in the backups; a restored database reads its import tokens with them) | Keys bucket in OVHcloud Object Storage (`KEYS_BUCKET`) |
 | Console access key, agent state | Docker volume `kupro-backup-agent-state` |
 | Secrets (S3 keys, cipher pass, role passwords) | Dokploy environment and the password manager |
 | Measured restore times | Console → Drills (weekly drills and the quarterly manual drill) |

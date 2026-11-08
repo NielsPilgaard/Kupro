@@ -122,10 +122,14 @@ public static class McpViews
 
     public static ContextProject Project(ProjectResponse p) => new(p.Key, p.Name, p.Description, p.IssueCount);
 
-    /// <summary>People you can assign: active ones, humans before agents so a cap can't push them out.</summary>
+    /// <summary>
+    /// People you can assign: active ones, humans before agents, then placeholders from imports, so a cap can't push
+    /// the people who are actually here out.
+    /// </summary>
     public static (IReadOnlyList<ContextMember> Members, int? Total) Members(IReadOnlyList<MemberResponse> members)
     {
-        var active = members.Where(m => m.Status == MemberStatus.Active).OrderBy(m => m.Kind).ThenBy(m => m.Name, StringComparer.Ordinal).ToList();
+        var active = members.Where(m => m.Status is MemberStatus.Active or MemberStatus.Placeholder)
+            .OrderBy(m => m.Status == MemberStatus.Placeholder).ThenBy(m => m.Kind).ThenBy(m => m.Name, StringComparer.Ordinal).ToList();
         return (active.Take(ContextCap).Select(m => new ContextMember(m.Id, m.Name, m.Kind, m.Role)).ToList(),
             active.Count > ContextCap ? active.Count : null);
     }

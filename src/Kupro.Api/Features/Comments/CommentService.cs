@@ -86,7 +86,7 @@ public sealed class CommentService(
                         m.Id,
                         m.Kind == MemberKind.Agent
                             ? m.AgentName!
-                            : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                            : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                         m.Kind))
                     .First(),
                 c.Via,

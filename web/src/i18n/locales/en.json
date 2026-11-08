@@ -457,6 +457,13 @@
     "deactivate": "Deactivate",
     "deactivateTitle": "Deactivate {{name}}",
     "deactivateConfirm": "Deactivate {{name}}? Their access and API tokens are revoked, and so are their agents. Their name stays in the history.",
+    "placeholders": "From imports",
+    "placeholdersHint": "People from an imported tracker. They can't sign in and take no seat.",
+    "invitePlaceholder": "Invite",
+    "mergeInto": "Merge into…",
+    "mergeTarget": "Merge {{name}} into",
+    "mergeConfirm": "Everything {{name}} did moves to the person you pick, and {{name}} is removed. This can't be undone.",
+    "merge": "Merge",
     "errors": {
       "guestLimit": "All free guest places are taken ({{count}} of {{limit}}, 5 per seat). Add a seat or deactivate a guest first.",
       "alreadyMember": "That email is already a member or has an invite.",

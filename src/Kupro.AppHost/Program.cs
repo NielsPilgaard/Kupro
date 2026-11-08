@@ -106,11 +106,20 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("REALM_SMTP_FROM", builder.AddParameter("keycloak-smtp-from"));
 
     // Attachments in OVHcloud Object Storage (ADR-004). Bucket and CORS rule are set up once by hand (deploy runbook).
-    api.WithEnvironment("Storage__ServiceUrl", builder.AddParameter("storage-url"))
-        .WithEnvironment("Storage__Region", builder.AddParameter("storage-region"))
+    var storageUrl = builder.AddParameter("storage-url");
+    var storageRegion = builder.AddParameter("storage-region");
+    api.WithEnvironment("Storage__ServiceUrl", storageUrl)
+        .WithEnvironment("Storage__Region", storageRegion)
         .WithEnvironment("Storage__Bucket", builder.AddParameter("storage-bucket"))
         .WithEnvironment("Storage__AccessKey", builder.AddParameter("storage-access-key"))
         .WithEnvironment("Storage__SecretKey", builder.AddParameter("storage-secret-key", secret: true));
+
+    // Data Protection keys (ADR-019): same endpoint, own bucket and S3 user, also created by hand.
+    api.WithEnvironment("KeyStorage__ServiceUrl", storageUrl)
+        .WithEnvironment("KeyStorage__Region", storageRegion)
+        .WithEnvironment("KeyStorage__Bucket", builder.AddParameter("keys-bucket"))
+        .WithEnvironment("KeyStorage__AccessKey", builder.AddParameter("keys-access-key"))
+        .WithEnvironment("KeyStorage__SecretKey", builder.AddParameter("keys-secret-key", secret: true));
 
     // Free guests per seat (ADR-013): 5 on hosted Kupro. Empty means no cap, as for self-hosting.
     api.WithEnvironment("Members__GuestsPerSeat", builder.AddParameter("members-guests-per-seat"));
@@ -193,6 +202,11 @@ else
         .WithEnvironment("Storage__AccessKey", "kupro")
         .WithEnvironment("Storage__SecretKey", ReferenceExpression.Create($"{storageSecret}"))
         .WithEnvironment("Storage__CreateBucket", "true")
+        .WithEnvironment("KeyStorage__ServiceUrl", storage.GetEndpoint("http"))
+        .WithEnvironment("KeyStorage__Bucket", "kupro-keys")
+        .WithEnvironment("KeyStorage__AccessKey", "kupro")
+        .WithEnvironment("KeyStorage__SecretKey", ReferenceExpression.Create($"{storageSecret}"))
+        .WithEnvironment("KeyStorage__CreateBucket", "true")
         .WaitFor(storage);
     backupAgent.WithLocalBuckets(storage, "kupro", storageSecret);
 

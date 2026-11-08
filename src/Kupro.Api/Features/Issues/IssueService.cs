@@ -78,7 +78,7 @@ public sealed class IssueService(
                         m.Id,
                         m.Kind == MemberKind.Agent
                             ? m.AgentName!
-                            : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                            : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                         m.Kind))
                     .First(),
                 i.CompletedAt,
@@ -1162,14 +1162,14 @@ public sealed class IssueService(
     private Guid? ResolveMemberShorthand(string value) =>
         value == Me ? workspace.MemberId : Guid.TryParse(value, out var id) ? id : null;
 
-    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member; unknown values are left out.</summary>
+    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member or a placeholder (ADR-019); unknown values are left out.</summary>
     private async Task<Dictionary<string, (Guid Id, MemberKind Kind)>> ResolveAssigneesAsync(
         KuproDbContext db, IEnumerable<string?> values, CancellationToken ct)
     {
         var wanted = values.OfType<string>().Distinct()
             .Select(v => (Value: v, Id: ResolveMemberShorthand(v))).Where(x => x.Id is not null).ToList();
         var ids = wanted.Select(x => x.Id!.Value).Distinct().ToList();
-        var active = await db.Members.Where(m => ids.Contains(m.Id) && m.Status == MemberStatus.Active)
+        var active = await db.Members.Where(m => ids.Contains(m.Id) && (m.Status == MemberStatus.Active || m.Status == MemberStatus.Placeholder))
             .ToDictionaryAsync(m => m.Id, m => m.Kind, ct);
         return wanted.Where(x => active.ContainsKey(x.Id!.Value))
             .ToDictionary(x => x.Value, x => (x.Id!.Value, active[x.Id!.Value]));
@@ -1240,7 +1240,7 @@ public sealed class IssueService(
                     m.Id,
                     m.Kind == MemberKind.Agent
                         ? m.AgentName!
-                        : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                        : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                     m.Kind))
                 .FirstOrDefault(),
             db.Issues.Where(p => p.Id == i.ParentId).Select(p => p.Key).FirstOrDefault(),

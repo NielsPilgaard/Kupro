@@ -25,6 +25,11 @@ public sealed class StorageFixture : IAsyncLifetime
         ["Storage:AccessKey"] = AccessKey,
         ["Storage:SecretKey"] = SecretKey,
         ["Storage:CreateBucket"] = "true",
+        ["KeyStorage:ServiceUrl"] = $"http://{_container.Hostname}:{_container.GetMappedPublicPort(Port)}",
+        ["KeyStorage:Bucket"] = "kupro-keys",
+        ["KeyStorage:AccessKey"] = AccessKey,
+        ["KeyStorage:SecretKey"] = SecretKey,
+        ["KeyStorage:CreateBucket"] = "true",
     };
 
     public ValueTask InitializeAsync() => new(_container.StartAsync());

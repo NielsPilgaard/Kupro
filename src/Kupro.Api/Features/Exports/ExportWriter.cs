@@ -6,6 +6,7 @@ using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Meetings;
 using Kupro.Api.Features.Plan;
@@ -32,6 +33,7 @@ internal static class ExportWriter
         typeof(Member), typeof(Project), typeof(Label), typeof(Issue), typeof(IssueLabel), typeof(IssueRelation),
         typeof(Sprint), typeof(SprintLedgerEntry), typeof(Milestone), typeof(ProjectCapacity), typeof(Comment), typeof(ActivityEntry),
         typeof(Attachment), typeof(MeetingSession), typeof(TranscriptSegment), typeof(MeetingProposal), typeof(MeetingSettings),
+        typeof(WorkspaceImport), typeof(ImportRun), typeof(ImportedItem), typeof(IssueAlias),
     };
 
     /// <summary>
@@ -145,6 +147,12 @@ internal static class ExportWriter
         await ArrayAsync(json, "transcriptSegments", db.TranscriptSegments.AsNoTracking().OrderBy(t => t.CreatedAt), ct);
         await ArrayAsync(json, "meetingProposals", db.MeetingProposals.AsNoTracking().OrderBy(p => p.CreatedAt), ct);
         await ArrayAsync(json, "meetingSettings", db.MeetingSettings.AsNoTracking(), ct);
+
+        // WorkspaceImport.EncryptedToken is [JsonIgnore]: a source token never leaves the database.
+        await ArrayAsync(json, "imports", db.WorkspaceImports.AsNoTracking().OrderBy(i => i.CreatedAt), ct);
+        await ArrayAsync(json, "importRuns", db.ImportRuns.AsNoTracking().OrderBy(r => r.CreatedAt), ct);
+        await ArrayAsync(json, "importedItems", db.ImportedItems.AsNoTracking().OrderBy(i => i.Id), ct);
+        await ArrayAsync(json, "issueAliases", db.IssueAliases.AsNoTracking().OrderBy(a => a.Alias), ct);
         json.WriteEndObject();
     }
 

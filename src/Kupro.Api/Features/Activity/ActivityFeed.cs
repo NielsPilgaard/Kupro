@@ -89,7 +89,7 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                 m.Id,
                 m.Kind == MemberKind.Agent
                     ? m.AgentName!
-                    : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                    : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                 m.Kind))
             .ToDictionaryAsync(m => m.Id, ct);
         var parentIds = parsed.SelectMany(p => Ids(p.Data, "parent")).ToHashSet();
