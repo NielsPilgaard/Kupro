@@ -27,8 +27,9 @@ storage and jobs (last item in Acceptance criteria).
 `ISourceConnector`, the snapshot-upload connector), [import-format.md](../docs/import-format.md) with its schema, and
 `SnapshotTests`. Data is done too: the four import tables (`Features/Imports`, class `WorkspaceImport` for `import`,
 since `Import` collides with the `Kupro.Import` namespace), `ImportTokens` with Data Protection keys in their own bucket, and
-placeholder members with invite and merge on REST, CLI and the Members page. Next: Pipeline. It adds the per-field
-conflict table.
+placeholder members with invite and merge on REST, CLI and the Members page. Pipeline has started: the mapping with its
+defaults, `HierarchyFit` and `ImportPlanner` (counts and samples over a snapshot, nothing written). Next: `ImportJob`
+and the commit path, which also add key collisions, conflicts and the per-field conflict table to the plan.
 
 ## Scope
 

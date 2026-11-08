@@ -661,7 +661,7 @@ public sealed class IssueService(
                 }
 
                 var childTypes = await db.Issues.Where(ch => ch.ParentId == issue.Id).Select(ch => ch.Type).Distinct().ToListAsync(ct);
-                if (childTypes.Any(t => !Validate.CanBeParent(t, newType)))
+                if (childTypes.Any(t => !IssueRules.CanBeParent(t, newType)))
                 {
                     return new IssueError("invalid_hierarchy",
                         $"{where}{issue.Key} has children that can't sit under a {newType}.");
@@ -1297,16 +1297,9 @@ public sealed class IssueService(
 
     private static class Validate
     {
-        public static bool CanBeParent(IssueType child, IssueType parent) => child switch
-        {
-            IssueType.Task => parent is IssueType.Feature or IssueType.Epic,
-            IssueType.Feature => parent is IssueType.Epic,
-            _ => false,
-        };
-
         public static IssueError? Parent(IssueType child, ParentInfo? parent) =>
             parent is null ? new IssueError("invalid_parent", "The parent issue doesn't exist.")
-            : CanBeParent(child, parent.Type) ? null
+            : IssueRules.CanBeParent(child, parent.Type) ? null
             : new IssueError("invalid_hierarchy", child == IssueType.Epic
                 ? "Epics are top level and can't have a parent."
                 : $"A {child} can't sit under a {parent.Type}.");
