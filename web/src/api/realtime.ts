@@ -79,6 +79,8 @@ export function useRealtime(workspace: string, openIssue: string | undefined) {
 
     connection.on('changed', (e: ChangedEvent) => {
       if (e.topic === 'issue' && e.issueKey) touched(e.issueKey, e.actorId, e.via);
+      // No key: a whole batch changed (an import), so lists refetch rather than each issue being pushed.
+      if (e.topic === 'issue' && !e.issueKey) void qc.invalidateQueries({ predicate: isIssueList });
       // Relations feed the plan's dependencies.
       if (e.topic === 'issue') void qc.invalidateQueries(byOperation('getPlan'));
       if (e.topic === 'sprints') void qc.invalidateQueries(byOperation('listSprints', 'getSprint', 'getPlan', 'getSprintReview', 'getSprintBurndown'));

@@ -2,9 +2,25 @@ import { Paperclip } from 'lucide-react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ATTACHMENT_SCHEME, useAttachment } from '../../api/attachments';
+import { splitImportBlock } from './importBlock';
 
 /** Markdown for descriptions and comments; `attachment:ID` images and links resolve through the API (members only). */
 export function RichMarkdown({ workspace, children }: { workspace: string; children: string }) {
+  const { body, block } = splitImportBlock(children);
+  return (
+    <>
+      <MarkdownBody workspace={workspace}>{body}</MarkdownBody>
+      {block && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer text-mute hover:text-ink">{block.summary}</summary>
+          <MarkdownBody workspace={workspace}>{block.content}</MarkdownBody>
+        </details>
+      )}
+    </>
+  );
+}
+
+function MarkdownBody({ workspace, children }: { workspace: string; children: string }) {
   return (
     <div className="prose-kupro text-md">
       <Markdown

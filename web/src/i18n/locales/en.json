@@ -323,7 +323,8 @@
       "cli": "CLI",
       "mcp": "MCP",
       "api": "API",
-      "meeting": "meeting"
+      "meeting": "meeting",
+      "import": "import"
     },
     "sprintClosed": {
       "carry": "{{name}} carried this from {{sprint}} to {{target}} on close",
