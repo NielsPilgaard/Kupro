@@ -53,9 +53,7 @@ public static class ImportPlanner
     public static async Task<ImportPlan> PlanAsync(
         SnapshotReader snapshot, ImportMapping mapping, IReadOnlySet<string> alreadyImported, DateTimeOffset now, CancellationToken ct)
     {
-        var levels = snapshot.Header.ItemTypes.ToDictionary(t => t.Id, t => t.Level, StringComparer.Ordinal);
-        var cutoff = mapping.Scope.ClosedOlderThanMonths is { } months ? now.AddMonths(-months) : (DateTimeOffset?)null;
-
+        var source = new MappedSource(snapshot.Header, mapping, now);
         var kept = new List<FitInput>();
         var skipped = new List<string>();
         var toReview = new List<string>();
@@ -69,15 +67,14 @@ public static class ImportPlanner
                 continue;
             }
 
-            if (!InScope(item, mapping.Scope, cutoff))
+            if (!source.InScope(item))
             {
                 skipped.Add(item.Id);
                 continue;
             }
 
-            var target = mapping.Types.GetValueOrDefault(item.Type) ?? ImportMappingDefaults.ProposeType(item.Type);
-            kept.Add(new FitInput(item.Id, target.Type, item.Parent, levels.GetValueOrDefault(item.Type), target.Checklist));
-            effort += Effort(item, mapping) ?? 0;
+            kept.Add(source.Input(item));
+            effort += source.Effort(item) ?? 0;
             if (NeedsReview(item.Status, mapping))
             {
                 toReview.Add(item.Id);
@@ -119,26 +116,11 @@ public static class ImportPlanner
         };
     }
 
-    /// <summary>Hours: the source's estimate first, else points times the owner's factor, else none (ADR-019 Effort).</summary>
-    public static decimal? Effort(SourceItem item, ImportMapping mapping)
-    {
-        if (item.EstimateSeconds is { } seconds)
-        {
-            return Math.Round(seconds / 3600m, 2);
-        }
-
-        return item.Points is { } points && mapping.HoursPerPoint is { } factor ? points * factor : null;
-    }
-
     private static FoldCounts Fold(List<FitInput> items, FoldEnd end)
     {
         var fit = HierarchyFit.Run(items, end);
         return new FoldCounts(fit.Reparented.Count, fit.Promoted.Count, fit.FoldedTops.Count);
     }
-
-    private static bool InScope(SourceItem item, ImportScope scope, DateTimeOffset? cutoff) =>
-        (scope.Projects.Count == 0 || scope.Projects.Contains(item.Project))
-        && !(item.Resolved < cutoff);
 
     /// <summary>A status that appeared after the mapping was saved has no state yet: Todo, and worth a look.</summary>
     private static bool NeedsReview(string status, ImportMapping mapping) =>

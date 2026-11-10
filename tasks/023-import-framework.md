@@ -28,8 +28,11 @@ storage and jobs (last item in Acceptance criteria).
 `SnapshotTests`. Data is done too: the four import tables (`Features/Imports`, class `WorkspaceImport` for `import`,
 since `Import` collides with the `Kupro.Import` namespace), `ImportTokens` with Data Protection keys in their own bucket, and
 placeholder members with invite and merge on REST, CLI and the Members page. Pipeline has started: the mapping with its
-defaults, `HierarchyFit` and `ImportPlanner` (counts and samples over a snapshot, nothing written). Next: `ImportJob`
-and the commit path, which also add key collisions, conflicts and the per-field conflict table to the plan.
+defaults, `HierarchyFit` and `ImportPlanner` (counts and samples over a snapshot, nothing written), then the first
+commit: the stored snapshot, `ImportJob` with its own queue, `ImportCommit` (projects, people, labels, sprints,
+milestones, keys and aliases, issues with the details block, relations; resumable) and `MarkupConverters` (HTML, plain).
+No surface reaches it yet: `ImportService` is called from tests. Next: comments, attachments, changelog replay and
+mention/link rewriting, then re-runs with conflicts, then the rest of the commit path (invites, email, auto-sync, undo, finish).
 
 ## Scope
 
@@ -166,7 +169,7 @@ and the commit path, which also add key collisions, conflicts and the per-field 
       time; unmapped field changes show as source changes. Feed paging returns all 5,000 entries of a large issue
       within budget.
 - [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
-- [ ] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
+- [x] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
 - [ ] Undo removes everything the import created and nothing else; it is refused while records it didn't create
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
 - [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
@@ -180,3 +183,5 @@ and the commit path, which also add key collisions, conflicts and the per-field 
 - OAuth "Connect" buttons.
 - Writing back to the source (comments, "moved to Kupro" links).
 - Two-way sync, webhooks.
+- Defaulting bots to skip ([ADR-019](../docs/adr/ADR-019-import.md) People): the format has no bot flag, so they propose
+  as placeholders and the owner skips them by hand. The owner put this off on 2026-11-08.

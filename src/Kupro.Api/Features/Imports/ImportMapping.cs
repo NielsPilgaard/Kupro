@@ -93,7 +93,7 @@ public static class ImportMappingDefaults
         var states = header.Statuses.DistinctBy(s => s.Id).ToDictionary(s => s.Id, s => ProposeState(s.Name, s.Category), StringComparer.Ordinal);
         return new ImportMapping
         {
-            Projects = header.Projects.DistinctBy(p => p.Id).ToDictionary(p => p.Id, p => new ProjectTarget(ProjectKey(p), p.Name), StringComparer.Ordinal),
+            Projects = header.Projects.DistinctBy(p => p.Id).ToDictionary(p => p.Id, ProposeProject, StringComparer.Ordinal),
             People = header.People.DistinctBy(p => p.Id).ToDictionary(p => p.Id, p => ProposePerson(p, members), StringComparer.Ordinal),
             Types = header.ItemTypes.DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => ProposeType(t.Name), StringComparer.Ordinal),
             States = states.Where(s => s.Value is not null).ToDictionary(s => s.Key, s => s.Value!.Value, StringComparer.Ordinal),
@@ -115,6 +115,8 @@ public static class ImportMappingDefaults
 
         return match is null ? new PersonTarget(PersonAction.Placeholder) : new PersonTarget(PersonAction.Member, match.Id);
     }
+
+    public static ProjectTarget ProposeProject(SourceProject project) => new(ProjectKey(project), project.Name);
 
     public static TypeTarget ProposeType(string name)
     {
@@ -192,11 +194,12 @@ public static class ImportMappingDefaults
         return Has(name, "done") || Has(name, "closed") ? IssueState.Done : null;
     }
 
+    /// <summary>A project key that passes <see cref="Projects.ProjectService.KeyPattern"/>: at least two characters.</summary>
     private static string ProjectKey(SourceProject project)
     {
         var letters = (project.Key ?? project.Name).ToUpperInvariant().Where(char.IsAsciiLetterOrDigit).SkipWhile(char.IsAsciiDigit);
         var key = new string([.. letters.Take(MaxProjectKeyLength)]);
-        return key.Length > 0 ? key : "IMP";
+        return key.Length > 1 ? key : "IMP";
     }
 
     private static bool Has(string text, string hint) => text.Contains(hint, StringComparison.OrdinalIgnoreCase);

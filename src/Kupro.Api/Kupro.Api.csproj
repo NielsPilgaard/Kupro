@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="Aspire.Keycloak.Authentication" />
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />

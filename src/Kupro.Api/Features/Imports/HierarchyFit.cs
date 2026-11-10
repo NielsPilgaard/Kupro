@@ -42,10 +42,11 @@ public static class HierarchyFit
     {
         var all = input.ToDictionary(i => i.Id, StringComparer.Ordinal);
 
-        // A checklist item needs a parent to fold into. Without one it would vanish, so it stays an item.
+        // A checklist item needs a real item to fold into. Without one it would vanish, so it stays an item.
         var checklists = all.Values
-            .Where(i => i.Checklist && i.Parent is not null && all.ContainsKey(i.Parent))
-            .Select(i => new FoldedChecklist(i.Id, i.Parent!))
+            .Where(i => i.Checklist)
+            .Select(i => new FoldedChecklist(i.Id, Holder(i, all)!))
+            .Where(c => c.Parent is not null)
             .ToList();
         foreach (var folded in checklists)
         {
@@ -174,6 +175,19 @@ public static class HierarchyFit
         }
 
         return new FitResult(fitted, oldParents, checklists, foldedTops, promoted, [.. cycles], fourLevels);
+    }
+
+    /// <summary>The nearest ancestor that isn't a checklist item itself; null if the chain ends or loops first.</summary>
+    private static string? Holder(FitInput item, Dictionary<string, FitInput> all)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal) { item.Id };
+        var parent = Known(item.Parent, all);
+        while (parent is not null && all[parent].Checklist)
+        {
+            parent = seen.Add(parent) ? Known(all[parent].Parent, all) : null;
+        }
+
+        return parent;
     }
 
     /// <summary>A parent outside the snapshot (out of scope, or a delta run) counts as none here.</summary>

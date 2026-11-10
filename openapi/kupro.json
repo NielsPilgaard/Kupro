@@ -7515,7 +7515,8 @@
           "web",
           "cli",
           "mcp",
-          "meeting"
+          "meeting",
+          "import"
         ],
         "description": "Where an action came from; shown as \"via MCP\" in the UI (design guide, toasts)."
       },

@@ -9,6 +9,7 @@
     <OpenTelemetryVersion>1.20.1</OpenTelemetryVersion>
   </PropertyGroup>
   <ItemGroup Label="Aspire">
+    <PackageVersion Include="AngleSharp" Version="1.10.0" />
     <PackageVersion Include="Aspire.Hosting.Docker" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="$(AspireVersion)-preview.1.26523.11" />

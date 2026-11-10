@@ -143,6 +143,32 @@ public sealed class ProjectService(
         return last.Single();
     }
 
+    /// <summary>A project an import creates, in the caller's context so it commits with what the import recorded about it.</summary>
+    internal Project AddImported(KuproDbContext db, string key, string name, int existingProjects)
+    {
+        var project = new Project
+        {
+            Id = Guid.CreateVersion7(),
+            WorkspaceId = workspace.RequireWorkspaceId(),
+            Key = key,
+            Name = name,
+            Color = (ProjectColor)(existingProjects % Enum.GetValues<ProjectColor>().Length),
+            CreatedAt = clock.GetUtcNow(),
+        };
+        db.Projects.Add(project);
+        return project;
+    }
+
+    /// <summary>
+    /// Moves the counter past the highest number an import keeps (ADR-019 Keys). Locks the project row until the caller
+    /// commits: creates already under way finish first, and later ones get a number above the kept ones.
+    /// </summary>
+    internal static Task ReserveImportedNumbersAsync(KuproDbContext db, Guid projectId, int highest, CancellationToken ct) =>
+        db.Database.ExecuteSqlAsync($"""
+            UPDATE projects SET issue_counter = GREATEST(issue_counter, {highest})
+            WHERE id = {projectId} AND workspace_id = {db.CurrentWorkspaceId}
+            """, ct);
+
     private async Task<bool> TrySaveAsync(KuproDbContext db, CancellationToken ct)
     {
         try

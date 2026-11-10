@@ -456,6 +456,64 @@ public sealed class IssueService(
             : created;
     }
 
+    /// <summary>
+    /// The import's bulk path (ADR-019 IMP-002): adds issues to the caller's context and transaction with the source's
+    /// key, people and times. The caller reserved the numbers. They go below what a column already holds, in the order
+    /// given, so a large import doesn't bury the team's own issues.
+    /// </summary>
+    internal async Task AddImportedAsync(KuproDbContext db, IReadOnlyList<ImportedIssue> rows, CancellationToken ct)
+    {
+        // Before anything else in the transaction, like every sprint lock.
+        var sprints = await SprintLedger.LockSprintsAsync(db, rows.Select(r => r.SprintId).OfType<Guid>().Distinct().ToList(), ct);
+
+        var ranks = new Dictionary<(Guid, IssueState), double>();
+        foreach (var (projectId, state) in rows.Select(r => (r.ProjectId, r.State)).Distinct())
+        {
+            ranks[(projectId, state)] = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MaxAsync(i => (double?)i.Rank, ct) ?? 0;
+        }
+
+        var added = new List<Issue>(rows.Count);
+        foreach (var r in rows)
+        {
+            var issue = new Issue
+            {
+                Id = r.Id,
+                WorkspaceId = workspace.RequireWorkspaceId(),
+                ProjectId = r.ProjectId,
+                Number = r.Number,
+                Key = r.Key,
+                Type = r.Type,
+                Title = r.Title,
+                Description = r.Description,
+                State = r.State,
+                Priority = r.Priority,
+                AssigneeId = r.AssigneeId,
+                ParentId = r.ParentId,
+                Effort = r.Effort,
+                StartDate = r.StartDate,
+                DueDate = r.DueDate,
+                Rank = ++ranks[(r.ProjectId, r.State)],
+                SprintId = r.SprintId,
+                CreatedById = r.CreatedById,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt,
+                CompletedAt = r.CompletedAt,
+            };
+            foreach (var labelId in r.LabelIds)
+            {
+                issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+            }
+
+            db.Issues.Add(issue);
+            activity.RecordImported(db, issue.Id, "created", r.CreatedById, r.CreatedAt, r.SourceCreator is { } name ? new { sourceActor = name } : null);
+            added.Add(issue);
+        }
+
+        // A closed sprint takes old issues only from an import. It has no ledger to add to, and the ledger refuses it.
+        var live = added.Where(i => i.SprintId is not { } sprint || sprints.GetValueOrDefault(sprint) != SprintState.Closed);
+        _ = await ledger.RecordAsync(db, live.Select(i => (i.Id, LedgerState.None, LedgerState.Of(i))), ct);
+    }
+
     // ---------------------------------------------------------------- update
 
     public async Task<IssueResult<IssueDetail>> UpdateAsync(string key, UpdateIssueRequest request, CancellationToken ct)
@@ -1347,6 +1405,30 @@ public sealed class IssueService(
             Convert.ToBase64String(Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 }
+
+/// <summary>An issue an import writes, with everything already mapped, fitted and numbered.</summary>
+internal sealed record ImportedIssue(
+    Guid Id,
+    Guid ProjectId,
+    int Number,
+    string Key,
+    IssueType Type,
+    string Title,
+    string? Description,
+    IssueState State,
+    IssuePriority Priority,
+    Guid? AssigneeId,
+    Guid? ParentId,
+    decimal? Effort,
+    DateOnly? StartDate,
+    DateOnly? DueDate,
+    Guid? SprintId,
+    IReadOnlyList<Guid> LabelIds,
+    Guid CreatedById,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CompletedAt,
+    string? SourceCreator);
 
 /// <summary>What <see cref="IssueService.ApplyCloseAsync"/> did; the ids and keys are for pushing it after commit.</summary>
 internal sealed record AppliedClose(

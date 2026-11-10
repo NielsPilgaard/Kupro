@@ -63,6 +63,29 @@ public sealed class SprintService(
     RealtimeEvents realtime,
     TimeProvider clock)
 {
+    /// <summary>
+    /// A source sprint, in the caller's context so it commits with what the import recorded about it. Closed or planned,
+    /// never active: starting one is the team's move, and that is what records the ledger's baseline (ADR-020).
+    /// </summary>
+    internal Sprint AddImported(KuproDbContext db, Guid projectId, string name, DateOnly start, DateOnly end, bool closed)
+    {
+        var now = clock.GetUtcNow();
+        var sprint = new Sprint
+        {
+            Id = Guid.CreateVersion7(),
+            WorkspaceId = workspace.RequireWorkspaceId(),
+            ProjectId = projectId,
+            Name = name,
+            StartDate = start,
+            EndDate = end,
+            State = closed ? SprintState.Closed : SprintState.Planned,
+            CreatedAt = now,
+            ClosedAt = closed ? new DateTimeOffset(end.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero) : null,
+        };
+        db.Sprints.Add(sprint);
+        return sprint;
+    }
+
     public async Task<IssueResult<IReadOnlyList<SprintResponse>>> ListAsync(string? projectKey, SprintState[]? states, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);

@@ -20,6 +20,9 @@ public enum Surface
 
     /// <summary>The meeting agent applying a proposal (task 015).</summary>
     Meeting,
+
+    /// <summary>An import from another tracker (ADR-019): "via Jira import".</summary>
+    Import,
 }
 
 /// <summary>
@@ -88,5 +91,19 @@ public sealed class ActivityLog(WorkspaceContext workspace, TimeProvider clock)
             Data = data is null ? null : JsonSerializer.Serialize(data, Json),
             ProposalId = workspace.ProposalId,
             CreatedAt = clock.GetUtcNow(),
+        });
+
+    /// <summary>An entry from an import, with the source's actor and time rather than the running job's (ADR-019 IMP-002).</summary>
+    public void RecordImported(KuproDbContext db, Guid issueId, string kind, Guid actorId, DateTimeOffset at, object? data = null) =>
+        db.Activity.Add(new ActivityEntry
+        {
+            Id = Guid.CreateVersion7(),
+            WorkspaceId = workspace.RequireWorkspaceId(),
+            IssueId = issueId,
+            ActorId = actorId,
+            Via = Surface.Import,
+            Kind = kind,
+            Data = data is null ? null : JsonSerializer.Serialize(data, Json),
+            CreatedAt = at,
         });
 }

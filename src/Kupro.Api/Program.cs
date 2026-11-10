@@ -63,6 +63,12 @@ builder.Services.AddOptions<KeyManagementOptions>().Configure<IServiceProvider>(
     }
 });
 builder.Services.AddSingleton<ImportTokens>();
+builder.Services.Configure<ImportOptions>(builder.Configuration.GetSection(ImportOptions.Section));
+builder.Services.AddSingleton<ImportSnapshots>();
+builder.Services.AddSingleton<ImportSignal>();
+builder.Services.AddScoped<ImportService>();
+builder.Services.AddScoped<ImportCommit>();
+builder.Services.AddHostedService<ImportJob>();
 builder.Services.AddScoped<RealtimeEvents>();
 builder.Services.AddSingleton<WorkspaceConnections>();
 builder.Services.AddScoped<MeetingService>();

@@ -261,9 +261,12 @@ public sealed class ImportPlanTests
         };
         var both = pointsOnly with { EstimateSeconds = 5400 };
 
-        ImportPlanner.Effort(pointsOnly, new ImportMapping()).ShouldBeNull();
-        ImportPlanner.Effort(pointsOnly, new ImportMapping { HoursPerPoint = 2 }).ShouldBe(6);
-        ImportPlanner.Effort(both, new ImportMapping { HoursPerPoint = 2 }).ShouldBe(1.5m);
+        var header = new SnapshotHeader { Format = 1, Source = new SnapshotSource { Kind = SourceKinds.Jira }, CreatedAt = created };
+        var withFactor = new MappedSource(header, new ImportMapping { HoursPerPoint = 2 }, created);
+
+        new MappedSource(header, new ImportMapping(), created).Effort(pointsOnly).ShouldBeNull();
+        withFactor.Effort(pointsOnly).ShouldBe(6);
+        withFactor.Effort(both).ShouldBe(1.5m);
     }
 
     [Fact]
