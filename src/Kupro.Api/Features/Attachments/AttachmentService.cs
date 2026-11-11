@@ -118,6 +118,9 @@ public sealed class AttachmentService(
     internal Task StoreImportedAsync(Guid id, string path, string contentType, CancellationToken ct) =>
         storage.UploadFileAsync($"{workspace.RequireWorkspaceId()}/{id}", path, contentType, ct);
 
+    /// <summary>The stored file of an attachment an undone import made; its row is already gone.</summary>
+    internal Task DeleteImportedAsync(Guid id, CancellationToken ct) => storage.DeleteAsync($"{workspace.RequireWorkspaceId()}/{id}", ct);
+
     /// <summary>The row for a file <see cref="StoreImportedAsync"/> stored, with the source's uploader and time; ready at once.</summary>
     internal Attachment AddImported(KuproDbContext db, Guid id, Guid issueId, Guid uploadedById, string fileName, string contentType, long size, DateTimeOffset createdAt)
     {

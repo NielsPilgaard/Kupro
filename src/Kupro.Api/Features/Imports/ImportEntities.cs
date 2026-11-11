@@ -43,6 +43,7 @@ public enum ImportedEntityKind
     Label,
     Milestone,
     Sprint,
+    Relation,
 }
 
 /// <summary>One migration from one source, re-runnable until Finish (ADR-019 IMP-001).</summary>

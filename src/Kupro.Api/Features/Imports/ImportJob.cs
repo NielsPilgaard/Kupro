@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Attachments;
+using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
@@ -30,6 +31,8 @@ public sealed class ImportSnapshots(ObjectStorage storage)
 
     public async Task<bool> ExistsAsync(Guid workspaceId, Guid importId, CancellationToken ct) =>
         await storage.SizeAsync(ObjectKey(workspaceId, importId), ct) is not null;
+
+    public Task DeleteAsync(Guid workspaceId, Guid importId, CancellationToken ct) => storage.DeleteAsync(ObjectKey(workspaceId, importId), ct);
 
     /// <summary>A local, seekable copy (a ZIP is read from its end), deleted when the stream closes. Null if none is stored.</summary>
     public async Task<FileStream?> OpenAsync(Guid workspaceId, Guid importId, CancellationToken ct)
@@ -87,6 +90,7 @@ public sealed partial class ImportService(
     ImportSignal signal,
     IssueService issues,
     LabelService labels,
+    AttachmentService attachments,
     RealtimeEvents realtime,
     TimeProvider clock)
 {
@@ -178,7 +182,11 @@ public sealed partial class ImportService(
 public sealed partial class ImportJob(
     IServiceScopeFactory scopes, ImportSnapshots snapshots, ImportSignal signal, IOptions<ImportOptions> options, TimeProvider clock, ILogger<ImportJob> logger) : BackgroundService
 {
+    /// <summary>A token unused this long is deleted: a migration nobody runs shouldn't keep a key to the source (ADR-019).</summary>
+    public static readonly TimeSpan TokenKeptFor = TimeSpan.FromDays(90);
+
     private readonly Dictionary<Guid, (Guid WorkspaceId, Task Run)> _running = [];
+    private DateTimeOffset _lastPurge;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -194,6 +202,13 @@ public sealed partial class ImportJob(
                 try
                 {
                     await StartWaitingAsync(stoppingToken);
+                    if (clock.GetUtcNow() - _lastPurge > TimeSpan.FromHours(1))
+                    {
+                        await using var scope = scopes.CreateAsyncScope();
+                        await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(stoppingToken);
+                        await PurgeTokensAsync(db, clock.GetUtcNow(), stoppingToken);
+                        _lastPurge = clock.GetUtcNow();
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -209,6 +224,13 @@ public sealed partial class ImportJob(
             await Task.WhenAll(_running.Values.Select(r => r.Run));
         }
     }
+
+    /// <summary>Deletes source tokens of imports with no run for <see cref="TokenKeptFor"/>. Auto-sync stops with them.</summary>
+    public static Task<int> PurgeTokensAsync(KuproDbContext db, DateTimeOffset now, CancellationToken ct) =>
+        // System job across all tenants: the purge has no request workspace.
+        db.WorkspaceImports.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+            .Where(i => i.EncryptedToken != null && (i.LastRunAt ?? i.CreatedAt) < now - TokenKeptFor)
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.EncryptedToken, (string?)null).SetProperty(i => i.AutoSync, false), ct);
 
     private async Task StartWaitingAsync(CancellationToken ct)
     {
@@ -300,9 +322,15 @@ public sealed partial class ImportJob(
                 await CommitAsync(scope, db, run, import, snapshot, mapping, ct);
             }
 
+            var first = run.Kind == ImportRunKind.Commit
+                && !await db.ImportRuns.AnyAsync(r => r.ImportId == import.Id && r.Kind == ImportRunKind.Commit && r.State == ImportRunState.Succeeded, ct);
             run.State = ImportRunState.Succeeded;
             run.CompletedAt = clock.GetUtcNow();
             await db.SaveChangesAsync(ct);
+            if (first)
+            {
+                await NotifyAsync(scope, db, import, run, ct);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -315,6 +343,36 @@ public sealed partial class ImportJob(
             run.CompletedAt = clock.GetUtcNow();
             run.Error = ex is ImportFailedException or SnapshotFormatException ? Cut(ex.Message) : "The import failed unexpectedly. It can be run again; it continues from what it finished.";
             await db.SaveChangesAsync(CancellationToken.None);
+
+            // A failed plan is shown to the owner who just asked for it; a failed commit may have run unattended.
+            if (run.Kind == ImportRunKind.Commit)
+            {
+                await NotifyAsync(scope, db, import, run, ct);
+            }
+        }
+    }
+
+    /// <summary>Tells the owner who created the import, in their language (ADR-019 Email). The run stands whether or not it arrives.</summary>
+    private async Task NotifyAsync(AsyncServiceScope scope, KuproDbContext db, WorkspaceImport import, ImportRun run, CancellationToken ct)
+    {
+        try
+        {
+            var to = await db.Members.Where(m => m.Id == import.CreatedById)
+                .Select(m => db.Users.Where(u => u.Id == m.UserId).Select(u => new { u.Email, u.Locale }).FirstOrDefault())
+                .SingleOrDefaultAsync(ct);
+            if (to is null)
+            {
+                return;
+            }
+
+            var workspace = await db.Workspaces.Where(w => w.Id == import.WorkspaceId).Select(w => w.Name).SingleAsync(ct);
+            var counts = run.Counts is { } json ? JsonSerializer.Deserialize<ImportRunCounts>(json, JsonSerializerOptions.Web) : null;
+            var message = ImportMail.For(to.Email, to.Locale, workspace, ImportDescription.SourceName(import.SourceKind), run.State, counts?.Issues ?? 0, run.Error);
+            await scope.ServiceProvider.GetRequiredService<IEmailSender>().SendAsync(message, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogNotifyFailed(logger, run.Id, ex);
         }
     }
 
@@ -343,4 +401,27 @@ public sealed partial class ImportJob(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Import run {RunId} failed")]
     private static partial void LogRunFailed(ILogger logger, Guid runId, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Import run {RunId} ended, but the email to its owner failed")]
+    private static partial void LogNotifyFailed(ILogger logger, Guid runId, Exception exception);
+}
+
+/// <summary>The import's emails to its owner, EN and DA (ADR-019 Email, docs/branding.md glossary).</summary>
+public static class ImportMail
+{
+    public static EmailMessage For(string to, string locale, string workspace, string source, ImportRunState state, int issues, string? error)
+    {
+        var danish = locale.StartsWith("da", StringComparison.OrdinalIgnoreCase);
+        return (state, danish) switch
+        {
+            (ImportRunState.Succeeded, true) => new EmailMessage(to, $"Importen fra {source} til {workspace} er færdig",
+                $"{issues} opgaver kom med. Rapporten ligger under Indstillinger → Import i Kupro."),
+            (ImportRunState.Succeeded, false) => new EmailMessage(to, $"Your import from {source} into {workspace} is done",
+                $"{issues} issues came across. The report is under Settings → Import in Kupro."),
+            (_, true) => new EmailMessage(to, $"Importen fra {source} til {workspace} stoppede",
+                $"{error} Kupro beholder det, der nåede at komme med. Kør importen igen for at fortsætte."),
+            _ => new EmailMessage(to, $"Your import from {source} into {workspace} stopped",
+                $"{error} Kupro keeps what it finished. Run the import again to continue."),
+        };
+    }
 }

@@ -37,7 +37,10 @@ server-side connectors fetch it. Re-runs work too: per-field updates against `im
 with Keep/Use source, deltas that rebuild the tree from stored parents, and a `partial` flag in the format so only a whole
 snapshot reports source deletions. A delta must list a holder together with its checklist items. No surface reaches any
 of this yet: `ImportService` is called from tests. The plan runs a re-run's own comparison on a context it never saves,
-so its counts are the commit's. Next: the rest of the commit path (invites, email, auto-sync, undo, finish).
+so its counts are the commit's. Invites go out when a commit ends, the owner is emailed (EN/DA) after the first commit
+and after a failed one (a failed plan only shows where it was asked for), and Undo, Finish and the 90-day token purge
+are in `ImportService`/`ImportJob`. Next: server-side connector runs (rejected token, attachment fetch, auto-sync),
+then slice 3 (feed paging, aliases in lookups).
 
 ## Scope
 
@@ -175,7 +178,7 @@ so its counts are the commit's. Next: the rest of the commit path (invites, emai
       within budget.
 - [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
 - [x] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
-- [ ] Undo removes everything the import created and nothing else; it is refused while records it didn't create
+- [x] Undo removes everything the import created and nothing else; it is refused while records it didn't create
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
 - [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
 - [ ] A Danish CSV in Windows-1252 keeps æøå.

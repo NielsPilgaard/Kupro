@@ -29,6 +29,23 @@ internal static class MemberMerge
         let table = type.GetTableName()!
         select (table, fk.Properties[^1].GetColumnName(StoreObjectIdentifier.Table(table, type.GetSchema()))!);
 
+    /// <summary>Whether any foreign key holds the member: an undone import keeps a placeholder that still authors something.</summary>
+    public static async Task<bool> IsReferencedAsync(KuproDbContext db, Guid workspaceId, Guid member, CancellationToken ct)
+    {
+        foreach (var (table, column) in ForeignKeys(db.Model).Where(fk => fk.Table != "members"))
+        {
+            // Names come from the EF model, not from input; values are parameters.
+            var sql = "SELECT EXISTS (SELECT 1 FROM \"" + table + "\" WHERE workspace_id = {0} AND \"" + column + "\" = {1}) AS \"Value\"";
+            if (await db.Database.SqlQueryRaw<bool>(sql, workspaceId, member).SingleAsync(ct))
+            {
+                return true;
+            }
+        }
+
+        return await db.TranscriptSegments.AnyAsync(t => t.SpeakerId == member, ct)
+            || await db.MeetingProposals.AnyAsync(p => p.ReviewedById == member, ct);
+    }
+
     /// <summary>Runs in the caller's transaction. <c>workspaceId</c> is explicit because raw SQL skips the tenant filter.</summary>
     public static async Task MoveReferencesAsync(KuproDbContext db, Guid workspaceId, Guid from, Guid into, CancellationToken ct)
     {

@@ -60,6 +60,12 @@ public sealed class ImportRunCounts
     /// <summary>Items that couldn't keep their source number because something else has it; the source key is an alias.</summary>
     public int Renumbered { get; set; }
 
+    /// <summary>Placeholders the mapping said to invite that got their invite this run.</summary>
+    public int Invited { get; set; }
+
+    /// <summary>People to invite without an email to invite, or already in the workspace: they stay placeholders.</summary>
+    public int NotInvited { get; set; }
+
     /// <summary>Conflicts open when the run ended, carried over or new. Absolute, not added.</summary>
     public int Conflicts { get; set; }
 
@@ -70,6 +76,8 @@ public sealed class ImportRunCounts
     {
         Updated += other.Updated;
         Renumbered += other.Renumbered;
+        Invited += other.Invited;
+        NotInvited += other.NotInvited;
         Comments += other.Comments;
         Attachments += other.Attachments;
         Changes += other.Changes;
@@ -202,6 +210,8 @@ public sealed partial class ImportCommit(
         await WriteCommentsAsync(snapshot, references, ct);
         var marks = await ReplayChangesAsync(snapshot, projectOf, ct);
         await MarkChangesSeenAsync(marks, ct);
+
+        await InviteAsync(ct);
 
         _counts.AlreadyImported = read.Refs.Count(r => _items.ContainsKey(r.Id)) - _counts.Issues;
         Report = await ReportAsync(read, ct);
@@ -799,6 +809,44 @@ public sealed partial class ImportCommit(
         }
     }
 
+    /// <summary>
+    /// Invites the people the mapping says to invite, once their placeholder holds what the run brought: the same row
+    /// becomes the invite, so their history follows them (ADR-019 People). Saved per person, so a resumed run doesn't
+    /// invite anyone twice.
+    /// </summary>
+    private async Task InviteAsync(CancellationToken ct)
+    {
+        var wanted = _mapping.People.Where(p => p.Value.Action == PersonAction.Invite && _people.GetValueOrDefault(p.Key) is not null)
+            .Select(p => _people[p.Key]!.Value).Distinct().ToList();
+        if (wanted.Count == 0)
+        {
+            return;
+        }
+
+        List<Guid> waiting;
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            waiting = await db.Members.AsNoTracking().Where(m => wanted.Contains(m.Id) && m.Status == MemberStatus.Placeholder).Select(m => m.Id).ToListAsync(ct);
+        }
+
+        var delta = new ImportRunCounts();
+        foreach (var id in waiting)
+        {
+            var (result, _, _) = await workspaces.InvitePlaceholderAsync(id, new InvitePlaceholderRequest(WorkspaceRole.Member), ct);
+            if (result == MemberChangeResult.Ok)
+            {
+                delta.Invited++;
+            }
+            else
+            {
+                delta.NotInvited++;
+            }
+        }
+
+        await WriteAsync(db => SaveCountsAsync(db, delta, ct), ct);
+        _counts.Add(delta);
+    }
+
     private static async Task<List<MemberCandidate>> CandidatesAsync(KuproDbContext db, CancellationToken ct) =>
         await db.Members.AsNoTracking()
             .Where(m => m.Kind == MemberKind.Human && m.Status == MemberStatus.Active)
@@ -973,7 +1021,7 @@ public sealed partial class ImportCommit(
                     continue;
                 }
 
-                db.IssueRelations.Add(new IssueRelation
+                var relation = new IssueRelation
                 {
                     Id = Guid.CreateVersion7(),
                     WorkspaceId = workspace.RequireWorkspaceId(),
@@ -981,7 +1029,11 @@ public sealed partial class ImportCommit(
                     TargetId = to,
                     Type = type,
                     CreatedAt = now,
-                });
+                };
+                db.IssueRelations.Add(relation);
+
+                // Undo tells the import's relations from ones the team added between its issues.
+                Record(db, ImportedKinds.Relation, $"{from:N}/{to:N}/{type}", ImportedEntityKind.Relation, relation.Id);
                 delta.Relations++;
             }
 
@@ -1093,4 +1145,5 @@ internal static class ImportedKinds
     public const string Label = "label";
     public const string Comment = "comment";
     public const string Attachment = "attachment";
+    public const string Relation = "relation";
 }
