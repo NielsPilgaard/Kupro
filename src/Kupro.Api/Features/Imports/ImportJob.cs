@@ -10,6 +10,7 @@ using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
 using Kupro.Import;
 using Kupro.Import.Csv;
+using Kupro.Import.Kupro;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -45,6 +46,21 @@ public sealed class ImportSnapshots(ObjectStorage storage)
         storage.UploadFileAsync(SourceKey(workspaceId, importId), path, contentType, ct);
 
     public Task<Stream?> OpenSourceAsync(Guid workspaceId, Guid importId, CancellationToken ct) => storage.OpenReadAsync(SourceKey(workspaceId, importId), ct);
+
+    /// <summary>The uploaded file as a local, seekable copy, deleted when the stream closes. Null if none is stored.</summary>
+    public async Task<FileStream?> OpenLocalSourceAsync(Guid workspaceId, Guid importId, CancellationToken ct)
+    {
+        await using var remote = await storage.OpenReadAsync(SourceKey(workspaceId, importId), ct);
+        if (remote is null)
+        {
+            return null;
+        }
+
+        var local = new FileStream(Path.GetTempFileName(), FileMode.Open, FileAccess.ReadWrite, FileShare.None, 1 << 16, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+        await remote.CopyToAsync(local, ct);
+        local.Position = 0;
+        return local;
+    }
 
     public async Task<bool> SourceExistsAsync(Guid workspaceId, Guid importId, CancellationToken ct) =>
         await storage.SizeAsync(SourceKey(workspaceId, importId), ct) is not null;
@@ -410,10 +426,10 @@ public sealed partial class ImportJob(
             {
                 await ReadSourceAsync(scope, db, import, mapping, ct);
             }
-            else if (starting && import.SourceKind == SourceKinds.Csv)
+            else if (starting && import.SourceKind is SourceKinds.Csv or SourceKinds.Kupro)
             {
-                // Cheap and current: the file is converted with the columns as saved now.
-                await ReadCsvAsync(db, import, mapping, ct);
+                // The uploaded file is converted with the mapping as saved now.
+                await ReadFileAsync(db, import, mapping, ct);
             }
 
             await using var file = await snapshots.OpenAsync(workspaceId, import.Id, ct) ?? throw new ImportFailedException("The import's snapshot is gone. Upload it again.");
@@ -533,21 +549,28 @@ public sealed partial class ImportJob(
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task ReadCsvAsync(KuproDbContext db, WorkspaceImport import, ImportMapping mapping, CancellationToken ct)
+    /// <summary>Turns the uploaded file (a CSV, a Kupro export) into the snapshot the run reads, files included.</summary>
+    private async Task ReadFileAsync(KuproDbContext db, WorkspaceImport import, ImportMapping mapping, CancellationToken ct)
     {
-        CsvTable table;
-        await using (var source = await snapshots.OpenSourceAsync(import.WorkspaceId, import.Id, ct) ?? throw new ImportFailedException("The import's CSV file is gone. Upload it again."))
-        {
-            table = await CsvTable.ReadAsync(source, ct);
-        }
-
-        var connector = new CsvConnector(table, mapping.Csv ?? CsvColumns.Propose(table.Headers), ImportService.CsvProjectName, clock);
+        // A ZIP is read from its end, so the upload comes down to a local file first.
+        await using var source = await snapshots.OpenLocalSourceAsync(import.WorkspaceId, import.Id, ct) ?? throw new ImportFailedException("The import's file is gone. Upload it again.");
         var path = Path.GetTempFileName();
         try
         {
             await using (var file = File.Create(path))
             {
-                await connector.WriteSnapshotAsync(file, ImportSources.Scope(mapping, clock.GetUtcNow()), null, includeFiles: false, clock, ct);
+                var scope = ImportSources.Scope(mapping, clock.GetUtcNow());
+                if (import.SourceKind == SourceKinds.Csv)
+                {
+                    var table = await CsvTable.ReadAsync(source, ct);
+                    var csv = new CsvConnector(table, mapping.Csv ?? CsvColumns.Propose(table.Headers), ImportService.CsvProjectName, clock);
+                    await csv.WriteSnapshotAsync(file, scope, null, includeFiles: false, clock, ct);
+                }
+                else
+                {
+                    using var export = await KuproExportConnector.OpenAsync(source, ct);
+                    await export.WriteSnapshotAsync(file, scope, null, includeFiles: true, clock, ct);
+                }
             }
 
             await snapshots.StoreAsync(import.WorkspaceId, import.Id, path, ct);

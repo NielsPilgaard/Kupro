@@ -48,7 +48,10 @@ source name ("via Jira import", web too), and a source key or URL finds its issu
 `get_issue` and search (so the palette). The feed pages: `GET .../activity?before=<oldest item id>&limit=`, `kupro issue activity --before`, and "Show older" on the web. CSV is a source: `Kupro.Import.Csv` (encoding and delimiter detection, quoting, Jira and
 Linear presets, the other columns to the details block), kept as the import's source file and turned into a snapshot
 when a run starts, with its columns on `ImportMapping.Csv`. `ImportService.ProposeMappingAsync` proposes a mapping for
-any import. Next: the Kupro export ZIP source, then slice 5 (surfaces).
+any import. A Kupro export ZIP is a source too (`Kupro.Import.Kupro`, `StoreExportAsync`): keys, people, sprints,
+milestones, comments, files and field history come across through the same pipeline. Not yet: project capacity (the
+format has no place for it) and feed entries other than field changes (relations added, sprint closes); the export
+is read whole into memory. Next: slice 5 (REST, CLI, MCP surfaces).
 
 ## Scope
 

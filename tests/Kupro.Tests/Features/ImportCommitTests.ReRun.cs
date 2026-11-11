@@ -19,9 +19,9 @@ namespace Kupro.Tests.Features;
 /// <summary>Re-runs: per-field updates, conflicts, deltas (task 023, ADR-019 Re-runs and conflicts).</summary>
 public sealed partial class ImportCommitTests
 {
-    private async Task<Guid> ImportedAsync(FakeConnector source, ImportMapping? mapping = null)
+    private async Task<Guid> ImportedAsync(FakeConnector source, ImportMapping? mapping = null, bool files = false)
     {
-        var import = await AddImportAsync(source, mapping ?? await MappingAsync(source));
+        var import = await AddImportAsync(source, mapping ?? await MappingAsync(source), files);
         (await RunAsync(import, ImportRunKind.Commit)).State.ShouldBe(ImportRunState.Succeeded);
         return import;
     }

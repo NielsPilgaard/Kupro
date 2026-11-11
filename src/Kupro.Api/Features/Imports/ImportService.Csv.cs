@@ -1,5 +1,8 @@
 using Kupro.Api.Features.Issues;
+using System.Text.Json;
 using Kupro.Import.Csv;
+using Kupro.Import.Kupro;
+using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kupro.Api.Features.Imports;
@@ -34,7 +37,7 @@ public sealed partial class ImportService
                 return error;
             }
 
-            if (import!.SourceKind != Kupro.Import.Snapshot.SourceKinds.Csv)
+            if (import!.SourceKind != SourceKinds.Csv)
             {
                 return new IssueError("not_csv", "This import doesn't read a CSV file.");
             }
@@ -55,6 +58,44 @@ public sealed partial class ImportService
         return new CsvPreview(
             table.Delimiter == '\t' ? "tab" : table.Delimiter.ToString(), table.Encoding, table.Headers, table.Rows.Count,
             [.. table.Rows.Take(CsvSamples).Select(r => (IReadOnlyList<string>)r)], CsvColumns.Propose(table.Headers));
+    }
+
+    /// <summary>Keeps a Kupro export ZIP as the import's source, after checking Kupro can read it.</summary>
+    public async Task<IssueResult<SourceDescription>> StoreExportAsync(Guid importId, string path, CancellationToken ct)
+    {
+        if (!snapshots.Enabled)
+        {
+            return Unavailable;
+        }
+
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            var import = await db.WorkspaceImports.AsNoTracking().SingleOrDefaultAsync(i => i.Id == importId, ct);
+            if (Unusable(import, importId) is { } error)
+            {
+                return error;
+            }
+
+            if (import!.SourceKind != SourceKinds.Kupro)
+            {
+                return new IssueError("not_kupro_export", "This import doesn't read a Kupro export.");
+            }
+        }
+
+        SourceDescription description;
+        try
+        {
+            await using var file = File.OpenRead(path);
+            using var export = await KuproExportConnector.OpenAsync(file, ct);
+            description = await export.DescribeAsync(ct);
+        }
+        catch (Exception ex) when (ex is SnapshotFormatException or InvalidDataException or JsonException)
+        {
+            return new IssueError("invalid_export", ex is SnapshotFormatException ? ex.Message : "This is not a Kupro export ZIP.");
+        }
+
+        await snapshots.StoreSourceAsync(workspace.RequireWorkspaceId(), importId, path, "application/zip", ct);
+        return description;
     }
 
     /// <summary>
@@ -78,7 +119,7 @@ public sealed partial class ImportService
                 db.Users.Where(u => u.Id == m.UserId).Select(u => u.Email).FirstOrDefault()))
             .ToListAsync(ct);
 
-        if (import!.SourceKind == Kupro.Import.Snapshot.SourceKinds.Csv)
+        if (import!.SourceKind == SourceKinds.Csv)
         {
             await using var source = await snapshots.OpenSourceAsync(import.WorkspaceId, importId, ct);
             if (source is null)
@@ -93,6 +134,18 @@ public sealed partial class ImportService
             return ImportMappingDefaults.Propose(description, members) with { Csv = columns };
         }
 
+        if (import.SourceKind == SourceKinds.Kupro)
+        {
+            await using var local = await snapshots.OpenLocalSourceAsync(import.WorkspaceId, importId, ct);
+            if (local is null)
+            {
+                return new IssueError("no_snapshot", "Upload the export first.");
+            }
+
+            using var export = await KuproExportConnector.OpenAsync(local, ct);
+            return ImportMappingDefaults.Propose(await export.DescribeAsync(ct), members) with { MilestoneVersions = export.Milestones() };
+        }
+
         if (import.EncryptedToken is not null)
         {
             var described = await DescribeAsync(importId, ct);
@@ -105,7 +158,7 @@ public sealed partial class ImportService
             return new IssueError("no_snapshot", "The import has no snapshot yet.");
         }
 
-        await using var snapshot = await Kupro.Import.Snapshot.SnapshotReader.OpenAsync(file, ct);
+        await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
         return ImportMappingDefaults.Propose(snapshot.Header, members);
     }
 }
