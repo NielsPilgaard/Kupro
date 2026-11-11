@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
@@ -60,98 +61,7 @@ public sealed partial class ImportCommit
             newPeople.Clear();
             newLabels.Clear();
             delta = new ImportRunCounts();
-
-            var ids = batch.Select(i => i.Id).ToList();
-            var rows = await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item && ids.Contains(i.SourceId))
-                .ToDictionaryAsync(i => i.SourceId, StringComparer.Ordinal, ct);
-            var issueIds = rows.Values.Select(r => r.EntityId).ToList();
-            var loaded = await db.Issues.Include(i => i.Labels).Where(i => issueIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
-            var conflicts = await db.ImportConflicts.Where(c => c.ImportId == _importId && issueIds.Contains(c.IssueId))
-                .ToDictionaryAsync(c => (c.IssueId, c.Field), ct);
-
-            await ResolvePeopleAsync(db, batch.Select(i => i.Assignee).OfType<string>().Distinct(), newPeople, delta, ct);
-            var drafts = batch.Select(item =>
-            {
-                var last = ImportedField.Deserialize(rows[item.Id].LastValues!);
-                var tooLong = new List<string>();
-                var itemLabels = _description.Labels(item, _source.Type(item), last.FoldedTop, tooLong);
-                return (Item: item, Last: last, Labels: itemLabels, TooLong: tooLong);
-            }).ToList();
-            await ResolveLabelsAsync(db, drafts.SelectMany(d => d.Labels).Distinct(StringComparer.Ordinal).ToList(), newLabels, delta, ct);
-            var labelNames = (await db.Labels.AsNoTracking().Select(l => new { l.Id, l.Name }).ToListAsync(ct)).ToDictionary(l => l.Id, l => l.Name);
-
-            var changes = new List<ImportedIssueChange>();
-            var now = clock.GetUtcNow();
-            foreach (var (item, last, itemLabels, tooLong) in drafts)
-            {
-                var row = rows[item.Id];
-                var issue = loaded[row.EntityId];
-                var assignee = item.Assignee is { } a ? Member(a, newPeople) : null;
-
-                // A fold or mapping changed since doesn't move an imported item. Only the source moving it does.
-                var moved = !string.Equals(item.Parent, row.SourceParent, StringComparison.Ordinal);
-                var parent = !moved ? last.Parent : fit.Items[item.Id].Parent is { } fitted ? _items[fitted] : null;
-                var (next, _) = ValuesOf(item, itemLabels, tooLong, assignee, parent, last.FoldedTop, checklists, references);
-                var former = issue.Labels.Select(l => labelNames[l.LabelId]).Order(StringComparer.Ordinal).ToList();
-                var current = new ImportedValues(
-                    issue.Title, issue.Description, issue.State, issue.Priority, issue.AssigneeId, issue.ParentId, issue.SprintId, issue.Effort, issue.StartDate, issue.DueDate, former);
-
-                var decisions = ImportedField.All.ToDictionary(f => f, f => f.Decide(next, last, current));
-                KeepDatesValid(decisions, next, current);
-
-                var remembered = last;
-                var apply = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var (field, decision) in decisions)
-                {
-                    conflicts.TryGetValue((issue.Id, field.Name), out var conflict);
-                    if (decision == ImportFieldDecision.Conflict)
-                    {
-                        Disagree(db, conflicts, issue.Id, field, conflict, next, current, now);
-                        continue;
-                    }
-
-                    if (conflict is { State: ImportConflictState.Open })
-                    {
-                        conflict.State = ImportConflictState.Settled;
-                        conflict.ResolvedAt = now;
-                        conflict.UpdatedAt = now;
-                    }
-
-                    if (decision != ImportFieldDecision.Unchanged)
-                    {
-                        remembered = field.Copy(remembered, next);
-                    }
-
-                    if (decision == ImportFieldDecision.Apply)
-                    {
-                        apply.Add(field.Name);
-                    }
-                }
-
-                if (apply.Count > 0)
-                {
-                    var labelIds = next.Labels.Select(l => _labels.TryGetValue(l, out var known) ? known : newLabels[l]).ToList();
-                    changes.Add(new ImportedIssueChange(
-                        issue, apply, next.Title, next.Description, next.State, next.Priority, next.Assignee, next.Parent, next.Effort, next.Start, next.Due, next.Sprint,
-                        labelIds, next.Labels, former, _ownerId, item.Updated.ToUniversalTime(), item.Resolved?.ToUniversalTime()));
-                    delta.Updated++;
-                }
-
-                if (!ReferenceEquals(remembered, last))
-                {
-                    row.LastValues = ImportedField.Serialize(remembered);
-                    row.UpdatedAt = now;
-                }
-
-                if (moved && decisions[ImportedField.Named(ImportedField.Parent)] != ImportFieldDecision.Conflict)
-                {
-                    row.SourceParent = item.Parent;
-                    row.UpdatedAt = now;
-                }
-
-                await RememberChecklistsAsync(db, checklists[item.Id], item.Id, issue.Id, now, ct);
-            }
-
+            var changes = await CompareAsync(db, batch, fit, checklists, references, newPeople, newLabels, delta, null, ct);
             await issues.ApplyImportedAsync(db, changes, ct);
             await SaveCountsAsync(db, delta, ct);
         }, ct);
@@ -167,6 +77,113 @@ public sealed partial class ImportCommit
         {
             await realtime.ChangedAsync(ChangeTopic.Issue);
         }
+    }
+
+    /// <summary>
+    /// Decides every field of a batch against the tracked rows. Only the context changes: a commit saves it, and a plan
+    /// throws it away after reading <paramref name="notes"/>.
+    /// </summary>
+    private async Task<List<ImportedIssueChange>> CompareAsync(
+        KuproDbContext db, List<SourceItem> batch, FitResult fit, ILookup<string, (string Id, ChecklistLine Line)> checklists, ImportReferences references,
+        Dictionary<string, Guid?> newPeople, Dictionary<string, Guid> newLabels, ImportRunCounts delta, RerunNotes? notes, CancellationToken ct)
+    {
+        var ids = batch.Select(i => i.Id).ToList();
+        var rows = await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item && ids.Contains(i.SourceId))
+            .ToDictionaryAsync(i => i.SourceId, StringComparer.Ordinal, ct);
+        var issueIds = rows.Values.Select(r => r.EntityId).ToList();
+        var loaded = await db.Issues.Include(i => i.Labels).Where(i => issueIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id, ct);
+        var conflicts = await db.ImportConflicts.Where(c => c.ImportId == _importId && issueIds.Contains(c.IssueId))
+            .ToDictionaryAsync(c => (c.IssueId, c.Field), ct);
+        var lineIds = batch.SelectMany(i => checklists[i.Id]).Select(c => c.Id).ToList();
+        var lineRows = await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Checklist && lineIds.Contains(i.SourceId))
+            .ToDictionaryAsync(i => i.SourceId, StringComparer.Ordinal, ct);
+
+        await ResolvePeopleAsync(db, batch.Select(i => i.Assignee).OfType<string>().Distinct(), newPeople, delta, ct);
+        var drafts = batch.Select(item =>
+        {
+            var last = ImportedField.Deserialize(rows[item.Id].LastValues!);
+            var tooLong = new List<string>();
+            var itemLabels = _description.Labels(item, _source.Type(item), last.FoldedTop, tooLong);
+            return (Item: item, Last: last, Labels: itemLabels, TooLong: tooLong);
+        }).ToList();
+        await ResolveLabelsAsync(db, drafts.SelectMany(d => d.Labels).Distinct(StringComparer.Ordinal).ToList(), newLabels, delta, ct);
+        var labelNames = (await db.Labels.AsNoTracking().Select(l => new { l.Id, l.Name }).ToListAsync(ct)).ToDictionary(l => l.Id, l => l.Name);
+
+        var changes = new List<ImportedIssueChange>();
+        var now = clock.GetUtcNow();
+        foreach (var (item, last, itemLabels, tooLong) in drafts)
+        {
+            var row = rows[item.Id];
+            var issue = loaded[row.EntityId];
+            var assignee = item.Assignee is { } a ? Member(a, newPeople) : null;
+
+            // A fold or mapping changed since doesn't move an imported item. Only the source moving it does.
+            var moved = !string.Equals(item.Parent, row.SourceParent, StringComparison.Ordinal);
+            var parent = !moved ? last.Parent : fit.Items[item.Id].Parent is { } fitted ? _items[fitted] : null;
+            var (next, _) = ValuesOf(item, itemLabels, tooLong, assignee, parent, last.FoldedTop, checklists, references);
+            var former = issue.Labels.Select(l => labelNames[l.LabelId]).Order(StringComparer.Ordinal).ToList();
+            var current = new ImportedValues(
+                issue.Title, issue.Description, issue.State, issue.Priority, issue.AssigneeId, issue.ParentId, issue.SprintId, issue.Effort, issue.StartDate, issue.DueDate, former);
+
+            var decisions = ImportedField.All.ToDictionary(f => f, f => f.Decide(next, last, current));
+            KeepDatesValid(decisions, next, current);
+
+            var remembered = last;
+            var apply = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (field, decision) in decisions)
+            {
+                conflicts.TryGetValue((issue.Id, field.Name), out var conflict);
+                if (decision == ImportFieldDecision.Conflict)
+                {
+                    Disagree(db, conflicts, issue.Id, field, conflict, next, current, now);
+                    notes?.Conflicts.Add(new PlanSample(field.Name, issue.Key, issue.Title));
+                    continue;
+                }
+
+                if (conflict is { State: ImportConflictState.Open })
+                {
+                    conflict.State = ImportConflictState.Settled;
+                    conflict.ResolvedAt = now;
+                    conflict.UpdatedAt = now;
+                }
+
+                if (decision != ImportFieldDecision.Unchanged)
+                {
+                    remembered = field.Copy(remembered, next);
+                }
+
+                if (decision == ImportFieldDecision.Apply)
+                {
+                    apply.Add(field.Name);
+                }
+            }
+
+            if (apply.Count > 0)
+            {
+                var labelIds = next.Labels.Select(l => _labels.TryGetValue(l, out var known) ? known : newLabels[l]).ToList();
+                changes.Add(new ImportedIssueChange(
+                    issue, apply, next.Title, next.Description, next.State, next.Priority, next.Assignee, next.Parent, next.Effort, next.Start, next.Due, next.Sprint,
+                    labelIds, next.Labels, former, _ownerId, item.Updated.ToUniversalTime(), item.Resolved?.ToUniversalTime()));
+                delta.Updated++;
+                notes?.Updated.Add(new PlanSample(item.Id, item.Key, item.Title));
+            }
+
+            if (!ReferenceEquals(remembered, last))
+            {
+                row.LastValues = ImportedField.Serialize(remembered);
+                row.UpdatedAt = now;
+            }
+
+            if (moved && decisions[ImportedField.Named(ImportedField.Parent)] != ImportFieldDecision.Conflict)
+            {
+                row.SourceParent = item.Parent;
+                row.UpdatedAt = now;
+            }
+
+            RememberChecklists(db, lineRows, checklists[item.Id], item.Id, issue.Id, now);
+        }
+
+        return changes;
     }
 
     /// <summary>A start after a due date can't be stored. Two sides each moving one date can make one, so that takes the owner.</summary>
@@ -212,20 +229,19 @@ public sealed partial class ImportCommit
         conflict.UpdatedAt = now;
     }
 
-    private async Task RememberChecklistsAsync(
-        KuproDbContext db, IEnumerable<(string Id, ChecklistLine Line)> lines, string holder, Guid issueId, DateTimeOffset now, CancellationToken ct)
+    private void RememberChecklists(
+        KuproDbContext db, Dictionary<string, ImportedItem> rows, IEnumerable<(string Id, ChecklistLine Line)> lines, string holder, Guid issueId, DateTimeOffset now)
     {
         foreach (var (id, line) in lines)
         {
-            if (!_folded.TryGetValue(id, out var known))
+            if (!rows.TryGetValue(id, out var row))
             {
                 RecordChecklist(db, id, line, holder, issueId);
             }
-            else if (known.Line != line)
+            else if (_folded[id].Line != line)
             {
-                var json = System.Text.Json.JsonSerializer.Serialize(line, Json);
-                await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Checklist && i.SourceId == id)
-                    .ExecuteUpdateAsync(s => s.SetProperty(i => i.LastValues, json).SetProperty(i => i.UpdatedAt, now), ct);
+                row.LastValues = JsonSerializer.Serialize(line, Json);
+                row.UpdatedAt = now;
             }
         }
     }
@@ -243,6 +259,16 @@ public sealed partial class ImportCommit
         _counts.DeletedInSource = read.Deleted.Count;
         return new ImportRunReport(
             new PlanCount(count, samples),
-            new PlanCount(read.Deleted.Count, [.. read.Deleted.Take(MaxReportSamples).Select(id => new PlanSample(id, _known[id].Key, _known[id].Title))]));
+            DeletedSamples(read));
+    }
+
+    private PlanCount DeletedSamples(SourceRead read) =>
+        new(read.Deleted.Count, [.. read.Deleted.Take(MaxReportSamples).Select(id => new PlanSample(id, _known[id].Key, _known[id].Title))]);
+
+    /// <summary>What a plan reads off a comparison that is never saved.</summary>
+    private sealed class RerunNotes
+    {
+        public List<PlanSample> Updated { get; } = [];
+        public List<PlanSample> Conflicts { get; } = [];
     }
 }

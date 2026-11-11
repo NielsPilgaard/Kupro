@@ -36,8 +36,8 @@ History is in as well: comments, attachments, changelog replay and mention/link 
 server-side connectors fetch it. Re-runs work too: per-field updates against `imported_item.last_values`, `import_conflict`
 with Keep/Use source, deltas that rebuild the tree from stored parents, and a `partial` flag in the format so only a whole
 snapshot reports source deletions. A delta must list a holder together with its checklist items. No surface reaches any
-of this yet: `ImportService` is called from tests. Next: what the plan says about a re-run, then the rest of the commit
-path (invites, email, auto-sync, undo, finish).
+of this yet: `ImportService` is called from tests. The plan runs a re-run's own comparison on a context it never saves,
+so its counts are the commit's. Next: the rest of the commit path (invites, email, auto-sync, undo, finish).
 
 ## Scope
 

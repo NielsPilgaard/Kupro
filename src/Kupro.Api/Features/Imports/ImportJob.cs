@@ -292,7 +292,8 @@ public sealed partial class ImportJob(
             await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
             if (run.Kind == ImportRunKind.DryRun)
             {
-                await PlanAsync(db, run, import, snapshot, mapping, ct);
+                var plan = await scope.ServiceProvider.GetRequiredService<ImportCommit>().PlanAsync(import, snapshot, mapping, ct);
+                run.Report = JsonSerializer.Serialize(plan, JsonSerializerOptions.Web);
             }
             else
             {
@@ -315,14 +316,6 @@ public sealed partial class ImportJob(
             run.Error = ex is ImportFailedException or SnapshotFormatException ? Cut(ex.Message) : "The import failed unexpectedly. It can be run again; it continues from what it finished.";
             await db.SaveChangesAsync(CancellationToken.None);
         }
-    }
-
-    private async Task PlanAsync(KuproDbContext db, ImportRun run, WorkspaceImport import, SnapshotReader snapshot, ImportMapping mapping, CancellationToken ct)
-    {
-        var imported = (await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == import.Id && i.SourceKind == ImportedKinds.Item).Select(i => i.SourceId).ToListAsync(ct))
-            .ToHashSet(StringComparer.Ordinal);
-        var plan = await ImportPlanner.PlanAsync(snapshot, mapping, imported, clock.GetUtcNow(), ct);
-        run.Report = JsonSerializer.Serialize(plan, JsonSerializerOptions.Web);
     }
 
     private async Task CommitAsync(AsyncServiceScope scope, KuproDbContext db, ImportRun run, WorkspaceImport import, SnapshotReader snapshot, ImportMapping mapping, CancellationToken ct)

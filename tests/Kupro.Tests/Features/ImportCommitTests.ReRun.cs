@@ -4,6 +4,8 @@ using System.Text.Json;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
+using Kupro.Api.Features.Plan;
+using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
@@ -307,5 +309,104 @@ public sealed partial class ImportCommitTests
 
         refused.Error!.Code.ShouldBe("invalid_dates");
         (await ConflictsAsync()).Single().State.ShouldBe(ImportConflictState.Open);
+    }
+
+    private async Task<ImportPlan> DryRunAsync(Guid import)
+    {
+        var run = await RunAsync(import, ImportRunKind.DryRun);
+        run.State.ShouldBe(ImportRunState.Succeeded, run.Error);
+        return JsonSerializer.Deserialize<ImportPlan>(run.Report!, JsonSerializerOptions.Web)!;
+    }
+
+    [Fact]
+    public async Task The_plan_of_a_rerun_says_what_the_commit_then_does_and_writes_nothing()
+    {
+        var first = Source(Item("a", key: "WEB-1", title: "One"), Item("b", key: "WEB-2", title: "Uno"), Item("gone", key: "WEB-3"));
+        first.Records.Add(new SourceComment { Id = "k1", Item = "a", Body = "Hello", Created = Created });
+        var import = await ImportedAsync(first);
+        await EditAsync("WEB-2", new UpdateIssueRequest(Title: "Mia"));
+        var native = await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync(Url("issues"), new CreateIssueRequest("WEB", "Native"), Json.Options, Ct), HttpStatusCode.Created);
+        native.Key.ShouldBe("WEB-4");
+
+        var next = Source(
+            Item("a", key: "WEB-1", title: "Two") with { Labels = ["fresh"] },
+            Item("b", key: "WEB-2", title: "Sua"),
+            Item("new", key: "WEB-4", title: "Wants a taken number"));
+        next.Records.AddRange(
+        [
+            new SourceComment { Id = "k1", Item = "a", Body = "Hello", Created = Created },
+            new SourceComment { Id = "k2", Item = "a", Body = "Again", Created = Created },
+        ]);
+        await StoreAsync(import, next, false, null);
+
+        var plan = await DryRunAsync(import);
+
+        plan.Create.Count.ShouldBe(1);
+        plan.Update.Samples.Single().SourceId.ShouldBe("a");
+        plan.Conflicts.Samples.Single().ShouldBe(new PlanSample(ImportedField.Title, "WEB-2", "Mia"));
+        plan.KeysTaken.Samples.Single().SourceId.ShouldBe("new");
+        plan.DeletedInSource.Count.ShouldBe(1);
+        plan.LabelsToCreate.ShouldBe(1);
+        plan.Comments.ShouldBe(1, "the one already imported isn't counted again");
+        await WithDbAsync(async db =>
+        {
+            (await db.Issues.CountAsync(Ct)).ShouldBe(4);
+            (await db.ImportConflicts.CountAsync(Ct)).ShouldBe(0);
+            (await db.Labels.CountAsync(Ct)).ShouldBe(0);
+            (await db.Members.CountAsync(m => m.Status == MemberStatus.Placeholder, Ct)).ShouldBe(0);
+        });
+
+        var counts = Counts(await RunAsync(import, ImportRunKind.Commit));
+        (counts.Issues, counts.Updated, counts.Conflicts, counts.Renumbered, counts.DeletedInSource, counts.Labels, counts.Comments)
+            .ShouldBe((plan.Create.Count, plan.Update.Count, plan.Conflicts.Count, plan.KeysTaken.Count, plan.DeletedInSource.Count, plan.LabelsToCreate, plan.Comments));
+    }
+
+    [Fact]
+    public async Task The_plan_says_which_project_keys_block_the_run_and_shows_hours_against_capacity()
+    {
+        await ReadAsync<ProjectResponse>(await _client.PostAsJsonAsync(Url("projects"), new CreateProjectRequest("WEB", "Web"), Json.Options, Ct), HttpStatusCode.Created);
+        var capacity = new SetCapacityRequest([new CapacityEntry(new DateOnly(2030, 1, 1), 3)]);
+        (await _client.PutAsJsonAsync(Url("projects/WEB/capacity"), capacity, Json.Options, Ct)).EnsureSuccessStatusCode();
+
+        var source = Source(Item("a", key: "WEB-1") with { EstimateSeconds = 7200 });
+        var blocked = await DryRunAsync(await AddImportAsync(source, await MappingAsync(source)));
+        blocked.ProjectKeysTaken.ShouldBe(["WEB"]);
+
+        var mapping = await MappingAsync(source) with { Projects = new Dictionary<string, ProjectTarget> { ["p"] = new("WEB", "Web", Existing: true) } };
+        var plan = await DryRunAsync(await AddImportAsync(source, mapping));
+
+        plan.ProjectKeysTaken.ShouldBeEmpty();
+        var effort = plan.EffortByProject.Single();
+        effort.Hours.ShouldBe(2);
+        effort.Capacity.Single().People.ShouldBe(3);
+
+        var nowhere = await MappingAsync(source) with { Projects = new Dictionary<string, ProjectTarget> { ["p"] = new("NOPE", "Nope", Existing: true) } };
+        (await DryRunAsync(await AddImportAsync(source, nowhere))).ProjectsMissing.ShouldBe(["NOPE"]);
+    }
+
+    [Fact]
+    public async Task The_plan_counts_sprints_milestones_and_how_many_shapes_a_new_fold_would_change()
+    {
+        var sample = FakeConnector.Sample();
+        var mapping = await MappingAsync(sample) with { MilestoneVersions = ["v1"] };
+        var plan = await DryRunAsync(await AddImportAsync(sample, mapping));
+        plan.SprintsToCreate.ShouldBe(1);
+        plan.MilestonesToCreate.ShouldBe(1);
+
+        var four = Source(
+            Item("a", key: "AAA-1", type: "epic"),
+            Item("b", key: "AAA-2", type: "feature", parent: "a"),
+            Item("c", key: "AAA-3", type: "story", parent: "b"),
+            Item("d", key: "AAA-4", type: "task", parent: "c"));
+        var kept = await MappingAsync(four) with { Projects = new Dictionary<string, ProjectTarget> { ["p"] = new("AAA", "A") } };
+        var import = await ImportedAsync(four, kept);
+        await WithDbAsync(async db =>
+        {
+            var row = await db.WorkspaceImports.SingleAsync(i => i.Id == import, Ct);
+            row.Mapping = (kept with { Fold = FoldEnd.Top }).ToJson();
+            await db.SaveChangesAsync(Ct);
+        });
+
+        (await DryRunAsync(import)).ShapesDiffer.ShouldBeGreaterThan(0);
     }
 }

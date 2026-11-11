@@ -165,14 +165,8 @@ public sealed partial class ImportCommit(
 
     public async Task<ImportRunCounts> RunAsync(WorkspaceImport import, ImportRun run, SnapshotReader snapshot, ImportMapping mapping, CancellationToken ct)
     {
-        _importId = import.Id;
+        Start(import, snapshot, mapping);
         _runId = run.Id;
-        _ownerId = import.CreatedById;
-        _sourceKind = import.SourceKind;
-        _header = snapshot.Header;
-        _mapping = mapping;
-        _source = new MappedSource(_header, mapping, clock.GetUtcNow());
-        _description = new ImportDescription(_header, mapping);
         _counts = run.Counts is { } saved ? JsonSerializer.Deserialize<ImportRunCounts>(saved, Json) ?? new() : new();
 
         await LoadKnownAsync(ct);
@@ -212,6 +206,17 @@ public sealed partial class ImportCommit(
         _counts.AlreadyImported = read.Refs.Count(r => _items.ContainsKey(r.Id)) - _counts.Issues;
         Report = await ReportAsync(read, ct);
         return _counts;
+    }
+
+    private void Start(WorkspaceImport import, SnapshotReader snapshot, ImportMapping mapping)
+    {
+        _importId = import.Id;
+        _ownerId = import.CreatedById;
+        _sourceKind = import.SourceKind;
+        _header = snapshot.Header;
+        _mapping = mapping;
+        _source = new MappedSource(_header, mapping, clock.GetUtcNow());
+        _description = new ImportDescription(_header, mapping);
     }
 
     // ---------------------------------------------------------------- what is there already
