@@ -57,5 +57,17 @@ internal static class MemberMerge
             """, ct);
         await db.ImportedItems.Where(i => i.EntityKind == ImportedEntityKind.Member && i.EntityId == from)
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.EntityId, into), ct);
+
+        // A re-run compares an issue's assignee with the last imported one; a merge must not read as someone's edit.
+        await db.Database.ExecuteSqlAsync($"""
+            UPDATE imported_items SET last_values = replace(last_values::text, {fromText}, {intoText})::jsonb
+            WHERE workspace_id = {workspaceId} AND source_kind = 'item' AND last_values->>'assignee' = {fromText}
+            """, ct);
+        await db.Database.ExecuteSqlAsync($"""
+            UPDATE import_conflicts SET kupro_value = replace(kupro_value::text, {fromText}, {intoText})::jsonb,
+                source_value = replace(source_value::text, {fromText}, {intoText})::jsonb
+            WHERE workspace_id = {workspaceId} AND field = 'assignee'
+              AND (kupro_value = to_jsonb({fromText}::text) OR source_value = to_jsonb({fromText}::text))
+            """, ct);
     }
 }

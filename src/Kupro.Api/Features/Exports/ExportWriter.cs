@@ -33,7 +33,7 @@ internal static class ExportWriter
         typeof(Member), typeof(Project), typeof(Label), typeof(Issue), typeof(IssueLabel), typeof(IssueRelation),
         typeof(Sprint), typeof(SprintLedgerEntry), typeof(Milestone), typeof(ProjectCapacity), typeof(Comment), typeof(ActivityEntry),
         typeof(Attachment), typeof(MeetingSession), typeof(TranscriptSegment), typeof(MeetingProposal), typeof(MeetingSettings),
-        typeof(WorkspaceImport), typeof(ImportRun), typeof(ImportedItem), typeof(IssueAlias),
+        typeof(WorkspaceImport), typeof(ImportRun), typeof(ImportedItem), typeof(IssueAlias), typeof(ImportConflict),
     };
 
     /// <summary>
@@ -153,6 +153,7 @@ internal static class ExportWriter
         await ArrayAsync(json, "importRuns", db.ImportRuns.AsNoTracking().OrderBy(r => r.CreatedAt), ct);
         await ArrayAsync(json, "importedItems", db.ImportedItems.AsNoTracking().OrderBy(i => i.Id), ct);
         await ArrayAsync(json, "issueAliases", db.IssueAliases.AsNoTracking().OrderBy(a => a.Alias), ct);
+        await ArrayAsync(json, "importConflicts", db.ImportConflicts.AsNoTracking().OrderBy(c => c.Id), ct);
         json.WriteEndObject();
     }
 

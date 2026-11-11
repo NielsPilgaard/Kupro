@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Features.Sprints;
@@ -512,6 +513,108 @@ public sealed class IssueService(
         // A closed sprint takes old issues only from an import. It has no ledger to add to, and the ledger refuses it.
         var live = added.Where(i => i.SprintId is not { } sprint || sprints.GetValueOrDefault(sprint) != SprintState.Closed);
         _ = await ledger.RecordAsync(db, live.Select(i => (i.Id, LedgerState.None, LedgerState.Of(i))), ct);
+    }
+
+    /// <summary>
+    /// A re-run's changes to issues the caller has loaded and is tracking: only the named fields, one <c>reimported</c>
+    /// entry per issue with what changed. Like <see cref="AddImportedAsync"/>, the caller saves.
+    /// </summary>
+    internal async Task ApplyImportedAsync(KuproDbContext db, IReadOnlyList<ImportedIssueChange> changes, CancellationToken ct)
+    {
+        if (changes.Count == 0)
+        {
+            return;
+        }
+
+        var sprints = await SprintLedger.LockSprintsAsync(db, changes.SelectMany(c => new[] { c.Issue.SprintId, c.SprintId }).OfType<Guid>().Distinct().ToList(), ct);
+        var before = changes.Select(c => (c.Issue, State: LedgerState.Of(c.Issue))).ToList();
+        var now = clock.GetUtcNow();
+        foreach (var c in changes)
+        {
+            var issue = c.Issue;
+            var log = new Dictionary<string, FieldChange>();
+            if (c.Fields.Contains(ImportedField.Title))
+            {
+                log[ImportedField.Title] = new(issue.Title, c.Title);
+                issue.Title = c.Title;
+            }
+
+            if (c.Fields.Contains(ImportedField.Description))
+            {
+                log[ImportedField.Description] = new(null, null); // bodies are not copied into the log
+                issue.Description = c.Description;
+            }
+
+            if (c.Fields.Contains(ImportedField.State))
+            {
+                log[ImportedField.State] = new(issue.State, c.State);
+                SetState(issue, c.State, c.CompletedAt ?? c.UpdatedAt);
+            }
+
+            if (c.Fields.Contains(ImportedField.Priority))
+            {
+                log[ImportedField.Priority] = new(issue.Priority, c.Priority);
+                issue.Priority = c.Priority;
+            }
+
+            if (c.Fields.Contains(ImportedField.Assignee))
+            {
+                log[ImportedField.Assignee] = new(issue.AssigneeId, c.AssigneeId);
+                issue.AssigneeId = c.AssigneeId;
+            }
+
+            if (c.Fields.Contains(ImportedField.Parent))
+            {
+                log[ImportedField.Parent] = new(issue.ParentId, c.ParentId);
+                issue.ParentId = c.ParentId;
+            }
+
+            if (c.Fields.Contains(ImportedField.Sprint))
+            {
+                log[ImportedField.Sprint] = new(issue.SprintId, c.SprintId);
+                issue.SprintId = c.SprintId;
+            }
+
+            if (c.Fields.Contains(ImportedField.Effort))
+            {
+                log[ImportedField.Effort] = new(issue.Effort, c.Effort);
+                issue.Effort = c.Effort;
+            }
+
+            if (c.Fields.Contains(ImportedField.Start))
+            {
+                log[ImportedField.Start] = new(issue.StartDate, c.StartDate);
+                issue.StartDate = c.StartDate;
+            }
+
+            if (c.Fields.Contains(ImportedField.Due))
+            {
+                log[ImportedField.Due] = new(issue.DueDate, c.DueDate);
+                issue.DueDate = c.DueDate;
+            }
+
+            if (c.Fields.Contains(ImportedField.Labels))
+            {
+                log[ImportedField.Labels] = new(c.FormerLabels, c.LabelNames);
+                var wanted = c.LabelIds.ToHashSet();
+                var had = issue.Labels.Select(l => l.LabelId).ToHashSet();
+                issue.Labels.RemoveAll(l => !wanted.Contains(l.LabelId));
+                foreach (var id in wanted.Except(had))
+                {
+                    issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = id });
+                }
+            }
+
+            issue.UpdatedAt = c.UpdatedAt > issue.UpdatedAt ? c.UpdatedAt : issue.UpdatedAt;
+            activity.RecordImported(db, issue.Id, "reimported", c.ActorId, now, log);
+        }
+
+        // Into a closed sprint is how the source has it, and a closed sprint has no ledger. Leaving an active one still counts.
+        LedgerState After(Issue issue, LedgerState was) =>
+            issue.SprintId is { } sprint && sprint != was.SprintId && sprints.GetValueOrDefault(sprint) == SprintState.Closed
+                ? LedgerState.Of(issue) with { SprintId = null }
+                : LedgerState.Of(issue);
+        _ = await ledger.RecordAsync(db, before.Select(b => (b.Issue.Id, b.State, After(b.Issue, b.State))), ct);
     }
 
     // ---------------------------------------------------------------- update
@@ -1429,6 +1532,27 @@ internal sealed record ImportedIssue(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? CompletedAt,
     string? SourceCreator);
+
+/// <summary>What a re-run changes on one issue. Only <see cref="Fields"/> are read; the names are <c>ImportedField</c>'s.</summary>
+internal sealed record ImportedIssueChange(
+    Issue Issue,
+    IReadOnlySet<string> Fields,
+    string Title,
+    string? Description,
+    IssueState State,
+    IssuePriority Priority,
+    Guid? AssigneeId,
+    Guid? ParentId,
+    decimal? Effort,
+    DateOnly? StartDate,
+    DateOnly? DueDate,
+    Guid? SprintId,
+    IReadOnlyList<Guid> LabelIds,
+    IReadOnlyList<string> LabelNames,
+    IReadOnlyList<string> FormerLabels,
+    Guid ActorId,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CompletedAt);
 
 /// <summary>What <see cref="IssueService.ApplyCloseAsync"/> did; the ids and keys are for pushing it after commit.</summary>
 internal sealed record AppliedClose(

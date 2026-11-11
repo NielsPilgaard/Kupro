@@ -4,6 +4,7 @@ using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Issues;
+using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
@@ -79,11 +80,14 @@ public sealed class ImportSignal
 }
 
 /// <summary>Queues an import's runs and stores its snapshot. The REST, CLI and web surfaces come on top of this.</summary>
-public sealed class ImportService(
+public sealed partial class ImportService(
     IDbContextFactory<KuproDbContext> dbFactory,
     WorkspaceContext workspace,
     ImportSnapshots snapshots,
     ImportSignal signal,
+    IssueService issues,
+    LabelService labels,
+    RealtimeEvents realtime,
     TimeProvider clock)
 {
     /// <summary>Replaces the import's stored snapshot, after checking it can be read.</summary>
@@ -329,10 +333,11 @@ public sealed partial class ImportJob(
         // The batches saved their progress on their own contexts; this one is about to write the final numbers.
         await db.Entry(run).ReloadAsync(ct);
         run.Counts = JsonSerializer.Serialize(counts, JsonSerializerOptions.Web);
+        run.Report = JsonSerializer.Serialize(commit.Report, JsonSerializerOptions.Web);
         var now = clock.GetUtcNow();
         import.Cursor = snapshot.Header.Cursor;
         import.LastRunAt = now;
-        if (counts.Issues > 0)
+        if (counts.Issues + counts.Updated + counts.Comments + counts.Attachments + counts.Changes + counts.SourceChanges > 0)
         {
             import.LastChangeAt = now;
         }

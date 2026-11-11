@@ -126,8 +126,50 @@ public sealed class ImportedItem : ITenantOwned
     /// <summary>High-water mark of the source change IDs already replayed into the feed.</summary>
     public string? SeenChangeMark { get; set; }
 
+    /// <summary>The item's parent in the source. A delta names only what changed, so the fit rebuilds the rest of the tree from these.</summary>
+    public string? SourceParent { get; set; }
+
+    /// <summary>The source type's level, for the same reason.</summary>
+    public int? Level { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public enum ImportConflictState
+{
+    Open,
+
+    /// <summary>The owner kept Kupro's value.</summary>
+    Kept,
+
+    /// <summary>The owner took the source's value.</summary>
+    UsedSource,
+
+    /// <summary>The two sides came to agree without anyone choosing.</summary>
+    Settled,
+}
+
+/// <summary>
+/// A field that changed on both sides since the last run (ADR-019 Re-runs and conflicts). One row per issue and field,
+/// reopened if the source value changes again after it was resolved. Values are JSON, in Kupro's terms.
+/// </summary>
+public sealed class ImportConflict : ITenantOwned
+{
+    public Guid Id { get; set; }
+    public Guid WorkspaceId { get; set; }
+    public Guid ImportId { get; set; }
+    public Guid IssueId { get; set; }
+
+    /// <summary>The field, named as in the activity log: <c>title</c>, <c>state</c>, <c>assignee</c>...</summary>
+    public required string Field { get; set; }
+
+    public string? KuproValue { get; set; }
+    public string? SourceValue { get; set; }
+    public ImportConflictState State { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? ResolvedAt { get; set; }
 }
 
 /// <summary>
@@ -146,8 +188,21 @@ public sealed class IssueAlias : ITenantOwned
 
 internal sealed class ImportConfiguration :
     IEntityTypeConfiguration<WorkspaceImport>, IEntityTypeConfiguration<ImportRun>,
-    IEntityTypeConfiguration<ImportedItem>, IEntityTypeConfiguration<IssueAlias>
+    IEntityTypeConfiguration<ImportedItem>, IEntityTypeConfiguration<IssueAlias>, IEntityTypeConfiguration<ImportConflict>
 {
+    public void Configure(EntityTypeBuilder<ImportConflict> builder)
+    {
+        builder.ToTable("import_conflicts");
+        builder.HasOne<WorkspaceImport>().WithMany().HasWorkspaceForeignKey(c => c.ImportId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Issue>().WithMany().HasWorkspaceForeignKey(c => c.IssueId).OnDelete(DeleteBehavior.Cascade);
+        builder.Property(c => c.Field).HasMaxLength(32);
+        builder.Property(c => c.KuproValue).HasColumnType("jsonb");
+        builder.Property(c => c.SourceValue).HasColumnType("jsonb");
+        builder.Property(c => c.State).HasConversion<string>().HasMaxLength(16);
+        builder.HasIndex(c => new { c.WorkspaceId, c.ImportId, c.IssueId, c.Field }).IsUnique();
+        builder.HasIndex(c => new { c.WorkspaceId, c.ImportId, c.State });
+    }
+
     public void Configure(EntityTypeBuilder<WorkspaceImport> builder)
     {
         builder.ToTable("imports");
@@ -187,6 +242,7 @@ internal sealed class ImportConfiguration :
         builder.Property(i => i.EntityKind).HasConversion<string>().HasMaxLength(16);
         builder.Property(i => i.LastValues).HasColumnType("jsonb");
         builder.Property(i => i.SeenChangeMark).HasMaxLength(256);
+        builder.Property(i => i.SourceParent).HasMaxLength(512);
         builder.HasIndex(i => new { i.WorkspaceId, i.ImportId, i.SourceKind, i.SourceId }).IsUnique();
 
         // Undo asks whether a record outside this import points at what it created.

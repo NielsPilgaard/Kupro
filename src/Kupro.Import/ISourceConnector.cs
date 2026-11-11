@@ -32,7 +32,7 @@ public static class SourceConnectorExtensions
         TimeProvider time, CancellationToken ct)
     {
         var description = await connector.DescribeAsync(ct);
-        await using var writer = new SnapshotWriter(output, description);
+        await using var writer = new SnapshotWriter(output, description) { Partial = cursor is not null };
         await foreach (var record in connector.ReadAsync(scope, cursor, ct))
         {
             if (includeFiles && record is SourceAttachment attachment && attachment.File is null)

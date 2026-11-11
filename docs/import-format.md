@@ -69,6 +69,8 @@ files/000001
   owner maps by hand.
 - `sprints[].project`: leave it out when a sprint spans projects. Kupro then creates one sprint per project.
 - `counts` and `cursor` are written by Kupro. A script can leave them out.
+- `partial`: `true` when the snapshot holds only what changed since an earlier one. Leave it out for a whole snapshot:
+  an item an earlier run imported and this snapshot lacks is then reported as deleted in the source, and left alone.
 
 ## Records
 

@@ -2,8 +2,11 @@ using Kupro.Api.Features.Issues;
 
 namespace Kupro.Api.Features.Imports;
 
-/// <summary>An item as the fit sees it: the mapped type and the source parent. <see cref="Level"/> is the source type's.</summary>
-public sealed record FitInput(string Id, IssueType Type, string? Parent, int? Level = null, bool Checklist = false);
+/// <summary>
+/// An item as the fit sees it: the mapped type and the source parent. <see cref="Level"/> is the source type's.
+/// <see cref="Fixed"/> means it is already imported: it keeps its Kupro type, and only the source can still move it.
+/// </summary>
+public sealed record FitInput(string Id, IssueType Type, string? Parent, int? Level = null, bool Checklist = false, bool Fixed = false);
 
 /// <summary>An item's place in Kupro.</summary>
 public sealed record FittedItem(string Id, IssueType Type, string? Parent);
@@ -121,7 +124,7 @@ public static class HierarchyFit
         var byLevel = all.Values.All(i => i.Level is not null);
         int Rank(FitInput item) => byLevel ? levels.IndexOf(item.Level!.Value) : depth[item.Id];
 
-        foreach (var item in all.Values)
+        foreach (var item in all.Values.Where(i => !i.Fixed))
         {
             types[item.Id] = Rank(item) switch
             {
@@ -131,7 +134,7 @@ public static class HierarchyFit
             };
         }
 
-        foreach (var item in all.Values.Where(i => Rank(i) > 0 && parents[i.Id] is { } parent && Rank(all[parent]) == 0))
+        foreach (var item in all.Values.Where(i => !i.Fixed && Rank(i) > 0 && parents[i.Id] is { } parent && Rank(all[parent]) == 0))
         {
             var top = parents[item.Id]!;
             oldParents.Add(new OldParent(item.Id, top));
@@ -154,7 +157,7 @@ public static class HierarchyFit
             var type = types[id];
             var parent = parents[id];
             var fittedParent = parent is null ? null : fitted[parent];
-            if (type == IssueType.Task && hasChildren.Contains(id) && (fittedParent is null || fittedParent.Type == IssueType.Epic))
+            if (!all[id].Fixed && type == IssueType.Task && hasChildren.Contains(id) && (fittedParent is null || fittedParent.Type == IssueType.Epic))
             {
                 type = IssueType.Feature;
                 promoted.Add(id);
@@ -190,7 +193,7 @@ public static class HierarchyFit
         return parent;
     }
 
-    /// <summary>A parent outside the snapshot (out of scope, or a delta run) counts as none here.</summary>
+    /// <summary>A parent the import doesn't have (out of scope) counts as none here.</summary>
     private static string? Known(string? parent, Dictionary<string, FitInput> all) =>
         parent is not null && all.ContainsKey(parent) ? parent : null;
 }

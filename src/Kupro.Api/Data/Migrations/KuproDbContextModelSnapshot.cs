@@ -302,6 +302,73 @@ namespace Kupro.Api.Data.Migrations
                     b.ToTable("workspace_exports", (string)null);
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Imports.ImportConflict", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("field");
+
+                    b.Property<Guid>("ImportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("import_id");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<string>("KuproValue")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("kupro_value");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<string>("SourceValue")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("source_value");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_import_conflicts");
+
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_import_conflicts_workspace_id_issue_id");
+
+                    b.HasIndex("WorkspaceId", "ImportId", "State")
+                        .HasDatabaseName("ix_import_conflicts_workspace_id_import_id_state");
+
+                    b.HasIndex("WorkspaceId", "ImportId", "IssueId", "Field")
+                        .IsUnique()
+                        .HasDatabaseName("ix_import_conflicts_workspace_id_import_id_issue_id_field");
+
+                    b.ToTable("import_conflicts", (string)null);
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Imports.ImportRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -395,6 +462,10 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("last_values");
 
+                    b.Property<int?>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
                     b.Property<string>("SeenChangeMark")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -411,6 +482,11 @@ namespace Kupro.Api.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("source_kind");
+
+                    b.Property<string>("SourceParent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("source_parent");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1787,6 +1863,25 @@ namespace Kupro.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_workspace_exports_members_workspace_id_requested_by_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Imports.ImportConflict", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Imports.WorkspaceImport", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ImportId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_import_conflicts_imports_workspace_id_import_id");
+
+                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_import_conflicts_issues_workspace_id_issue_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Imports.ImportRun", b =>

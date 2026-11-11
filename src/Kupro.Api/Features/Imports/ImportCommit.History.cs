@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
@@ -59,12 +60,18 @@ public sealed partial class ImportCommit
 
         var issues = new Dictionary<string, string>(StringComparer.Ordinal);
         Dictionary<string, string> known;
+        List<(string Url, string Key)> earlierLinks;
+        List<(Guid Id, string Json)> earlierFiles;
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
             known = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item)
                 .Join(db.Issues, i => i.EntityId, x => x.Id, (i, x) => new { i.SourceId, x.Key })
                 .ToDictionaryAsync(r => r.SourceId, r => r.Key, StringComparer.Ordinal, ct);
             _candidates ??= await CandidatesAsync(db, ct);
+            earlierLinks = await db.IssueAliases.AsNoTracking().Where(a => a.ImportId == _importId && a.Alias.Contains("://"))
+                .Join(db.Issues, a => a.IssueId, x => x.Id, (a, x) => new ValueTuple<string, string>(a.Alias, x.Key)).ToListAsync(ct);
+            earlierFiles = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Attachment && i.LastValues != null)
+                .Select(i => new ValueTuple<Guid, string>(i.EntityId, i.LastValues!)).ToListAsync(ct);
         }
 
         foreach (var item in read.Refs.Where(r => r.Url is { Length: > 0 }))
@@ -74,6 +81,18 @@ public sealed partial class ImportCommit
             {
                 issues.TryAdd(item.Url!.Trim(), key);
             }
+        }
+
+        // What a delta doesn't list is still linked to: earlier runs left its URL as an alias, and its files' as a row.
+        foreach (var (url, key) in earlierLinks)
+        {
+            issues.TryAdd(url, key);
+        }
+
+        foreach (var (entityId, json) in earlierFiles)
+        {
+            var file = JsonSerializer.Deserialize<StoredFile>(json, Json)!;
+            files.TryAdd(file.Url, new AttachmentRef(entityId, file.FileName, file.Image));
         }
 
         // A mention reads as the Kupro name of whoever the person became, else the source's name for them.
@@ -188,7 +207,12 @@ public sealed partial class ImportCommit
             foreach (var (source, id, contentType, size) in stored)
             {
                 attachments.AddImported(db, id, IssueOf(source.Item)!.Value, actor(source.Author).Id, FileName(source.FileName), contentType, size, source.Created.ToUniversalTime());
-                Record(db, ImportedKinds.Attachment, source.Id, ImportedEntityKind.Attachment, id);
+                var row = Record(db, ImportedKinds.Attachment, source.Id, ImportedEntityKind.Attachment, id);
+                if (source.Url is { Length: > 0 } url)
+                {
+                    row.LastValues = JsonSerializer.Serialize(new StoredFile(url.Trim(), FileName(source.FileName), IsImage(contentType)), Json);
+                }
+
                 delta.Attachments++;
             }
 
@@ -526,6 +550,9 @@ public sealed partial class ImportCommit
 
     [GeneratedRegex(@"^[\w.+-]+/[\w.+-]+$")]
     private static partial Regex MimeType();
+
+    /// <summary>A copied file, as text imported later needs to find it.</summary>
+    private sealed record StoredFile(string Url, string FileName, bool Image);
 }
 
 /// <summary>The <see cref="SourceChange.Field"/> names for item properties (docs/import-format.md, Changes).</summary>

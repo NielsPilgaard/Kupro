@@ -20,7 +20,7 @@ namespace Kupro.Tests.Features;
 
 /// <summary>The commit path: queue, batches, keys, hierarchy, resume (task 023, ADR-019 Pipeline).</summary>
 [Collection(nameof(StorageTests))]
-public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture storage)
+public sealed partial class ImportCommitTests(PostgresFixture postgres, StorageFixture storage)
     : ApiTestBase(postgres, storage.Settings), IClassFixture<StorageFixture>
 {
     private static readonly DateTimeOffset Created = new(2025, 3, 1, 9, 0, 0, TimeSpan.FromHours(2));
@@ -603,11 +603,11 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
             Resolved = resolved,
         };
 
-    private static async Task<string> WriteAsync(FakeConnector source, bool files = false)
+    private static async Task<string> WriteAsync(FakeConnector source, bool files = false, string? cursor = null)
     {
         var path = Path.GetTempFileName();
         await using var file = File.Create(path);
-        await source.WriteSnapshotAsync(file, new ReadScope(), null, includeFiles: files, TimeProvider.System, Ct);
+        await source.WriteSnapshotAsync(file, new ReadScope(), cursor, includeFiles: files, TimeProvider.System, Ct);
         return path;
     }
 
@@ -643,7 +643,13 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
             await db.SaveChangesAsync(Ct);
         });
 
-        var path = await WriteAsync(source, files);
+        await StoreAsync(import, source, files, null);
+        return import;
+    }
+
+    private async Task StoreAsync(Guid import, FakeConnector source, bool files, string? cursor)
+    {
+        var path = await WriteAsync(source, files, cursor);
         try
         {
             await using var scope = Factory.Services.CreateAsyncScope();
@@ -655,8 +661,6 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
         {
             File.Delete(path);
         }
-
-        return import;
     }
 
     private async Task<ImportRun> CommitAsync(FakeConnector source, ImportMapping? mapping = null, bool files = false) =>

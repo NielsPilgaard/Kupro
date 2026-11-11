@@ -40,6 +40,9 @@ public sealed class SnapshotWriter : IAsyncDisposable
         }
     }
 
+    /// <summary>Set when the source was read from a cursor: see <see cref="SnapshotHeader.Partial"/>.</summary>
+    public bool Partial { get; init; }
+
     public async Task WriteAsync(ISnapshotRecord record, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_completed, this);
@@ -105,6 +108,7 @@ public sealed class SnapshotWriter : IAsyncDisposable
             Source = _description.Source,
             CreatedAt = createdAt,
             Cursor = _cursor,
+            Partial = Partial,
             Projects = _description.Projects,
             People = [.. _people.Values],
             ItemTypes = _description.ItemTypes,

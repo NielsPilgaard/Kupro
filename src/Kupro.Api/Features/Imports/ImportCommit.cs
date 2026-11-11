@@ -54,8 +54,22 @@ public sealed class ImportRunCounts
     /// <summary>How far into the snapshot's changes the run got: a resumed run starts after them.</summary>
     public int ChangesRead { get; set; }
 
+    /// <summary>Issues an earlier run imported that this one changed.</summary>
+    public int Updated { get; set; }
+
+    /// <summary>Items that couldn't keep their source number because something else has it; the source key is an alias.</summary>
+    public int Renumbered { get; set; }
+
+    /// <summary>Conflicts open when the run ended, carried over or new. Absolute, not added.</summary>
+    public int Conflicts { get; set; }
+
+    /// <summary>Imported items a whole snapshot no longer has. They are left alone. Absolute, not added.</summary>
+    public int DeletedInSource { get; set; }
+
     public void Add(ImportRunCounts other)
     {
+        Updated += other.Updated;
+        Renumbered += other.Renumbered;
         Comments += other.Comments;
         Attachments += other.Attachments;
         Changes += other.Changes;
@@ -129,6 +143,12 @@ public sealed partial class ImportCommit(
     /// <summary>A folded checklist item's source ID to the item that holds it: its comments and files go there.</summary>
     private readonly Dictionary<string, string> _holders = new(StringComparer.Ordinal);
 
+    /// <summary>What earlier runs imported, as this run started. Everything else this run writes is new.</summary>
+    private readonly Dictionary<string, KnownItem> _known = new(StringComparer.Ordinal);
+
+    /// <summary>Checklist items earlier runs folded into a description.</summary>
+    private readonly Dictionary<string, KnownChecklist> _folded = new(StringComparer.Ordinal);
+
     private ImportRunCounts _counts = new();
     private Guid _importId;
     private Guid _runId;
@@ -139,6 +159,9 @@ public sealed partial class ImportCommit(
     private MappedSource _source = null!;
     private ImportDescription _description = null!;
     private List<MemberCandidate>? _candidates;
+
+    /// <summary>What the finished run has to tell the owner, with examples. Set by <see cref="RunAsync"/>.</summary>
+    public ImportRunReport? Report { get; private set; }
 
     public async Task<ImportRunCounts> RunAsync(WorkspaceImport import, ImportRun run, SnapshotReader snapshot, ImportMapping mapping, CancellationToken ct)
     {
@@ -175,6 +198,8 @@ public sealed partial class ImportCommit(
             await WriteLevelAsync(snapshot, fit, depths, depth, numbers, tops, checklists, references, ct);
         }
 
+        // After the new ones, so an item can move under a parent this run created.
+        await UpdateExistingAsync(snapshot, fit, checklists, references, ct);
         await WriteRelationsAsync(snapshot, fit, ct);
 
         // History last: it hangs off issues, and every issue it can point at exists by now (ADR-019 History).
@@ -185,6 +210,7 @@ public sealed partial class ImportCommit(
         await MarkChangesSeenAsync(marks, ct);
 
         _counts.AlreadyImported = read.Refs.Count(r => _items.ContainsKey(r.Id)) - _counts.Issues;
+        Report = await ReportAsync(read, ct);
         return _counts;
     }
 
@@ -194,16 +220,13 @@ public sealed partial class ImportCommit(
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var rows = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId)
-            .Where(i => i.SourceKind == ImportedKinds.Item || i.SourceKind == ImportedKinds.Person || i.SourceKind == ImportedKinds.Sprint || i.SourceKind == ImportedKinds.Label)
+            .Where(i => i.SourceKind == ImportedKinds.Person || i.SourceKind == ImportedKinds.Sprint || i.SourceKind == ImportedKinds.Label)
             .Select(i => new { i.SourceKind, i.SourceId, i.EntityId })
             .ToListAsync(ct);
         foreach (var row in rows)
         {
             switch (row.SourceKind)
             {
-                case ImportedKinds.Item:
-                    _items[row.SourceId] = row.EntityId;
-                    break;
                 case ImportedKinds.Person:
                     _people[row.SourceId] = row.EntityId;
                     break;
@@ -214,6 +237,24 @@ public sealed partial class ImportCommit(
                     _labels[row.SourceId] = row.EntityId;
                     break;
             }
+        }
+
+        // One small record per item: a delta names only what changed, and the fit needs the whole tree.
+        var items = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item)
+            .Join(db.Issues, i => i.EntityId, x => x.Id, (i, x) => new { i.SourceId, i.EntityId, i.SourceParent, i.Level, x.Type, x.Key, x.Title })
+            .ToListAsync(ct);
+        foreach (var item in items)
+        {
+            _items[item.SourceId] = item.EntityId;
+            _known[item.SourceId] = new KnownItem(item.Type, item.Key, item.Title, item.SourceParent, item.Level);
+        }
+
+        var folded = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Checklist)
+            .Select(i => new { i.SourceId, i.SourceParent, i.Level, i.LastValues })
+            .ToListAsync(ct);
+        foreach (var item in folded)
+        {
+            _folded[item.SourceId] = new KnownChecklist(JsonSerializer.Deserialize<ChecklistLine>(item.LastValues!, Json)!, item.SourceParent, item.Level);
         }
     }
 
@@ -229,9 +270,10 @@ public sealed partial class ImportCommit(
                 continue;
             }
 
-            var input = _source.Input(item);
+            var input = Shaped(_source.Input(item));
             var target = _source.Project(item.Project);
             read.Kept.Add(input);
+            read.KeptIds.Add(item.Id);
             read.Refs.Add(new ItemRef(item.Id, target.Key, item.Key, item.Url));
             read.Targets.Add(target);
             if (input.Checklist)
@@ -251,11 +293,38 @@ public sealed partial class ImportCommit(
             read.Sprints.Add((sprint.Id, _source.Project(sprint.Project!).Key));
         }
 
+        AddImportedTree(read, seen);
         return read;
     }
 
+    /// <summary>An item already imported keeps the shape it has in Kupro, whatever the mapping and the fold say now (ADR-019 Shape).</summary>
+    private FitInput Shaped(FitInput input) =>
+        _known.TryGetValue(input.Id, out var known) ? input with { Type = known.Type, Level = input.Level ?? known.Level, Checklist = false, Fixed = true }
+        : _folded.TryGetValue(input.Id, out var folded) ? input with { Level = input.Level ?? folded.Level, Checklist = true }
+        : input;
+
+    /// <summary>What earlier runs imported and this snapshot doesn't list, so a new child finds its parent and a holder keeps its checklist.</summary>
+    private void AddImportedTree(SourceRead read, HashSet<string> seen)
+    {
+        foreach (var (id, known) in _known.Where(k => !read.KeptIds.Contains(k.Key)))
+        {
+            read.Kept.Add(new FitInput(id, known.Type, known.SourceParent, known.Level, Fixed: true));
+        }
+
+        foreach (var (id, folded) in _folded.Where(k => !read.KeptIds.Contains(k.Key)))
+        {
+            read.Kept.Add(new FitInput(id, IssueType.Task, folded.SourceParent, folded.Level, Checklist: true));
+            read.ChecklistLines[id] = folded.Line;
+        }
+
+        if (!_header.Partial)
+        {
+            read.Deleted.AddRange(_known.Keys.Where(id => !seen.Contains(id)).Order(StringComparer.Ordinal));
+        }
+    }
+
     /// <summary>A second pass for the names of folded top-level items only: their children are labelled with them.</summary>
-    private static async Task<Dictionary<string, string>> TopTitlesAsync(SnapshotReader snapshot, FitResult fit, CancellationToken ct)
+    private async Task<Dictionary<string, string>> TopTitlesAsync(SnapshotReader snapshot, FitResult fit, CancellationToken ct)
     {
         var titles = new Dictionary<string, string>(StringComparer.Ordinal);
         if (fit.FoldedTops.Count == 0)
@@ -275,14 +344,21 @@ public sealed partial class ImportCommit(
 
         foreach (var folded in fit.FoldedTops)
         {
-            titles[folded.Item] = names[folded.Top];
+            titles[folded.Item] = names.TryGetValue(folded.Top, out var name) ? name : _known[folded.Top].Title;
         }
 
         return titles;
     }
 
-    private static ILookup<string, (string Id, ChecklistLine Line)> Checklists(FitResult fit, Dictionary<string, ChecklistLine> lines) =>
-        fit.Checklists.ToLookup(c => c.Parent, c => (c.Item, lines[c.Item]), StringComparer.Ordinal);
+    /// <summary>Lines keep the place they first had: a delta lists them in another order than the first read did.</summary>
+    private ILookup<string, (string Id, ChecklistLine Line)> Checklists(FitResult fit, Dictionary<string, ChecklistLine> lines)
+    {
+        var next = _folded.Count == 0 ? 0 : _folded.Values.Max(f => f.Line.Position) + 1;
+        return fit.Checklists
+            .Select(c => (c.Parent, c.Item, Line: lines[c.Item] with { Position = _folded.TryGetValue(c.Item, out var known) ? known.Line.Position : next++ }))
+            .OrderBy(c => c.Line.Position)
+            .ToLookup(c => c.Parent, c => (c.Item, c.Line), StringComparer.Ordinal);
+    }
 
     private static Dictionary<string, int> Depths(FitResult fit)
     {
@@ -569,39 +645,24 @@ public sealed partial class ImportCommit(
                 var state = _source.State(item);
                 var assignee = item.Assignee is { } a ? Member(a, newPeople) : null;
                 var creator = creators[item.Id] ?? SkippedId(newPeople);
-                var effort = _source.Effort(item);
-                var effortFits = effort is >= 0 and < MaxEffort;
-                var start = item.Start > item.Due ? null : item.Start;
-                var details = _description.Details(item, tooLong, item.Assignee is not null && assignee is null);
-                if (effort is not null && !effortFits)
-                {
-                    details.Add(("Effort", effort.Value.ToString(CultureInfo.InvariantCulture)));
-                }
-
-                if (item.Start is not null && start is null)
-                {
-                    details.Add(("Start date", item.Start.Value.ToString("O", CultureInfo.InvariantCulture)));
-                }
-
-                var (description, truncated) = _description.Build(item, [.. checklists[item.Id].Select(c => c.Line)], details, references);
-                delta.Truncated += truncated ? 1 : 0;
-                var title = string.IsNullOrWhiteSpace(item.Title) ? "(no title)" : Cut(item.Title.Trim(), ImportDescription.MaxTitle);
-                var labelIds = itemLabels.Select(l => _labels.TryGetValue(l, out var known) ? known : newLabels[l]).ToList();
-                var sprintId = item.Sprint is { } sprint && _sprints.TryGetValue(SprintKey(sprint, target.Key), out var found) ? found : (Guid?)null;
                 var parentId = fitted.Parent is { } parent ? _items[parent] : (Guid?)null;
-                var effortValue = effortFits ? Math.Round(effort!.Value, 2) : (decimal?)null;
+                var (values, truncated) = ValuesOf(item, itemLabels, tooLong, assignee, parentId, tops.GetValueOrDefault(item.Id), checklists, references);
+                delta.Truncated += truncated ? 1 : 0;
+                delta.Renumbered += SourceNumber(item.Key) is { } wanted && wanted != numbers[item.Id] ? 1 : 0;
+                var labelIds = itemLabels.Select(l => _labels.TryGetValue(l, out var known) ? known : newLabels[l]).ToList();
                 rows.Add(new ImportedIssue(
-                    id, _projects[target.Key], numbers[item.Id], key, fitted.Type, title, description, state, _source.Priority(item), assignee, parentId,
-                    effortValue, start, item.Due, sprintId, labelIds, creator, item.Created.ToUniversalTime(), item.Updated.ToUniversalTime(),
+                    id, _projects[target.Key], numbers[item.Id], key, fitted.Type, values.Title, values.Description, state, values.Priority, assignee, parentId,
+                    values.Effort, values.Start, values.Due, values.Sprint, labelIds, creator, item.Created.ToUniversalTime(), item.Updated.ToUniversalTime(),
                     state is IssueState.Done or IssueState.Canceled ? (item.Resolved ?? item.Updated).ToUniversalTime() : null,
                     item.Creator is { } name && creators[item.Id] is null ? PersonName(name) : null));
 
-                var values = new ImportedValues(title, description, state, _source.Priority(item), assignee, parentId, sprintId, effortValue, start, item.Due, itemLabels);
                 var imported = Record(db, ImportedKinds.Item, item.Id, ImportedEntityKind.Issue, id);
-                imported.LastValues = JsonSerializer.Serialize(values, Json);
-                foreach (var (checklistItem, _) in checklists[item.Id])
+                imported.LastValues = ImportedField.Serialize(values);
+                imported.SourceParent = item.Parent;
+                imported.Level = _source.Input(item).Level;
+                foreach (var (checklistItem, line) in checklists[item.Id])
                 {
-                    Record(db, ImportedKinds.Checklist, checklistItem, ImportedEntityKind.Issue, id);
+                    RecordChecklist(db, checklistItem, line, item.Id, id);
                 }
 
                 AddAliases(db, item, id, key, aliases, delta);
@@ -639,6 +700,39 @@ public sealed partial class ImportCommit(
             // One event per batch, not one per issue: a large import must not flood every open client (ADR-019 IMP-002).
             await realtime.ChangedAsync(ChangeTopic.Issue);
         }
+    }
+
+    /// <summary>The item as Kupro values: what the first write stores and what a re-run compares against.</summary>
+    private (ImportedValues Values, bool Truncated) ValuesOf(
+        SourceItem item, IReadOnlyList<string> itemLabels, List<string> tooLong, Guid? assignee, Guid? parent, string? top,
+        ILookup<string, (string Id, ChecklistLine Line)> checklists, ImportReferences references)
+    {
+        var effort = _source.Effort(item);
+        var effortFits = effort is >= 0 and < MaxEffort;
+        var start = item.Start > item.Due ? null : item.Start;
+        var details = _description.Details(item, tooLong, item.Assignee is not null && assignee is null);
+        if (effort is not null && !effortFits)
+        {
+            details.Add(("Effort", effort.Value.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        if (item.Start is not null && start is null)
+        {
+            details.Add(("Start date", item.Start.Value.ToString("O", CultureInfo.InvariantCulture)));
+        }
+
+        var (description, truncated) = _description.Build(item, [.. checklists[item.Id].Select(c => c.Line)], details, references);
+        var title = string.IsNullOrWhiteSpace(item.Title) ? "(no title)" : Cut(item.Title.Trim(), ImportDescription.MaxTitle);
+        var sprintId = item.Sprint is { } sprint && _sprints.TryGetValue(SprintKey(sprint, _source.Project(item.Project).Key), out var found) ? found : (Guid?)null;
+        var effortValue = effortFits ? Math.Round(effort!.Value, 2) : (decimal?)null;
+        return (new ImportedValues(title, description, _source.State(item), _source.Priority(item), assignee, parent, sprintId, effortValue, start, item.Due, itemLabels, top), truncated);
+    }
+
+    private void RecordChecklist(KuproDbContext db, string sourceId, ChecklistLine line, string holder, Guid issueId)
+    {
+        var row = Record(db, ImportedKinds.Checklist, sourceId, ImportedEntityKind.Issue, issueId);
+        row.LastValues = JsonSerializer.Serialize(line, Json);
+        row.SourceParent = holder;
     }
 
     // ---------------------------------------------------------------- people and labels
@@ -899,8 +993,8 @@ public sealed partial class ImportCommit(
     // ---------------------------------------------------------------- plumbing
 
     /// <summary>
-    /// One transaction, retried on a lost commit or a unique clash with work outside the import (the team creating the same
-    /// label). <paramref name="write"/> starts over each time, so it holds what it did in locals until this returns.
+    /// One transaction, retried on a lost commit or a clash with work outside the import (the team creating the same
+    /// label, or editing an issue a re-run is updating). <paramref name="write"/> starts over each time, so it holds what it did in locals until this returns.
     /// </summary>
     private async Task WriteAsync(Func<KuproDbContext, Task> write, CancellationToken ct)
     {
@@ -919,9 +1013,9 @@ public sealed partial class ImportCommit(
                 });
                 return;
             }
-            catch (DbUpdateException ex) when (attempt < MaxAttempts && ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            catch (DbUpdateException ex) when (attempt < MaxAttempts && ex is DbUpdateConcurrencyException or { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } })
             {
-                // The next attempt reads what the clash was about.
+                // The next attempt reads what the clash was about, or what the team just saved to the same issue.
             }
         }
     }
@@ -967,6 +1061,8 @@ public sealed partial class ImportCommit(
     private sealed class SourceRead
     {
         public List<FitInput> Kept { get; } = [];
+        public HashSet<string> KeptIds { get; } = new(StringComparer.Ordinal);
+        public List<string> Deleted { get; } = [];
         public List<ItemRef> Refs { get; } = [];
         public HashSet<ProjectTarget> Targets { get; } = [];
         public HashSet<(string SprintId, string ProjectKey)> Sprints { get; } = [];
@@ -975,19 +1071,9 @@ public sealed partial class ImportCommit(
 
     private sealed record ItemRef(string Id, string ProjectKey, string? Key, string? Url);
 
-    /// <summary>The Kupro values an item last imported as. A re-run updates a field only while Kupro still holds this value.</summary>
-    private sealed record ImportedValues(
-        string Title,
-        string? Description,
-        IssueState State,
-        IssuePriority Priority,
-        Guid? Assignee,
-        Guid? Parent,
-        Guid? Sprint,
-        decimal? Effort,
-        DateOnly? Start,
-        DateOnly? Due,
-        IReadOnlyList<string> Labels);
+    private sealed record KnownItem(IssueType Type, string Key, string Title, string? SourceParent, int? Level);
+
+    private sealed record KnownChecklist(ChecklistLine Line, string? SourceParent, int? Level);
 }
 
 /// <summary>Values of <see cref="ImportedItem.SourceKind"/>.</summary>

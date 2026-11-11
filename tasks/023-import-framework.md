@@ -33,8 +33,11 @@ commit: the stored snapshot, `ImportJob` with its own queue, `ImportCommit` (pro
 milestones, keys and aliases, issues with the details block, relations; resumable) and `MarkupConverters` (HTML, plain).
 History is in as well: comments, attachments, changelog replay and mention/link rewriting (`ImportCommit.History`,
 `ImportReferences`). An attachment whose bytes the snapshot doesn't hold is counted and keeps its source link until the
-server-side connectors fetch it. No surface reaches any of this yet: `ImportService` is called from tests. Next: re-runs
-with conflicts, then the rest of the commit path (invites, email, auto-sync, undo, finish).
+server-side connectors fetch it. Re-runs work too: per-field updates against `imported_item.last_values`, `import_conflict`
+with Keep/Use source, deltas that rebuild the tree from stored parents, and a `partial` flag in the format so only a whole
+snapshot reports source deletions. A delta must list a holder together with its checklist items. No surface reaches any
+of this yet: `ImportService` is called from tests. Next: what the plan says about a re-run, then the rest of the commit
+path (invites, email, auto-sync, undo, finish).
 
 ## Scope
 
@@ -158,13 +161,13 @@ with conflicts, then the rest of the commit path (invites, email, auto-sync, und
       plan data (round-trip test against task 016's writer).
 - [ ] Hierarchy fit: a fixture with four levels and a Task with children produces only valid ADR-008 shapes. Every
       re-parented item has a `relates` relation to its old parent and is counted in the plan.
-- [ ] Re-run: a source change to a field untouched in Kupro is applied; one edited in Kupro is kept and reported as a
+- [x] Re-run: a source change to a field untouched in Kupro is applied; one edited in Kupro is kept and reported as a
       conflict; nothing is duplicated; a native issue taking the next number causes an alias, not a failure.
-- [ ] Conflicts: Use source applies the source value, Keep Kupro's closes it; a resolved conflict reopens only when
+- [x] Conflicts: Use source applies the source value, Keep Kupro's closes it; a resolved conflict reopens only when
       the source value changes again.
 - [ ] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
       top-level items exist as Epics with their comments, history and aliases.
-- [ ] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
+- [x] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
 - [x] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
       reference (guard test over member foreign keys).
 - [ ] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and

@@ -56,6 +56,7 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     public DbSet<WorkspaceImport> WorkspaceImports => Set<WorkspaceImport>();
     public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
     public DbSet<ImportedItem> ImportedItems => Set<ImportedItem>();
+    public DbSet<ImportConflict> ImportConflicts => Set<ImportConflict>();
     public DbSet<IssueAlias> IssueAliases => Set<IssueAlias>();
 
     /// <summary>

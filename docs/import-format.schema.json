@@ -17,6 +17,7 @@
         "source": { "$ref": "#/$defs/source" },
         "createdAt": { "$ref": "#/$defs/time" },
         "cursor": { "type": ["string", "null"], "description": "Opaque delta cursor for the next run." },
+        "partial": { "type": "boolean", "description": "Holds only what changed since a cursor; a missing item wasn't deleted in the source." },
         "projects": { "type": "array", "items": { "$ref": "#/$defs/project" } },
         "people": { "type": "array", "items": { "$ref": "#/$defs/person" } },
         "itemTypes": { "type": "array", "items": { "$ref": "#/$defs/itemType" } },

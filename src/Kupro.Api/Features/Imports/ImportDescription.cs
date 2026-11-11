@@ -6,8 +6,8 @@ using Kupro.Import.Snapshot;
 
 namespace Kupro.Api.Features.Imports;
 
-/// <summary>A folded checklist item, as a line in its parent's description.</summary>
-public sealed record ChecklistLine(string Title, bool Done);
+/// <summary>A folded checklist item, as a line in its parent's description. <see cref="Position"/> keeps the lines in order across runs.</summary>
+public sealed record ChecklistLine(string Title, bool Done, int Position = 0);
 
 /// <summary>
 /// What an imported issue's text and labels are made of: the converted description, folded checklist items, and a

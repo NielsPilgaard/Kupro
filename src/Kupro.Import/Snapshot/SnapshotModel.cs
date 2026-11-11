@@ -57,6 +57,9 @@ public sealed record SnapshotHeader
     /// <summary>Opaque delta cursor for the next run (a time, a sync token). Null when the source has no delta.</summary>
     public string? Cursor { get; init; }
 
+    /// <summary>Holds only what changed since a cursor, so an item missing from it wasn't deleted in the source.</summary>
+    public bool Partial { get; init; }
+
     public IReadOnlyList<SourceProject> Projects { get; set; } = [];
     public IReadOnlyList<SourcePerson> People { get; set; } = [];
     public IReadOnlyList<SourceItemType> ItemTypes { get; set; } = [];
