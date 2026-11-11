@@ -334,7 +334,23 @@
       "done": "{{name}} markerede dette som færdigt ved afslutning af {{sprint}}"
     },
     "splitFrom": "{{name}} delte dette fra {{key}}",
-    "splitInto": "{{name}} fortsatte dette i {{key}}"
+    "splitInto": "{{name}} fortsatte dette i {{key}}",
+    "imported": "{{name}} importerede dette fra {{source}}",
+    "sourceChanged": "{{name}} ændrede {{field}} i {{source}} fra {{from}} til {{to}}",
+    "viaImport": "via import fra {{source}}",
+    "source": {
+      "jira": "Jira",
+      "azure-devops": "Azure DevOps",
+      "linear": "Linear",
+      "trello": "Trello",
+      "github": "GitHub",
+      "monday": "Monday",
+      "youtrack": "YouTrack",
+      "csv": "CSV",
+      "kupro": "Kupro",
+      "snapshot": "et øjebliksbillede"
+    },
+    "sourceUnknown": "kilden"
   },
   "upload": {
     "uploading": "Uploader {{name}}…",

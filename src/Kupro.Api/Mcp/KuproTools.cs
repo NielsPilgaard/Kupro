@@ -154,8 +154,10 @@ public sealed partial class KuproTools(
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
         var issues = await issueService.GetManyAsync(keys, ct);
         var activity = include?.Contains(IssueInclude.Activity) == true ? await feed.GetManyAsync(keys, ct) : null;
-        var found = issues.Select(i => i.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var errors = keys.Where(k => !found.Contains(k.Trim())).Distinct(StringComparer.OrdinalIgnoreCase).Select(k =>
+
+        // A source reference an import kept (#4567, PROJ-1 from Jira) finds its issue too.
+        var found = await issueService.ResolveKeysAsync(keys, ct);
+        var errors = keys.Where(k => !found.ContainsKey(k.Trim())).Distinct(StringComparer.OrdinalIgnoreCase).Select(k =>
         {
             var error = IssueError.NotFound(k);
             return new IssueLookupError(k, error.Code, error.Detail);

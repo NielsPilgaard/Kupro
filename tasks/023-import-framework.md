@@ -43,7 +43,9 @@ are in `ImportService`/`ImportJob`. Imports with a token run their connector (`I
 Trello) into a fresh snapshot with files when a commit starts, from the cursor less a 10-minute overlap; a rejected
 token fails the run and pauses auto-sync until it is replaced; auto-sync queues hourly and turns itself off after 30
 quiet days. Trello needs Kupro's API key in `Imports__TrelloKey`, not yet an AppHost parameter (slice 6, with the
-runbook). Next: slice 3 (feed paging, imported/source-changed feed items, aliases in lookups).
+runbook). The feed shows `imported`, `reimported` and `sourceChanged` items with the source and a skipped person's
+source name ("via Jira import", web too), and a source key or URL finds its issue in `GET /issues/{key}`, the feed,
+`get_issue` and search (so the palette). Next: feed cursor paging, then slice 4 (CSV, Kupro export ZIP).
 
 ## Scope
 

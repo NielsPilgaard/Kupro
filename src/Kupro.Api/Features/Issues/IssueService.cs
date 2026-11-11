@@ -42,11 +42,22 @@ public sealed class IssueService(
     public async Task<IssueDetail?> GetAsync(string key, CancellationToken ct) =>
         (await GetManyAsync([key], ct)).SingleOrDefault();
 
-    /// <summary>The issues that exist among <paramref name="keys"/>, in the order asked. The same queries however many keys.</summary>
+    /// <summary>Each of <paramref name="keys"/> that leads to an issue, by its key or an import's alias, with the issue's key.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> ResolveKeysAsync(IEnumerable<string> keys, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await IssueKeys.ResolveAsync(db, keys, ct);
+    }
+
+    /// <summary>
+    /// The issues that exist among <paramref name="keys"/>, in the order asked. A key can also be a source reference an
+    /// import kept as an alias. The same queries however many keys.
+    /// </summary>
     public async Task<IReadOnlyList<IssueDetail>> GetManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct)
     {
-        var normalized = keys.Select(NormalizeKey).Distinct().ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var resolved = await IssueKeys.ResolveAsync(db, keys, ct);
+        var normalized = keys.Select(k => k.Trim()).Where(resolved.ContainsKey).Select(k => resolved[k]).Distinct().ToList();
         var summaries = await db.Issues.AsNoTracking().Where(i => normalized.Contains(i.Key)).Select(SummaryOf(db)).ToListAsync(ct);
         if (summaries.Count == 0)
         {
@@ -161,7 +172,8 @@ public sealed class IssueService(
             issues = issues.Where(i => EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
                     .Matches(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
                 || EF.Functions.TrigramsAreWordSimilar(text, i.Title)
-                || i.Key == key);
+                || i.Key == key
+                || db.IssueAliases.Any(a => a.IssueId == i.Id && (a.Alias == text.Trim() || a.Alias == key)));
 
             if (sort == IssueSort.Relevance)
             {
@@ -169,7 +181,7 @@ public sealed class IssueService(
                 var offset = (int)Math.Clamp(cursor?.Number ?? 0, 0, int.MaxValue);
                 var ranked = await issues
                     .OrderByDescending(i => i.UpdatedAt).ThenByDescending(i => i.Id).Take(RankedMatches)
-                    .OrderByDescending(i => (i.Key == key ? 2 : 0)
+                    .OrderByDescending(i => (i.Key == key || db.IssueAliases.Any(a => a.IssueId == i.Id && (a.Alias == text.Trim() || a.Alias == key)) ? 2 : 0)
                         + EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
                             .Rank(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
                         + KuproDbContext.WordSimilarity(text, i.Title))

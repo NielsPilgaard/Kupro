@@ -5438,6 +5438,20 @@
                 "$ref": "#/components/schemas/FeedMeeting"
               }
             ]
+          },
+          "sourceActor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For an import: the source's name for someone the owner skipped, whose entries the shared placeholder holds."
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For an import: the source kind it came from (`jira`, `azure-devops`...), for \"via Jira import\"."
           }
         }
       },
@@ -5450,7 +5464,10 @@
           "relationRemoved",
           "sprintClosed",
           "splitFrom",
-          "splitInto"
+          "splitInto",
+          "imported",
+          "reimported",
+          "sourceChanged"
         ]
       },
       "FeedMeeting": {

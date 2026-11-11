@@ -334,7 +334,23 @@
       "done": "{{name}} marked this done when closing {{sprint}}"
     },
     "splitFrom": "{{name}} split this from {{key}}",
-    "splitInto": "{{name}} continued this in {{key}}"
+    "splitInto": "{{name}} continued this in {{key}}",
+    "imported": "{{name}} imported this from {{source}}",
+    "sourceChanged": "{{name}} changed {{field}} in {{source}} from {{from}} to {{to}}",
+    "viaImport": "via {{source}} import",
+    "source": {
+      "jira": "Jira",
+      "azure-devops": "Azure DevOps",
+      "linear": "Linear",
+      "trello": "Trello",
+      "github": "GitHub",
+      "monday": "Monday",
+      "youtrack": "YouTrack",
+      "csv": "CSV",
+      "kupro": "Kupro",
+      "snapshot": "a snapshot"
+    },
+    "sourceUnknown": "the source"
   },
   "upload": {
     "uploading": "Uploading {{name}}…",
