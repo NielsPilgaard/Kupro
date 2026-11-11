@@ -62,30 +62,71 @@ public sealed record FeedItem(
 /// <summary>An issue's history and comments merged in time order (task 008).</summary>
 public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
 {
-    /// <summary>Most recent entries kept per issue; older history is rarely read and keeps the response small (ADR-010).</summary>
+    /// <summary>Most items in one response; older ones come a page at a time (ADR-010). An import can leave thousands.</summary>
     public const int Limit = 500;
 
-    public async Task<IReadOnlyList<FeedItem>?> GetAsync(string key, CancellationToken ct) =>
-        (await GetManyAsync([key], ct)).Values.SingleOrDefault();
+    /// <summary>
+    /// A page of an issue's feed, oldest first: the <paramref name="limit"/> newest items, or with <paramref name="before"/>
+    /// (the id of the oldest item the caller has) the ones just before it. A full page means there may be more.
+    /// Null if there is no such issue.
+    /// </summary>
+    public async Task<IssueResult<IReadOnlyList<FeedItem>>?> GetAsync(string key, Guid? before, int limit, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if ((await IssueKeys.ResolveAsync(db, [key], ct)).Values.SingleOrDefault() is not { } found)
+        {
+            return null;
+        }
 
-    /// <summary>Feeds by issue key, for the issues that exist among <paramref name="keys"/>. The same queries however many keys.</summary>
+        var issueId = await db.Issues.Where(i => i.Key == found).Select(i => i.Id).SingleAsync(ct);
+        (DateTimeOffset At, Guid Id)? cursor = null;
+        if (before is { } id)
+        {
+            var at = await db.Activity.Where(a => a.Id == id && a.IssueId == issueId).Select(a => (DateTimeOffset?)a.CreatedAt).SingleOrDefaultAsync(ct)
+                ?? await db.Comments.Where(c => c.Id == id && c.IssueId == issueId).Select(c => (DateTimeOffset?)c.CreatedAt).SingleOrDefaultAsync(ct);
+            if (at is null)
+            {
+                return new IssueError("invalid_cursor", $"{id} is not an item in {found}'s activity.");
+            }
+
+            cursor = (at.Value, id);
+        }
+
+        var feeds = await LoadAsync(db, [(issueId, found)], cursor, Math.Clamp(limit, 1, Limit), ct);
+        return new IssueResult<IReadOnlyList<FeedItem>>(feeds[found], null);
+    }
+
+    /// <summary>The newest page of each issue's feed by issue key, for the issues that exist among <paramref name="keys"/>. The same queries however many keys.</summary>
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<FeedItem>>> GetManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var normalized = (await IssueKeys.ResolveAsync(db, keys, ct)).Values.Distinct().ToList();
         var issues = await db.Issues.Where(i => normalized.Contains(i.Key)).Select(i => new { i.Id, i.Key }).ToListAsync(ct);
+        return await LoadAsync(db, [.. issues.Select(i => (i.Id, i.Key))], null, Limit, ct);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<FeedItem>>> LoadAsync(
+        KuproDbContext db, IReadOnlyList<(Guid Id, string Key)> issues, (DateTimeOffset At, Guid Id)? cursor, int limit, CancellationToken ct)
+    {
         if (issues.Count == 0)
         {
             return new Dictionary<string, IReadOnlyList<FeedItem>>();
         }
 
+        // Each side takes a full page and the merge below keeps the newest of both. Row values keep each read on one index range.
         var issueIds = issues.Select(i => i.Id).ToList();
+        var paged = cursor is not null;
+        var (beforeAt, beforeId) = cursor ?? default;
         var entries = await db.Issues.Where(i => issueIds.Contains(i.Id))
-            .SelectMany(i => db.Activity.Where(a => a.IssueId == i.Id).OrderByDescending(a => a.CreatedAt).Take(Limit))
+            .SelectMany(i => db.Activity
+                .Where(a => a.IssueId == i.Id && (!paged || EF.Functions.LessThan(ValueTuple.Create(a.CreatedAt, a.Id), ValueTuple.Create(beforeAt, beforeId))))
+                .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit))
             .Select(a => new { a.Id, a.IssueId, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId })
             .ToListAsync(ct);
         var comments = await db.Issues.Where(i => issueIds.Contains(i.Id))
-            .SelectMany(i => db.Comments.Where(c => c.IssueId == i.Id).OrderByDescending(c => c.CreatedAt).Take(Limit))
+            .SelectMany(i => db.Comments
+                .Where(c => c.IssueId == i.Id && (!paged || EF.Functions.LessThan(ValueTuple.Create(c.CreatedAt, c.Id), ValueTuple.Create(beforeAt, beforeId))))
+                .OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id).Take(limit))
             .Select(c => new { c.Id, c.IssueId, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt, c.ProposalId, c.SourceAuthor })
             .ToListAsync(ct);
 
@@ -200,7 +241,8 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
         }
 
         var byIssue = items.ToLookup(i => i.IssueId, i => i.Item);
-        return issues.ToDictionary(i => i.Key, IReadOnlyList<FeedItem> (i) => byIssue[i.Id].OrderBy(f => f.At).ThenBy(f => f.Id).ToList());
+        return issues.ToDictionary(i => i.Key, IReadOnlyList<FeedItem> (i) =>
+            [.. byIssue[i.Id].OrderByDescending(f => f.At).ThenByDescending(f => f.Id).Take(limit).Reverse()]);
     }
 
     private static FeedItemKind? Kind(string kind) => kind switch

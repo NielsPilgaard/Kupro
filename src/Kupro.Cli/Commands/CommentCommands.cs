@@ -30,9 +30,12 @@ internal static class CommentCommands
     private static Command Activity()
     {
         var key = new Argument<string>("key") { Description = "Issue key, e.g. KUP-12." };
-        return new ApiCommand("activity", "Show an issue's history and comments.", "listIssueActivity") { key }.Handle(async (c, ct) =>
+        var before = new Option<Guid?>("--before") { Description = "Older items: the id of the oldest item you have." };
+        var limit = new Option<int?>("--limit") { Description = "Items per page, 1-500 (default 500)." };
+        return new ApiCommand("activity", "Show an issue's history and comments, newest page first.", "listIssueActivity") { key, before, limit }.Handle(async (c, ct) =>
         {
-            var items = await (await c.InWorkspaceAsync(ct)).Issues[c.Get(key)!].Activity.GetAsync(cancellationToken: ct) ?? [];
+            var items = await (await c.InWorkspaceAsync(ct)).Issues[c.Get(key)!].Activity.GetAsync(
+                r => (r.QueryParameters.Before, r.QueryParameters.Limit) = (c.Get(before), c.Get(limit)), ct) ?? [];
             await c.Out.ListAsync(items, ["WHEN", "WHO", "VIA", "WHAT"], i =>
                 [i.At?.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), i.Actor?.Name,
                     i.Via?.ToString()?.ToLowerInvariant(), Describe(i)]);

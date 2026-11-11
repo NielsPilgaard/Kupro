@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Workspaces;
@@ -11,12 +12,21 @@ namespace Kupro.Api.Features.Comments;
 [Route("api/v1/workspaces/{workspace}")]
 public sealed class CommentsController(CommentService comments, ActivityFeed feed) : ControllerBase
 {
-    /// <summary>An issue's history and comments, oldest first (the most recent 500 of each).</summary>
+    /// <summary>
+    /// An issue's history and comments, oldest first: the newest <c>limit</c> items, or with <c>before</c> the ones just
+    /// before that item. A full page means there may be older ones: ask again with the first item's id.
+    /// </summary>
+    /// <param name="key">Issue key, or a source key an import kept.</param>
+    /// <param name="before">Id of the oldest item you have; returns the page before it.</param>
+    /// <param name="limit">Items per page, 1-500.</param>
+    /// <param name="ct">Cancelled when the request is.</param>
     [HttpGet("issues/{key}/activity", Name = "listIssueActivity")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IReadOnlyList<FeedItem>>> Activity(string key, CancellationToken ct) =>
-        await feed.GetAsync(key, ct) is { } items ? Ok(items) : this.ToProblem(IssueError.NotFound(key));
+    public async Task<ActionResult<IReadOnlyList<FeedItem>>> Activity(
+        string key, [FromQuery] Guid? before, [FromQuery, Range(1, ActivityFeed.Limit)] int limit = ActivityFeed.Limit, CancellationToken ct = default) =>
+        await feed.GetAsync(key, before, limit, ct) is { } page ? this.ToResult(page) : this.ToProblem(IssueError.NotFound(key));
 
     /// <summary>Comment on an issue. Markdown; guests may comment too.</summary>
     [HttpPost("issues/{key}/comments", Name = "addComment")]

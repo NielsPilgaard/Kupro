@@ -45,7 +45,7 @@ token fails the run and pauses auto-sync until it is replaced; auto-sync queues 
 quiet days. Trello needs Kupro's API key in `Imports__TrelloKey`, not yet an AppHost parameter (slice 6, with the
 runbook). The feed shows `imported`, `reimported` and `sourceChanged` items with the source and a skipped person's
 source name ("via Jira import", web too), and a source key or URL finds its issue in `GET /issues/{key}`, the feed,
-`get_issue` and search (so the palette). Next: feed cursor paging, then slice 4 (CSV, Kupro export ZIP).
+`get_issue` and search (so the palette). The feed pages: `GET .../activity?before=<oldest item id>&limit=`, `kupro issue activity --before`, and "Show older" on the web. Next: slice 4 (CSV, Kupro export ZIP).
 
 ## Scope
 
@@ -178,7 +178,7 @@ source name ("via Jira import", web too), and a source key or URL finds its issu
 - [x] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
 - [x] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
       reference (guard test over member foreign keys).
-- [ ] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and
+- [x] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and
       time; unmapped field changes show as source changes. Feed paging returns all 5,000 entries of a large issue
       within budget.
 - [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.

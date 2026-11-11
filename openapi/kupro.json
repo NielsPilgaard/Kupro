@@ -3980,15 +3980,37 @@
         "tags": [
           "Comments"
         ],
-        "summary": "An issue's history and comments, oldest first (the most recent 500 of each).",
+        "summary": "An issue's history and comments, oldest first: the newest `limit` items, or with `before` the ones just\nbefore that item. A full page means there may be older ones: ask again with the first item's id.",
         "operationId": "listIssueActivity",
         "parameters": [
           {
             "name": "key",
             "in": "path",
+            "description": "Issue key, or a source key an import kept.",
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Id of the oldest item you have; returns the page before it.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page, 1-500.",
+            "schema": {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 500
             }
           },
           {
@@ -4010,6 +4032,16 @@
                   "items": {
                     "$ref": "#/components/schemas/FeedItem"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }

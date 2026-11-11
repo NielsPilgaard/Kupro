@@ -3,6 +3,7 @@ using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
 using Kupro.Import.Snapshot;
 using Kupro.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace Kupro.Tests.Features;
 
@@ -40,6 +41,56 @@ public sealed partial class ImportCommitTests
 
         var found = await GetAsync<IssuePage>(_client, Url("issues?q=OLD-9"));
         found.Items[0].Key.ShouldBe("WEB-9");
+    }
+
+    [Fact]
+    public async Task A_long_feed_comes_a_page_at_a_time_back_to_its_first_entry()
+    {
+        await CommitAsync(Source(Item("a", key: "WEB-1")));
+        const int Entries = 5000;
+        await WithDbAsync(async db =>
+        {
+            var issue = await db.Issues.SingleAsync(Ct);
+            var start = DateTimeOffset.UtcNow.AddDays(-30);
+            db.Activity.AddRange(Enumerable.Range(0, Entries).Select(n => new ActivityEntry
+            {
+                Id = Guid.CreateVersion7(),
+                WorkspaceId = issue.WorkspaceId,
+                IssueId = issue.Id,
+                ActorId = _owner,
+                Via = Surface.Import,
+
+                // Pairs share a time, so the page edge has to break ties by id.
+                Kind = "source_changed",
+                Data = $$"""{"field":"Team","from":"{{n}}","to":"{{n + 1}}"}""",
+                CreatedAt = start.AddSeconds(n / 2),
+            }));
+            await db.SaveChangesAsync(Ct);
+        });
+
+        var all = new List<FeedItem>();
+        Guid? before = null;
+        var slowest = TimeSpan.Zero;
+        while (true)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var page = await GetAsync<List<FeedItem>>(_client, Url($"issues/WEB-1/activity?limit=500{(before is { } id ? $"&before={id}" : "")}"));
+            slowest = watch.Elapsed > slowest ? watch.Elapsed : slowest;
+            all.InsertRange(0, page);
+            if (page.Count < 500)
+            {
+                break;
+            }
+
+            before = page[0].Id;
+        }
+
+        all.Count(f => f.Kind == FeedItemKind.SourceChanged).ShouldBe(Entries);
+        all.Select(f => f.Id).Distinct().Count().ShouldBe(all.Count);
+        all.ShouldContain(f => f.Kind == FeedItemKind.Created);
+        all.Select(f => f.At).ShouldBeInOrder();
+        slowest.ShouldBeLessThan(TimeSpan.FromSeconds(1), "one page stays well inside the latency budget (ADR-010)");
+        await ShouldBeProblemAsync(await _client.GetAsync(Url($"issues/WEB-1/activity?before={Guid.NewGuid()}"), Ct), System.Net.HttpStatusCode.BadRequest, "invalid_cursor");
     }
 
     private static FakeConnector Rename(FakeConnector source, string id, string title)

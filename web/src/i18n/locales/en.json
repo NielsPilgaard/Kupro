@@ -304,6 +304,7 @@
   },
   "feed": {
     "title": "Activity",
+    "showOlder": "Show older",
     "comment": "Comment",
     "commentLabel": "Comment",
     "placeholder": "Leave a comment. Markdown; paste or drop images to attach them.",

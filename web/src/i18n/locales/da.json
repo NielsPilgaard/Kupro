@@ -304,6 +304,7 @@
   },
   "feed": {
     "title": "Aktivitet",
+    "showOlder": "Vis ældre",
     "comment": "Kommentér",
     "commentLabel": "Kommentar",
     "placeholder": "Skriv en kommentar. Markdown; indsæt eller træk billeder ind for at vedhæfte dem.",
