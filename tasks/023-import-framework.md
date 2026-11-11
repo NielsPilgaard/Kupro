@@ -179,13 +179,13 @@ The web wizard waits on task 033.
       writes, and the parity test passes (MCP: read-only tool).
 - [ ] A Kupro export ZIP imported into an empty workspace reproduces issues, keys, comments, attachments, sprints and
       plan data (round-trip test against task 016's writer).
-- [ ] Hierarchy fit: a fixture with four levels and a Task with children produces only valid ADR-008 shapes. Every
+- [x] Hierarchy fit: a fixture with four levels and a Task with children produces only valid ADR-008 shapes. Every
       re-parented item has a `relates` relation to its old parent and is counted in the plan.
 - [x] Re-run: a source change to a field untouched in Kupro is applied; one edited in Kupro is kept and reported as a
       conflict; nothing is duplicated; a native issue taking the next number causes an alias, not a failure.
 - [x] Conflicts: Use source applies the source value, Keep Kupro's closes it; a resolved conflict reopens only when
       the source value changes again.
-- [ ] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
+- [x] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
       top-level items exist as Epics with their comments, history and aliases.
 - [x] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
 - [x] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
