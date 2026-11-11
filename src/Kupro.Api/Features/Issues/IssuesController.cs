@@ -118,13 +118,16 @@ internal static class IssueResults
         {
             "issue_not_found" or "label_not_found" or "relation_not_found" or "sprint_not_found"
                 or "milestone_not_found" or "comment_not_found" or "attachment_not_found"
-                or "meeting_not_found" or "proposal_not_found" or "export_not_found" => StatusCodes.Status404NotFound,
+                or "meeting_not_found" or "proposal_not_found" or "export_not_found"
+                or "import_not_found" or "run_not_found" or "conflict_not_found" => StatusCodes.Status404NotFound,
             "relation_exists" or "issue_conflict" or "label_taken" or "sprint_already_active" or "sprint_not_active" or "sprint_not_planned"
                 or "no_next_sprint" or "upload_missing" or "meeting_ended" or "meeting_not_live" or "proposal_not_pending"
                 or "proposal_not_applied" or "changed_since_applied" or "meeting_budget_spent" or "meeting_time_limit"
+                or "import_closed" or "import_busy" or "conflict_resolved" or "no_snapshot" or "no_mapping"
                 => StatusCodes.Status409Conflict,
             "not_comment_author" or "not_uploader" or "full_auto_disabled" => StatusCodes.Status403Forbidden,
             "attachments_unavailable" or "transcription_unavailable" or "meeting_agent_unavailable" or "exports_unavailable"
+                or "imports_unavailable"
                 => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status400BadRequest,
         }, error.Code, error.Detail);

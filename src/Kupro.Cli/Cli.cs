@@ -22,8 +22,12 @@ public sealed class CommandContext(ParseResult parse, ApiSession session, Output
     public ParseResult Parse { get; } = parse;
     public ApiSession Session { get; } = session;
     public Output Out { get; } = output;
-    public KuproClient Api => _api ??= Session.CreateClient();
+    public KuproClient Api => _api ??= new KuproClient(Adapter);
     private KuproClient? _api;
+
+    /// <summary>The adapter <see cref="Api"/> sends through, for requests it can't build itself.</summary>
+    public Microsoft.Kiota.Abstractions.IRequestAdapter Adapter => _adapter ??= Session.CreateAdapter();
+    private Microsoft.Kiota.Abstractions.IRequestAdapter? _adapter;
 
     public T? Get<T>(Option<T> option) => Parse.GetValue(option);
     public T? Get<T>(Argument<T> argument) => Parse.GetValue(argument);
@@ -100,6 +104,7 @@ public static class Cli
                      .Concat(PlanCommands.Build())
                      .Concat(CommentCommands.Build())
                      .Concat(MeetingCommands.Build())
+                     .Concat(ImportCommands.Build())
                      .Concat(InstallCommands.Build())
                      .Append(McpCommand.Build()))
         {

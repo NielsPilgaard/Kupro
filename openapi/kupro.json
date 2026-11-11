@@ -3833,6 +3833,1250 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/imports": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Start an import. With a token Kupro reads the source itself; without one it reads a file you upload.",
+        "operationId": "createImport",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateImportRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateImportRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "The workspace's imports, newest first, each with its latest run.",
+        "operationId": "listImports",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "operationId": "getImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/source": {
+      "put": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Upload what the import reads, as the request body: a snapshot ZIP (docs/import-format.md), a CSV file, or a Kupro\nexport ZIP, as the import's source kind says. Replaces an earlier upload; the next run reads this one.",
+        "operationId": "uploadImportSource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Projects, people, types, statuses and fields, read live from the source with the import's token.",
+        "operationId": "describeImportSource",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceDescription"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/mapping": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "The saved mapping, or the one Kupro proposes (people matched by email and name) until one is saved.",
+        "operationId": "getImportMapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportMappingResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Save the mapping. It applies from the next run; issues already imported keep their shape.",
+        "operationId": "setImportMapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMapping"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMapping"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMapping"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportMapping"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/plan": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Plan: a dry run over the stored snapshot. Writes nothing; poll the run for its plan.",
+        "operationId": "planImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/runs": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Run the import (also \"Sync now\"). One runs at a time per workspace; poll the run for progress and report.",
+        "operationId": "runImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "The import's runs, newest first (the last 50).",
+        "operationId": "listImportRuns",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportRunResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/runs/{runId}": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "A run with its plan (dry run) or report (commit): counts with sample items, conflicts, deletions.",
+        "operationId": "getImportRun",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/auto-sync": {
+      "put": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Turn hourly auto-sync on or off. Needs a token: an uploaded file has nothing to fetch.",
+        "operationId": "setImportAutoSync",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoSyncRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoSyncRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/token": {
+      "put": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Replace the source token, after the source rejected the old one. The next run continues from the saved cursor.",
+        "operationId": "replaceImportToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/conflicts": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Fields both sides changed: open ones, or with `all` resolved ones too. 200 at a time; `after` continues.",
+        "operationId": "listImportConflicts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "all",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportConflictResponse"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/conflicts/{conflictId}/resolve": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Keep Kupro's value (closes the conflict) or use the source's (applies it). It comes back only if the source changes again.",
+        "operationId": "resolveImportConflict",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "conflictId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveConflictRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveConflictRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveConflictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportConflict"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/undo": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "What Undo would lose (issues edited in Kupro since) and what stands in its way.",
+        "operationId": "checkImportUndo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportUndoCheck"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Delete everything the import created. Refused (`undone: false`, with the list) while records it didn't\ncreate point at its issues.",
+        "operationId": "undoImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportUndoResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/imports/{id}/finish": {
+      "post": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Finish the migration: auto-sync stops and the token is deleted. Aliases and history stay; Undo is gone.",
+        "operationId": "finishImport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/exports": {
       "post": {
         "tags": [
@@ -4660,6 +5904,18 @@
           }
         }
       },
+      "AutoSyncRequest": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Run hourly until Finish; off after 30 days with no change on either side."
+          }
+        }
+      },
       "BurndownAssignee": {
         "required": [
           "assignee",
@@ -5095,6 +6351,32 @@
           }
         }
       },
+      "CreateImportRequest": {
+        "required": [
+          "sourceKind"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceKind": {
+            "type": "string",
+            "description": "Where the data comes from: `jira`, `azure-devops`, `linear`, `trello`, `csv`, `snapshot`..."
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The source's address, for sources that have one (an Azure DevOps organisation, a Jira site)."
+          },
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The source token, for a server-side import. Stored encrypted and never returned."
+          }
+        }
+      },
       "CreateIssueRequest": {
         "required": [
           "project",
@@ -5313,6 +6595,192 @@
             "description": "URL id: lowercase letters, digits and dashes, e.g. `acme`. Immutable."
           }
         }
+      },
+      "CsvColumns": {
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Which known export the headers matched: `jira`, `linear`, or null for one Kupro guessed."
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "descriptionMarkup": {
+            "$ref": "#/components/schemas/MarkupKind"
+          },
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "priority": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "assignee": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A name or an email address."
+          },
+          "creator": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The parent's key or ID, as another row has it."
+          },
+          "labels": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Every column of this name is a label; one column alone is split on commas and semicolons."
+          },
+          "estimateHours": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estimateSeconds": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "points": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "start": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "due": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "updated": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resolved": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A column naming each row's project; without one the whole file is one project."
+          }
+        },
+        "description": "Which column holds what, by header name; null when the file has no such column (task 023, CSV). Saved with the\nimport's mapping. A CSV without string? CsvColumns.Key or string? CsvColumns.Id numbers its rows, so it can't be re-run."
+      },
+      "CsvPreview": {
+        "required": [
+          "delimiter",
+          "encoding",
+          "headers",
+          "rows",
+          "samples",
+          "columns"
+        ],
+        "type": "object",
+        "properties": {
+          "delimiter": {
+            "type": "string",
+            "description": "The character that separates fields."
+          },
+          "encoding": {
+            "type": "string",
+            "description": "`utf-8` or `windows-1252`."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "The first rows, as written."
+          },
+          "columns": {
+            "description": "Which column holds what: a known export's, or a guess by name.",
+            "$ref": "#/components/schemas/CsvColumns"
+          }
+        },
+        "description": "What Kupro read from an uploaded CSV, for the column-mapping step."
       },
       "ExportResponse": {
         "required": [
@@ -5539,6 +7007,874 @@
           }
         },
         "description": "The meeting a change came from (task 015)."
+      },
+      "FieldKind": {
+        "enum": [
+          "text",
+          "number",
+          "date",
+          "select",
+          "multi-select",
+          "user"
+        ]
+      },
+      "FoldCounts": {
+        "required": [
+          "reparented",
+          "promoted",
+          "foldedTops"
+        ],
+        "type": "object",
+        "properties": {
+          "reparented": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "promoted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "foldedTops": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "What one FoldEnd would do to a four-level source; the wizard shows both side by side."
+      },
+      "FoldEnd": {
+        "enum": [
+          "bottom",
+          "top"
+        ],
+        "description": "Which end of a four-level source folds (ADR-019 Shape). Two equal choices; the connector only preselects."
+      },
+      "ImportConflict": {
+        "required": [
+          "field"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workspaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "importId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "field": {
+            "type": "string",
+            "description": "The field, named as in the activity log: `title`, `state`, `assignee`..."
+          },
+          "kuproValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/ImportConflictState"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "A field that changed on both sides since the last run (ADR-019 Re-runs and conflicts). One row per issue and field,\nreopened if the source value changes again after it was resolved. Values are JSON, in Kupro's terms."
+      },
+      "ImportConflictResponse": {
+        "required": [
+          "id",
+          "issueKey",
+          "issueTitle",
+          "field",
+          "kupro",
+          "source",
+          "kuproValue",
+          "sourceValue",
+          "state",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "issueTitle": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "kupro": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "kuproValue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "sourceValue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/ImportConflictState"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "A field both sides changed. string? ImportConflictResponse.Kupro and string? ImportConflictResponse.Source are for reading (names, keys, dates); the\nraw values are Kupro's own (member and sprint ids, enum names)."
+      },
+      "ImportConflictState": {
+        "enum": [
+          "open",
+          "kept",
+          "usedSource",
+          "settled"
+        ]
+      },
+      "ImportMapping": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProjectTarget"
+            }
+          },
+          "people": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PersonTarget"
+            }
+          },
+          "types": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TypeTarget"
+            }
+          },
+          "states": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IssueState"
+            }
+          },
+          "priorities": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IssuePriority"
+            }
+          },
+          "statusesToReview": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Statuses with no category and no name hint: Todo for now, and flagged in the plan until the owner looks."
+          },
+          "labelFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Select-type fields that become labels; the rest go in the details block."
+          },
+          "milestoneVersions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Versions that become milestones."
+          },
+          "hoursPerPoint": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Hours per point. No default: the owner must enter it, and blank imports no effort from points.",
+            "format": "double"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ImportScope"
+          },
+          "fold": {
+            "$ref": "#/components/schemas/FoldEnd"
+          },
+          "csv": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a CSV import: which column holds what. Null until saved; a run then uses the proposed one.",
+                "$ref": "#/components/schemas/CsvColumns"
+              }
+            ]
+          }
+        },
+        "description": "The owner's choices, saved on the import as JSON and reused on every run. All keys are source IDs, except\nIReadOnlyDictionary&lt;string, IssuePriority&gt; ImportMapping.Priorities: the format has no priority list, so those are the names the source uses."
+      },
+      "ImportMappingResponse": {
+        "required": [
+          "mapping",
+          "saved"
+        ],
+        "type": "object",
+        "properties": {
+          "mapping": {
+            "$ref": "#/components/schemas/ImportMapping"
+          },
+          "saved": {
+            "type": "boolean"
+          }
+        },
+        "description": "The mapping in force, or the one Kupro proposes when none is saved yet."
+      },
+      "ImportPlan": {
+        "required": [
+          "items",
+          "create",
+          "update",
+          "skippedByScope",
+          "reparented",
+          "promoted",
+          "foldedChecklists",
+          "statusesToReview",
+          "parentLoops",
+          "comments",
+          "attachments",
+          "attachmentBytes",
+          "attachmentsOfUnknownSize",
+          "changes",
+          "effortHours",
+          "fourLevels"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "create": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "update": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "skippedByScope": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "reparented": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "promoted": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "foldedChecklists": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "statusesToReview": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "parentLoops": {
+            "description": "Items in a parent loop, which become roots. Only a hand-made snapshot has these.",
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "comments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attachments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attachmentBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "attachmentsOfUnknownSize": {
+            "type": "integer",
+            "description": "Attachments whose source doesn't give a size; long ImportPlan.AttachmentBytes leaves them out.",
+            "format": "int32"
+          },
+          "changes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "effortHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "fourLevels": {
+            "type": "boolean"
+          },
+          "foldBottom": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only for a four-level source.",
+                "$ref": "#/components/schemas/FoldCounts"
+              }
+            ]
+          },
+          "foldTop": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FoldCounts"
+              }
+            ]
+          },
+          "conflicts": {
+            "description": "Fields both sides changed, carried over or new. The source's string PlanSample.SourceId is the field here.",
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "keysTaken": {
+            "description": "Items whose source number is taken: they get the next free one and keep their key as an alias.",
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "deletedInSource": {
+            "description": "Imported items a whole snapshot no longer has. They are left alone.",
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "projectKeysTaken": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Project keys another project uses. The run would fail until the mapping picks another key or that project."
+          },
+          "projectsMissing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Existing projects the mapping targets that aren't there. The run would fail on these too."
+          },
+          "labelsToCreate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sprintsToCreate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "milestonesToCreate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "effortByProject": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanProjectEffort"
+            }
+          },
+          "shapesDiffer": {
+            "type": "integer",
+            "description": "Imported items whose shape would differ under the current fold and mapping. They keep the shape they have.",
+            "format": "int32"
+          }
+        },
+        "description": "The dry run's result (ADR-019 Pipeline), stored as an ImportRun's report."
+      },
+      "ImportResponse": {
+        "required": [
+          "id",
+          "sourceKind",
+          "baseUrl",
+          "state",
+          "autoSync",
+          "hasToken",
+          "tokenRejectedAt",
+          "createdAt",
+          "lastRunAt",
+          "lastChangeAt",
+          "finishedAt",
+          "lastRun"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceKind": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/ImportState"
+          },
+          "autoSync": {
+            "type": "boolean"
+          },
+          "hasToken": {
+            "type": "boolean"
+          },
+          "tokenRejectedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastRunAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastChangeAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastRun": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ImportRunResponse"
+              }
+            ]
+          }
+        },
+        "description": "An import as the owner sees it. The token itself is never returned; bool ImportResponse.HasToken says whether one is kept."
+      },
+      "ImportRunCounts": {
+        "type": "object",
+        "properties": {
+          "issues": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "projects": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "members": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "labels": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sprints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "milestones": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "relations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aliases": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aliasesSkipped": {
+            "type": "integer",
+            "description": "A reference another issue already answers to. The first one keeps it; the plan and report say how many.",
+            "format": "int32"
+          },
+          "truncated": {
+            "type": "integer",
+            "description": "Descriptions cut to fit; the block still links to the original.",
+            "format": "int32"
+          },
+          "alreadyImported": {
+            "type": "integer",
+            "description": "Items an earlier run already imported.",
+            "format": "int32"
+          },
+          "comments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attachments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attachmentsMissing": {
+            "type": "integer",
+            "description": "Attachments with no bytes in the snapshot and no connector to fetch them from; their source link stays in the text.",
+            "format": "int32"
+          },
+          "changes": {
+            "type": "integer",
+            "description": "History entries for fields Kupro has (`updated`).",
+            "format": "int32"
+          },
+          "sourceChanges": {
+            "type": "integer",
+            "description": "History entries for fields Kupro lacks (`source_changed`).",
+            "format": "int32"
+          },
+          "changesRead": {
+            "type": "integer",
+            "description": "How far into the snapshot's changes the run got: a resumed run starts after them.",
+            "format": "int32"
+          },
+          "updated": {
+            "type": "integer",
+            "description": "Issues an earlier run imported that this one changed.",
+            "format": "int32"
+          },
+          "renumbered": {
+            "type": "integer",
+            "description": "Items that couldn't keep their source number because something else has it; the source key is an alias.",
+            "format": "int32"
+          },
+          "invited": {
+            "type": "integer",
+            "description": "Placeholders the mapping said to invite that got their invite this run.",
+            "format": "int32"
+          },
+          "notInvited": {
+            "type": "integer",
+            "description": "People to invite without an email to invite, or already in the workspace: they stay placeholders.",
+            "format": "int32"
+          },
+          "conflicts": {
+            "type": "integer",
+            "description": "Conflicts open when the run ended, carried over or new. Absolute, not added.",
+            "format": "int32"
+          },
+          "deletedInSource": {
+            "type": "integer",
+            "description": "Imported items a whole snapshot no longer has. They are left alone. Absolute, not added.",
+            "format": "int32"
+          }
+        },
+        "description": "A run's progress, saved with every batch so a resumed run keeps counting. Stored on string? ImportRun.Counts."
+      },
+      "ImportRunDetail": {
+        "required": [
+          "run",
+          "plan",
+          "report"
+        ],
+        "type": "object",
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/ImportRunResponse"
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ImportPlan"
+              }
+            ]
+          },
+          "report": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ImportRunReport"
+              }
+            ]
+          }
+        },
+        "description": "A run with what it found: the plan of a dry run, or a commit's report."
+      },
+      "ImportRunKind": {
+        "enum": [
+          "dryRun",
+          "commit"
+        ]
+      },
+      "ImportRunReport": {
+        "required": [
+          "conflicts",
+          "deletedInSource"
+        ],
+        "type": "object",
+        "properties": {
+          "conflicts": {
+            "$ref": "#/components/schemas/PlanCount"
+          },
+          "deletedInSource": {
+            "$ref": "#/components/schemas/PlanCount"
+          }
+        },
+        "description": "What a finished commit has to tell the owner, stored as its string? ImportRun.Report."
+      },
+      "ImportRunResponse": {
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "counts",
+          "error",
+          "createdAt",
+          "startedAt",
+          "completedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ImportRunKind"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ImportRunState"
+          },
+          "counts": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ImportRunCounts"
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "A dry run or a commit. ImportRunCounts? ImportRunResponse.Counts is what a commit did so far; a finished one's report is on `getImportRun`."
+      },
+      "ImportRunState": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed"
+        ]
+      },
+      "ImportScope": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "closedOlderThanMonths": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Skip items resolved more than this many months ago; null keeps them all.",
+            "format": "int32"
+          }
+        },
+        "description": "What to read and keep. Empty IReadOnlyList&lt;string&gt; ImportScope.Projects means every project."
+      },
+      "ImportState": {
+        "enum": [
+          "active",
+          "finished",
+          "undone"
+        ]
+      },
+      "ImportTokenRequest": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "maxLength": 4096,
+            "type": "string",
+            "description": "The new source token. Stored encrypted and never returned."
+          }
+        }
+      },
+      "ImportUndoCheck": {
+        "required": [
+          "editedCount",
+          "edited",
+          "blockerCount",
+          "blockers"
+        ],
+        "type": "object",
+        "properties": {
+          "editedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "edited": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blockerCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UndoBlocker"
+            }
+          }
+        },
+        "description": "What undoing would lose and what stands in its way. Lists stop at int ImportService.MaxListed; the counts don't."
+      },
+      "ImportUndoResult": {
+        "required": [
+          "undone",
+          "check",
+          "issues"
+        ],
+        "type": "object",
+        "properties": {
+          "undone": {
+            "type": "boolean"
+          },
+          "check": {
+            "$ref": "#/components/schemas/ImportUndoCheck"
+          },
+          "issues": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "Undo's answer: done, or refused with the check that says why."
+      },
+      "ImportUpload": {
+        "required": [
+          "description",
+          "csv"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SourceDescription"
+              }
+            ]
+          },
+          "csv": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CsvPreview"
+              }
+            ]
+          }
+        },
+        "description": "What an uploaded file holds: a snapshot's or an export's description, or a CSV's columns."
       },
       "InviteMemberRequest": {
         "required": [
@@ -6059,6 +8395,7 @@
           }
         }
       },
+      "JsonElement": { },
       "LabelResponse": {
         "required": [
           "id",
@@ -6086,6 +8423,15 @@
             "format": "int32"
           }
         }
+      },
+      "MarkupKind": {
+        "enum": [
+          "plain",
+          "markdown",
+          "html",
+          "adf",
+          "jira-wiki"
+        ]
       },
       "MeetingCounts": {
         "required": [
@@ -6524,6 +8870,33 @@
         },
         "description": "How suggest-mode proposals of one operation fared: the trust signal next to the full-auto toggle."
       },
+      "PersonAction": {
+        "enum": [
+          "member",
+          "invite",
+          "placeholder",
+          "skip"
+        ]
+      },
+      "PersonTarget": {
+        "required": [
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/PersonAction"
+          },
+          "memberId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        },
+        "description": "What happens to a source user. Guid? PersonTarget.MemberId is set for PersonAction.Member."
+      },
       "PlanCard": {
         "required": [
           "key",
@@ -6598,6 +8971,25 @@
             "type": "integer",
             "description": "All children.",
             "format": "int32"
+          }
+        }
+      },
+      "PlanCount": {
+        "required": [
+          "count",
+          "samples"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanSample"
+            }
           }
         }
       },
@@ -6733,6 +9125,30 @@
           }
         }
       },
+      "PlanProjectEffort": {
+        "required": [
+          "project",
+          "hours",
+          "capacity"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "number",
+            "format": "double"
+          },
+          "capacity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapacityEntry"
+            }
+          }
+        },
+        "description": "Hours the import brings into a project. IReadOnlyList&lt;CapacityEntry&gt; PlanProjectEffort.Capacity is set for an existing project that has one, to compare against."
+      },
       "PlanResponse": {
         "required": [
           "from",
@@ -6793,6 +9209,29 @@
             "format": "int32"
           }
         }
+      },
+      "PlanSample": {
+        "required": [
+          "sourceId",
+          "key",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "description": "A real item behind a count, so the owner sees examples and not only numbers."
       },
       "PlanView": {
         "enum": [
@@ -6896,6 +9335,26 @@
             "format": "date-time"
           }
         }
+      },
+      "ProjectTarget": {
+        "required": [
+          "key",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "existing": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "Where a source project lands. Several source projects with the same key merge into one project."
       },
       "ProposalOperation": {
         "enum": [
@@ -7109,6 +9568,18 @@
         ],
         "description": "Relation as seen from one issue."
       },
+      "ResolveConflictRequest": {
+        "required": [
+          "useSource"
+        ],
+        "type": "object",
+        "properties": {
+          "useSource": {
+            "type": "boolean",
+            "description": "True applies the source's value; false keeps Kupro's."
+          }
+        }
+      },
       "ReviewDecision": {
         "enum": [
           "approve",
@@ -7143,6 +9614,223 @@
               "$ref": "#/components/schemas/CapacityEntry"
             },
             "description": "The full step function; replaces what was there. Empty clears it."
+          }
+        }
+      },
+      "SnapshotSource": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The source's base URL (Jira site, ADO collection), so links and aliases can be rewritten."
+          }
+        },
+        "description": "Where the data came from. string SnapshotSource.Kind is one of SourceKinds."
+      },
+      "SourceDescription": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SnapshotSource"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceProject"
+            }
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourcePerson"
+            }
+          },
+          "itemTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceItemType"
+            }
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceStatus"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceField"
+            }
+          }
+        },
+        "description": "What the wizard needs before the owner picks a scope and maps anything (connector Describe)."
+      },
+      "SourceField": {
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FieldKind"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "A source field beyond the ones SourceItem has. Values in IReadOnlyDictionary&lt;string, JsonElement&gt; SourceItem.Fields are a\nstring (text, date as ISO 8601, select option, user ID), a number, or an array of strings (multi-select)."
+      },
+      "SourceItemType": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when the type exists in one project only (ADO types are per process)."
+          },
+          "level": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Hierarchy level as the source ranks it, higher is bigger (Jira hierarchy level, ADO backlog level).",
+            "format": "int32"
+          }
+        }
+      },
+      "SourcePerson": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "handle": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The name mentions use, without the `@` (Trello username, Linear display name)."
+          }
+        },
+        "description": "A source user. Matched to a member by email, then by name, or kept as a placeholder."
+      },
+      "SourceProject": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The source's project key (Jira `PROJ`), when it has one."
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "process": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The source's process or template name (ADO \"Agile\", \"Scrum\"), for default mappings."
+          }
+        },
+        "description": "A Jira project, ADO project, Linear team, Trello or Monday board."
+      },
+      "SourceStatus": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The source's own category, as the source names it (ADO \"Proposed\", Jira \"indeterminate\")."
+          },
+          "itemType": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when the status belongs to one item type (ADO states are per type)."
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -7635,6 +10323,50 @@
             "format": "date-time"
           }
         }
+      },
+      "TypeTarget": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "checklist": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "A source type's Kupro type. string? TypeTarget.Label keeps what the type lost (Bug is a Task labelled `bug`)."
+      },
+      "UndoBlocker": {
+        "required": [
+          "kind",
+          "issueKey",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "`comment`, `attachment`, `relation` or `child`."
+          },
+          "issueKey": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "A record the import didn't create that points at one of its issues. Undo waits until it is moved or deleted."
       },
       "UnfinishedDestination": {
         "enum": [
@@ -8193,6 +10925,9 @@
     },
     {
       "name": "Labels"
+    },
+    {
+      "name": "Imports"
     },
     {
       "name": "Exports"

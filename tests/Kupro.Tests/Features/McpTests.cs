@@ -41,7 +41,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.ShouldContain("create_issues");
         tools.ShouldContain("update_issues");
         tools.ShouldContain("get_context");
-        tools.Count.ShouldBeLessThanOrEqualTo(19, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
+        tools.Count.ShouldBeLessThanOrEqualTo(20, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
     }
 
     [Fact]

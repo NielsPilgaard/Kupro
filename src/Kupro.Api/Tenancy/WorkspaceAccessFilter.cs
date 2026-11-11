@@ -20,6 +20,10 @@ public sealed class WorkspaceRoleAttribute(WorkspaceRole minimum) : Attribute
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class BillingAccessAttribute : Attribute;
 
+/// <summary>For people only: agent tokens get 403, even an Owner's (imports keep source tokens and create members, ADR-019).</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class PeopleOnlyAttribute : Attribute;
+
 /// <summary>
 /// Global filter: any route with a <c>{workspace}</c> segment is resolved to a workspace the caller is an active member
 /// of, or answered with 404 so other tenants' workspaces are indistinguishable from missing ones.
@@ -63,6 +67,12 @@ public sealed class WorkspaceAccessFilter(WorkspaceService workspaces, Workspace
         {
             context.Result = Problems.Create(http, StatusCodes.Status403Forbidden, "insufficient_role",
                 $"Requires the {required.Minimum} role.");
+            return;
+        }
+
+        if (agentName is not null && context.ActionDescriptor.EndpointMetadata.OfType<PeopleOnlyAttribute>().Any())
+        {
+            context.Result = Problems.Create(http, StatusCodes.Status403Forbidden, "people_only", "Agent tokens can't do this. Sign in as a person.");
             return;
         }
 

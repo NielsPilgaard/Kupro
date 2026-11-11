@@ -36,7 +36,10 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
 
     public CliConfig Config { get; } = config;
 
-    public KuproClient CreateClient(bool authenticated = true)
+    public KuproClient CreateClient(bool authenticated = true) => new(CreateAdapter(authenticated));
+
+    /// <summary>The adapter behind <see cref="CreateClient"/>, for a request the generated client can't build (a raw upload).</summary>
+    public HttpClientRequestAdapter CreateAdapter(bool authenticated = true)
     {
         // Alongside the command's own requests, so it costs no extra round trip.
         _versionCheck ??= CheckVersionAsync();
@@ -47,7 +50,7 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
         IAuthenticationProvider auth = authenticated
             ? new BaseBearerTokenAuthenticationProvider(new TokenProvider(this))
             : new AnonymousAuthenticationProvider();
-        return new KuproClient(new HttpClientRequestAdapter(auth, httpClient: http) { BaseUrl = Config.EffectiveUrl });
+        return new HttpClientRequestAdapter(auth, httpClient: http) { BaseUrl = Config.EffectiveUrl };
     }
 
     /// <summary>Plain HTTP client on the same transport (tests swap it), for non-generated calls like the MCP bridge.</summary>

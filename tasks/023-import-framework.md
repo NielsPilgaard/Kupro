@@ -51,7 +51,12 @@ when a run starts, with its columns on `ImportMapping.Csv`. `ImportService.Propo
 any import. A Kupro export ZIP is a source too (`Kupro.Import.Kupro`, `StoreExportAsync`): keys, people, sprints,
 milestones, comments, files and field history come across through the same pipeline. Not yet: project capacity (the
 format has no place for it) and feed entries other than field changes (relations added, sprint closes); the export
-is read whole into memory. Next: slice 5 (REST, CLI, MCP surfaces).
+is read whole into memory. The surfaces are in: REST `ImportsController` (owners, people only), `kupro import ...`
+(`create`, `csv`, `snapshot`, `kupro`, `list`, `show`, `upload`, `source`, `mapping [--set]`, `plan`, `run`, `runs`,
+`report`, `sync --auto`, `token`, `conflicts [--keep|--use-source]`, `undo [--check]`, `finish`; tokens from stdin or
+`KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared
+text into the server instructions. Next: the tenancy test over every import endpoint, then slice 6 (Grafana, runbook).
+The web wizard waits on task 033.
 
 ## Scope
 
