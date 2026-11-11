@@ -193,7 +193,7 @@ The web wizard waits on task 033.
 - [x] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and
       time; unmapped field changes show as source changes. Feed paging returns all 5,000 entries of a large issue
       within budget.
-- [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
+- [x] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
 - [x] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
 - [x] Undo removes everything the import created and nothing else; it is refused while records it didn't create
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
