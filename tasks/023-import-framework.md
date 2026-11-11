@@ -42,8 +42,7 @@ and after a failed one (a failed plan only shows where it was asked for), and Un
 are in `ImportService`/`ImportJob`. Imports with a token run their connector (`ImportSources`: Azure DevOps, Linear,
 Trello) into a fresh snapshot with files when a commit starts, from the cursor less a 10-minute overlap; a rejected
 token fails the run and pauses auto-sync until it is replaced; auto-sync queues hourly and turns itself off after 30
-quiet days. Trello needs Kupro's API key in `Imports__TrelloKey`, not yet an AppHost parameter (slice 6, with the
-runbook). The feed shows `imported`, `reimported` and `sourceChanged` items with the source and a skipped person's
+quiet days. Trello needs Kupro's API key, the `trello-api-key` AppHost parameter (`TRELLO_API_KEY`). The feed shows `imported`, `reimported` and `sourceChanged` items with the source and a skipped person's
 source name ("via Jira import", web too), and a source key or URL finds its issue in `GET /issues/{key}`, the feed,
 `get_issue` and search (so the palette). The feed pages: `GET .../activity?before=<oldest item id>&limit=`, `kupro issue activity --before`, and "Show older" on the web. CSV is a source: `Kupro.Import.Csv` (encoding and delimiter detection, quoting, Jira and
 Linear presets, the other columns to the details block), kept as the import's source file and turned into a snapshot
@@ -57,8 +56,7 @@ is read whole into memory. The surfaces are in: REST `ImportsController` (owners
 `KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared
 text into the server instructions. Every import endpoint answers 404 for another workspace's ids. Ops: `ImportMetrics`
 (runs, items, stored bytes), an Imports row on the Usage dashboard, the "imports filling object storage" alert (20 GB a
-day) and runbook notes. Left: the web wizard (waits on task 033), Trello's API key as an AppHost parameter, and the
-production run after 013.
+day) and runbook notes. Left: the web wizard (waits on task 033) and the production run after 013.
 The web wizard waits on task 033.
 
 ## Scope

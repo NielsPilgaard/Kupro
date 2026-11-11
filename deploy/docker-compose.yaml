@@ -369,6 +369,7 @@ services:
       KeyStorage__AccessKey: "${KEYS_ACCESS_KEY}"
       KeyStorage__SecretKey: "${KEYS_SECRET_KEY}"
       Members__GuestsPerSeat: "${MEMBERS_GUESTS_PER_SEAT}"
+      Imports__TrelloKey: "${TRELLO_API_KEY}"
     depends_on:
       migrations:
         condition: "service_completed_successfully"
