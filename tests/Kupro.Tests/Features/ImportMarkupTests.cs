@@ -61,6 +61,50 @@ public sealed class ImportMarkupTests
     }
 
     [Fact]
+    public void Azure_devops_mentions_and_work_item_numbers_point_into_kupro()
+    {
+        var html = Html("<p><a href=\"#\" data-vss-mention=\"version:2.0,u1\">@Sofie</a> and <a data-vss-mention=\"version:2.0,gone\">@Old Name</a> fixed #7, not a#7 or &amp;#7</p><p>#7 first</p>");
+        var references = new ImportReferences(
+            new Dictionary<string, string> { ["u1"] = "Sofie Larsen" }, new Dictionary<string, string>(), new Dictionary<string, AttachmentRef>(),
+            new Dictionary<string, string> { ["#7"] = "WEB-7" });
+
+        references.Rewrite(html).ShouldBe("@Sofie Larsen and @Old Name fixed WEB-7, not a#7 or &#7\n\nWEB-7 first");
+        references.Rewrite("`#7` stays").ShouldBe("`#7` stays");
+        references.Rewrite("#8 is unknown").ShouldBe("#8 is unknown");
+    }
+
+    [Fact]
+    public void Azure_devops_types_states_and_priorities_follow_the_process()
+    {
+        var header = new SnapshotHeader
+        {
+            Format = 1,
+            Source = new SnapshotSource { Kind = SourceKinds.AzureDevOps },
+            CreatedAt = DateTimeOffset.UnixEpoch,
+            Projects = [new SourceProject { Id = "basic", Name = "Basic one", Process = "Basic" }, new SourceProject { Id = "cmmi", Name = "Cmmi one", Process = "CMMI" }],
+            ItemTypes =
+            [
+                new SourceItemType { Id = "b-issue", Name = "Issue", Project = "basic" },
+                new SourceItemType { Id = "c-issue", Name = "Issue", Project = "cmmi" },
+                new SourceItemType { Id = "c-risk", Name = "Risk", Project = "cmmi" },
+                new SourceItemType { Id = "c-req", Name = "Requirement", Project = "cmmi" },
+                new SourceItemType { Id = "c-test", Name = "Test Case", Project = "cmmi" },
+            ],
+            Statuses = [new SourceStatus { Id = "testing", Name = "Testing", Category = "InProgress" }, new SourceStatus { Id = "active", Name = "Active", Category = "InProgress" }],
+        };
+
+        var mapping = ImportMappingDefaults.Propose(header, []);
+
+        mapping.Types["b-issue"].ShouldBe(new TypeTarget(IssueType.Feature));
+        mapping.Types["c-issue"].ShouldBe(new TypeTarget(IssueType.Task));
+        mapping.Types["c-risk"].ShouldBe(new TypeTarget(IssueType.Task, "risk"));
+        mapping.Types["c-req"].ShouldBe(new TypeTarget(IssueType.Task));
+        mapping.Scope.SkipTypes.ShouldBe(["c-test"]);
+        (mapping.States["testing"], mapping.States["active"]).ShouldBe((IssueState.InReview, IssueState.InProgress));
+        (mapping.Priorities["1"], mapping.Priorities["4"]).ShouldBe((IssuePriority.High, IssuePriority.Low));
+    }
+
+    [Fact]
     public void Html_text_is_not_taken_for_markdown()
     {
         Html("<p>2 * 3 and [x] and &lt;b&gt;</p>").ShouldBe("2 \\* 3 and \\[x\\] and \\<b>");

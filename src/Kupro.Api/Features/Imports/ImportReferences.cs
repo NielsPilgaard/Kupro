@@ -25,7 +25,8 @@ public sealed partial class ImportReferences(
 
     public string? Rewrite(string? markdown)
     {
-        if (string.IsNullOrEmpty(markdown) || (!markdown.Contains('@', StringComparison.Ordinal) && !markdown.Contains("://", StringComparison.Ordinal)))
+        if (string.IsNullOrEmpty(markdown) || (!markdown.Contains('@', StringComparison.Ordinal) && !markdown.Contains("://", StringComparison.Ordinal)
+            && !markdown.Contains('#', StringComparison.Ordinal)))
         {
             return markdown;
         }
@@ -107,7 +108,14 @@ public sealed partial class ImportReferences(
         if (match.Groups["id"].Success)
         {
             var id = match.Groups["id"].Value;
-            return "@" + MarkupConverters.EscapeText(names.GetValueOrDefault(id, id));
+            var shown = match.Groups["shown"].Success ? match.Groups["shown"].Value : id;
+            return "@" + MarkupConverters.EscapeText(names.GetValueOrDefault(id, shown));
+        }
+
+        if (match.Groups["ref"].Success)
+        {
+            // #4567 as Azure DevOps and GitHub write it; a number no imported item had stays as written.
+            return issues.TryGetValue(match.Groups["ref"].Value, out var referenced) ? referenced : match.Value;
         }
 
         var handle = match.Groups["handle"].Value;
@@ -117,7 +125,7 @@ public sealed partial class ImportReferences(
 
     private string Mentions(string text) =>
         text.Contains(MentionOpen, StringComparison.Ordinal)
-            ? MentionToken().Replace(text, m => "@" + MarkupConverters.EscapeText(names.GetValueOrDefault(m.Groups[1].Value, m.Groups[1].Value)))
+            ? MentionToken().Replace(text, m => "@" + MarkupConverters.EscapeText(names.GetValueOrDefault(m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : m.Groups[1].Value)))
             : text;
 
     [GeneratedRegex(@"^(?:[A-Za-z][A-Za-z0-9_]*-\d+|[\w./-]*#\d+)$")]
@@ -126,7 +134,7 @@ public sealed partial class ImportReferences(
     [GeneratedRegex(@"^(`{3,}|~{3,})")]
     private static partial Regex FenceOpen();
 
-    [GeneratedRegex(@"@⟦([^⟧\n]{1,200})⟧")]
+    [GeneratedRegex(@"@⟦([^⟧|\n]{1,200})(?:\|([^⟧\n]{0,200}))?⟧")]
     private static partial Regex MentionToken();
 
     // One pass, so a URL inside a link or code is never matched twice. Order matters: code, links, URLs, mentions.
@@ -135,7 +143,8 @@ public sealed partial class ImportReferences(
         + @"|(?<bang>!?)\[(?<label>(?:\\.|[^\]\\])*)\]\((?<dest><[^>\n]*>|[^)\s]+)(?<title>\s+""[^""\n]*"")?\)"
         + @"|<(?<url>https?://[^\s<>]+)>"
         + @"|(?<url>https?://[^\s<>()\[\]]+)"
-        + @"|@⟦(?<id>[^⟧\n]{1,200})⟧"
+        + @"|@⟦(?<id>[^⟧|\n]{1,200})(?:\|(?<shown>[^⟧\n]{0,200}))?⟧"
+        + @"|(?<![\w&#/\\])\\?(?<ref>#\d{1,9})\b"
         + @"|(?<![\w@./])@(?<handle>[A-Za-z0-9][A-Za-z0-9._-]{0,63})",
         RegexOptions.IgnoreCase)]
     private static partial Regex Inline();

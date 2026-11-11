@@ -68,18 +68,29 @@ public sealed partial class ImportCommit
                 .Join(db.Issues, i => i.EntityId, x => x.Id, (i, x) => new { i.SourceId, x.Key })
                 .ToDictionaryAsync(r => r.SourceId, r => r.Key, StringComparer.Ordinal, ct);
             _candidates ??= await CandidatesAsync(db, ct);
-            earlierLinks = await db.IssueAliases.AsNoTracking().Where(a => a.ImportId == _importId && a.Alias.Contains("://"))
+            earlierLinks = await db.IssueAliases.AsNoTracking().Where(a => a.ImportId == _importId && (a.Alias.Contains("://") || EF.Functions.Like(a.Alias, "#%")))
                 .Join(db.Issues, a => a.IssueId, x => x.Id, (a, x) => new ValueTuple<string, string>(a.Alias, x.Key)).ToListAsync(ct);
             earlierFiles = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Attachment && i.LastValues != null)
                 .Select(i => new ValueTuple<Guid, string>(i.EntityId, i.LastValues!)).ToListAsync(ct);
         }
 
-        foreach (var item in read.Refs.Where(r => r.Url is { Length: > 0 }))
+        foreach (var item in read.Refs)
         {
             var key = known.GetValueOrDefault(item.Id) ?? (numbers.TryGetValue(item.Id, out var number) ? $"{item.ProjectKey}-{number}" : null);
-            if (key is not null)
+            if (key is null)
             {
-                issues.TryAdd(item.Url!.Trim(), key);
+                continue;
+            }
+
+            if (item.Url is { Length: > 0 } url)
+            {
+                issues.TryAdd(url.Trim(), key);
+            }
+
+            // A source that numbers its items (Azure DevOps, GitHub) refers to them as #4567 in text.
+            if (item.Key?.Trim() is { Length: > 0 } sourceKey && sourceKey.All(char.IsAsciiDigit))
+            {
+                issues.TryAdd($"#{sourceKey}", key);
             }
         }
 

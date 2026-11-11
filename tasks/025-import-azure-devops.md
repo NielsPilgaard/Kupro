@@ -23,13 +23,12 @@ task adds `AzureDevOpsConnector` for Boards on Azure DevOps Services and Server,
 Reading and the HTML assembly of the three description fields. The connector reports the source's own terms: process
 name (inherited processes resolve to their parent), type backlog levels, state categories. The pipeline maps them.
 
-**Next**, each waits on a slice of [task 023](023-import-framework.md):
-
-- Default mappings and the fold choice need 023's mapping model.
-- Mention and `#id` rewriting need its `MarkupConverter`.
-- Keys and aliases need its pipeline.
-- `kupro import azure-devops --local` needs the import CLI group.
-- The site page needs the wizard, so it doesn't describe steps that don't exist yet.
+With 023's pipeline in place: default mappings by process are in `ImportMappingDefaults` (Basic's Issue → Feature,
+impediments and CMMI's change requests, risks and reviews keep a label, test artefacts are skipped through
+`ImportScope.SkipTypes`, priorities 1-4, states in progress named for test or resolved → In Review). Mentions
+(`data-vss-mention`) and `#4567` references are rewritten, and keys and aliases come from the pipeline. The fold choice
+is 023's. Not done: "New with no iteration → Backlog" and Severity 1 → Urgent (both per item, which a mapping can't
+express yet), `kupro import azure-devops --local`, and the site page (waits on the wizard).
 
 Recorded fixtures need the sandbox (a manual step). Until then the fake stands in for them: replace or check it
 against a recording when one exists. Server-side connectors only reach public addresses (`PublicAddresses`, checked

@@ -40,6 +40,9 @@ public sealed record ImportScope
 
     /// <summary>Skip items resolved more than this many months ago; null keeps them all.</summary>
     public int? ClosedOlderThanMonths { get; init; }
+
+    /// <summary>Source types left out entirely, such as Azure DevOps test plans and cases.</summary>
+    public IReadOnlyList<string> SkipTypes { get; init; } = [];
 }
 
 /// <summary>
@@ -109,13 +112,68 @@ public static class ImportMappingDefaults
     {
         // DistinctBy: a snapshot comes from customers and scripts, so a repeated ID must not stop the wizard.
         var states = header.Statuses.DistinctBy(s => s.Id).ToDictionary(s => s.Id, s => ProposeState(s.Name, s.Category), StringComparer.Ordinal);
-        return new ImportMapping
+        var mapping = new ImportMapping
         {
             Projects = header.Projects.DistinctBy(p => p.Id).ToDictionary(p => p.Id, ProposeProject, StringComparer.Ordinal),
             People = header.People.DistinctBy(p => p.Id).ToDictionary(p => p.Id, p => ProposePerson(p, members), StringComparer.Ordinal),
             Types = header.ItemTypes.DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => ProposeType(t.Name), StringComparer.Ordinal),
             States = states.Where(s => s.Value is not null).ToDictionary(s => s.Key, s => s.Value!.Value, StringComparer.Ordinal),
             StatusesToReview = [.. states.Where(s => s.Value is null).Select(s => s.Key)],
+        };
+        return header.Source.Kind == SourceKinds.AzureDevOps ? AzureDevOps(header, mapping) : mapping;
+    }
+
+    /// <summary>
+    /// Azure DevOps by process (task 025): Basic's Issue sits between Epic and Task, so it is a Feature; elsewhere it is
+    /// a Task. Impediments and CMMI's change requests, risks and reviews keep their type as a label. Test artefacts are
+    /// left out. Priorities run 1 to 4 with nothing urgent, and states in progress named for review or test are In Review.
+    /// </summary>
+    private static ImportMapping AzureDevOps(SnapshotHeader header, ImportMapping mapping)
+    {
+        string[] tests = ["Test Plan", "Test Suite", "Test Case", "Shared Steps", "Shared Parameter"];
+        string[] cmmiLabels = ["Change Request", "Risk", "Review"];
+        var processes = header.Projects.Where(p => p.Process is not null).Select(p => p.Process!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        string? ProcessOf(SourceItemType type) =>
+            header.Projects.FirstOrDefault(p => p.Id == type.Project)?.Process ?? (processes.Count == 1 ? processes[0] : null);
+
+        var types = mapping.Types.ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal);
+        var skip = new List<string>();
+        foreach (var type in header.ItemTypes.DistinctBy(t => t.Id))
+        {
+            var process = ProcessOf(type);
+            if (tests.Contains(type.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                skip.Add(type.Id);
+            }
+            else if (string.Equals(type.Name, "Issue", StringComparison.OrdinalIgnoreCase))
+            {
+                types[type.Id] = new TypeTarget(string.Equals(process, "Basic", StringComparison.OrdinalIgnoreCase) ? IssueType.Feature : IssueType.Task);
+            }
+            else if (string.Equals(type.Name, "Impediment", StringComparison.OrdinalIgnoreCase)
+                     || (string.Equals(process, "CMMI", StringComparison.OrdinalIgnoreCase) && cmmiLabels.Contains(type.Name, StringComparer.OrdinalIgnoreCase)))
+            {
+                types[type.Id] = new TypeTarget(IssueType.Task, type.Name.ToLowerInvariant());
+            }
+        }
+
+        var states = mapping.States.ToDictionary(s => s.Key, s => s.Value, StringComparer.Ordinal);
+        foreach (var status in header.Statuses.Where(s => s.Category == "InProgress" && (Has(s.Name, "test") || Has(s.Name, "resolved"))))
+        {
+            states[status.Id] = IssueState.InReview;
+        }
+
+        return mapping with
+        {
+            Types = types,
+            States = states,
+            Priorities = new Dictionary<string, IssuePriority>(StringComparer.Ordinal)
+            {
+                ["1"] = IssuePriority.High,
+                ["2"] = IssuePriority.Medium,
+                ["3"] = IssuePriority.Low,
+                ["4"] = IssuePriority.Low,
+            },
+            Scope = mapping.Scope with { SkipTypes = skip },
         };
     }
 

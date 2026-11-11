@@ -40,7 +40,9 @@ public static partial class MarkupConverters
     /// A mention of a source person by ID, for converters whose markup names people that way (Jira ADF, Azure DevOps).
     /// The import rewrites it to the person's Kupro name (<see cref="ImportReferences"/>).
     /// </summary>
-    public static string Mention(string personId) => $"@{ImportReferences.MentionOpen}{personId}{ImportReferences.MentionClose}";
+    /// <summary>A mention the rewriter resolves to the person's Kupro name; <paramref name="shown"/> is used when the person isn't known.</summary>
+    public static string Mention(string personId, string? shown = null) =>
+        $"@{ImportReferences.MentionOpen}{personId}{(shown is { Length: > 0 } ? "|" + shown : "")}{ImportReferences.MentionClose}";
 
     /// <summary>A fence longer than any run of backticks inside, so the content can't close it.</summary>
     internal static string Fence(string text, string language)
@@ -346,6 +348,12 @@ public sealed partial class HtmlConverter : IMarkupConverter
 
     private static string Link(IElement a)
     {
+        // Azure DevOps: <a data-vss-mention="version:2.0,{identity id}">@Name</a>.
+        if (a.GetAttribute("data-vss-mention") is { } mention && mention.Split(',') is [_, var identity] && identity.Trim().Length > 0)
+        {
+            return MarkupConverters.Mention(identity.Trim(), OneLine(a.TextContent).TrimStart('@').Replace('|', ' ').Replace('\u27E7', ' '));
+        }
+
         var label = OneLine(InlineAll(a));
         var href = a.GetAttribute("href")?.Trim();
         return string.IsNullOrEmpty(href) ? label : $"[{(label.Length > 0 ? label : MarkupConverters.EscapeText(href))}]({Destination(href)})";

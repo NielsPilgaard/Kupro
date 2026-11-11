@@ -24,6 +24,7 @@ public sealed class MappedSource
 
     public bool InScope(SourceItem item) =>
         (_mapping.Scope.Projects.Count == 0 || _mapping.Scope.Projects.Contains(item.Project))
+        && !_mapping.Scope.SkipTypes.Contains(item.Type)
         && !(item.Resolved < _cutoff);
 
     public FitInput Input(SourceItem item)
