@@ -7769,6 +7769,13 @@
             ],
             "description": "Skip items resolved more than this many months ago; null keeps them all.",
             "format": "int32"
+          },
+          "skipTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Source types left out entirely, such as Azure DevOps test plans and cases."
           }
         },
         "description": "What to read and keep. Empty IReadOnlyList&lt;string&gt; ImportScope.Projects means every project."
