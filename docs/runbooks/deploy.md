@@ -82,7 +82,8 @@ Imports (task 023) need no variable of their own: they keep snapshots and upload
 (`<workspace>/imports/<id>/`) and source tokens encrypted with the Data Protection keys in `KEYS_BUCKET`. Losing the
 keys only means owners paste their tokens again. Two imports run at once across workspaces (`Imports:MaxConcurrent`,
 default 2, in the API's configuration). The "Kupro imports filling object storage" alert warns when imports copy more
-than 20 GB of files in a day. `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
+than 20 GB of files in a day. The API reads sources only at public addresses, so an import's URL can't reach the
+services next to it; `Imports:AllowPrivateAddresses` lifts that for a self-hosted Kupro and must stay off on hosted Kupro. `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
 (`builder.AddParameter`) adds a row here.
 
 ## Domains

@@ -32,8 +32,8 @@ name (inherited processes resolve to their parent), type backlog levels, state c
 - The site page needs the wizard, so it doesn't describe steps that don't exist yet.
 
 Recorded fixtures need the sandbox (a manual step). Until then the fake stands in for them: replace or check it
-against a recording when one exists. The API surface must also stop the base URL from reaching private addresses
-when the connector runs in the API (SSRF). The CLI's `--local` mode is exempt.
+against a recording when one exists. Server-side connectors only reach public addresses (`PublicAddresses`, checked
+per connection after DNS; `Imports:AllowPrivateAddresses` for self-hosting). The CLI's `--local` mode is exempt.
 
 ## Scope
 

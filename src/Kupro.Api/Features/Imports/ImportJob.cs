@@ -26,6 +26,12 @@ public sealed class ImportOptions
 
     /// <summary>Kupro's Trello API key. Without it, Trello is imported from a snapshot only.</summary>
     public string? TrelloKey { get; set; }
+
+    /// <summary>
+    /// Let server-side connectors reach private addresses: for a self-hosted Kupro importing from a tracker on the same
+    /// network. Off on hosted Kupro, where an import's URL must not reach the API's own neighbours.
+    /// </summary>
+    public bool AllowPrivateAddresses { get; set; }
 }
 
 /// <summary>Where an import's stored snapshot lives. Plans and commits read this copy, so re-planning doesn't read the source. Singleton.</summary>

@@ -65,7 +65,10 @@ builder.Services.AddOptions<KeyManagementOptions>().Configure<IServiceProvider>(
 builder.Services.AddSingleton<ImportTokens>();
 builder.Services.Configure<ImportOptions>(builder.Configuration.GetSection(ImportOptions.Section));
 builder.Services.AddSingleton<ImportSnapshots>();
-builder.Services.AddHttpClient(nameof(ImportSources));
+builder.Services.AddHttpClient(nameof(ImportSources)).ConfigurePrimaryHttpMessageHandler(services =>
+    services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ImportOptions>>().Value.AllowPrivateAddresses
+        ? new SocketsHttpHandler()
+        : new SocketsHttpHandler { ConnectCallback = PublicAddresses.ConnectAsync });
 builder.Services.AddSingleton<ImportSources>();
 builder.Services.AddSingleton<ImportMetrics>();
 builder.Services.AddSingleton<ImportSignal>();
