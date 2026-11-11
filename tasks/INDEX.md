@@ -53,10 +53,10 @@ that only blocks closing a task is written "(N to close)".
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
-| 023 | Buildable: being built ahead of 013, except its web UI, which waits on 033. Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
+| 023 | Built except its web UI (waits on 033) and Trello's API key as an AppHost parameter. Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
 | 033 | Owner decision: which import UI prototype to build. An agent asks the owner and waits; it never picks | The owner's answer |
 | 024, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
-| 025, 026 | Connectors (reading) done. Default mappings, fold, markup rewriting, keys, CLI and site page wait on 023's pipeline and surfaces | 023's mapping model, `MarkupConverter` and import CLI; the sandbox for the close |
+| 025, 026 | Buildable: connectors (reading) done, and 023's mapping model, `MarkupConverter`, pipeline and import CLI now exist for default mappings, fold, markup, keys and `--local` | The sandbox, for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
