@@ -48,7 +48,7 @@ public sealed record ResolveConflictRequest(bool UseSource);
 public sealed record AutoSyncRequest(bool Enabled);
 
 /// <param name="Token">The new source token. Stored encrypted and never returned.</param>
-public sealed record ImportTokenRequest([property: System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(4096)] string Token);
+public sealed record ImportTokenRequest([System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(4096)] string Token);
 
 /// <summary>What an uploaded file holds: a snapshot's or an export's description, or a CSV's columns.</summary>
 public sealed record ImportUpload(SourceDescription? Description, CsvPreview? Csv);

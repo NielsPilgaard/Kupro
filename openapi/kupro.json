@@ -7787,7 +7787,6 @@
         "type": "object",
         "properties": {
           "token": {
-            "maxLength": 4096,
             "type": "string",
             "description": "The new source token. Stored encrypted and never returned."
           }

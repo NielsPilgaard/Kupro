@@ -55,7 +55,8 @@ is read whole into memory. The surfaces are in: REST `ImportsController` (owners
 (`create`, `csv`, `snapshot`, `kupro`, `list`, `show`, `upload`, `source`, `mapping [--set]`, `plan`, `run`, `runs`,
 `report`, `sync --auto`, `token`, `conflicts [--keep|--use-source]`, `undo [--check]`, `finish`; tokens from stdin or
 `KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared
-text into the server instructions. Next: the tenancy test over every import endpoint, then slice 6 (Grafana, runbook).
+text into the server instructions. Every import endpoint answers 404 for another workspace's ids. Next: slice 6
+(Grafana, runbook).
 The web wizard waits on task 033.
 
 ## Scope
@@ -196,7 +197,7 @@ The web wizard waits on task 033.
 - [x] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
 - [x] Undo removes everything the import created and nothing else; it is refused while records it didn't create
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
-- [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
+- [x] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
 - [x] A Danish CSV in Windows-1252 keeps æøå.
 - [ ] After 013: one import of 10,000+ items with attachments runs on production, survives a container restart
       mid-commit, and the storage-growth alert stays quiet. Noted in the PR.

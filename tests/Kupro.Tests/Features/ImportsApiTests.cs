@@ -136,6 +136,54 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
         }
     }
 
+    [Fact]
+    public async Task Every_import_endpoint_treats_another_workspaces_ids_as_missing()
+    {
+        var (bob, theirs, _) = await NewWorkspaceAsync("Bobs");
+        var theirUrl = $"/api/v1/workspaces/{theirs.Slug}/imports";
+        var theirImport = await ReadAsync<ImportResponse>(await bob.PostAsJsonAsync(theirUrl, new CreateImportRequest(SourceKinds.Csv), Json.Options, Ct), HttpStatusCode.Created);
+        await ReadAsync<ImportUpload>(await bob.PutAsync($"{theirUrl}/{theirImport.Id}/source", new ByteArrayContent(Encoding.UTF8.GetBytes(Csv)), Ct));
+        var mapping = (await GetAsync<ImportMappingResponse>(bob, $"{theirUrl}/{theirImport.Id}/mapping")).Mapping;
+        await ReadAsync<ImportMapping>(await bob.PutAsJsonAsync($"{theirUrl}/{theirImport.Id}/mapping", mapping, Json.Options, Ct));
+        var theirRun = await ReadAsync<ImportRunResponse>(await bob.PostAsync($"{theirUrl}/{theirImport.Id}/plan", null, Ct), HttpStatusCode.Accepted);
+
+        var (alice, mine, _) = await NewWorkspaceAsync("Alices");
+        var url = $"/api/v1/workspaces/{mine.Slug}/imports";
+        var myImport = await ReadAsync<ImportResponse>(await alice.PostAsJsonAsync(url, new CreateImportRequest(SourceKinds.Csv), Json.Options, Ct), HttpStatusCode.Created);
+        var other = $"{url}/{theirImport.Id}";
+        HttpContent Body(object body) => JsonContent.Create(body, options: Json.Options);
+
+        var requests = new (HttpMethod Method, string Url, HttpContent? Body)[]
+        {
+            (HttpMethod.Get, other, null),
+            (HttpMethod.Put, $"{other}/source", new ByteArrayContent(Encoding.UTF8.GetBytes(Csv))),
+            (HttpMethod.Get, $"{other}/source", null),
+            (HttpMethod.Get, $"{other}/mapping", null),
+            (HttpMethod.Put, $"{other}/mapping", Body(mapping)),
+            (HttpMethod.Post, $"{other}/plan", null),
+            (HttpMethod.Post, $"{other}/runs", null),
+            (HttpMethod.Get, $"{other}/runs", null),
+            (HttpMethod.Get, $"{other}/runs/{theirRun.Id}", null),
+            (HttpMethod.Get, $"{url}/{myImport.Id}/runs/{theirRun.Id}", null),
+            (HttpMethod.Put, $"{other}/auto-sync", Body(new AutoSyncRequest(true))),
+            (HttpMethod.Put, $"{other}/token", Body(new ImportTokenRequest("t"))),
+            (HttpMethod.Get, $"{other}/conflicts", null),
+            (HttpMethod.Post, $"{other}/conflicts/{Guid.NewGuid()}/resolve", Body(new ResolveConflictRequest(true))),
+            (HttpMethod.Get, $"{other}/undo", null),
+            (HttpMethod.Post, $"{other}/undo", null),
+            (HttpMethod.Post, $"{other}/finish", null),
+        };
+
+        foreach (var (method, path, body) in requests)
+        {
+            using var response = await alice.SendAsync(new HttpRequestMessage(method, path) { Content = body }, Ct);
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound, $"{method} {path}");
+        }
+
+        (await GetAsync<List<ImportResponse>>(alice, url)).Select(i => i.Id).ShouldBe([myImport.Id]);
+        (await GetAsync<ImportResponse>(bob, $"{theirUrl}/{theirImport.Id}")).State.ShouldBe(ImportState.Active, "nothing Alice sent reached Bob's import");
+    }
+
     private async Task<(int Exit, string Output, string Error)> CliAsync(string token, string workspace, string? stdin, params string[] args)
     {
         var stdout = new StringWriter();
