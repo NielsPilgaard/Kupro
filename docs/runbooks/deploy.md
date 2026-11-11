@@ -76,7 +76,13 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `MEMBERS_GUESTS_PER_SEAT` | | `5` | `api` | Free guests per seat ([ADR-013](../adr/ADR-013-seats-billing.md)). Hosted Kupro sets `5`. Empty: no guest cap. |
 
 Optional, with defaults in the compose file: `BACKUP_AGENT_MEMORY` (`1536m`), `DRILL_TMPFS_SIZE` (`1g`; must hold the
-whole cluster) and `BACKUP_CONSOLE_PORT` (`9090`, on `127.0.0.1` only). `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
+whole cluster) and `BACKUP_CONSOLE_PORT` (`9090`, on `127.0.0.1` only).
+
+Imports (task 023) need no variable of their own: they keep snapshots and uploaded files in the attachments bucket
+(`<workspace>/imports/<id>/`) and source tokens encrypted with the Data Protection keys in `KEYS_BUCKET`. Losing the
+keys only means owners paste their tokens again. Two imports run at once across workspaces (`Imports:MaxConcurrent`,
+default 2, in the API's configuration). The "Kupro imports filling object storage" alert warns when imports copy more
+than 20 GB of files in a day. `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
 (`builder.AddParameter`) adds a row here.
 
 ## Domains
@@ -216,4 +222,5 @@ These are not wired yet. Each one blocks or degrades production:
 |---|---|---|
 | Restore not rehearsed in production | All failure and restore cases are rehearsed on the local compose stack ([ADR-016](../adr/ADR-016-postgres-backups.md), agent README [Rehearsals](../../infrastructure/backup-agent/README.md#rehearsals)), not yet on the VPS. | One full restore through the console on the VPS before the first external user: restore, go live, switch back ([restore runbook](restore.md)), and log the measured time as the first manual drill. |
 | One backup location | The pgBackRest repo is in the same OVHcloud account as the VPS. | A second, off-site copy of the repo; not built. |
+| Trello imports server-side | Kupro's Trello API key (`Imports__TrelloKey`) is not an AppHost parameter yet, so the API can't read Trello itself. | Trello imports go through a snapshot upload until the parameter is added and `deploy/` regenerated. |
 | Realm drift | Keycloak imports the realm file only once, so later edits to it, and later changes to the variables it reads (`API_PUBLIC_URL`, `SMTP_USER`, `SMTP_PASSWORD`, `KEYCLOAK_SMTP_FROM`), don't reach an existing realm. Keycloak has no SMTP setting of its own; the import fills the realm's SMTP settings from these variables. | Apply the same change in the admin console (Realm settings → Email for SMTP) or with `kcadm.sh`; theme changes ship with the image. |

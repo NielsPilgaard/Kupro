@@ -184,6 +184,7 @@ public sealed partial class ImportCommit
                 }
 
                 await attachments.StoreImportedAsync(id, path, contentType, ct);
+                metrics.Bytes(size);
                 stored.Add((attachment, id, contentType, size));
             }
             finally

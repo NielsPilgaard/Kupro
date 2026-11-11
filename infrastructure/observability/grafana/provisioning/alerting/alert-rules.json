@@ -832,6 +832,88 @@
             "__dashboardUid__": "kupro-usage",
             "__panelId__": "14"
           }
+        },
+        {
+          "uid": "kupro-import-storage-growth",
+          "title": "Kupro imports filling object storage",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "datasourceUid": "prometheus",
+              "relativeTimeRange": {
+                "from": 86400,
+                "to": 0
+              },
+              "model": {
+                "refId": "A",
+                "expr": "sum(increase(kupro_import_bytes_total{job=\"kupro/api\"}[1d]))",
+                "instant": true,
+                "range": false,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "B",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "reduce",
+                "expression": "A",
+                "reducer": "last",
+                "settings": {
+                  "mode": "replaceNN",
+                  "replaceWithValue": 0
+                }
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "model": {
+                "refId": "C",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "type": "threshold",
+                "expression": "B",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        20000000000.0
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "for": "0s",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "isPaused": false,
+          "labels": {
+            "service": "kupro",
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Imports copied {{ humanize1024 $values.B.Value }}B of attachments into object storage in the last 24 hours.",
+            "description": "One import with many files can grow the bucket faster than the storage plan expects. Check which import is running (Settings → Import, or `kupro import list` per workspace) and the bucket's size in the OVHcloud console. Imports keep going; this is a heads-up, not a stop.",
+            "__dashboardUid__": "kupro-usage",
+            "__panelId__": "18"
+          }
         }
       ]
     }

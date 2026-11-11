@@ -67,6 +67,7 @@ builder.Services.Configure<ImportOptions>(builder.Configuration.GetSection(Impor
 builder.Services.AddSingleton<ImportSnapshots>();
 builder.Services.AddHttpClient(nameof(ImportSources));
 builder.Services.AddSingleton<ImportSources>();
+builder.Services.AddSingleton<ImportMetrics>();
 builder.Services.AddSingleton<ImportSignal>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<ImportCommit>();

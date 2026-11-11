@@ -217,8 +217,8 @@ public sealed partial class ImportService(
 /// Assumes one API instance, as <c>ExportJob</c> does: a second one would pick up the same runs.
 /// </summary>
 public sealed partial class ImportJob(
-    IServiceScopeFactory scopes, ImportSnapshots snapshots, ImportSources sources, ImportSignal signal, IOptions<ImportOptions> options, TimeProvider clock,
-    ILogger<ImportJob> logger) : BackgroundService
+    IServiceScopeFactory scopes, ImportSnapshots snapshots, ImportSources sources, ImportSignal signal, IOptions<ImportOptions> options, ImportMetrics metrics,
+    TimeProvider clock, ILogger<ImportJob> logger) : BackgroundService
 {
     private static readonly string[] TenantFilter = [KuproDbContext.TenantFilter];
 
@@ -449,6 +449,7 @@ public sealed partial class ImportJob(
             run.State = ImportRunState.Succeeded;
             run.CompletedAt = clock.GetUtcNow();
             await db.SaveChangesAsync(ct);
+            metrics.RunEnded(run.Kind, run.State);
             if (first)
             {
                 await NotifyAsync(scope, db, import, run, ct);
@@ -465,6 +466,7 @@ public sealed partial class ImportJob(
             run.CompletedAt = clock.GetUtcNow();
             run.Error = ex is ImportFailedException or SnapshotFormatException ? Cut(ex.Message) : "The import failed unexpectedly. It can be run again; it continues from what it finished.";
             await db.SaveChangesAsync(CancellationToken.None);
+            metrics.RunEnded(run.Kind, run.State);
 
             // A failed plan is shown to the owner who just asked for it; a failed commit may have run unattended.
             if (run.Kind == ImportRunKind.Commit)

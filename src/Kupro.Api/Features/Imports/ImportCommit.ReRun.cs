@@ -73,6 +73,7 @@ public sealed partial class ImportCommit
         }
 
         _counts.Add(delta);
+        metrics.Items(delta.Updated);
         if (delta.Updated > 0)
         {
             await realtime.ChangedAsync(ChangeTopic.Issue);

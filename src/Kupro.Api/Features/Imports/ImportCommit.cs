@@ -126,6 +126,7 @@ public sealed partial class ImportCommit(
     AttachmentService attachments,
     ActivityLog activity,
     RealtimeEvents realtime,
+    ImportMetrics metrics,
     TimeProvider clock)
 {
     internal const int BatchSize = 500;
@@ -710,6 +711,7 @@ public sealed partial class ImportCommit(
         }
 
         _counts.Add(delta);
+        metrics.Items(delta.Issues);
         if (delta.Issues > 0)
         {
             // One event per batch, not one per issue: a large import must not flood every open client (ADR-019 IMP-002).
