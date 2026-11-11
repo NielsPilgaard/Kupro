@@ -124,6 +124,12 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
             output.ShouldContain("Created");
             (await GetAsync<IssueDetail>(client, $"/api/v1/workspaces/{workspace.Slug}/issues/CLI-1")).Title.ShouldBe("First");
 
+            // The source key stays an alias: `kupro issue get` finds the issue by it.
+            (exit, output, error) = await CliAsync(token, workspace.Slug, null, "issue", "get", "CSV-1");
+            exit.ShouldBe(0, error);
+            output.ShouldContain("CLI-1");
+            output.ShouldContain("First");
+
             // A token never comes from an argument: here it is piped in, for a source Kupro can't read itself.
             (exit, _, error) = await CliAsync(token, workspace.Slug, "secret-from-stdin", "import", "create", "youtrack");
             exit.ShouldNotBe(0);
