@@ -9,6 +9,7 @@ using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
 using Kupro.Import;
+using Kupro.Import.Csv;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -38,6 +39,17 @@ public sealed class ImportSnapshots(ObjectStorage storage)
         await storage.SizeAsync(ObjectKey(workspaceId, importId), ct) is not null;
 
     public Task DeleteAsync(Guid workspaceId, Guid importId, CancellationToken ct) => storage.DeleteAsync(ObjectKey(workspaceId, importId), ct);
+
+    /// <summary>A file the source is read from when a run starts, like a CSV; the snapshot is made from it then.</summary>
+    public Task StoreSourceAsync(Guid workspaceId, Guid importId, string path, string contentType, CancellationToken ct) =>
+        storage.UploadFileAsync(SourceKey(workspaceId, importId), path, contentType, ct);
+
+    public Task<Stream?> OpenSourceAsync(Guid workspaceId, Guid importId, CancellationToken ct) => storage.OpenReadAsync(SourceKey(workspaceId, importId), ct);
+
+    public async Task<bool> SourceExistsAsync(Guid workspaceId, Guid importId, CancellationToken ct) =>
+        await storage.SizeAsync(SourceKey(workspaceId, importId), ct) is not null;
+
+    private static string SourceKey(Guid workspaceId, Guid importId) => $"{workspaceId}/imports/{importId}/source";
 
     /// <summary>A local, seekable copy (a ZIP is read from its end), deleted when the stream closes. Null if none is stored.</summary>
     public async Task<FileStream?> OpenAsync(Guid workspaceId, Guid importId, CancellationToken ct)
@@ -158,8 +170,9 @@ public sealed partial class ImportService(
             return new IssueError("no_mapping", "Save a mapping before planning or running the import.");
         }
 
-        // An import Kupro reads itself fetches its first snapshot when the first run starts.
-        if (import.EncryptedToken is null && !await snapshots.ExistsAsync(import.WorkspaceId, importId, ct))
+        // An import Kupro reads itself, or from an uploaded file, makes its snapshot when the run starts.
+        if (import.EncryptedToken is null && !await snapshots.ExistsAsync(import.WorkspaceId, importId, ct)
+            && !await snapshots.SourceExistsAsync(import.WorkspaceId, importId, ct))
         {
             return new IssueError("no_snapshot", "The import has no snapshot yet.");
         }
@@ -397,6 +410,11 @@ public sealed partial class ImportJob(
             {
                 await ReadSourceAsync(scope, db, import, mapping, ct);
             }
+            else if (starting && import.SourceKind == SourceKinds.Csv)
+            {
+                // Cheap and current: the file is converted with the columns as saved now.
+                await ReadCsvAsync(db, import, mapping, ct);
+            }
 
             await using var file = await snapshots.OpenAsync(workspaceId, import.Id, ct) ?? throw new ImportFailedException("The import's snapshot is gone. Upload it again.");
             await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
@@ -512,6 +530,34 @@ public sealed partial class ImportJob(
         }
 
         import.SourceReadAt = now;
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task ReadCsvAsync(KuproDbContext db, WorkspaceImport import, ImportMapping mapping, CancellationToken ct)
+    {
+        CsvTable table;
+        await using (var source = await snapshots.OpenSourceAsync(import.WorkspaceId, import.Id, ct) ?? throw new ImportFailedException("The import's CSV file is gone. Upload it again."))
+        {
+            table = await CsvTable.ReadAsync(source, ct);
+        }
+
+        var connector = new CsvConnector(table, mapping.Csv ?? CsvColumns.Propose(table.Headers), ImportService.CsvProjectName, clock);
+        var path = Path.GetTempFileName();
+        try
+        {
+            await using (var file = File.Create(path))
+            {
+                await connector.WriteSnapshotAsync(file, ImportSources.Scope(mapping, clock.GetUtcNow()), null, includeFiles: false, clock, ct);
+            }
+
+            await snapshots.StoreAsync(import.WorkspaceId, import.Id, path, ct);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+
+        import.SourceReadAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
     }
 

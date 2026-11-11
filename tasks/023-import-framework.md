@@ -45,7 +45,10 @@ token fails the run and pauses auto-sync until it is replaced; auto-sync queues 
 quiet days. Trello needs Kupro's API key in `Imports__TrelloKey`, not yet an AppHost parameter (slice 6, with the
 runbook). The feed shows `imported`, `reimported` and `sourceChanged` items with the source and a skipped person's
 source name ("via Jira import", web too), and a source key or URL finds its issue in `GET /issues/{key}`, the feed,
-`get_issue` and search (so the palette). The feed pages: `GET .../activity?before=<oldest item id>&limit=`, `kupro issue activity --before`, and "Show older" on the web. Next: slice 4 (CSV, Kupro export ZIP).
+`get_issue` and search (so the palette). The feed pages: `GET .../activity?before=<oldest item id>&limit=`, `kupro issue activity --before`, and "Show older" on the web. CSV is a source: `Kupro.Import.Csv` (encoding and delimiter detection, quoting, Jira and
+Linear presets, the other columns to the details block), kept as the import's source file and turned into a snapshot
+when a run starts, with its columns on `ImportMapping.Csv`. `ImportService.ProposeMappingAsync` proposes a mapping for
+any import. Next: the Kupro export ZIP source, then slice 5 (surfaces).
 
 ## Scope
 
@@ -186,7 +189,7 @@ source name ("via Jira import", web too), and a source key or URL finds its issu
 - [x] Undo removes everything the import created and nothing else; it is refused while records it didn't create
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
 - [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
-- [ ] A Danish CSV in Windows-1252 keeps æøå.
+- [x] A Danish CSV in Windows-1252 keeps æøå.
 - [ ] After 013: one import of 10,000+ items with attachments runs on production, survives a container restart
       mid-commit, and the storage-growth alert stays quiet. Noted in the PR.
 

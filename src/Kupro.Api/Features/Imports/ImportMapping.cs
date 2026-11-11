@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kupro.Api.Features.Issues;
+using Kupro.Import.Csv;
 using Kupro.Import.Snapshot;
 
 namespace Kupro.Api.Features.Imports;
@@ -73,6 +74,9 @@ public sealed record ImportMapping
     public ImportScope Scope { get; init; } = new();
     public FoldEnd Fold { get; init; } = FoldEnd.Bottom;
 
+    /// <summary>For a CSV import: which column holds what. Null until saved; a run then uses the proposed one.</summary>
+    public CsvColumns? Csv { get; init; }
+
     public string ToJson() => JsonSerializer.Serialize(this, Json);
 
     public static ImportMapping FromJson(string json) =>
@@ -86,6 +90,20 @@ public sealed record MemberCandidate(Guid Id, string Name, string? Email);
 public static class ImportMappingDefaults
 {
     private const int MaxProjectKeyLength = 10;
+
+    /// <summary>The same proposal from what a connector describes, before any snapshot exists.</summary>
+    public static ImportMapping Propose(SourceDescription description, IReadOnlyList<MemberCandidate> members) =>
+        Propose(new SnapshotHeader
+        {
+            Format = 1,
+            Source = description.Source,
+            CreatedAt = DateTimeOffset.UnixEpoch,
+            Projects = description.Projects,
+            People = description.People,
+            ItemTypes = description.ItemTypes,
+            Statuses = description.Statuses,
+            Fields = description.Fields,
+        }, members);
 
     public static ImportMapping Propose(SnapshotHeader header, IReadOnlyList<MemberCandidate> members)
     {
