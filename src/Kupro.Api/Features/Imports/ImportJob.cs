@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Channels;
 using Kupro.Api.Data;
@@ -7,6 +8,7 @@ using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
+using Kupro.Import;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -19,6 +21,9 @@ public sealed class ImportOptions
 
     /// <summary>Imports running at once across workspaces, so a big one can't starve exports or the meeting agent (ADR-019).</summary>
     public int MaxConcurrent { get; set; } = 2;
+
+    /// <summary>Kupro's Trello API key. Without it, Trello is imported from a snapshot only.</summary>
+    public string? TrelloKey { get; set; }
 }
 
 /// <summary>Where an import's stored snapshot lives. Plans and commits read this copy, so re-planning doesn't read the source. Singleton.</summary>
@@ -88,6 +93,8 @@ public sealed partial class ImportService(
     WorkspaceContext workspace,
     ImportSnapshots snapshots,
     ImportSignal signal,
+    ImportTokens tokens,
+    ImportSources sources,
     IssueService issues,
     LabelService labels,
     AttachmentService attachments,
@@ -151,7 +158,8 @@ public sealed partial class ImportService(
             return new IssueError("no_mapping", "Save a mapping before planning or running the import.");
         }
 
-        if (!await snapshots.ExistsAsync(import.WorkspaceId, importId, ct))
+        // An import Kupro reads itself fetches its first snapshot when the first run starts.
+        if (import.EncryptedToken is null && !await snapshots.ExistsAsync(import.WorkspaceId, importId, ct))
         {
             return new IssueError("no_snapshot", "The import has no snapshot yet.");
         }
@@ -180,8 +188,17 @@ public sealed partial class ImportService(
 /// Assumes one API instance, as <c>ExportJob</c> does: a second one would pick up the same runs.
 /// </summary>
 public sealed partial class ImportJob(
-    IServiceScopeFactory scopes, ImportSnapshots snapshots, ImportSignal signal, IOptions<ImportOptions> options, TimeProvider clock, ILogger<ImportJob> logger) : BackgroundService
+    IServiceScopeFactory scopes, ImportSnapshots snapshots, ImportSources sources, ImportSignal signal, IOptions<ImportOptions> options, TimeProvider clock,
+    ILogger<ImportJob> logger) : BackgroundService
 {
+    private static readonly string[] TenantFilter = [KuproDbContext.TenantFilter];
+
+    /// <summary>How often auto-sync runs an import (ADR-019 Mode).</summary>
+    public static readonly TimeSpan SyncEvery = TimeSpan.FromHours(1);
+
+    /// <summary>Auto-sync turns itself off after this long with no change on either side.</summary>
+    public static readonly TimeSpan SyncQuietFor = TimeSpan.FromDays(30);
+
     /// <summary>A token unused this long is deleted: a migration nobody runs shouldn't keep a key to the source (ADR-019).</summary>
     public static readonly TimeSpan TokenKeptFor = TimeSpan.FromDays(90);
 
@@ -207,6 +224,11 @@ public sealed partial class ImportJob(
                         await using var scope = scopes.CreateAsyncScope();
                         await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(stoppingToken);
                         await PurgeTokensAsync(db, clock.GetUtcNow(), stoppingToken);
+                        if (await AutoSyncAsync(db, scope.ServiceProvider.GetRequiredService<IEmailSender>(), clock.GetUtcNow(), stoppingToken) > 0)
+                        {
+                            await StartWaitingAsync(stoppingToken);
+                        }
+
                         _lastPurge = clock.GetUtcNow();
                     }
                 }
@@ -231,6 +253,65 @@ public sealed partial class ImportJob(
         db.WorkspaceImports.IgnoreQueryFilters([KuproDbContext.TenantFilter])
             .Where(i => i.EncryptedToken != null && (i.LastRunAt ?? i.CreatedAt) < now - TokenKeptFor)
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.EncryptedToken, (string?)null).SetProperty(i => i.AutoSync, false), ct);
+
+    /// <summary>
+    /// Queues a run for every import due to sync, and turns auto-sync off for one that has been quiet on both sides for
+    /// <see cref="SyncQuietFor"/>, telling its owner. Returns how many runs it queued.
+    /// </summary>
+    public static async Task<int> AutoSyncAsync(KuproDbContext db, IEmailSender email, DateTimeOffset now, CancellationToken ct)
+    {
+        // System job across all tenants: each import's runs and issues are matched by its own ids below.
+        var due = await db.WorkspaceImports.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+            .Where(i => i.AutoSync && i.State == ImportState.Active && i.EncryptedToken != null && i.TokenRejectedAt == null && (i.LastRunAt ?? i.CreatedAt) <= now - SyncEvery)
+            .Where(i => !db.ImportRuns.IgnoreQueryFilters(TenantFilter)
+                .Any(r => r.ImportId == i.Id && (r.State == ImportRunState.Queued || r.State == ImportRunState.Running)))
+            .ToListAsync(ct);
+
+        var queued = 0;
+        foreach (var import in due)
+        {
+            var issues = db.ImportedItems.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+                .Where(i => i.ImportId == import.Id && i.SourceKind == ImportedKinds.Item).Select(i => i.EntityId);
+            var quiet = (import.LastChangeAt ?? import.CreatedAt) < now - SyncQuietFor
+                && !await db.Activity.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+                    .AnyAsync(a => issues.Contains(a.IssueId) && a.Via != Surface.Import && a.CreatedAt > now - SyncQuietFor, ct);
+            if (quiet)
+            {
+                import.AutoSync = false;
+                await db.SaveChangesAsync(ct);
+                await TellSyncOffAsync(db, email, import, ct);
+                continue;
+            }
+
+            db.ImportRuns.Add(new ImportRun
+            {
+                Id = Guid.CreateVersion7(),
+                WorkspaceId = import.WorkspaceId,
+                ImportId = import.Id,
+                Kind = ImportRunKind.Commit,
+                State = ImportRunState.Queued,
+                CreatedAt = now,
+            });
+            await db.SaveChangesAsync(ct);
+            queued++;
+        }
+
+        return queued;
+    }
+
+    private static async Task TellSyncOffAsync(KuproDbContext db, IEmailSender email, WorkspaceImport import, CancellationToken ct)
+    {
+        var to = await db.Members.IgnoreQueryFilters([KuproDbContext.TenantFilter]).Where(m => m.Id == import.CreatedById)
+            .Select(m => db.Users.Where(u => u.Id == m.UserId).Select(u => new { u.Email, u.Locale }).FirstOrDefault())
+            .SingleOrDefaultAsync(ct);
+        if (to is null)
+        {
+            return;
+        }
+
+        var workspace = await db.Workspaces.Where(w => w.Id == import.WorkspaceId).Select(w => w.Name).SingleAsync(ct);
+        await email.SendAsync(ImportMail.SyncOff(to.Email, to.Locale, workspace, ImportDescription.SourceName(import.SourceKind)), ct);
+    }
 
     private async Task StartWaitingAsync(CancellationToken ct)
     {
@@ -298,6 +379,8 @@ public sealed partial class ImportJob(
         var run = await db.ImportRuns.SingleAsync(r => r.Id == runId, ct);
         var import = await db.WorkspaceImports.SingleAsync(i => i.Id == run.ImportId, ct);
 
+        // A run resumed after a restart keeps the snapshot it started with: its saved progress counts through that one.
+        var starting = run.StartedAt is null;
         run.State = ImportRunState.Running;
         run.StartedAt ??= clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
@@ -310,6 +393,11 @@ public sealed partial class ImportJob(
             }
 
             var mapping = import.Mapping is { } saved ? ImportMapping.FromJson(saved) : throw new ImportFailedException("Save a mapping before running the import.");
+            if (starting && import.EncryptedToken is not null && NeedsRead(import, run))
+            {
+                await ReadSourceAsync(scope, db, import, mapping, ct);
+            }
+
             await using var file = await snapshots.OpenAsync(workspaceId, import.Id, ct) ?? throw new ImportFailedException("The import's snapshot is gone. Upload it again.");
             await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
             if (run.Kind == ImportRunKind.DryRun)
@@ -376,6 +464,57 @@ public sealed partial class ImportJob(
         }
     }
 
+    /// <summary>
+    /// A commit reads what changed since the last one, unless a plan already read the source since then: the commit then
+    /// writes what the owner just reviewed. A plan reads only when there is nothing yet to plan over.
+    /// </summary>
+    private static bool NeedsRead(WorkspaceImport import, ImportRun run) =>
+        import.SourceReadAt is null || (run.Kind == ImportRunKind.Commit && import.SourceReadAt <= import.LastRunAt);
+
+    /// <summary>Runs the import's connector into a fresh snapshot, from the saved cursor less the overlap, files included.</summary>
+    private async Task ReadSourceAsync(AsyncServiceScope scope, KuproDbContext db, WorkspaceImport import, ImportMapping mapping, CancellationToken ct)
+    {
+        string token;
+        try
+        {
+            token = scope.ServiceProvider.GetRequiredService<ImportTokens>().Unprotect(import.Id, import.EncryptedToken!);
+        }
+        catch (CryptographicException ex)
+        {
+            throw new ImportFailedException("Kupro can no longer read the stored token. Paste it again on the import.", ex);
+        }
+
+        var now = clock.GetUtcNow();
+        var path = Path.GetTempFileName();
+        try
+        {
+            await using (var file = File.Create(path))
+            {
+                var connector = sources.Create(import, token);
+                await connector.WriteSnapshotAsync(file, ImportSources.Scope(mapping, now), ImportSources.WithOverlap(import.Cursor), includeFiles: true, clock, ct);
+            }
+
+            await snapshots.StoreAsync(import.WorkspaceId, import.Id, path, ct);
+        }
+        catch (SourceAccessException ex) when (ex.TokenRejected)
+        {
+            // Auto-sync waits for a new token; the run's failure email tells the owner.
+            import.TokenRejectedAt = now;
+            throw new ImportFailedException($"{ex.Message} Paste a new token on the import: the next run continues where this one stopped.", ex);
+        }
+        catch (SourceAccessException ex)
+        {
+            throw new ImportFailedException(ex.Message, ex);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+
+        import.SourceReadAt = now;
+        await db.SaveChangesAsync(ct);
+    }
+
     private async Task CommitAsync(AsyncServiceScope scope, KuproDbContext db, ImportRun run, WorkspaceImport import, SnapshotReader snapshot, ImportMapping mapping, CancellationToken ct)
     {
         var commit = scope.ServiceProvider.GetRequiredService<ImportCommit>();
@@ -424,4 +563,11 @@ public static class ImportMail
                 $"{error} Kupro keeps what it finished. Run the import again to continue."),
         };
     }
+
+    public static EmailMessage SyncOff(string to, string locale, string workspace, string source) =>
+        locale.StartsWith("da", StringComparison.OrdinalIgnoreCase)
+            ? new EmailMessage(to, $"Automatisk synkronisering fra {source} til {workspace} er slået fra",
+                "Hverken kilden eller de importerede opgaver har ændret sig i 30 dage. Slå den til igen under Indstillinger → Import, eller afslut importen.")
+            : new EmailMessage(to, $"Auto-sync from {source} into {workspace} is off",
+                "Neither the source nor the imported issues changed for 30 days. Turn it back on under Settings → Import, or finish the import.");
 }

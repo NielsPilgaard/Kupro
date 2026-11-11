@@ -64,6 +64,9 @@ public sealed class WorkspaceImport : ITenantOwned
     [JsonIgnore]
     public string? EncryptedToken { get; set; }
 
+    /// <summary>When the source last refused the token. Auto-sync waits until the owner replaces it.</summary>
+    public DateTimeOffset? TokenRejectedAt { get; set; }
+
     /// <summary>JSON: the owner's choices, saved and reused on every run.</summary>
     public string? Mapping { get; set; }
 
@@ -72,6 +75,9 @@ public sealed class WorkspaceImport : ITenantOwned
 
     /// <summary>Where the next delta run reads from; the connector's own format.</summary>
     public string? Cursor { get; set; }
+
+    /// <summary>When Kupro last read the source into the stored snapshot. Null for an import that only takes uploads.</summary>
+    public DateTimeOffset? SourceReadAt { get; set; }
 
     public Guid CreatedById { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

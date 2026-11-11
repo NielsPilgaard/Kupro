@@ -609,11 +609,19 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("source_kind");
 
+                    b.Property<DateTimeOffset?>("SourceReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("source_read_at");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("state");
+
+                    b.Property<DateTimeOffset?>("TokenRejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("token_rejected_at");
 
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid")

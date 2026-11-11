@@ -65,6 +65,8 @@ builder.Services.AddOptions<KeyManagementOptions>().Configure<IServiceProvider>(
 builder.Services.AddSingleton<ImportTokens>();
 builder.Services.Configure<ImportOptions>(builder.Configuration.GetSection(ImportOptions.Section));
 builder.Services.AddSingleton<ImportSnapshots>();
+builder.Services.AddHttpClient(nameof(ImportSources));
+builder.Services.AddSingleton<ImportSources>();
 builder.Services.AddSingleton<ImportSignal>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<ImportCommit>();

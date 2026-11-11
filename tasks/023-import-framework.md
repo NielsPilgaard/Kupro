@@ -39,8 +39,11 @@ snapshot reports source deletions. A delta must list a holder together with its 
 of this yet: `ImportService` is called from tests. The plan runs a re-run's own comparison on a context it never saves,
 so its counts are the commit's. Invites go out when a commit ends, the owner is emailed (EN/DA) after the first commit
 and after a failed one (a failed plan only shows where it was asked for), and Undo, Finish and the 90-day token purge
-are in `ImportService`/`ImportJob`. Next: server-side connector runs (rejected token, attachment fetch, auto-sync),
-then slice 3 (feed paging, aliases in lookups).
+are in `ImportService`/`ImportJob`. Imports with a token run their connector (`ImportSources`: Azure DevOps, Linear,
+Trello) into a fresh snapshot with files when a commit starts, from the cursor less a 10-minute overlap; a rejected
+token fails the run and pauses auto-sync until it is replaced; auto-sync queues hourly and turns itself off after 30
+quiet days. Trello needs Kupro's API key in `Imports__TrelloKey`, not yet an AppHost parameter (slice 6, with the
+runbook). Next: slice 3 (feed paging, imported/source-changed feed items, aliases in lookups).
 
 ## Scope
 

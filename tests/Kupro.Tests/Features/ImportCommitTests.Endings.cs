@@ -20,7 +20,11 @@ public sealed partial class ImportCommitTests
     private async Task<T> WithImportsAsync<T>(Func<ImportService, Task<T>> use)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        scope.ServiceProvider.GetRequiredService<WorkspaceContext>().SetForSystem(_workspace.Id);
+        var context = scope.ServiceProvider.GetRequiredService<WorkspaceContext>();
+        context.SetForSystem(_workspace.Id);
+
+        // As the owner, the way the REST surface will call it.
+        using var owner = context.ActAs(_owner, Kupro.Api.Features.Activity.Surface.Api, Guid.Empty);
         return await use(scope.ServiceProvider.GetRequiredService<ImportService>());
     }
 
