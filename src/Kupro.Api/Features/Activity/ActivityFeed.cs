@@ -135,7 +135,8 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
             var changes = new List<FeedChange>();
             if (kind is FeedItemKind.Updated && data is { ValueKind: JsonValueKind.Object } fields)
             {
-                foreach (var f in fields.EnumerateObject())
+                // Only field changes: an import also keeps the source's name for a skipped actor here (ADR-019 People).
+                foreach (var f in fields.EnumerateObject().Where(f => f.Value.ValueKind == JsonValueKind.Object))
                 {
                     changes.Add(new FeedChange(f.Name,
                         f.Value.TryGetProperty("from", out var from) ? Display(f.Name, from) : null,

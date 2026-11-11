@@ -138,10 +138,9 @@ public sealed class SnapshotWriter : IAsyncDisposable
     private void AddPerson(SourcePerson person)
     {
         // Sources often show an email on one record and hide it on another; keep it once seen.
-        if (!_people.TryGetValue(person.Id, out var known) || (known.Email is null && person.Email is not null))
-        {
-            _people[person.Id] = person;
-        }
+        _people[person.Id] = _people.TryGetValue(person.Id, out var known)
+            ? known with { Email = known.Email ?? person.Email, Handle = known.Handle ?? person.Handle }
+            : person;
     }
 
     private async Task AppendAsync<T>(Part part, T record, JsonTypeInfo<T> type, CancellationToken ct)

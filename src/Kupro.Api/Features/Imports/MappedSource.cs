@@ -39,20 +39,33 @@ public sealed class MappedSource
         _mapping.Projects.GetValueOrDefault(sourceProject)
         ?? ImportMappingDefaults.ProposeProject(_projects.GetValueOrDefault(sourceProject) ?? new SourceProject { Id = sourceProject, Name = sourceProject });
 
-    /// <summary>A status with no state yet is Todo: no item is skipped for its status (ADR-019 States).</summary>
-    public IssueState State(SourceItem item) => _mapping.States.TryGetValue(item.Status, out var state) ? state : IssueState.Todo;
+    /// <summary>The Kupro type a source type ID maps to, for a change in the history.</summary>
+    public IssueType TypeOf(string sourceType) =>
+        (_mapping.Types.GetValueOrDefault(sourceType) ?? ImportMappingDefaults.ProposeType(_types.GetValueOrDefault(sourceType)?.Name ?? sourceType)).Type;
 
-    public IssuePriority Priority(SourceItem item) =>
-        item.Priority is { } name && _mapping.Priorities.TryGetValue(name, out var priority) ? priority : ImportMappingDefaults.ProposePriority(item.Priority);
+    /// <summary>A status with no state yet is Todo: no item is skipped for its status (ADR-019 States).</summary>
+    public IssueState State(SourceItem item) => State(item.Status);
+
+    public IssueState State(string status) => _mapping.States.TryGetValue(status, out var state) ? state : IssueState.Todo;
+
+    public IssuePriority Priority(SourceItem item) => Priority(item.Priority);
+
+    public IssuePriority Priority(string? name) =>
+        name is not null && _mapping.Priorities.TryGetValue(name, out var priority) ? priority : ImportMappingDefaults.ProposePriority(name);
 
     /// <summary>Hours: the source's estimate first, else points times the owner's factor, else none (ADR-019 Effort).</summary>
     public decimal? Effort(SourceItem item)
     {
         if (item.EstimateSeconds is { } seconds)
         {
-            return Math.Round(seconds / 3600m, 2);
+            return EffortOfSeconds(seconds);
         }
 
-        return item.Points is { } points && _mapping.HoursPerPoint is { } factor ? points * factor : null;
+        return item.Points is { } points ? EffortOfPoints(points) : null;
     }
+
+    public static decimal EffortOfSeconds(long seconds) => Math.Round(seconds / 3600m, 2);
+
+    /// <summary>Null without the owner's hours-per-point factor: points alone are no effort.</summary>
+    public decimal? EffortOfPoints(decimal points) => _mapping.HoursPerPoint is { } factor ? points * factor : null;
 }

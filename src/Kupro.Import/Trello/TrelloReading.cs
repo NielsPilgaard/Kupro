@@ -372,6 +372,7 @@ internal static class Trello
         Id = member.Id,
         Name = member.FullName ?? member.Username ?? member.Id,
         Email = member.Email,
+        Handle = member.Username,
     };
 
     public static string CheckItemStatus(string state) => $"{TrelloConnector.CheckItemType}/{state}";

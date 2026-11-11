@@ -32,7 +32,10 @@ public sealed class TrelloConnectorTests
         description.Projects[0].Url.ShouldStartWith("https://trello.com/b/");
 
         description.People.ShouldBe(
-            [new SourcePerson { Id = s.Sofie.Id, Name = "Sofie Larsen", Email = "sofie@acme.example" }, new SourcePerson { Id = s.Jonas.Id, Name = "Jonas Holm" }],
+            [
+                new SourcePerson { Id = s.Sofie.Id, Name = "Sofie Larsen", Email = "sofie@acme.example", Handle = s.Sofie.Username },
+                new SourcePerson { Id = s.Jonas.Id, Name = "Jonas Holm", Handle = "jonas" },
+            ],
             ignoreOrder: true);
 
         description.ItemTypes.Select(t => (t.Id, t.Level)).ShouldBe([(TrelloConnector.CardType, 1), (TrelloConnector.CheckItemType, 0)]);

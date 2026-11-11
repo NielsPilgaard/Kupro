@@ -25,6 +25,41 @@ public sealed class ImportMarkupTests
             .ShouldBe("| A | B |\n| --- | --- |\n| 1\\|2 | 3 |");
     }
 
+    private static readonly Guid FileId = Guid.Parse("0198f0c2-0000-7000-8000-000000000001");
+
+    private static readonly ImportReferences References = new(
+        new Dictionary<string, string> { ["u1"] = "Sofie Larsen", ["u9"] = "A *star*" },
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["sofie"] = "Sofie Larsen" },
+        new Dictionary<string, AttachmentRef>
+        {
+            ["https://src.example/files/1"] = new(FileId, "flow.png", Image: true),
+            ["https://src.example/files/2"] = new(FileId, "spec.pdf", Image: false),
+        },
+        new Dictionary<string, string> { ["https://src.example/browse/OLD-7"] = "WEB-7" });
+
+    [Fact]
+    public void Mentions_files_and_source_issue_links_point_into_kupro()
+    {
+        References.Rewrite($"Hi {MarkupConverters.Mention("u1")} and @Sofie. Also {MarkupConverters.Mention("u9")} and @nobody")
+            .ShouldBe("Hi @Sofie Larsen and @Sofie Larsen. Also @A \\*star\\* and @nobody");
+        References.Rewrite("![pic](https://src.example/files/1) and [the spec](<https://src.example/files/2>)")
+            .ShouldBe($"![pic](attachment:{FileId}) and [the spec](attachment:{FileId})");
+        References.Rewrite("Bare https://src.example/files/2.")
+            .ShouldBe($"Bare [spec.pdf](attachment:{FileId}).");
+        References.Rewrite("See [OLD-7](https://src.example/browse/OLD-7), [this one](https://src.example/browse/OLD-7) and https://src.example/browse/OLD-7")
+            .ShouldBe("See WEB-7, this one (WEB-7) and WEB-7");
+        References.Rewrite("[other](https://elsewhere.example/x \"t\")").ShouldBe("[other](https://elsewhere.example/x \"t\")");
+    }
+
+    [Fact]
+    public void Code_and_email_addresses_are_left_as_written()
+    {
+        References.Rewrite("mail sofie@x.example, `@sofie https://src.example/files/1` and\n```\n@sofie https://src.example/browse/OLD-7\n```\n@sofie")
+            .ShouldBe("mail sofie@x.example, `@sofie https://src.example/files/1` and\n```\n@sofie https://src.example/browse/OLD-7\n```\n@Sofie Larsen");
+        References.Rewrite("https://src.example/@sofie").ShouldBe("https://src.example/@sofie");
+        ImportReferences.None.Rewrite("plain text").ShouldBe("plain text");
+    }
+
     [Fact]
     public void Html_text_is_not_taken_for_markdown()
     {
@@ -116,7 +151,7 @@ public sealed class ImportMarkupTests
             },
         };
 
-        var (text, truncated) = description.Build(item, [new ChecklistLine("Step *one*", true)], description.Details(item, [], assigneeSkipped: false));
+        var (text, truncated) = description.Build(item, [new ChecklistLine("Step *one*", true)], description.Details(item, [], assigneeSkipped: false), ImportReferences.None);
 
         truncated.ShouldBeFalse();
         text.ShouldNotBeNull();
@@ -152,7 +187,7 @@ public sealed class ImportMarkupTests
         var description = new ImportDescription(Header(), new ImportMapping());
         var item = Item() with { Description = new string('a', 200_000), DescriptionMarkup = MarkupKind.Markdown, Url = "https://x.example/1" };
 
-        var (text, truncated) = description.Build(item, [], description.Details(item, [], assigneeSkipped: false));
+        var (text, truncated) = description.Build(item, [], description.Details(item, [], assigneeSkipped: false), ImportReferences.None);
 
         truncated.ShouldBeTrue();
         text!.Length.ShouldBeLessThanOrEqualTo(ImportDescription.MaxLength);

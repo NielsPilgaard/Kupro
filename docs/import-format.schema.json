@@ -63,7 +63,8 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "name": { "type": "string" },
-        "email": { "type": ["string", "null"] }
+        "email": { "type": ["string", "null"] },
+        "handle": { "type": ["string", "null"], "description": "The name mentions use, without the @." }
       },
       "required": ["id", "name"]
     },

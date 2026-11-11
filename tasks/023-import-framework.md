@@ -31,8 +31,10 @@ placeholder members with invite and merge on REST, CLI and the Members page. Pip
 defaults, `HierarchyFit` and `ImportPlanner` (counts and samples over a snapshot, nothing written), then the first
 commit: the stored snapshot, `ImportJob` with its own queue, `ImportCommit` (projects, people, labels, sprints,
 milestones, keys and aliases, issues with the details block, relations; resumable) and `MarkupConverters` (HTML, plain).
-No surface reaches it yet: `ImportService` is called from tests. Next: comments, attachments, changelog replay and
-mention/link rewriting, then re-runs with conflicts, then the rest of the commit path (invites, email, auto-sync, undo, finish).
+History is in as well: comments, attachments, changelog replay and mention/link rewriting (`ImportCommit.History`,
+`ImportReferences`). An attachment whose bytes the snapshot doesn't hold is counted and keeps its source link until the
+server-side connectors fetch it. No surface reaches any of this yet: `ImportService` is called from tests. Next: re-runs
+with conflicts, then the rest of the commit path (invites, email, auto-sync, undo, finish).
 
 ## Scope
 

@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Attachments;
+using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Projects;
@@ -37,8 +39,28 @@ public sealed class ImportRunCounts
     /// <summary>Items an earlier run already imported.</summary>
     public int AlreadyImported { get; set; }
 
+    public int Comments { get; set; }
+    public int Attachments { get; set; }
+
+    /// <summary>Attachments with no bytes in the snapshot and no connector to fetch them from; their source link stays in the text.</summary>
+    public int AttachmentsMissing { get; set; }
+
+    /// <summary>History entries for fields Kupro has (<c>updated</c>).</summary>
+    public int Changes { get; set; }
+
+    /// <summary>History entries for fields Kupro lacks (<c>source_changed</c>).</summary>
+    public int SourceChanges { get; set; }
+
+    /// <summary>How far into the snapshot's changes the run got: a resumed run starts after them.</summary>
+    public int ChangesRead { get; set; }
+
     public void Add(ImportRunCounts other)
     {
+        Comments += other.Comments;
+        Attachments += other.Attachments;
+        Changes += other.Changes;
+        SourceChanges += other.SourceChanges;
+        ChangesRead += other.ChangesRead;
         Issues += other.Issues;
         Projects += other.Projects;
         Members += other.Members;
@@ -78,6 +100,8 @@ public sealed partial class ImportCommit(
     SprintService sprints,
     PlanService plan,
     WorkspaceService workspaces,
+    CommentService comments,
+    AttachmentService attachments,
     ActivityLog activity,
     RealtimeEvents realtime,
     TimeProvider clock)
@@ -101,6 +125,9 @@ public sealed partial class ImportCommit(
     private readonly Dictionary<string, Guid> _projects = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Guid> _sprints = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Guid> _labels = new(StringComparer.Ordinal);
+
+    /// <summary>A folded checklist item's source ID to the item that holds it: its comments and files go there.</summary>
+    private readonly Dictionary<string, string> _holders = new(StringComparer.Ordinal);
 
     private ImportRunCounts _counts = new();
     private Guid _importId;
@@ -132,17 +159,30 @@ public sealed partial class ImportCommit(
         var tops = await TopTitlesAsync(snapshot, fit, ct);
         var checklists = Checklists(fit, read.ChecklistLines);
 
+        foreach (var checklist in fit.Checklists)
+        {
+            _holders[checklist.Item] = checklist.Parent;
+        }
+
         await EnsureProjectsAsync(read.Targets, ct);
         var numbers = await ReserveNumbersAsync(read.Refs, fit, ct);
         await EnsureSprintsAndMilestonesAsync(read, ct);
+        var references = await ReferencesAsync(snapshot, read, fit, numbers, ct);
 
         var depths = Depths(fit);
         for (var depth = 0; depth < MaxDepth; depth++)
         {
-            await WriteLevelAsync(snapshot, fit, depths, depth, numbers, tops, checklists, ct);
+            await WriteLevelAsync(snapshot, fit, depths, depth, numbers, tops, checklists, references, ct);
         }
 
         await WriteRelationsAsync(snapshot, fit, ct);
+
+        // History last: it hangs off issues, and every issue it can point at exists by now (ADR-019 History).
+        var projectOf = read.Refs.ToDictionary(r => r.Id, r => r.ProjectKey, StringComparer.Ordinal);
+        await WriteAttachmentsAsync(snapshot, ct);
+        await WriteCommentsAsync(snapshot, references, ct);
+        var marks = await ReplayChangesAsync(snapshot, projectOf, ct);
+        await MarkChangesSeenAsync(marks, ct);
 
         _counts.AlreadyImported = read.Refs.Count(r => _items.ContainsKey(r.Id)) - _counts.Issues;
         return _counts;
@@ -192,7 +232,7 @@ public sealed partial class ImportCommit(
             var input = _source.Input(item);
             var target = _source.Project(item.Project);
             read.Kept.Add(input);
-            read.Refs.Add(new ItemRef(item.Id, target.Key, item.Key));
+            read.Refs.Add(new ItemRef(item.Id, target.Key, item.Key, item.Url));
             read.Targets.Add(target);
             if (input.Checklist)
             {
@@ -447,7 +487,7 @@ public sealed partial class ImportCommit(
 
     private async Task WriteLevelAsync(
         SnapshotReader snapshot, FitResult fit, Dictionary<string, int> depths, int depth, Dictionary<string, int> numbers,
-        Dictionary<string, string> tops, ILookup<string, (string Id, ChecklistLine Line)> checklists, CancellationToken ct)
+        Dictionary<string, string> tops, ILookup<string, (string Id, ChecklistLine Line)> checklists, ImportReferences references, CancellationToken ct)
     {
         var batch = new List<SourceItem>(BatchSize);
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -461,20 +501,20 @@ public sealed partial class ImportCommit(
             batch.Add(item);
             if (batch.Count == BatchSize)
             {
-                await WriteBatchAsync(batch, fit, numbers, tops, checklists, ct);
+                await WriteBatchAsync(batch, fit, numbers, tops, checklists, references, ct);
                 batch.Clear();
             }
         }
 
         if (batch.Count > 0)
         {
-            await WriteBatchAsync(batch, fit, numbers, tops, checklists, ct);
+            await WriteBatchAsync(batch, fit, numbers, tops, checklists, references, ct);
         }
     }
 
     private async Task WriteBatchAsync(
         List<SourceItem> batch, FitResult fit, Dictionary<string, int> numbers, Dictionary<string, string> tops,
-        ILookup<string, (string Id, ChecklistLine Line)> checklists, CancellationToken ct)
+        ILookup<string, (string Id, ChecklistLine Line)> checklists, ImportReferences references, CancellationToken ct)
     {
         var newPeople = new Dictionary<string, Guid?>(StringComparer.Ordinal);
         var newLabels = new Dictionary<string, Guid>(StringComparer.Ordinal);
@@ -543,7 +583,7 @@ public sealed partial class ImportCommit(
                     details.Add(("Start date", item.Start.Value.ToString("O", CultureInfo.InvariantCulture)));
                 }
 
-                var (description, truncated) = _description.Build(item, [.. checklists[item.Id].Select(c => c.Line)], details);
+                var (description, truncated) = _description.Build(item, [.. checklists[item.Id].Select(c => c.Line)], details, references);
                 delta.Truncated += truncated ? 1 : 0;
                 var title = string.IsNullOrWhiteSpace(item.Title) ? "(no title)" : Cut(item.Title.Trim(), ImportDescription.MaxTitle);
                 var labelIds = itemLabels.Select(l => _labels.TryGetValue(l, out var known) ? known : newLabels[l]).ToList();
@@ -608,7 +648,7 @@ public sealed partial class ImportCommit(
         KuproDbContext db, IEnumerable<string> sourceIds, Dictionary<string, Guid?> added, ImportRunCounts delta, CancellationToken ct)
     {
         var people = _header.People.DistinctBy(p => p.Id).ToDictionary(p => p.Id, StringComparer.Ordinal);
-        var unresolved = sourceIds.Where(id => !_people.ContainsKey(id)).ToList();
+        var unresolved = sourceIds.Where(id => !_people.ContainsKey(id) && !added.ContainsKey(id)).ToList();
         if (unresolved.Count == 0)
         {
             return;
@@ -933,7 +973,7 @@ public sealed partial class ImportCommit(
         public Dictionary<string, ChecklistLine> ChecklistLines { get; } = new(StringComparer.Ordinal);
     }
 
-    private sealed record ItemRef(string Id, string ProjectKey, string? Key);
+    private sealed record ItemRef(string Id, string ProjectKey, string? Key, string? Url);
 
     /// <summary>The Kupro values an item last imported as. A re-run updates a field only while Kupro still holds this value.</summary>
     private sealed record ImportedValues(
@@ -960,4 +1000,6 @@ internal static class ImportedKinds
     public const string Sprint = "sprint";
     public const string Version = "version";
     public const string Label = "label";
+    public const string Comment = "comment";
+    public const string Attachment = "attachment";
 }

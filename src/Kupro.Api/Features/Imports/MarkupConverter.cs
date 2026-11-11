@@ -36,6 +36,12 @@ public static partial class MarkupConverters
         return string.IsNullOrWhiteSpace(markdown) ? null : markdown.Trim();
     }
 
+    /// <summary>
+    /// A mention of a source person by ID, for converters whose markup names people that way (Jira ADF, Azure DevOps).
+    /// The import rewrites it to the person's Kupro name (<see cref="ImportReferences"/>).
+    /// </summary>
+    public static string Mention(string personId) => $"@{ImportReferences.MentionOpen}{personId}{ImportReferences.MentionClose}";
+
     /// <summary>A fence longer than any run of backticks inside, so the content can't close it.</summary>
     internal static string Fence(string text, string language)
     {

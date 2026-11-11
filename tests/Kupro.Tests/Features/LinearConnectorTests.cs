@@ -38,9 +38,9 @@ public sealed class LinearConnectorTests
 
         description.People.ShouldBe(
         [
-            new SourcePerson { Id = Id(s.Sofie), Name = "Sofie Larsen", Email = "sofie@acme.example" },
-            new SourcePerson { Id = Id(s.Jonas), Name = "Jonas Holm", Email = "jonas@acme.example" },
-            new SourcePerson { Id = Id(s.Mads), Name = "Mads Berg", Email = "mads@acme.example" },
+            new SourcePerson { Id = Id(s.Sofie), Name = "Sofie Larsen", Email = "sofie@acme.example", Handle = "sofie" },
+            new SourcePerson { Id = Id(s.Jonas), Name = "Jonas Holm", Email = "jonas@acme.example", Handle = "jonas" },
+            new SourcePerson { Id = Id(s.Mads), Name = "Mads Berg", Email = "mads@acme.example", Handle = "mads" },
         ], "disabled users too: their issues and comments keep an author");
 
         description.ItemTypes.Select(t => (t.Id, t.Level)).ShouldBe([(LinearConnector.ProjectType, 2), (LinearConnector.IssueType, 1)]);

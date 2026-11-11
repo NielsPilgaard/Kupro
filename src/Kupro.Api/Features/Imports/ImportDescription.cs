@@ -150,9 +150,10 @@ public sealed class ImportDescription
     }
 
     /// <summary>The whole description. Too long: the source text is cut, and the block still gets through with its link to the original.</summary>
-    public (string? Text, bool Truncated) Build(SourceItem item, IReadOnlyList<ChecklistLine> checklist, IReadOnlyList<(string Field, string Value)> details)
+    public (string? Text, bool Truncated) Build(
+        SourceItem item, IReadOnlyList<ChecklistLine> checklist, IReadOnlyList<(string Field, string Value)> details, ImportReferences references)
     {
-        var body = MarkupConverters.ToMarkdown(item.Description, item.DescriptionMarkup);
+        var body = references.Rewrite(MarkupConverters.ToMarkdown(item.Description, item.DescriptionMarkup));
         if (checklist.Count > 0)
         {
             var lines = string.Join("\n", checklist.Select(c =>

@@ -1,4 +1,5 @@
 using Kupro.Api.Data;
+using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Features.Workspaces;
@@ -69,6 +70,28 @@ public sealed class CommentService(
         await db.SaveChangesAsync(ct);
         await realtime.ChangedAsync(ChangeTopic.Issue, key);
         return null;
+    }
+
+    /// <summary>
+    /// A comment an import writes, with the source's author and times (ADR-019 History). Added to the caller's context, so
+    /// it commits with the import's batch; the import sends one realtime event per batch.
+    /// </summary>
+    internal Comment AddImported(KuproDbContext db, Guid id, Guid issueId, Guid authorId, string body, DateTimeOffset createdAt, DateTimeOffset? editedAt, string? sourceAuthor)
+    {
+        var comment = new Comment
+        {
+            Id = id,
+            WorkspaceId = workspace.RequireWorkspaceId(),
+            IssueId = issueId,
+            AuthorId = authorId,
+            Via = Surface.Import,
+            Body = body,
+            CreatedAt = createdAt,
+            EditedAt = editedAt > createdAt ? editedAt : null,
+            SourceAuthor = sourceAuthor,
+        };
+        db.Comments.Add(comment);
+        return comment;
     }
 
     private IssueError? AuthorCheck(Comment? comment, Guid id) =>

@@ -97,6 +97,9 @@ public sealed record SourcePerson : ISnapshotRecord
     public required string Id { get; init; }
     public required string Name { get; init; }
     public string? Email { get; init; }
+
+    /// <summary>The name mentions use, without the <c>@</c> (Trello username, Linear display name).</summary>
+    public string? Handle { get; init; }
 }
 
 public sealed record SourceItemType

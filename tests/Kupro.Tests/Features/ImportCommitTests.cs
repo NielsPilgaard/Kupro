@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
@@ -391,7 +392,172 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
         result.Error!.Code.ShouldBe("import_not_found");
     }
 
+    [Fact]
+    public async Task History_comes_across_with_comments_files_and_the_changelog_in_the_feed()
+    {
+        var source = History();
+
+        var run = await CommitAsync(source, files: true);
+        run.State.ShouldBe(ImportRunState.Succeeded, run.Error);
+
+        var counts = Counts(run);
+        counts.Comments.ShouldBe(2);
+        counts.Attachments.ShouldBe(1);
+        counts.AttachmentsMissing.ShouldBe(0);
+        counts.Changes.ShouldBe(2);
+        counts.SourceChanges.ShouldBe(1);
+
+        Guid attachment = default;
+        await WithDbAsync(async db =>
+        {
+            var file = await db.Attachments.SingleAsync(Ct);
+            file.Ready.ShouldBeTrue();
+            file.Size.ShouldBe(4);
+            file.FileName.ShouldBe("flow.png");
+            file.CreatedAt.ShouldBe(new DateTimeOffset(2025, 3, 1, 9, 0, 0, TimeSpan.Zero));
+            attachment = file.Id;
+        });
+
+        var text = (await IssueAsync("WEB-2")).Description!;
+        text.ShouldContain($"![flow](attachment:{attachment})");
+        text.ShouldContain("@Sofie Larsen");
+        text.ShouldContain("see WEB-1");
+        await using (var stored = await Factory.Services.GetRequiredService<ObjectStorage>().OpenReadAsync($"{_workspace.Id}/{attachment}", Ct))
+        {
+            using var bytes = new MemoryStream();
+            await stored!.CopyToAsync(bytes, Ct);
+            bytes.ToArray().ShouldBe("PNG!"u8.ToArray());
+        }
+
+        var day = new DateTimeOffset(2025, 3, 1, 9, 0, 0, TimeSpan.Zero);
+        var feed = await GetAsync<List<FeedItem>>(_client, Url("issues/WEB-2/activity"));
+        var comment = feed.Single(f => f.Kind == FeedItemKind.Comment && f.Body == "Looks good");
+        comment.Actor.Name.ShouldBe("Jonas Holm");
+        comment.Via.ShouldBe(Surface.Import);
+        comment.At.ShouldBe(day.AddDays(1));
+        var state = feed.Single(f => f.Kind == FeedItemKind.Updated && f.Changes.Any(c => c.Field == "state"));
+        state.Actor.Name.ShouldBe("Sofie Larsen");
+        state.At.ShouldBe(day.AddDays(2));
+        state.Changes.Single().ShouldBe(new FeedChange("state", "todo", "done"));
+        feed.ShouldContain(f => f.Kind == FeedItemKind.Updated && f.Changes.Any(c => c.Field == "title" && c.From == "Pay by card"));
+
+        await WithDbAsync(async db =>
+        {
+            var issue = await db.Issues.SingleAsync(i => i.Key == "WEB-2", Ct);
+            var raw = await db.Activity.SingleAsync(a => a.IssueId == issue.Id && a.Kind == "source_changed", Ct);
+            raw.Via.ShouldBe(Surface.Import);
+            var data = JsonDocument.Parse(raw.Data!).RootElement;
+            data.GetProperty("field").GetString().ShouldBe("Team");
+            data.GetProperty("to").GetString().ShouldBe("Red");
+        });
+    }
+
+    [Fact]
+    public async Task Running_an_import_again_writes_no_comment_file_or_change_twice()
+    {
+        var source = History();
+        var import = await AddImportAsync(source, await MappingAsync(source), files: true);
+        (await RunAsync(import, ImportRunKind.Commit)).State.ShouldBe(ImportRunState.Succeeded);
+
+        var before = 0;
+        await WithDbAsync(async db => before = await db.Activity.CountAsync(Ct));
+
+        var again = await RunAsync(import, ImportRunKind.Commit);
+        again.State.ShouldBe(ImportRunState.Succeeded, again.Error);
+        var counts = Counts(again);
+        (counts.Comments, counts.Attachments, counts.Changes, counts.SourceChanges).ShouldBe((0, 0, 0, 0));
+        await WithDbAsync(async db =>
+        {
+            (await db.Activity.CountAsync(Ct)).ShouldBe(before);
+            (await db.Comments.CountAsync(Ct)).ShouldBe(2);
+            (await db.Attachments.CountAsync(Ct)).ShouldBe(1);
+        });
+    }
+
+    [Fact]
+    public async Task A_skipped_persons_comments_and_changes_keep_their_name_under_the_shared_placeholder()
+    {
+        var source = History();
+        var mapping = await MappingAsync(source) with { People = new Dictionary<string, PersonTarget> { ["u2"] = new(PersonAction.Skip) } };
+
+        (await CommitAsync(source, mapping)).State.ShouldBe(ImportRunState.Succeeded);
+
+        var feed = await GetAsync<List<FeedItem>>(_client, Url("issues/WEB-2/activity"));
+        feed.Single(f => f.Kind == FeedItemKind.Comment && f.Body == "Looks good").Actor.Name.ShouldBe("Skipped users from Jira");
+        await WithDbAsync(async db =>
+        {
+            (await db.Comments.SingleAsync(c => c.Body == "Looks good", Ct)).SourceAuthor.ShouldBe("Jonas Holm");
+            var updates = await db.Activity.Where(a => a.Kind == "updated").Select(a => a.Data!).ToListAsync(Ct);
+            var title = JsonDocument.Parse(updates.Single(d => d.Contains("title", StringComparison.Ordinal))).RootElement;
+            title.GetProperty("sourceActor").GetString().ShouldBe("Jonas Holm");
+        });
+        feed.Single(f => f.Kind == FeedItemKind.Updated && f.Changes.Any(c => c.Field == "title")).Changes.ShouldAllBe(c => c.Field == "title");
+    }
+
+    [Fact]
+    public async Task A_file_the_snapshot_does_not_carry_is_counted_and_its_link_kept()
+    {
+        var run = await CommitAsync(History());
+
+        run.State.ShouldBe(ImportRunState.Succeeded, run.Error);
+        Counts(run).AttachmentsMissing.ShouldBe(1);
+        (await IssueAsync("WEB-2")).Description!.ShouldContain("](https://acme.example/files/a1)");
+        await WithDbAsync(async db => (await db.Attachments.CountAsync(Ct)).ShouldBe(0));
+    }
+
+    [Fact]
+    public async Task Comments_and_files_on_a_folded_checklist_item_go_to_the_issue_that_holds_it()
+    {
+        var description = Description();
+        var source = new FakeConnector(description with { ItemTypes = [.. description.ItemTypes, new SourceItemType { Id = "check", Name = "Checklist item" }] });
+        source.Records.AddRange(
+        [
+            Item("card", key: "WEB-1"),
+            Item("c1", key: null, type: "check", parent: "card", title: "Step one"),
+            new SourceComment { Id = "k1", Item = "c1", Body = "On the step", Created = Created },
+            new SourceChange { Id = "x", Item = "c1", At = Created, Field = "status", From = "open", To = "done" },
+        ]);
+
+        (await CommitAsync(source)).State.ShouldBe(ImportRunState.Succeeded);
+
+        var feed = await GetAsync<List<FeedItem>>(_client, Url("issues/WEB-1/activity"));
+        feed.ShouldContain(f => f.Kind == FeedItemKind.Comment && f.Body == "On the step");
+        feed.ShouldNotContain(f => f.Kind == FeedItemKind.Updated, "a checklist line's history isn't the card's");
+    }
+
     // ---------------------------------------------------------------- fixtures
+
+    /// <summary>The sample with an inline image, a mention, a link to another source issue, and more history.</summary>
+    private static FakeConnector History()
+    {
+        var source = FakeConnector.Sample();
+        var at = new DateTimeOffset(2025, 3, 1, 9, 0, 0, TimeSpan.Zero);
+        var records = source.Records;
+        records[records.FindIndex(r => r is SourcePerson { Id: "u1" })] = new SourcePerson { Id = "u1", Name = "Sofie Larsen", Email = "sofie@acme.example", Handle = "sofie" };
+        records[records.FindIndex(r => r is SourceAttachment)] = new SourceAttachment
+        {
+            Id = "a1",
+            Item = "101",
+            FileName = "flow.png",
+            ContentType = "image/png",
+            Size = 4,
+            Created = at,
+            Url = "https://acme.example/files/a1",
+        };
+        var story = (SourceItem)records.Single(r => r is SourceItem { Id: "101" });
+        records[records.IndexOf(story)] = story with
+        {
+            Description = "<p>Ask @sofie, see <a href=\"https://acme.example/browse/WEB-1\">WEB-1</a></p><p><img src=\"https://acme.example/files/a1\" alt=\"flow\"></p>",
+        };
+        records[records.FindIndex(r => r is SourceItem { Id: "100" })] = ((SourceItem)records.Single(r => r is SourceItem { Id: "100" })) with { Url = "https://acme.example/browse/WEB-1" };
+        records.AddRange(
+        [
+            new SourceComment { Id = "c2", Item = "101", Author = "u1", Body = "<p>Shipped</p>", Markup = MarkupKind.Html, Created = at.AddDays(3) },
+            new SourceChange { Id = "h2", Item = "101", Actor = "u2", At = at.AddDays(1), Field = "title", From = "Pay by card", To = "Pay with MobilePay" },
+            new SourceChange { Id = "h3", Item = "101", Actor = "u1", At = at.AddDays(1), Field = "cf_team", From = "Blue", To = "Red" },
+        ]);
+        return source;
+    }
 
     private string Url(string path) => $"/api/v1/workspaces/{_workspace.Slug}/{path}";
 
@@ -437,11 +603,11 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
             Resolved = resolved,
         };
 
-    private static async Task<string> WriteAsync(FakeConnector source)
+    private static async Task<string> WriteAsync(FakeConnector source, bool files = false)
     {
         var path = Path.GetTempFileName();
         await using var file = File.Create(path);
-        await source.WriteSnapshotAsync(file, new ReadScope(), null, includeFiles: false, TimeProvider.System, Ct);
+        await source.WriteSnapshotAsync(file, new ReadScope(), null, includeFiles: files, TimeProvider.System, Ct);
         return path;
     }
 
@@ -460,7 +626,7 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
         }
     }
 
-    private async Task<Guid> AddImportAsync(FakeConnector source, ImportMapping mapping)
+    private async Task<Guid> AddImportAsync(FakeConnector source, ImportMapping mapping, bool files = false)
     {
         var import = Guid.CreateVersion7();
         await WithDbAsync(async db =>
@@ -477,7 +643,7 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
             await db.SaveChangesAsync(Ct);
         });
 
-        var path = await WriteAsync(source);
+        var path = await WriteAsync(source, files);
         try
         {
             await using var scope = Factory.Services.CreateAsyncScope();
@@ -493,8 +659,10 @@ public sealed class ImportCommitTests(PostgresFixture postgres, StorageFixture s
         return import;
     }
 
-    private async Task<ImportRun> CommitAsync(FakeConnector source, ImportMapping? mapping = null) =>
-        await RunAsync(await AddImportAsync(source, mapping ?? await MappingAsync(source)), ImportRunKind.Commit);
+    private async Task<ImportRun> CommitAsync(FakeConnector source, ImportMapping? mapping = null, bool files = false) =>
+        await RunAsync(await AddImportAsync(source, mapping ?? await MappingAsync(source), files), ImportRunKind.Commit);
+
+    private static ImportRunCounts Counts(ImportRun run) => JsonSerializer.Deserialize<ImportRunCounts>(run.Counts!, JsonSerializerOptions.Web)!;
 
     private async Task<ImportRun> RunAsync(Guid import, ImportRunKind kind) => await WaitForAsync(await QueueAsync(import, kind));
 

@@ -385,6 +385,7 @@ internal static class Linear
         Id = user.Id,
         Name = string.IsNullOrWhiteSpace(user.Name) ? user.DisplayName ?? user.Id : user.Name,
         Email = string.IsNullOrWhiteSpace(user.Email) ? null : user.Email,
+        Handle = string.IsNullOrWhiteSpace(user.DisplayName) ? null : user.DisplayName,
     };
 
     /// <summary>Linear's priority names: 0 is "No priority", then Urgent, High, Medium, Low.</summary>

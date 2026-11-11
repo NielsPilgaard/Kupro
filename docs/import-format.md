@@ -63,7 +63,8 @@ files/000001
 - `source.kind`: `jira`, `azure-devops`, `linear` and the other built-in sources, or your own name, which is shown
   as given ("via acme-tool import").
 - `people`: everyone the records refer to. In the wizard's People step each one becomes an existing member, an
-  invite or a placeholder. An email makes matching automatic.
+  invite or a placeholder. An email makes matching automatic. A `handle` is the name mentions use (`@sofie`), so
+  mentions in descriptions and comments are rewritten to the person's Kupro name.
 - `itemTypes[].level` and `statuses[].category` feed the default type and state mapping. Leave them out and the
   owner maps by hand.
 - `sprints[].project`: leave it out when a sprint spans projects. Kupro then creates one sprint per project.
