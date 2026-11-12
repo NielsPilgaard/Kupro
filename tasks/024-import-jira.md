@@ -3,7 +3,7 @@ title: 'Task 024: Import from Jira (Cloud and Data Center)'
 description: >-
   Jira connector for the import framework: Cloud (REST v3, ADF) and Data Center/Server (REST v2, wiki markup), with
   default type, state, priority and field mappings, sprints, versions, links, comments, attachments and changelog.
-status: 'Todo'
+status: 'In progress'
 phase: 1
 depends_on: [023]
 purpose: 'Implementation spec for task 024.'
@@ -17,6 +17,14 @@ Decisions are in [ADR-019](../docs/adr/ADR-019-import.md); the pipeline, wizard 
 [task 023](023-import-framework.md). This task adds `JiraConnector` (Cloud and Data Center share one connector with
 two API dialects), two markup converters, and Jira's default mappings. Jira is the biggest switcher pool, and Data
 Center ends on 28 March 2029.
+
+## Progress
+
+Markup is in: `AdfConverter` and `JiraWikiConverter` (`src/Kupro.Api/Features/Imports/`), registered in
+`MarkupConverters`, with golden files in `tests/Kupro.Tests/Features/Golden/Jira/`. Both leave an image or file named
+only by its file name as text; the connector is to point those it matches at the attachment's content URL (ADF: an
+`attrs.url` on the media node; wiki: `!url!` and `[name|url]`), so the import re-hosts them. Not started: the
+connector (client, reading, Cloud and Data Center dialects), default mappings, `--local`, the site page.
 
 ## Scope
 
@@ -92,7 +100,7 @@ Center ends on 28 March 2029.
 - [ ] Recorded fixtures from a Cloud sandbox (company-managed and team-managed project) and a Data Center instance
       import with no errors; plan and commit agree.
 - [ ] Epic > Story > Sub-task arrives as Epic > Feature > Task; Initiative handling follows the owner's choice.
-- [ ] ADF and wiki golden files convert; unknown nodes appear as fenced blocks, never vanish.
+- [x] ADF and wiki golden files convert; unknown nodes appear as fenced blocks, never vanish.
 - [ ] Mentions, issue links in text and inline images are rewritten; images open from Kupro storage.
 - [ ] Changelog: status, assignee, sprint and priority history shows as Kupro updates with original actor and time;
       custom-field history as source changes.

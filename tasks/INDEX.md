@@ -33,7 +33,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 | 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 016 (013 to close) | In progress |
 | 33 | [033 Pick the import UI direction](033-import-ui-direction.md) | P1 | 1 | — | Waiting on owner |
-| 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
+| 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | In progress |
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | In progress |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
