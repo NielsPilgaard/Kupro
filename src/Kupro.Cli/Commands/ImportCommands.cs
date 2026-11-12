@@ -118,7 +118,7 @@ internal static class ImportCommands
 
                 // Always JSON: this is the file to edit and save back.
                 var current = await api.GetAsync(cancellationToken: ct);
-                await c.Out.Writer.WriteLineAsync(await KiotaJsonSerializer.SerializeAsStringAsync(current!.Mapping!, serializeOnlyChangedValues: false, ct));
+                await c.Out.Writer.WriteLineAsync(await KiotaJsonSerializer.SerializeAsStringAsync(current!.Mapping!, serializeOnlyChangedValues: false, ct), ct);
             });
     }
 

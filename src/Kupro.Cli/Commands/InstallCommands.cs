@@ -121,7 +121,7 @@ internal static class InstallCommands
 
             if (c.Out.Json)
             {
-                await c.Out.Writer.WriteLineAsync($$"""{"version":"{{latest}}","previous":"{{CliVersion.Current}}"}""");
+                await c.Out.Writer.WriteLineAsync($$"""{"version":"{{latest}}","previous":"{{CliVersion.Current}}"}""", ct);
             }
         });
 

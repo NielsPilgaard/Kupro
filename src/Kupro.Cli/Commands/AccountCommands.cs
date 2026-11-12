@@ -46,7 +46,7 @@ internal static class AccountCommands
 
         await c.Session.LoginAsync(authority, status.CliClientId ?? "cli", c.Out.Writer, ct);
         var me = await c.Api.Api.V1.Me.GetAsync(cancellationToken: ct);
-        await c.Out.Writer.WriteLineAsync($"Signed in to {c.Session.Config.EffectiveUrl} as {me?.DisplayName} ({me?.Email}).");
+        await c.Out.Writer.WriteLineAsync($"Signed in to {c.Session.Config.EffectiveUrl} as {me?.DisplayName} ({me?.Email}).", ct);
     }
 
     private static Command Token()
@@ -60,7 +60,7 @@ internal static class AccountCommands
             c.Session.Config.Token = c.Get(secret);
             var me = await c.Api.Api.V1.Me.GetAsync(cancellationToken: ct);
             c.Session.Config.Save();
-            await c.Out.Writer.WriteLineAsync($"Using token for {me?.DisplayName}{(me?.Agent is { } a ? $" (agent {a})" : "")}.");
+            await c.Out.Writer.WriteLineAsync($"Using token for {me?.DisplayName}{(me?.Agent is { } a ? $" (agent {a})" : "")}.", ct);
         }));
 
         token.Subcommands.Add(new ApiCommand("list", "List your active API tokens.", "listApiTokens").Handle(async (c, ct) =>

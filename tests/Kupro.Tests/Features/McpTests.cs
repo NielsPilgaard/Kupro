@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Tokens;
@@ -447,7 +446,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         response.Headers.WwwAuthenticate.ToString().ShouldContain("resource_metadata=");
 
-        var metadata = JsonDocument.Parse(await client.GetStringAsync("/.well-known/oauth-protected-resource", Ct)).RootElement;
+        var metadata = JsonElement.Parse(await client.GetStringAsync("/.well-known/oauth-protected-resource", Ct));
         metadata.GetProperty("resource").GetString().ShouldEndWith("/mcp");
     }
 
@@ -494,7 +493,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     private static async Task<JsonElement> CallAsync(McpClient mcp, string tool, Dictionary<string, object?> args) =>
-        JsonDocument.Parse(await TextAsync(mcp, tool, args)).RootElement;
+        JsonElement.Parse(await TextAsync(mcp, tool, args));
 
     private static async Task<string> TextAsync(McpClient mcp, string tool, Dictionary<string, object?> args)
     {

@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Attachments;

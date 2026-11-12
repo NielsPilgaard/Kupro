@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.1",
+  "openapi": "3.1.2",
   "info": {
     "title": "Kupro API",
     "description": "Agent-first issue tracker. Authenticate with a Keycloak access token or a Kupro API token (kp_pat_..., kp_agent_...) as a Bearer token. Errors are Problem Details with a stable `code`.",
@@ -3007,6 +3007,7 @@
           {
             "name": "q",
             "in": "query",
+            "description": "Search: free text (typo tolerant, English and Danish stemming) plus filters such as\n`type:epic state:todo,inProgress assignee:me sprint:current label:bug project:KUP parent:KUP-1`.\nCombines with the other parameters by AND.",
             "schema": {
               "maxLength": 500,
               "minLength": 0,
@@ -3016,6 +3017,7 @@
           {
             "name": "project",
             "in": "query",
+            "description": "Project keys.",
             "schema": {
               "type": "array",
               "items": {
@@ -3046,6 +3048,7 @@
           {
             "name": "assignee",
             "in": "query",
+            "description": "Member id, `me`, or `none` for unassigned.",
             "schema": {
               "type": "string"
             }
@@ -3053,6 +3056,7 @@
           {
             "name": "label",
             "in": "query",
+            "description": "Label name.",
             "schema": {
               "type": "string"
             }
@@ -3060,6 +3064,7 @@
           {
             "name": "sprint",
             "in": "query",
+            "description": "Sprint id, `active` (each project's active sprint) or `none`.",
             "schema": {
               "type": "string"
             }
@@ -3067,6 +3072,7 @@
           {
             "name": "parent",
             "in": "query",
+            "description": "Parent issue key: its direct children.",
             "schema": {
               "type": "string"
             }
@@ -3074,6 +3080,7 @@
           {
             "name": "sort",
             "in": "query",
+            "description": "Default: `relevance` when `q` has free text, otherwise `updated`.",
             "schema": {
               "$ref": "#/components/schemas/IssueSort"
             }
@@ -3081,6 +3088,7 @@
           {
             "name": "limit",
             "in": "query",
+            "description": "Page size, 1-200 (default 50).",
             "schema": {
               "maximum": 200,
               "minimum": 1,
@@ -3091,6 +3099,7 @@
           {
             "name": "cursor",
             "in": "query",
+            "description": "`nextCursor` from the previous page.",
             "schema": {
               "type": "string"
             }
@@ -3890,8 +3899,8 @@
               }
             }
           },
-          "503": {
-            "description": "Service Unavailable",
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -3900,8 +3909,8 @@
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -4108,8 +4117,8 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found",
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -4118,8 +4127,8 @@
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4582,8 +4591,8 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found",
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -4592,8 +4601,8 @@
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4671,6 +4680,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -4683,16 +4702,6 @@
           },
           "503": {
             "description": "Service Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -4848,6 +4857,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -4860,16 +4879,6 @@
           },
           "409": {
             "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -10926,34 +10935,19 @@
   ],
   "tags": [
     {
-      "name": "Workspaces"
+      "name": "Attachments"
     },
     {
-      "name": "Members"
+      "name": "Comments"
+    },
+    {
+      "name": "Exports"
+    },
+    {
+      "name": "Imports"
     },
     {
       "name": "Invites"
-    },
-    {
-      "name": "Me"
-    },
-    {
-      "name": "Tokens"
-    },
-    {
-      "name": "Status"
-    },
-    {
-      "name": "Sprints"
-    },
-    {
-      "name": "Projects"
-    },
-    {
-      "name": "Plan"
-    },
-    {
-      "name": "Meetings"
     },
     {
       "name": "Issues"
@@ -10962,16 +10956,31 @@
       "name": "Labels"
     },
     {
-      "name": "Imports"
+      "name": "Me"
     },
     {
-      "name": "Exports"
+      "name": "Meetings"
     },
     {
-      "name": "Comments"
+      "name": "Members"
     },
     {
-      "name": "Attachments"
+      "name": "Plan"
+    },
+    {
+      "name": "Projects"
+    },
+    {
+      "name": "Sprints"
+    },
+    {
+      "name": "Status"
+    },
+    {
+      "name": "Tokens"
+    },
+    {
+      "name": "Workspaces"
     }
   ]
 }

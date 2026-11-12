@@ -9,7 +9,7 @@ All technical decisions: [docs/adr/INDEX.md](docs/adr/INDEX.md). Work is specifi
 UI rules: [docs/design-guide.md](docs/design-guide.md); brand, voice, EN/DA glossary: [docs/branding.md](docs/branding.md).
 Contributor workflow (PRs, CLA, checks): [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- **Backend**: .NET 10, ASP.NET Core plain controllers, EF Core + PostgreSQL ([ADR-002](docs/adr/ADR-002-backend-stack.md))
+- **Backend**: .NET 11, ASP.NET Core plain controllers, EF Core + PostgreSQL ([ADR-002](docs/adr/ADR-002-backend-stack.md))
 - **Frontend**: React + TS + Vite SPA, TanStack Query/Router ([ADR-003](docs/adr/ADR-003-frontend-stack.md))
 - **Agent surfaces**: REST, CLI, MCP — always in parity ([ADR-001](docs/adr/ADR-001-agent-parity.md))
 - **Auth**: Keycloak ([ADR-005](docs/adr/ADR-005-auth-keycloak.md)); **Hosting**: OVHcloud + Dokploy ([ADR-004](docs/adr/ADR-004-hosting.md))

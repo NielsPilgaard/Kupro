@@ -147,10 +147,10 @@ public static class Cli
             catch (ProblemDetails problem)
             {
                 var code = problem.AdditionalData.TryGetValue("code", out var c) ? c?.ToString() : null;
-                await error.WriteLineAsync($"error: {code ?? problem.Title}{(problem.Detail is { } d ? $": {d}" : "")}");
+                await error.WriteLineAsync($"error: {code ?? problem.Title}{(problem.Detail is { } d ? $": {d}" : "")}", ct);
                 if (problem.AdditionalData.TryGetValue("errors", out var errors) && errors is not null)
                 {
-                    await error.WriteLineAsync(errors.ToString());
+                    await error.WriteLineAsync(errors.ToString(), ct);
                 }
 
                 return 1;
@@ -159,22 +159,22 @@ public static class Cli
             {
                 await error.WriteLineAsync(api.ResponseStatusCode == 401
                     ? "error: not signed in or token rejected. Run `kupro login` or `kupro token set <token>`."
-                    : $"error: the API answered {api.ResponseStatusCode}.");
+                    : $"error: the API answered {api.ResponseStatusCode}.", ct);
                 return 1;
             }
             catch (CliException e)
             {
-                await error.WriteLineAsync($"error: {e.Message}");
+                await error.WriteLineAsync($"error: {e.Message}", ct);
                 return 1;
             }
             catch (HttpRequestException e)
             {
-                await error.WriteLineAsync($"error: can't reach {config.EffectiveUrl} ({e.Message}).");
+                await error.WriteLineAsync($"error: can't reach {config.EffectiveUrl} ({e.Message}).", ct);
                 return 1;
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
-                await error.WriteLineAsync("error: the server didn't answer in time. Try again.");
+                await error.WriteLineAsync("error: the server didn't answer in time. Try again.", ct);
                 return 1;
             }
             finally

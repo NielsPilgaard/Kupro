@@ -103,7 +103,7 @@ internal static class IssueCommands
 
             if (c.Out.Json && picked is not null)
             {
-                await c.Out.Writer.WriteLineAsync(await PickedJsonAsync(items, picked, c.Get(all) ? null : next));
+                await c.Out.Writer.WriteLineAsync(await PickedJsonAsync(items, picked, c.Get(all) ? null : next), ct);
                 return;
             }
 

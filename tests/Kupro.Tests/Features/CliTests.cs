@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Tokens;
@@ -89,7 +88,7 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var (exit, output, error) = await RunAsync(json: true, "issue", "create-many", "--file", file);
 
         exit.ShouldBe(0, error);
-        var created = JsonDocument.Parse(output).RootElement;
+        var created = JsonElement.Parse(output);
         created.GetArrayLength().ShouldBe(2);
         created[1].GetProperty("parentKey").GetString().ShouldBe(created[0].GetProperty("key").GetString());
     }
@@ -213,7 +212,7 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var (exit, output, error) = await RunAsync(json: true, stdin, "mcp");
 
         exit.ShouldBe(0, error);
-        var replies = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(l => JsonDocument.Parse(l).RootElement).ToList();
+        var replies = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(l => JsonElement.Parse(l)).ToList();
         replies.Select(r => r.GetProperty("id").GetInt32()).Order().ShouldBe([1, 2]);
         var tools = replies.Single(r => r.GetProperty("id").GetInt32() == 2).GetProperty("result").GetProperty("tools");
         tools.EnumerateArray().Select(t => t.GetProperty("name").GetString()).ShouldContain("search_issues");
@@ -271,7 +270,7 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     {
         var (exit, output, error) = await RunAsync(json: true, args);
         exit.ShouldBe(0, error);
-        return JsonDocument.Parse(output).RootElement;
+        return JsonElement.Parse(output);
     }
 
     private Task<(int Exit, string Out, string Error)> RunAsync(bool json, params string[] args) => RunAsync(json, null, args);

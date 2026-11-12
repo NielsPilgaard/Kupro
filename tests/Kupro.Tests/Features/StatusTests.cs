@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using Kupro.Api.Features.Status;
 using Kupro.Tests.Infrastructure;
 

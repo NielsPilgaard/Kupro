@@ -6,7 +6,7 @@
 # PG_MAJOR must match infrastructure/postgres/Dockerfile: a physical restore needs the same major.
 ARG PG_MAJOR=18
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY infrastructure/backup-agent/Kupro.BackupAgent.csproj infrastructure/backup-agent/

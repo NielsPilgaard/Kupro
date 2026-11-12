@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;

@@ -48,7 +48,7 @@ jobs:
           # The oldest supported runners, because a glibc binary only runs on that glibc or newer.
           - { os: ubuntu-22.04, rid: linux-x64 }
           - { os: ubuntu-22.04-arm, rid: linux-arm64 }
-          - { os: ubuntu-latest, rid: linux-musl-x64, container: 'mcr.microsoft.com/dotnet/sdk:10.0-alpine' }
+          - { os: ubuntu-latest, rid: linux-musl-x64, container: 'mcr.microsoft.com/dotnet/sdk:11.0-alpine' }
           - { os: macos-15, rid: osx-arm64 }
           - { os: windows-latest, rid: win-x64 }
     runs-on: ${{ matrix.os }}

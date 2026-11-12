@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
@@ -446,7 +445,7 @@ public sealed partial class ImportCommitTests(PostgresFixture postgres, StorageF
             var issue = await db.Issues.SingleAsync(i => i.Key == "WEB-2", Ct);
             var raw = await db.Activity.SingleAsync(a => a.IssueId == issue.Id && a.Kind == "source_changed", Ct);
             raw.Via.ShouldBe(Surface.Import);
-            var data = JsonDocument.Parse(raw.Data!).RootElement;
+            var data = JsonElement.Parse(raw.Data!);
             data.GetProperty("field").GetString().ShouldBe("Team");
             data.GetProperty("to").GetString().ShouldBe("Red");
         });
@@ -488,7 +487,7 @@ public sealed partial class ImportCommitTests(PostgresFixture postgres, StorageF
         {
             (await db.Comments.SingleAsync(c => c.Body == "Looks good", Ct)).SourceAuthor.ShouldBe("Jonas Holm");
             var updates = await db.Activity.Where(a => a.Kind == "updated").Select(a => a.Data!).ToListAsync(Ct);
-            var title = JsonDocument.Parse(updates.Single(d => d.Contains("title", StringComparison.Ordinal))).RootElement;
+            var title = JsonElement.Parse(updates.Single(d => d.Contains("title", StringComparison.Ordinal)));
             title.GetProperty("sourceActor").GetString().ShouldBe("Jonas Holm");
         });
         feed.Single(f => f.Kind == FeedItemKind.Updated && f.Changes.Any(c => c.Field == "title")).Changes.ShouldAllBe(c => c.Field == "title");

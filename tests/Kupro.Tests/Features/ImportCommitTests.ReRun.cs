@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Imports;
@@ -77,7 +76,7 @@ public sealed partial class ImportCommitTests
             (await db.Issues.CountAsync(Ct)).ShouldBe(1);
             var entry = await db.Activity.SingleAsync(a => a.Kind == "reimported", Ct);
             entry.Via.ShouldBe(Surface.Import);
-            var data = JsonDocument.Parse(entry.Data!).RootElement;
+            var data = JsonElement.Parse(entry.Data!);
             data.GetProperty("title").GetProperty("to").GetString().ShouldBe("New title");
             data.TryGetProperty("priority", out _).ShouldBeFalse();
         });

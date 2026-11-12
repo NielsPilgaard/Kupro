@@ -264,7 +264,7 @@ public sealed partial class ImportService
 
     private static IssueError NotFound(Guid importId) => new("import_not_found", $"No import {importId}.");
 
-    private static JsonElement? Parse(string? json) => json is null ? null : JsonDocument.Parse(json).RootElement.Clone();
+    private static JsonElement? Parse(string? json) => json is null ? null : JsonElement.Parse(json);
 
     private static string Short(string text) => text.Length <= MaxShown ? text : string.Concat(text.AsSpan(0, MaxShown), "…");
 

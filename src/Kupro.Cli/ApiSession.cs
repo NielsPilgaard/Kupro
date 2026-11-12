@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json.Serialization.Metadata;
 using Kupro.Cli.Api;
 using Microsoft.Kiota.Abstractions.Authentication;
@@ -192,7 +191,7 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
         }
 
         var url = device.VerificationUriComplete ?? device.VerificationUri;
-        await output.WriteLineAsync($"Open {url} and confirm the code {device.UserCode}.");
+        await output.WriteLineAsync($"Open {url} and confirm the code {device.UserCode}.", ct);
         TryOpenBrowser(url);
 
         var deadline = DateTimeOffset.UtcNow.AddSeconds(device.ExpiresIn);
@@ -207,7 +206,7 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
                 // The user may already have confirmed in the browser, and the code stays good until the deadline.
                 if (!down)
                 {
-                    await output.WriteLineAsync("The sign-in server isn't answering. Still trying until the code expires.");
+                    await output.WriteLineAsync("The sign-in server isn't answering. Still trying until the code expires.", ct);
                 }
 
                 down = true;

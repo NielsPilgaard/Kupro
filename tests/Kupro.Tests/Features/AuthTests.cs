@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using Kupro.Api.Features.Tokens;
 using Kupro.Api.Features.Users;
 using Kupro.Api.Features.Workspaces;
