@@ -48,7 +48,7 @@ source name ("via Jira import", web too), and a source key or URL finds its issu
 Linear presets, the other columns to the details block), kept as the import's source file and turned into a snapshot
 when a run starts, with its columns on `ImportMapping.Csv`. `ImportService.ProposeMappingAsync` proposes a mapping for
 any import. A Kupro export ZIP is a source too (`Kupro.Import.Kupro`, `StoreExportAsync`): keys, people, sprints,
-milestones, comments, files, field history and project capacity (`projects[].capacity` in the format, set on projects
+milestones, board order, comments, files, field history and project capacity (`projects[].capacity` in the format, set on projects
 the import creates) come across through the same pipeline. Not yet: feed entries other than field changes (relations
 added, sprint closes); the export is read whole into memory. The surfaces are in: REST `ImportsController` (owners, people only), `kupro import ...`
 (`create`, `csv`, `snapshot`, `kupro`, `list`, `show`, `upload`, `source`, `mapping [--set]`, `plan`, `run`, `runs`,
@@ -177,7 +177,7 @@ The web wizard waits on task 033.
 
 - [ ] A CSV of 1,000 rows with parents, labels and estimates imports through web and CLI. The plan matches what commit
       writes, and the parity test passes (MCP: read-only tool).
-- [ ] A Kupro export ZIP imported into an empty workspace reproduces issues, keys, comments, attachments, sprints and
+- [x] A Kupro export ZIP imported into an empty workspace reproduces issues, keys, comments, attachments, sprints and
       plan data (round-trip test against task 016's writer).
 - [x] Hierarchy fit: a fixture with four levels and a Task with children produces only valid ADR-008 shapes. Every
       re-parented item has a `relates` relation to its old parent and is counted in the plan.
