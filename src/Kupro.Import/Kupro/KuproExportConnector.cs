@@ -118,7 +118,8 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
 
         var labels = Rows("labels").ToDictionary(l => Str(l, "id")!, l => Str(l, "name")!, StringComparer.Ordinal);
         var items = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var issue in Rows("issues").Where(i => projects is null || projects.Contains(Str(i, "projectId")!)))
+        // In board order: the commit ranks items in the order it reads them.
+        foreach (var issue in Rows("issues").Where(i => projects is null || projects.Contains(Str(i, "projectId")!)).OrderBy(i => Num(i, "rank")))
         {
             ct.ThrowIfCancellationRequested();
             var id = Str(issue, "id")!;

@@ -28,6 +28,12 @@ public sealed partial class ImportCommitTests
         List<CapacityEntry> capacity = [new(new DateOnly(2027, 1, 1), 3), new(new DateOnly(2027, 7, 1), 5.5m)];
         await ReadAsync<List<CapacityEntry>>(await _client.PutAsJsonAsync(Url("projects/WEB/capacity"), new SetCapacityRequest(capacity), Json.Options, Ct));
         var before = await IssueAsync("WEB-2");
+        foreach (var title in new[] { "Third", "Fourth" })
+        {
+            await ReadAsync<IssueDetail>(await _client.PostAsJsonAsync(Url("issues"), new CreateIssueRequest("WEB", title), Json.Options, Ct), HttpStatusCode.Created);
+        }
+
+        await ReadAsync<IssueSummary>(await _client.PostAsJsonAsync(Url("issues/WEB-4/move"), new MoveIssueRequest(Before: "WEB-3"), Json.Options, Ct));
 
         var zip = Path.GetTempFileName();
         try
@@ -75,6 +81,10 @@ public sealed partial class ImportCommitTests
             (await db.Sprints.Select(s => s.Name).ToListAsync(Ct)).ShouldBe(["Sprint 1"]);
             (await db.Milestones.Select(m => m.Name).ToListAsync(Ct)).ShouldBe(["1.0"]);
             file = (await db.Attachments.SingleAsync(Ct)).Id;
+            before.SprintId.ShouldNotBeNull();
+            moved.SprintId.ShouldBe(await db.Sprints.Select(s => (Guid?)s.Id).SingleAsync(Ct));
+            var ranks = await db.Issues.Where(i => i.Key == "WEB-3" || i.Key == "WEB-4").ToDictionaryAsync(i => i.Key, i => i.Rank, Ct);
+            ranks["WEB-4"].ShouldBeLessThan(ranks["WEB-3"], "the board order comes along");
         });
         moved.Description!.ShouldContain($"attachment:{file}");
         await using var stored = await Factory.Services.GetRequiredService<ObjectStorage>().OpenReadAsync($"{_workspace.Id}/{file}", Ct);
