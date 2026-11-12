@@ -69,7 +69,13 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
     public Task<SourceDescription> DescribeAsync(CancellationToken ct) => Task.FromResult(new SourceDescription
     {
         Source = new SnapshotSource { Kind = SourceKinds.Kupro },
-        Projects = [.. Rows("projects").Select(p => new SourceProject { Id = Str(p, "id")!, Key = Str(p, "key"), Name = Str(p, "name") ?? Str(p, "key")! })],
+        Projects = [.. Rows("projects").Select(p => new SourceProject
+        {
+            Id = Str(p, "id")!,
+            Key = Str(p, "key"),
+            Name = Str(p, "name") ?? Str(p, "key")!,
+            Capacity = Capacity(Str(p, "id")!),
+        })],
         People = People(),
         ItemTypes =
         [
@@ -265,6 +271,18 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
                     : null;
             yield return new SourceChange { Id = $"{id}/{field.Name}", Item = Str(entry, "issueId")!, Actor = actor, At = at, Field = name, From = Side("from"), To = Side("to") };
         }
+    }
+
+    /// <summary>A project's headcount steps for the delivery plan, or none.</summary>
+    private List<SourceCapacity>? Capacity(string projectId)
+    {
+        List<SourceCapacity> steps =
+        [
+            .. Rows("projectCapacity")
+                .Where(c => Str(c, "projectId") == projectId && Str(c, "fromMonth") is not null && Num(c, "people") is not null)
+                .Select(c => new SourceCapacity { From = DateOnly.Parse(Str(c, "fromMonth")!, CultureInfo.InvariantCulture), People = Num(c, "people")!.Value }),
+        ];
+        return steps.Count == 0 ? null : steps;
     }
 
     private List<JsonElement> Rows(string table) =>

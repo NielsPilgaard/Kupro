@@ -11,7 +11,10 @@ public sealed record PlanCount(int Count, IReadOnlyList<PlanSample> Samples)
     public static PlanCount None { get; } = new(0, []);
 }
 
-/// <summary>Hours the import brings into a project. <see cref="Capacity"/> is set for an existing project that has one, to compare against.</summary>
+/// <summary>
+/// Hours the import brings into a project, to compare against <see cref="Capacity"/>: an existing project's, or the one the
+/// source brings for a project the import creates.
+/// </summary>
 public sealed record PlanProjectEffort(string Project, decimal Hours, IReadOnlyList<CapacityEntry> Capacity);
 
 /// <summary>What one <see cref="FoldEnd"/> would do to a four-level source; the wizard shows both side by side.</summary>

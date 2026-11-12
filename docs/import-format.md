@@ -68,6 +68,8 @@ files/000001
 - `itemTypes[].level` and `statuses[].category` feed the default type and state mapping. Leave them out and the
   owner maps by hand.
 - `sprints[].project`: leave it out when a sprint spans projects. Kupro then creates one sprint per project.
+- `projects[].capacity`: headcount steps for the delivery plan, e.g. `[{ "from": "2027-01-01", "people": 3 }]`. Kupro
+  keeps the month and sets them on a project the import creates; an existing project keeps its own.
 - `counts` and `cursor` are written by Kupro. A script can leave them out.
 - `partial`: `true` when the snapshot holds only what changed since an earlier one. Leave it out for a whole snapshot:
   an item an earlier run imported and this snapshot lacks is then reported as deleted in the source, and left alone.

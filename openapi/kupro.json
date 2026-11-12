@@ -9153,7 +9153,7 @@
             }
           }
         },
-        "description": "Hours the import brings into a project. IReadOnlyList&lt;CapacityEntry&gt; PlanProjectEffort.Capacity is set for an existing project that has one, to compare against."
+        "description": "Hours the import brings into a project, to compare against IReadOnlyList&lt;CapacityEntry&gt; PlanProjectEffort.Capacity: an existing project's, or the one the\nsource brings for a project the import creates."
       },
       "PlanResponse": {
         "required": [
@@ -9642,6 +9642,25 @@
         },
         "description": "Where the data came from. string SnapshotSource.Kind is one of SourceKinds."
       },
+      "SourceCapacity": {
+        "required": [
+          "from",
+          "people"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "A day in the first month the headcount applies to; Kupro keeps the month.",
+            "format": "date"
+          },
+          "people": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "description": "People on a project from a month on, until the next step."
+      },
       "SourceDescription": {
         "required": [
           "source"
@@ -9801,6 +9820,16 @@
               "string"
             ],
             "description": "The source's process or template name (ADO \"Agile\", \"Scrum\"), for default mappings."
+          },
+          "capacity": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/SourceCapacity"
+            },
+            "description": "Headcount steps for the delivery plan, when the source has them (a Kupro export does)."
           }
         },
         "description": "A Jira project, ADO project, Linear team, Trello or Monday board."

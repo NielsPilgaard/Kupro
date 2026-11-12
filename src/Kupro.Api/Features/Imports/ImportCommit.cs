@@ -433,6 +433,14 @@ public sealed partial class ImportCommit(
                 }
 
                 var project = projects.AddImported(db, group.Key, Cut(group.First().Name.Trim(), MaxProjectName), count++);
+                db.ProjectCapacity.AddRange(CapacityOf(group.Key).Select(c => new ProjectCapacity
+                {
+                    Id = Guid.CreateVersion7(),
+                    WorkspaceId = workspace.RequireWorkspaceId(),
+                    ProjectId = project.Id,
+                    FromMonth = c.FromMonth,
+                    People = c.People,
+                }));
                 Record(db, ImportedKinds.Project, group.Key, ImportedEntityKind.Project, project.Id);
                 created[group.Key] = project.Id;
                 delta.Projects++;
@@ -453,6 +461,13 @@ public sealed partial class ImportCommit(
             await realtime.ChangedAsync(ChangeTopic.Plan);
         }
     }
+
+    /// <summary>The source's headcount steps for a project the import creates, one per month, in the range Kupro takes.</summary>
+    private IEnumerable<CapacityEntry> CapacityOf(string projectKey) => _source.Capacity(projectKey)
+        .Select(c => new CapacityEntry(new DateOnly(c.From.Year, c.From.Month, 1), Math.Clamp(c.People, 0, 1000)))
+        .GroupBy(c => c.FromMonth)
+        .Select(g => g.Last())
+        .OrderBy(c => c.FromMonth);
 
     /// <summary>
     /// Numbers for every item still to write: its source number when it has one that is free, else the next free one

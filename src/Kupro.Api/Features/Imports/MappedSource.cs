@@ -40,6 +40,10 @@ public sealed class MappedSource
         _mapping.Projects.GetValueOrDefault(sourceProject)
         ?? ImportMappingDefaults.ProposeProject(_projects.GetValueOrDefault(sourceProject) ?? new SourceProject { Id = sourceProject, Name = sourceProject });
 
+    /// <summary>Headcount steps for a project the import creates: the first source project mapped to it that has any.</summary>
+    public IReadOnlyList<SourceCapacity> Capacity(string projectKey) =>
+        _projects.Values.Where(p => Project(p.Id).Key == projectKey).Select(p => p.Capacity).FirstOrDefault(c => c is { Count: > 0 }) ?? [];
+
     /// <summary>The Kupro type a source type ID maps to, for a change in the history.</summary>
     public IssueType TypeOf(string sourceType) =>
         (_mapping.Types.GetValueOrDefault(sourceType) ?? ImportMappingDefaults.ProposeType(_types.GetValueOrDefault(sourceType)?.Name ?? sourceType)).Type;

@@ -55,7 +55,19 @@
         "key": { "type": ["string", "null"] },
         "name": { "type": "string" },
         "url": { "type": ["string", "null"] },
-        "process": { "type": ["string", "null"], "description": "Process or template name, e.g. Azure DevOps Agile." }
+        "process": { "type": ["string", "null"], "description": "Process or template name, e.g. Azure DevOps Agile." },
+        "capacity": {
+          "type": ["array", "null"],
+          "description": "Headcount steps for the delivery plan; used for a project the import creates.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string", "format": "date", "description": "A day in the first month the headcount applies to." },
+              "people": { "type": "number", "minimum": 0 }
+            },
+            "required": ["from", "people"]
+          }
+        }
       },
       "required": ["id", "name"]
     },

@@ -5,6 +5,7 @@ using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Exports;
 using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
+using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Import.Snapshot;
 using Kupro.Tests.Infrastructure;
@@ -24,6 +25,8 @@ public sealed partial class ImportCommitTests
         await ImportedAsync(source, await MappingAsync(source) with { MilestoneVersions = ["v1"] }, files: true);
         await EditAsync("WEB-2", new UpdateIssueRequest(Priority: IssuePriority.Urgent));
         await ReadAsync<CommentResponse>(await _client.PostAsJsonAsync(Url("issues/WEB-1/comments"), new CommentRequest("Written in Kupro"), Json.Options, Ct), HttpStatusCode.Created);
+        List<CapacityEntry> capacity = [new(new DateOnly(2027, 1, 1), 3), new(new DateOnly(2027, 7, 1), 5.5m)];
+        await ReadAsync<List<CapacityEntry>>(await _client.PutAsJsonAsync(Url("projects/WEB/capacity"), new SetCapacityRequest(capacity), Json.Options, Ct));
         var before = await IssueAsync("WEB-2");
 
         var zip = Path.GetTempFileName();
@@ -46,6 +49,8 @@ public sealed partial class ImportCommitTests
             var mapping = (await WithImportsAsync(s => s.ProposeMappingAsync(import, Ct))).Value!;
             await WithDbAsync(async db =>
                 await db.WorkspaceImports.Where(i => i.Id == import).ExecuteUpdateAsync(s => s.SetProperty(i => i.Mapping, mapping.ToJson()), Ct));
+            var plan = await DryRunAsync(import);
+            plan.EffortByProject.Single(e => e.Project == "WEB").Capacity.ShouldBe(capacity);
             var run = await RunAsync(import, ImportRunKind.Commit);
             run.State.ShouldBe(ImportRunState.Succeeded, run.Error);
         }
@@ -60,6 +65,7 @@ public sealed partial class ImportCommitTests
         moved.Labels.ShouldBe(before.Labels);
         moved.CreatedAt.ShouldBe(before.CreatedAt);
         (await IssueAsync("OPS-1")).Title.ShouldBe("Rotate keys");
+        (await GetAsync<List<CapacityEntry>>(_client, Url("projects/WEB/capacity"))).ShouldBe(capacity);
 
         Guid file = default;
         await WithDbAsync(async db =>

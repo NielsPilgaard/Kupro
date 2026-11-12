@@ -92,6 +92,18 @@ public sealed record SourceProject
 
     /// <summary>The source's process or template name (ADO "Agile", "Scrum"), for default mappings.</summary>
     public string? Process { get; init; }
+
+    /// <summary>Headcount steps for the delivery plan, when the source has them (a Kupro export does).</summary>
+    public IReadOnlyList<SourceCapacity>? Capacity { get; init; }
+}
+
+/// <summary>People on a project from a month on, until the next step.</summary>
+public sealed record SourceCapacity
+{
+    /// <summary>A day in the first month the headcount applies to; Kupro keeps the month.</summary>
+    public required DateOnly From { get; init; }
+
+    public required decimal People { get; init; }
 }
 
 /// <summary>A source user. Matched to a member by email, then by name, or kept as a placeholder.</summary>

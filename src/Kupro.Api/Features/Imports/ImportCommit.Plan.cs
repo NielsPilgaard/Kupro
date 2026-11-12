@@ -195,7 +195,9 @@ public sealed partial class ImportCommit
                 .OrderBy(c => c.FromMonth)
                 .ToListAsync(ct))
             .ToLookup(c => c.Key, c => new CapacityEntry(c.FromMonth, c.People), StringComparer.Ordinal);
-        return (names.Count - existing, [.. hours.OrderBy(h => h.Key, StringComparer.Ordinal).Select(h => new PlanProjectEffort(h.Key, h.Value, [.. capacity[h.Key]]))]);
+        var projectsThere = (await db.Projects.AsNoTracking().Where(p => keys.Contains(p.Key)).Select(p => p.Key).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+        return (names.Count - existing, [.. hours.OrderBy(h => h.Key, StringComparer.Ordinal).Select(h => new PlanProjectEffort(h.Key, h.Value,
+            projectsThere.Contains(h.Key) ? [.. capacity[h.Key]] : [.. CapacityOf(h.Key)]))]);
     }
 
     /// <summary>The history a commit would still write: what earlier runs brought across is not counted again.</summary>
