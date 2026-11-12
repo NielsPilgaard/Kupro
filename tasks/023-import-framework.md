@@ -50,7 +50,7 @@ when a run starts, with its columns on `ImportMapping.Csv`. `ImportService.Propo
 any import. A Kupro export ZIP is a source too (`Kupro.Import.Kupro`, `StoreExportAsync`): keys, people, sprints,
 milestones, board order, comments, files, field history and project capacity (`projects[].capacity` in the format, set on projects
 the import creates) come across through the same pipeline. Not yet: feed entries other than field changes (relations
-added, sprint closes); the export is read whole into memory. The surfaces are in: REST `ImportsController` (owners, people only), `kupro import ...`
+added, sprint closes); `workspace.json` is read whole into memory, capped at 256 MB. The surfaces are in: REST `ImportsController` (owners, people only), `kupro import ...`
 (`create`, `csv`, `snapshot`, `kupro`, `list`, `show`, `upload`, `source`, `mapping [--set]`, `plan`, `run`, `runs`,
 `report`, `sync --auto`, `token`, `conflicts [--keep|--use-source]`, `undo [--check]`, `finish`; tokens from stdin or
 `KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared

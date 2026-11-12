@@ -9,11 +9,14 @@ namespace Kupro.Import.Kupro;
 /// <summary>
 /// A Kupro export ZIP (task 016, format 1) as a source: moves a workspace, or a self-hosted one, into another (task
 /// 023). Keys, people, sprints, milestones, comments, attachments and field history come across through the same
-/// pipeline as any source. Reads <c>workspace.json</c> whole, so a very large workspace needs memory to match.
+/// pipeline as any source. Reads <c>workspace.json</c> whole, up to <see cref="MaxWorkspaceJsonBytes"/>.
 /// </summary>
 public sealed class KuproExportConnector : ISourceConnector, IDisposable
 {
     private const int Format = 1;
+
+    /// <summary>Parsed whole, so capped: a ZIP bomb must not take the API's memory.</summary>
+    internal const long MaxWorkspaceJsonBytes = 256L << 20;
 
     /// <summary>Kupro's states, with categories that map each back onto itself.</summary>
     private static readonly SourceStatus[] States =
@@ -40,7 +43,7 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
         {
             var entry = archive.GetEntry("workspace.json") ?? throw new SnapshotFormatException("This is not a Kupro export: it has no workspace.json.");
             JsonDocument json;
-            await using (var stream = await entry.OpenAsync(ct))
+            await using (var stream = await SnapshotReader.OpenBoundedAsync(entry, ct, MaxWorkspaceJsonBytes))
             {
                 json = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
             }
@@ -216,14 +219,8 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
         var entry = _zip.Entries.FirstOrDefault(e => e.FullName.StartsWith("attachments/", StringComparison.Ordinal)
                 && e.Name.StartsWith(attachment.Id + "-", StringComparison.Ordinal))
             ?? throw new SourceAccessException($"The export has no file for attachment {attachment.FileName}.");
-        var copy = new MemoryStream();
-        await using (var stream = await entry.OpenAsync(ct))
-        {
-            await stream.CopyToAsync(copy, ct);
-        }
-
-        copy.Position = 0;
-        return copy;
+        // Streamed, not buffered: the caller copies it to disk.
+        return await entry.OpenAsync(ct);
     }
 
     /// <summary>Members as people: a person by their name and email, a placeholder or an agent by the name it shows.</summary>

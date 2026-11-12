@@ -140,15 +140,15 @@ public sealed class SnapshotReader : IAsyncDisposable
         }
     }
 
-    private static async Task<Stream> OpenBoundedAsync(ZipArchiveEntry entry, CancellationToken ct)
+    internal static async Task<Stream> OpenBoundedAsync(ZipArchiveEntry entry, CancellationToken ct, long limit = MaxEntryBytes)
     {
-        if (entry.Length > MaxEntryBytes)
+        if (entry.Length > limit)
         {
-            throw new SnapshotFormatException($"{entry.FullName} is larger than {MaxEntryBytes >> 20} MB.");
+            throw new SnapshotFormatException($"{entry.FullName} is larger than {limit >> 20} MB.");
         }
 
         // The declared size can lie (a ZIP bomb), so the stream enforces it too.
-        return new BoundedStream(await entry.OpenAsync(ct), MaxEntryBytes, entry.FullName);
+        return new BoundedStream(await entry.OpenAsync(ct), limit, entry.FullName);
     }
 
     private sealed class BoundedStream(Stream inner, long limit, string name) : Stream

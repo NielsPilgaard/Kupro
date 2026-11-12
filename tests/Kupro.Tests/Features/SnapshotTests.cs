@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using Kupro.Import;
+using Kupro.Import.Kupro;
 using Kupro.Import.Snapshot;
 using Kupro.Tests.Infrastructure;
 
@@ -130,6 +131,26 @@ public sealed class SnapshotTests
 
         var error = await Should.ThrowAsync<SnapshotFormatException>(() => SnapshotReader.OpenAsync(zip, Ct));
         error.Message.ShouldContain("format 2");
+    }
+
+    [Fact]
+    public async Task A_kupro_export_whose_workspace_json_inflates_past_the_cap_is_refused()
+    {
+        // About 260 KB compressed: a ZIP bomb, not a workspace.
+        using var zip = new MemoryStream();
+        using (var archive = new ZipArchive(zip, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            await using var entry = await archive.CreateEntry("workspace.json", CompressionLevel.Fastest).OpenAsync(Ct);
+            var spaces = new byte[1 << 20];
+            spaces.AsSpan().Fill((byte)' ');
+            for (var mb = 0; mb <= KuproExportConnector.MaxWorkspaceJsonBytes >> 20; mb++)
+            {
+                await entry.WriteAsync(spaces, Ct);
+            }
+        }
+
+        zip.Position = 0;
+        (await Should.ThrowAsync<SnapshotFormatException>(() => KuproExportConnector.OpenAsync(zip, Ct))).Message.ShouldContain("larger than");
     }
 
     [Fact]
