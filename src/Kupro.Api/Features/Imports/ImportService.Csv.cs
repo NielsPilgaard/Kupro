@@ -86,7 +86,7 @@ public sealed partial class ImportService
         try
         {
             await using var file = File.OpenRead(path);
-            using var export = await KuproExportConnector.OpenAsync(file, ct);
+            using var export = await KuproExportConnector.OpenAsync(file, options.Value.MaxExportJsonMegabytes, ct);
             description = await export.DescribeAsync(ct);
         }
         catch (Exception ex) when (ex is SnapshotFormatException or InvalidDataException or JsonException)
@@ -142,7 +142,7 @@ public sealed partial class ImportService
                 return new IssueError("no_snapshot", "Upload the export first.");
             }
 
-            using var export = await KuproExportConnector.OpenAsync(local, ct);
+            using var export = await KuproExportConnector.OpenAsync(local, options.Value.MaxExportJsonMegabytes, ct);
             return ImportMappingDefaults.Propose(await export.DescribeAsync(ct), members) with { MilestoneVersions = export.Milestones() };
         }
 

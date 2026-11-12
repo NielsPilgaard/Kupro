@@ -24,6 +24,12 @@ public sealed class ImportOptions
     /// <summary>Imports running at once across workspaces, so a big one can't starve exports or the meeting agent (ADR-019).</summary>
     public int MaxConcurrent { get; set; } = 2;
 
+    /// <summary>
+    /// The largest <c>workspace.json</c> a Kupro export may unpack to. It streams to disk, so this guards the disk
+    /// against a ZIP bomb, not memory.
+    /// </summary>
+    public int MaxExportJsonMegabytes { get; set; } = KuproExportConnector.DefaultMaxJsonMegabytes;
+
     /// <summary>Kupro's Trello API key. Without it, Trello is imported from a snapshot only.</summary>
     public string? TrelloKey { get; set; }
 
@@ -133,6 +139,7 @@ public sealed partial class ImportService(
     LabelService labels,
     AttachmentService attachments,
     RealtimeEvents realtime,
+    IOptions<ImportOptions> options,
     TimeProvider clock)
 {
     /// <summary>Replaces the import's stored snapshot, after checking it can be read.</summary>
@@ -576,7 +583,7 @@ public sealed partial class ImportJob(
                 }
                 else
                 {
-                    using var export = await KuproExportConnector.OpenAsync(source, ct);
+                    using var export = await KuproExportConnector.OpenAsync(source, options.Value.MaxExportJsonMegabytes, ct);
                     await export.WriteSnapshotAsync(file, scope, null, includeFiles: true, clock, ct);
                 }
             }

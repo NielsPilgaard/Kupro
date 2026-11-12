@@ -9,14 +9,19 @@ namespace Kupro.Import.Kupro;
 /// <summary>
 /// A Kupro export ZIP (task 016, format 1) as a source: moves a workspace, or a self-hosted one, into another (task
 /// 023). Keys, people, sprints, milestones, comments, attachments and field history come across through the same
-/// pipeline as any source. Reads <c>workspace.json</c> whole, up to <see cref="MaxWorkspaceJsonBytes"/>.
+/// pipeline as any source. <c>workspace.json</c> is streamed to disk table by table (<see cref="ExportSpool"/>), so
+/// memory doesn't grow with the workspace.
 /// </summary>
 public sealed class KuproExportConnector : ISourceConnector, IDisposable
 {
     private const int Format = 1;
 
-    /// <summary>Parsed whole, so capped: a ZIP bomb must not take the API's memory.</summary>
-    internal const long MaxWorkspaceJsonBytes = 256L << 20;
+    /// <summary>The default for <c>Imports:MaxExportJsonMegabytes</c>: guards the disk against a ZIP bomb.</summary>
+    public const int DefaultMaxJsonMegabytes = 1024;
+
+    /// <summary>The tables this connector reads; the rest of <c>workspace.json</c> is skipped.</summary>
+    private static readonly string[] Tables =
+        ["users", "members", "projects", "labels", "issues", "issueRelations", "sprints", "milestones", "projectCapacity", "comments", "activity", "attachments"];
 
     /// <summary>Kupro's states, with categories that map each back onto itself.</summary>
     private static readonly SourceStatus[] States =
@@ -30,31 +35,39 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
     ];
 
     private readonly ZipArchive _zip;
-    private readonly JsonDocument _json;
-    private readonly JsonElement _root;
+    private readonly ExportSpool _spool;
 
-    private KuproExportConnector(ZipArchive zip, JsonDocument json) => (_zip, _json, _root) = (zip, json, json.RootElement);
+    private KuproExportConnector(ZipArchive zip, ExportSpool spool) => (_zip, _spool) = (zip, spool);
 
     /// <summary>Opens the export. The stream must be seekable and stay open while the connector is used.</summary>
-    public static async Task<KuproExportConnector> OpenAsync(Stream zip, CancellationToken ct)
+    public static Task<KuproExportConnector> OpenAsync(Stream zip, CancellationToken ct) => OpenAsync(zip, DefaultMaxJsonMegabytes, ct);
+
+    /// <inheritdoc cref="OpenAsync(Stream, CancellationToken)"/>
+    public static async Task<KuproExportConnector> OpenAsync(Stream zip, int maxJsonMegabytes, CancellationToken ct)
     {
+        var maxBytes = (long)Math.Max(1, maxJsonMegabytes) << 20;
         var archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true);
         try
         {
             var entry = archive.GetEntry("workspace.json") ?? throw new SnapshotFormatException("This is not a Kupro export: it has no workspace.json.");
-            JsonDocument json;
-            await using (var stream = await SnapshotReader.OpenBoundedAsync(entry, ct, MaxWorkspaceJsonBytes))
+            if (entry.Length > maxBytes)
             {
-                json = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+                throw ExportSpool.TooLarge(maxBytes);
             }
 
-            if (!json.RootElement.TryGetProperty("format", out var format) || format.GetInt32() != Format)
+            ExportSpool spool;
+            await using (var stream = await entry.OpenAsync(ct))
             {
-                json.Dispose();
+                spool = await ExportSpool.SplitAsync(stream, Tables, maxBytes, ct);
+            }
+
+            if (spool.Format != Format)
+            {
+                spool.Dispose();
                 throw new SnapshotFormatException($"Kupro can read export format {Format}; this export has another.");
             }
 
-            return new KuproExportConnector(archive, json);
+            return new KuproExportConnector(archive, spool);
         }
         catch
         {
@@ -65,7 +78,7 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
 
     public void Dispose()
     {
-        _json.Dispose();
+        _spool.Dispose();
         _zip.Dispose();
     }
 
@@ -121,8 +134,13 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
 
         var labels = Rows("labels").ToDictionary(l => Str(l, "id")!, l => Str(l, "name")!, StringComparer.Ordinal);
         var items = new HashSet<string>(StringComparer.Ordinal);
-        // In board order: the commit ranks items in the order it reads them.
-        foreach (var issue in Rows("issues").Where(i => projects is null || projects.Contains(Str(i, "projectId")!)).OrderBy(i => Num(i, "rank")))
+        // In board order: the commit ranks items in the order it reads them. Sorted by offset, not held in memory.
+        var ranked = _spool.RowsWithOffsets("issues")
+            .Where(r => projects is null || projects.Contains(Str(r.Row, "projectId")!))
+            .Select(r => (Rank: Num(r.Row, "rank"), r.Offset))
+            .OrderBy(r => r.Rank)
+            .Select(r => r.Offset);
+        foreach (var issue in _spool.RowsAt("issues", ranked))
         {
             ct.ThrowIfCancellationRequested();
             var id = Str(issue, "id")!;
@@ -283,8 +301,7 @@ public sealed class KuproExportConnector : ISourceConnector, IDisposable
         return steps.Count == 0 ? null : steps;
     }
 
-    private List<JsonElement> Rows(string table) =>
-        _root.TryGetProperty(table, out var rows) && rows.ValueKind == JsonValueKind.Array ? [.. rows.EnumerateArray()] : [];
+    private IEnumerable<JsonElement> Rows(string table) => _spool.Rows(table);
 
     private static string? Str(JsonElement row, string property) =>
         row.TryGetProperty(property, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : null;

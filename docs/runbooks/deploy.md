@@ -82,7 +82,9 @@ whole cluster) and `BACKUP_CONSOLE_PORT` (`9090`, on `127.0.0.1` only).
 Imports (task 023) need no variable of their own: they keep snapshots and uploaded files in the attachments bucket
 (`<workspace>/imports/<id>/`) and source tokens encrypted with the Data Protection keys in `KEYS_BUCKET`. Losing the
 keys only means owners paste their tokens again. Two imports run at once across workspaces (`Imports:MaxConcurrent`,
-default 2, in the API's configuration). The "Kupro imports filling object storage" alert warns when imports copy more
+default 2, in the API's configuration). A Kupro export's `workspace.json` streams to the API's temp disk, up to
+`Imports:MaxExportJsonMegabytes` (default 1024; env `Imports__MaxExportJsonMegabytes`), which guards the disk against
+a ZIP bomb; raise it for a larger workspace. The "Kupro imports filling object storage" alert warns when imports copy more
 than 20 GB of files in a day. The API reads sources only at public addresses, so an import's URL can't reach the
 services next to it; `Imports:AllowPrivateAddresses` lifts that for a self-hosted Kupro and must stay off on hosted Kupro. `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
 (`builder.AddParameter`) adds a row here.

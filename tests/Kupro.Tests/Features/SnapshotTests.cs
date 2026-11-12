@@ -136,21 +136,18 @@ public sealed class SnapshotTests
     [Fact]
     public async Task A_kupro_export_whose_workspace_json_inflates_past_the_cap_is_refused()
     {
-        // About 260 KB compressed: a ZIP bomb, not a workspace.
+        // A few KB compressed: a ZIP bomb, not a workspace (the cap is Imports:MaxExportJsonMegabytes, 1 MB here).
         using var zip = new MemoryStream();
         using (var archive = new ZipArchive(zip, ZipArchiveMode.Create, leaveOpen: true))
         {
             await using var entry = await archive.CreateEntry("workspace.json", CompressionLevel.Fastest).OpenAsync(Ct);
-            var spaces = new byte[1 << 20];
+            var spaces = new byte[2 << 20];
             spaces.AsSpan().Fill((byte)' ');
-            for (var mb = 0; mb <= KuproExportConnector.MaxWorkspaceJsonBytes >> 20; mb++)
-            {
-                await entry.WriteAsync(spaces, Ct);
-            }
+            await entry.WriteAsync(spaces, Ct);
         }
 
         zip.Position = 0;
-        (await Should.ThrowAsync<SnapshotFormatException>(() => KuproExportConnector.OpenAsync(zip, Ct))).Message.ShouldContain("larger than");
+        (await Should.ThrowAsync<SnapshotFormatException>(() => KuproExportConnector.OpenAsync(zip, 1, Ct))).Message.ShouldContain("larger than 1 MB");
     }
 
     [Fact]
