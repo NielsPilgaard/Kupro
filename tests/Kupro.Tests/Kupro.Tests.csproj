@@ -22,6 +22,8 @@
   <ItemGroup>
     <!-- SnapshotTests checks the public schema against the model. -->
     <None Include="..\..\docs\import-format.schema.json" Link="import-format.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Golden files for the markup converters. -->
+    <None Include="Features\Golden\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

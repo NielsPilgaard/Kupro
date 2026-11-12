@@ -6,7 +6,7 @@ using Kupro.Import.Snapshot;
 
 namespace Kupro.Api.Features.Imports;
 
-/// <summary>Turns one source markup into Markdown (ADR-019 Markup). ADF and Jira wiki come with their connectors.</summary>
+/// <summary>Turns one source markup into Markdown (ADR-019 Markup).</summary>
 public interface IMarkupConverter
 {
     MarkupKind Kind { get; }
@@ -21,6 +21,8 @@ public static partial class MarkupConverters
     {
         new PlainTextConverter(),
         new HtmlConverter(),
+        new AdfConverter(),
+        new JiraWikiConverter(),
     }.ToDictionary(c => c.Kind);
 
     public static string? ToMarkdown(string? source, MarkupKind kind)

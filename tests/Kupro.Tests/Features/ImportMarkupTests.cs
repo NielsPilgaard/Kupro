@@ -139,8 +139,8 @@ public sealed class ImportMarkupTests
     [Fact]
     public void A_markup_with_no_converter_yet_is_fenced_not_dropped()
     {
-        MarkupConverters.ToMarkdown("h1. Wiki", MarkupKind.JiraWiki).ShouldBe("```text\nh1. Wiki\n```");
-        MarkupConverters.ToMarkdown("a ```` b", MarkupKind.Adf).ShouldBe("`````text\na ```` b\n`````");
+        MarkupConverters.ToMarkdown("h1. Wiki", (MarkupKind)99).ShouldBe("```text\nh1. Wiki\n```");
+        MarkupConverters.ToMarkdown("a ```` b", MarkupKind.Adf).ShouldBe("`````json\na ```` b\n`````");
     }
 
     [Theory]
