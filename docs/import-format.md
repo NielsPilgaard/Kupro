@@ -116,3 +116,7 @@ files/000001
 Upload it in Settings → Import → Snapshot, or run `kupro import snapshot <file.zip>`. Re-importing a newer
 snapshot of the same source updates the issues it created before. Kupro matches them by source ID, and edits made in
 Kupro since are kept ([ADR-019](adr/ADR-019-import.md#re-runs-and-conflicts)).
+
+For a Jira, Azure DevOps, Linear or Trello server Kupro can't reach (behind a VPN), `kupro import <source> --url
+<address> --local` reads it from your machine and uploads the snapshot for you; the source token stays on your machine.
+Add `--import <id>` to re-run into the same import, or `--out <file.zip>` to write the snapshot without uploading it.

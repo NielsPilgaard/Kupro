@@ -28,7 +28,8 @@ impediments and CMMI's change requests, risks and reviews keep a label, test art
 `ImportScope.SkipTypes`, priorities 1-4, states in progress named for test or resolved → In Review). Mentions
 (`data-vss-mention`) and `#4567` references are rewritten, and keys and aliases come from the pipeline. The fold choice
 is 023's. Not done: "New with no iteration → Backlog" and Severity 1 → Urgent (both per item, which a mapping can't
-express yet), `kupro import azure-devops --local`, and the site page (waits on the wizard).
+express yet) and the site page (waits on the wizard). `kupro import azure-devops --url <collection> --local` is in
+(built with 024's).
 
 Recorded fixtures need the sandbox (a manual step). Until then the fake stands in for them: replace or check it
 against a recording when one exists. Server-side connectors only reach public addresses (`PublicAddresses`, checked

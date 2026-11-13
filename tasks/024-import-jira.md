@@ -45,8 +45,13 @@ The connector is in: `Kupro.Import/Jira` (`JiraConnector`, client, reading), reg
 - Remote links (Confluence and web pages) come from `issue/{id}/remotelink`, one call per issue, into the item's links
   (the details block). Links that aren't http(s) are dropped.
 
-Not done: the People step's account type and the report's per-project summary (wizard), `--local`
-(the CLI has no `--local` for any source yet), and the site page (waits on the wizard). Recorded fixtures and the live
+- `kupro import jira --url <site> --local [--project KEY] [--import <id>] [--out file.zip]` runs the connector on the
+  user's machine and uploads a snapshot with the attachment bytes in it, so the token never reaches Kupro. Without
+  `--local` it is `import create jira`. The same command exists for azure-devops, linear and trello. Each `--local`
+  run reads everything in scope (no delta cursor), and the upload replaces the import's file.
+
+Not done: the People step's account type and the report's per-project summary (wizard), and the site page (waits on
+the wizard). Recorded fixtures and the live
 run need a Cloud sandbox and a Data Center instance (a manual step); until then the fake stands in for them.
 
 ## Scope

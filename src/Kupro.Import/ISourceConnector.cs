@@ -29,9 +29,16 @@ public static class SourceConnectorExtensions
     /// </summary>
     public static async Task WriteSnapshotAsync(
         this ISourceConnector connector, Stream output, ReadScope scope, string? cursor, bool includeFiles,
-        TimeProvider time, CancellationToken ct)
+        TimeProvider time, CancellationToken ct) =>
+        await connector.WriteSnapshotAsync(output, _ => scope, cursor, includeFiles, time, ct);
+
+    /// <summary>As above, with the scope picked from what Describe found (the CLI matches project keys to IDs).</summary>
+    public static async Task WriteSnapshotAsync(
+        this ISourceConnector connector, Stream output, Func<SourceDescription, ReadScope> scopeFor, string? cursor,
+        bool includeFiles, TimeProvider time, CancellationToken ct)
     {
         var description = await connector.DescribeAsync(ct);
+        var scope = scopeFor(description);
         await using var writer = new SnapshotWriter(output, description) { Partial = cursor is not null };
         await foreach (var record in connector.ReadAsync(scope, cursor, ct))
         {

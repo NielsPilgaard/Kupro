@@ -1,7 +1,15 @@
 using System.CommandLine;
 using System.Globalization;
 using Kupro.Cli.Api.Models;
+using Kupro.Import;
+using Kupro.Import.AzureDevOps;
+using Kupro.Import.Jira;
+using Kupro.Import.Linear;
+using Kupro.Import.Trello;
 using Microsoft.Kiota.Abstractions.Serialization;
+using ReadScope = Kupro.Import.Snapshot.ReadScope;
+using SnapshotDescription = Kupro.Import.Snapshot.SourceDescription;
+using SourceKinds = Kupro.Import.Snapshot.SourceKinds;
 
 namespace Kupro.Cli.Commands;
 
@@ -22,6 +30,10 @@ internal static class ImportCommands
                      FromFile("csv", "csv", "Import a CSV file: prints the columns Kupro found and how it maps them."),
                      FromFile("snapshot", "snapshot", "Import a snapshot ZIP (docs/import-format.md), e.g. from a connector's --local mode."),
                      FromFile("kupro", "kupro", "Move a workspace here from a Kupro export ZIP."),
+                     FromSource(SourceKinds.Jira, "Jira Cloud or Data Center", "--url: the site (https://acme.atlassian.net) or server address. Token: email:api-token on Cloud, a personal access token on Data Center."),
+                     FromSource(SourceKinds.AzureDevOps, "Azure DevOps Services or Server", "--url: the organisation or collection address. Token: a personal access token with Work Items (Read)."),
+                     FromSource(SourceKinds.Linear, "Linear", "Token: a personal API key."),
+                     FromSource(SourceKinds.Trello, "Trello", "Token: a Trello token; --key: your Trello API key."),
                      Create(), List(), Show(), Upload(), Source(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), Conflicts(), Undo(), Finish(),
                  })
         {
@@ -43,6 +55,112 @@ internal static class ImportCommands
             var upload = await UploadAsync(c, created!.Id!.Value, c.Get(file)!, ct);
             await Uploaded(c, created.Id.Value, upload);
         });
+    }
+
+    /// <summary>
+    /// <c>kupro import jira --url ...</c>: without --local, the same as <c>import create</c>. With --local the connector
+    /// runs here (a server behind a VPN, or a token that must not leave this machine) and uploads a snapshot ZIP with
+    /// the attachment bytes in it, so the token never reaches Kupro (ADR-019 Source access).
+    /// </summary>
+    private static Command FromSource(string kind, string name, string access)
+    {
+        var url = new Option<string?>("--url") { Description = "The source's address." };
+        var key = new Option<string?>("--key") { Description = "Your Trello API key (--local only; a key is not a secret, the token is)." };
+        var local = new Option<bool>("--local") { Description = "Read the source from this machine and upload a snapshot. The token stays here." };
+        var projects = new Option<string[]>("--project") { Description = "With --local: a project key or ID to read (repeat it); all projects if left out.", AllowMultipleArgumentsPerToken = true };
+        var into = new Option<Guid?>("--import") { Description = "With --local: upload to this import (a re-run) instead of creating one." };
+        var output = new Option<FileInfo?>("--out") { Description = "With --local: write the snapshot ZIP here and stop, to look at it before `kupro import snapshot`." };
+        var command = new ApiCommand(kind, $"Import from {name}. The token comes from stdin or {TokenVariable}. {access}", "createImport", "uploadImportSource")
+        {
+            local, projects, into, output,
+        };
+        if (kind != SourceKinds.Linear)
+        {
+            command.Options.Add(url);
+        }
+
+        if (kind == SourceKinds.Trello)
+        {
+            command.Options.Add(key);
+        }
+
+        return command.Handle(async (c, ct) =>
+        {
+            var token = await TokenAsync(ct) ?? throw new CliException($"Pipe the {name} token in, or set {TokenVariable}.");
+            if (!c.Get(local))
+            {
+                if (c.Get(into) is not null || c.Get(output) is not null || c.Get(projects) is { Length: > 0 })
+                {
+                    throw new CliException("--project, --import and --out go with --local. Without it, Kupro reads the source itself: pick projects with `kupro import mapping`.");
+                }
+
+                var created = await (await c.InWorkspaceAsync(ct)).Imports.PostAsync(
+                    new CreateImportRequest { SourceKind = kind, BaseUrl = c.Get(url), Token = token }, cancellationToken: ct);
+                await c.Out.DoneAsync(created!, $"Created import {created!.Id}. Next: `kupro import mapping {created.Id}`.");
+                return;
+            }
+
+            var transport = Cli.Runtime.Value?.SourceTransport;
+            using var http = new HttpClient(transport ?? new SocketsHttpHandler(), disposeHandler: transport is null);
+            var connector = Connector(kind, name, http, c.Get(url), c.Get(key), token);
+            var wanted = c.Get(projects) ?? [];
+            var file = c.Get(output) ?? new FileInfo(Path.Combine(Path.GetTempPath(), $"kupro-{kind}-{Guid.NewGuid():N}.zip"));
+            try
+            {
+                await using (var zip = file.Create())
+                {
+                    await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted), cursor: null, includeFiles: true, TimeProvider.System, ct);
+                }
+            }
+            catch (SourceAccessException e)
+            {
+                file.Delete();
+                throw new CliException($"{name} refused the read: {e.Message}");
+            }
+            catch
+            {
+                file.Delete();
+                throw;
+            }
+
+            if (c.Get(output) is not null)
+            {
+                file.Refresh();
+                await c.Out.MessageAsync($"Wrote {file.FullName} ({file.Length / 1024.0 / 1024.0:0.0} MB). Upload it with `kupro import snapshot {file.Name}`.");
+                return;
+            }
+
+            try
+            {
+                var id = c.Get(into) ?? (await (await c.InWorkspaceAsync(ct)).Imports.PostAsync(new CreateImportRequest { SourceKind = SourceKinds.Snapshot }, cancellationToken: ct))!.Id!.Value;
+                await Uploaded(c, id, await UploadAsync(c, id, file, ct));
+            }
+            finally
+            {
+                file.Delete();
+            }
+        });
+    }
+
+    private static ISourceConnector Connector(string kind, string name, HttpClient http, string? url, string? key, string token)
+    {
+        string Url() => url ?? throw new CliException($"Give the {name} address with --url.");
+        return kind switch
+        {
+            SourceKinds.Jira => new JiraConnector(http, Url(), token),
+            SourceKinds.AzureDevOps => new AzureDevOpsConnector(http, Url(), token),
+            SourceKinds.Linear => new LinearConnector(http, token),
+            SourceKinds.Trello => new TrelloConnector(http, key ?? throw new CliException("Give your Trello API key with --key."), token),
+            _ => throw new CliException($"Kupro can't read {name} from here."),
+        };
+    }
+
+    /// <summary>The projects asked for, by key or ID; a name the source doesn't have is an error, not an empty read.</summary>
+    private static ReadScope Scope(SnapshotDescription description, IReadOnlyList<string> wanted)
+    {
+        var ids = wanted.Select(w => description.Projects.FirstOrDefault(p => p.Id == w || string.Equals(p.Key, w, StringComparison.OrdinalIgnoreCase))?.Id
+            ?? throw new CliException($"The source has no project {w}. It has: {string.Join(", ", description.Projects.Select(p => p.Key ?? p.Id))}.")).ToList();
+        return new ReadScope { Projects = ids };
     }
 
     private static Command Create()

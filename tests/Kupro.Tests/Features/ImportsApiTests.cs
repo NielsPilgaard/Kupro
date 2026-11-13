@@ -189,12 +189,66 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
         (await GetAsync<ImportResponse>(bob, $"{theirUrl}/{theirImport.Id}")).State.ShouldBe(ImportState.Active, "nothing Alice sent reached Bob's import");
     }
 
-    private async Task<(int Exit, string Output, string Error)> CliAsync(string token, string workspace, string? stdin, params string[] args)
+    [Fact]
+    public async Task The_cli_reads_jira_locally_and_uploads_a_snapshot_so_the_token_stays_on_the_machine()
+    {
+        var (client, workspace, _) = await NewWorkspaceAsync("Local");
+        var token = (await NewTokenAsync(client, new CreateApiTokenRequest("laptop", ApiTokenKind.Personal))).Secret;
+        var jira = JiraConnectorTests.Cloud();
+        var url = $"/api/v1/workspaces/{workspace.Slug}/imports";
+        var zip = Path.Combine(Path.GetTempPath(), $"kupro-test-{Guid.NewGuid():N}.zip");
+        try
+        {
+            // --out writes the ZIP and stops: nothing reaches Kupro.
+            var (exit, output, error) = await CliAsync(token, workspace.Slug, FakeJira.CloudToken, jira, "import", "jira", "--local", "--url", jira.SiteUrl, "--project", "web", "--out", zip);
+            exit.ShouldBe(0, error);
+            output.ShouldContain("kupro import snapshot");
+            new FileInfo(zip).Length.ShouldBeGreaterThan(0);
+            (await GetAsync<List<ImportResponse>>(client, url)).ShouldBeEmpty();
+
+            (exit, output, error) = await CliAsync(token, workspace.Slug, FakeJira.CloudToken, jira, "import", "jira", "--local", "--url", jira.SiteUrl, "--project", "WEB");
+            exit.ShouldBe(0, error);
+            var import = (await GetAsync<List<ImportResponse>>(client, url)).ShouldHaveSingleItem();
+            import.SourceKind.ShouldBe(SourceKinds.Snapshot);
+            import.HasToken.ShouldBeFalse("the Jira token never left the CLI");
+            output.ShouldContain($"Import {import.Id}");
+
+            // The ZIP carries the attachment bytes, so the run never calls Jira.
+            var proposed = (await GetAsync<ImportMappingResponse>(client, $"{url}/{import.Id}/mapping")).Mapping;
+            await ReadAsync<ImportMapping>(await client.PutAsJsonAsync($"{url}/{import.Id}/mapping", proposed, Json.Options, Ct));
+            var before = jira.Requests.Count;
+            (exit, output, error) = await CliAsync(token, workspace.Slug, null, (HttpMessageHandler?)null, "import", "plan", import.Id.ToString());
+            exit.ShouldBe(0, error);
+            output.ShouldContain("Create");
+            jira.Requests.Count.ShouldBe(before);
+
+            // A re-run uploads to the same import.
+            (exit, _, error) = await CliAsync(token, workspace.Slug, FakeJira.CloudToken, jira, "import", "jira", "--local", "--url", jira.SiteUrl, "--import", import.Id.ToString());
+            exit.ShouldBe(0, error);
+            (await GetAsync<List<ImportResponse>>(client, url)).ShouldHaveSingleItem();
+
+            (exit, _, error) = await CliAsync(token, workspace.Slug, FakeJira.CloudToken, jira, "import", "jira", "--local", "--url", jira.SiteUrl, "--project", "NOPE");
+            exit.ShouldNotBe(0);
+            error.ShouldContain("no project NOPE");
+            (exit, _, error) = await CliAsync(token, workspace.Slug, FakeJira.CloudToken, jira, "import", "jira", "--url", jira.SiteUrl, "--project", "WEB");
+            exit.ShouldNotBe(0);
+            error.ShouldContain("go with --local");
+        }
+        finally
+        {
+            File.Delete(zip);
+        }
+    }
+
+    private Task<(int Exit, string Output, string Error)> CliAsync(string token, string workspace, string? stdin, params string[] args) =>
+        CliAsync(token, workspace, stdin, null, args);
+
+    private async Task<(int Exit, string Output, string Error)> CliAsync(string token, string workspace, string? stdin, HttpMessageHandler? source, params string[] args)
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
         var config = new Kupro.Cli.CliConfig { InMemory = true, Url = "http://localhost", Token = token, Workspace = workspace };
-        Kupro.Cli.Cli.Runtime.Value = new Kupro.Cli.CliRuntime(config, stdout, stderr, Factory.Server.CreateHandler(), false, stdin is null ? null : new StringReader(stdin));
+        Kupro.Cli.Cli.Runtime.Value = new Kupro.Cli.CliRuntime(config, stdout, stderr, Factory.Server.CreateHandler(), false, stdin is null ? null : new StringReader(stdin), SourceTransport: source);
         var exit = await Kupro.Cli.Cli.BuildRoot().Parse(args).InvokeAsync(new System.CommandLine.InvocationConfiguration { Error = stderr, Output = stdout }, Ct);
         return (exit, stdout.ToString(), stderr.ToString());
     }

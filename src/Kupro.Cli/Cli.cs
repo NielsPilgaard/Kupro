@@ -58,10 +58,13 @@ public sealed class CommandContext(ParseResult parse, ApiSession session, Output
         Api.Api.V1.Workspaces[await WorkspaceAsync(ct)];
 }
 
-/// <summary>Overrides for in-process runs (tests): config, output and HTTP transport.</summary>
+/// <summary>
+/// Overrides for in-process runs (tests): config, output and HTTP transport. <paramref name="SourceTransport"/> is what
+/// <c>import &lt;source&gt; --local</c> reads the source through.
+/// </summary>
 public sealed record CliRuntime(
     CliConfig Config, TextWriter Out, TextWriter Error, HttpMessageHandler? Transport, bool Json, TextReader? In = null,
-    string? Version = null);
+    string? Version = null, HttpMessageHandler? SourceTransport = null);
 
 public static class Cli
 {
