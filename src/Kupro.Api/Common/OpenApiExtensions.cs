@@ -11,7 +11,6 @@ public static class OpenApiExtensions
         {
             await UseSharedEnumSchemasAsync(operation, context, ct);
 
-
             // XML-comment text joins lines with the OS newline; normalize so a Windows build matches CI's spec.
             operation.Summary = Lf(operation.Summary);
             operation.Description = Lf(operation.Description);
@@ -83,7 +82,8 @@ public static class OpenApiExtensions
             return Task.CompletedTask;
         }));
 
-    // .NET 11 defaults to OpenAPI 3.2; stay on 3.1 until Kiota and hey-api support it.
+    // .NET 11 defaults to OpenAPI 3.2, which adds nothing this API uses; 3.1 keeps the public spec readable by
+    // third-party tools that don't support 3.2 yet. The csproj pins the build-time spec the same way.
     private static OpenApiOptions OpenApi31(OpenApiOptions options)
     {
         options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
