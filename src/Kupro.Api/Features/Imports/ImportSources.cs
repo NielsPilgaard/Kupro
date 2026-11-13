@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Kupro.Import;
 using Kupro.Import.AzureDevOps;
+using Kupro.Import.Jira;
 using Kupro.Import.Linear;
 using Kupro.Import.Snapshot;
 using Kupro.Import.Trello;
@@ -25,6 +26,8 @@ public sealed class ImportSources
         HttpClient Client() => http.CreateClient(nameof(ImportSources));
         Register(SourceKinds.AzureDevOps, (import, token) =>
             new AzureDevOpsConnector(Client(), import.BaseUrl ?? throw new ImportFailedException("An Azure DevOps import needs the organisation URL."), token, clock));
+        Register(SourceKinds.Jira, (import, token) =>
+            new JiraConnector(Client(), import.BaseUrl ?? throw new ImportFailedException("A Jira import needs the site URL."), token, clock));
         Register(SourceKinds.Linear, (_, token) => new LinearConnector(Client(), token, LinearAuth.ApiKey, clock));
         if (options.Value.TrelloKey is { Length: > 0 } key)
         {

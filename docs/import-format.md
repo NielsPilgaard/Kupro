@@ -64,7 +64,8 @@ files/000001
   as given ("via acme-tool import").
 - `people`: everyone the records refer to. In the wizard's People step each one becomes an existing member, an
   invite or a placeholder. An email makes matching automatic. A `handle` is the name mentions use (`@sofie`), so
-  mentions in descriptions and comments are rewritten to the person's Kupro name.
+  mentions in descriptions and comments are rewritten to the person's Kupro name. Set `bot: true` on an app or
+  integration account and the People step proposes to skip it.
 - `itemTypes[].level` and `statuses[].category` feed the default type and state mapping. Leave them out and the
   owner maps by hand.
 - `sprints[].project`: leave it out when a sprint spans projects. Kupro then creates one sprint per project.

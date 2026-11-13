@@ -123,7 +123,7 @@ public sealed partial class ImportCommitTests(PostgresFixture postgres, StorageF
             Item("c", key: "WEB-3", type: "story", parent: "b"),
             Item("d", key: "WEB-4", type: "task", parent: "c"));
 
-        (await CommitAsync(source)).State.ShouldBe(ImportRunState.Succeeded);
+        (await CommitAsync(source, await MappingAsync(source) with { Fold = FoldEnd.Bottom })).State.ShouldBe(ImportRunState.Succeeded);
 
         (await IssueAsync("WEB-1")).Type.ShouldBe(IssueType.Epic);
         (await IssueAsync("WEB-2")).Parent!.Key.ShouldBe("WEB-1");

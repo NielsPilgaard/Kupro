@@ -115,6 +115,9 @@ public sealed record SourcePerson : ISnapshotRecord
 
     /// <summary>The name mentions use, without the <c>@</c> (Trello username, Linear display name).</summary>
     public string? Handle { get; init; }
+
+    /// <summary>An app or integration account (Jira Cloud's app users). The People step proposes to skip it.</summary>
+    public bool Bot { get; init; }
 }
 
 public sealed record SourceItemType

@@ -77,7 +77,8 @@
         "id": { "$ref": "#/$defs/id" },
         "name": { "type": "string" },
         "email": { "type": ["string", "null"] },
-        "handle": { "type": ["string", "null"], "description": "The name mentions use, without the @." }
+        "handle": { "type": ["string", "null"], "description": "The name mentions use, without the @." },
+        "bot": { "type": "boolean", "description": "An app or integration account; the People step proposes to skip it." }
       },
       "required": ["id", "name"]
     },

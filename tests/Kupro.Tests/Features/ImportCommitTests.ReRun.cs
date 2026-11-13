@@ -196,7 +196,7 @@ public sealed partial class ImportCommitTests
             Item("b", key: "WEB-2", type: "feature", parent: "a"),
             Item("c", key: "WEB-3", type: "story", parent: "b"),
             Item("d", key: "WEB-4", type: "task", parent: "c"));
-        var mapping = await MappingAsync(source);
+        var mapping = await MappingAsync(source) with { Fold = FoldEnd.Bottom };
         var import = await ImportedAsync(source, mapping);
         await WithDbAsync(async db =>
         {
@@ -397,7 +397,7 @@ public sealed partial class ImportCommitTests
             Item("b", key: "AAA-2", type: "feature", parent: "a"),
             Item("c", key: "AAA-3", type: "story", parent: "b"),
             Item("d", key: "AAA-4", type: "task", parent: "c"));
-        var kept = await MappingAsync(four) with { Projects = new Dictionary<string, ProjectTarget> { ["p"] = new("AAA", "A") } };
+        var kept = await MappingAsync(four) with { Fold = FoldEnd.Bottom, Projects = new Dictionary<string, ProjectTarget> { ["p"] = new("AAA", "A") } };
         var import = await ImportedAsync(four, kept);
         await WithDbAsync(async db =>
         {

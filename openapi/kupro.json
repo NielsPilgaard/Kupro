@@ -9793,6 +9793,10 @@
               "string"
             ],
             "description": "The name mentions use, without the `@` (Trello username, Linear display name)."
+          },
+          "bot": {
+            "type": "boolean",
+            "description": "An app or integration account (Jira Cloud's app users). The People step proposes to skip it."
           }
         },
         "description": "A source user. Matched to a member by email, then by name, or kept as a placeholder."

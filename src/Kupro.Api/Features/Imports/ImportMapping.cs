@@ -120,7 +120,62 @@ public static class ImportMappingDefaults
             States = states.Where(s => s.Value is not null).ToDictionary(s => s.Key, s => s.Value!.Value, StringComparer.Ordinal),
             StatusesToReview = [.. states.Where(s => s.Value is null).Select(s => s.Key)],
         };
-        return header.Source.Kind == SourceKinds.AzureDevOps ? AzureDevOps(header, mapping) : mapping;
+        return header.Source.Kind switch
+        {
+            SourceKinds.AzureDevOps => AzureDevOps(header, mapping),
+            SourceKinds.Jira => Jira(header, mapping),
+            _ => mapping,
+        };
+    }
+
+    /// <summary>
+    /// Jira (task 024): New Feature is a Task like Story and Improvement; the fit makes a parent of sub-tasks a Feature. An
+    /// Initiative makes four levels, so the top folds by default: Epics stay Epics. Service Management request types are
+    /// left out. New statuses named for a backlog are Backlog; statuses in progress named for QA or test are In Review.
+    /// Components become labels, and versions with a date milestones.
+    /// </summary>
+    private static ImportMapping Jira(SnapshotHeader header, ImportMapping mapping)
+    {
+        string[] requestTypes = ["Service Request", "Service request with approvals", "Incident", "Problem", "Change", "IT Help", "Support"];
+        var serviceDesks = header.Projects.Where(p => p.Process == "service_desk").Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var types = mapping.Types.ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal);
+        var skip = new List<string>();
+        foreach (var type in header.ItemTypes.DistinctBy(t => t.Id))
+        {
+            if ((type.Project is { } project && serviceDesks.Contains(project))
+                || type.Name.StartsWith("[System]", StringComparison.OrdinalIgnoreCase)
+                || (serviceDesks.Count > 0 && requestTypes.Contains(type.Name, StringComparer.OrdinalIgnoreCase)))
+            {
+                skip.Add(type.Id);
+            }
+            else if (type.Name.Equals("New Feature", StringComparison.OrdinalIgnoreCase))
+            {
+                types[type.Id] = new TypeTarget(IssueType.Task);
+            }
+        }
+
+        var states = mapping.States.ToDictionary(s => s.Key, s => s.Value, StringComparer.Ordinal);
+        foreach (var status in header.Statuses.Where(s => states.GetValueOrDefault(s.Id) is not IssueState.Canceled))
+        {
+            if (status.Category == "new" && Has(status.Name, "backlog"))
+            {
+                states[status.Id] = IssueState.Backlog;
+            }
+            else if (status.Category == "indeterminate" && (Has(status.Name, "QA") || Has(status.Name, "test")))
+            {
+                states[status.Id] = IssueState.InReview;
+            }
+        }
+
+        return mapping with
+        {
+            Types = types,
+            States = states,
+            Fold = FoldEnd.Top,
+            LabelFields = header.Fields.Any(f => f.Id == "components") ? ["components"] : [],
+            MilestoneVersions = [.. header.Versions.Where(v => v.Date is not null).Select(v => v.Id)],
+            Scope = mapping.Scope with { SkipTypes = skip },
+        };
     }
 
     /// <summary>
@@ -177,9 +232,14 @@ public static class ImportMappingDefaults
         };
     }
 
-    /// <summary>Email first, then a name only one member has: two people with the same name stay a placeholder.</summary>
+    /// <summary>Email first, then a name only one member has: two people with the same name stay a placeholder. Bots are skipped.</summary>
     public static PersonTarget ProposePerson(SourcePerson person, IReadOnlyList<MemberCandidate> members)
     {
+        if (person.Bot)
+        {
+            return new PersonTarget(PersonAction.Skip);
+        }
+
         var match = person.Email is { Length: > 0 } email
             ? members.FirstOrDefault(m => string.Equals(m.Email, email, StringComparison.OrdinalIgnoreCase))
             : null;
