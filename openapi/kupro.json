@@ -7227,6 +7227,16 @@
               "$ref": "#/components/schemas/IssuePriority"
             }
           },
+          "canceledValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Field values that make a Done item Canceled, by field ID: a Jira status says only \"done\", and its resolution\n(\"Won't Do\", \"Duplicate\") says how."
+          },
           "statusesToReview": {
             "type": "array",
             "items": {

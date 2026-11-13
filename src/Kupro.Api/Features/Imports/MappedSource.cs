@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Kupro.Api.Features.Issues;
 using Kupro.Import.Snapshot;
 
@@ -48,8 +49,23 @@ public sealed class MappedSource
     public IssueType TypeOf(string sourceType) =>
         (_mapping.Types.GetValueOrDefault(sourceType) ?? ImportMappingDefaults.ProposeType(_types.GetValueOrDefault(sourceType)?.Name ?? sourceType)).Type;
 
-    /// <summary>A status with no state yet is Todo: no item is skipped for its status (ADR-019 States).</summary>
-    public IssueState State(SourceItem item) => State(item.Status);
+    /// <summary>
+    /// A status with no state yet is Todo: no item is skipped for its status (ADR-019 States). A Done item with a
+    /// canceling field value (a Jira resolution) is Canceled.
+    /// </summary>
+    public IssueState State(SourceItem item)
+    {
+        var state = State(item.Status);
+        return state is IssueState.Done && _mapping.CanceledValues.Any(c => Has(item, c.Key, c.Value)) ? IssueState.Canceled : state;
+    }
+
+    private static bool Has(SourceItem item, string field, IReadOnlyList<string> values) =>
+        item.Fields.TryGetValue(field, out var value) && value.ValueKind switch
+        {
+            JsonValueKind.String => values.Contains(value.GetString()!, StringComparer.OrdinalIgnoreCase),
+            JsonValueKind.Array => value.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.String && values.Contains(v.GetString()!, StringComparer.OrdinalIgnoreCase)),
+            _ => false,
+        };
 
     public IssueState State(string status) => _mapping.States.TryGetValue(status, out var state) ? state : IssueState.Todo;
 

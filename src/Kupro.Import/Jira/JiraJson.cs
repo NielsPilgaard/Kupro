@@ -88,6 +88,31 @@ internal sealed record JiraSchema
     public string? System { get; init; }
 }
 
+internal sealed record JiraResolution
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+}
+
+/// <summary>Cloud's <c>resolution/search</c> page.</summary>
+internal sealed record JiraResolutionPage
+{
+    public IReadOnlyList<JiraResolution> Values { get; set; } = [];
+    public bool IsLast { get; init; } = true;
+}
+
+/// <summary>A link to something outside Jira (<c>issue/{id}/remotelink</c>): a Confluence page or a web page.</summary>
+internal sealed record JiraRemoteLink
+{
+    public JiraRemoteObject? Object { get; init; }
+}
+
+internal sealed record JiraRemoteObject
+{
+    public string? Url { get; init; }
+    public string? Title { get; init; }
+}
+
 internal sealed record JiraVersion
 {
     public required string Id { get; init; }
@@ -203,6 +228,9 @@ internal sealed record JiraIssueRef
 [JsonSerializable(typeof(List<JiraTypeStatuses>))]
 [JsonSerializable(typeof(List<JiraField>))]
 [JsonSerializable(typeof(List<JiraVersion>))]
+[JsonSerializable(typeof(List<JiraResolution>))]
+[JsonSerializable(typeof(JiraResolutionPage))]
+[JsonSerializable(typeof(List<JiraRemoteLink>))]
 [JsonSerializable(typeof(JiraSearchPage))]
 [JsonSerializable(typeof(JiraIssue))]
 [JsonSerializable(typeof(JiraChangelogPage))]

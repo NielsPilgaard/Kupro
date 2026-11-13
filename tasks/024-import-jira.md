@@ -39,9 +39,13 @@ The connector is in: `Kupro.Import/Jira` (`JiraConnector`, client, reading), reg
 - Default mappings are in `ImportMappingDefaults.Jira`: fold `top`, New Feature → Task, Service Management request
   types skipped, backlog/QA/test state hints, components as labels, dated versions as milestones. App accounts carry
   `bot: true` (a new optional format property) and default to Skip.
+- Resolution → Canceled per item: the mapping's `canceledValues` lists field values that turn a Done item Canceled.
+  Describe reads the resolution names, and the Jira default lists those named for dropped work ("Won't Do",
+  "Duplicate").
+- Remote links (Confluence and web pages) come from `issue/{id}/remotelink`, one call per issue, into the item's links
+  (the details block). Links that aren't http(s) are dropped.
 
-Not done: "resolution → Canceled" per item (a mapping can't express it yet, as in 025), remote links (Confluence and web
-links, one call per issue), the People step's account type and the report's per-project summary (wizard), `--local`
+Not done: the People step's account type and the report's per-project summary (wizard), `--local`
 (the CLI has no `--local` for any source yet), and the site page (waits on the wizard). Recorded fixtures and the live
 run need a Cloud sandbox and a Data Center instance (a manual step); until then the fake stands in for them.
 

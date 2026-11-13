@@ -62,6 +62,12 @@ public sealed record ImportMapping
     public IReadOnlyDictionary<string, IssueState> States { get; init; } = new Dictionary<string, IssueState>();
     public IReadOnlyDictionary<string, IssuePriority> Priorities { get; init; } = new Dictionary<string, IssuePriority>();
 
+    /// <summary>
+    /// Field values that make a Done item Canceled, by field ID: a Jira status says only "done", and its resolution
+    /// ("Won't Do", "Duplicate") says how.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> CanceledValues { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
+
     /// <summary>Statuses with no category and no name hint: Todo for now, and flagged in the plan until the owner looks.</summary>
     public IReadOnlyList<string> StatusesToReview { get; init; } = [];
 
@@ -132,7 +138,8 @@ public static class ImportMappingDefaults
     /// Jira (task 024): New Feature is a Task like Story and Improvement; the fit makes a parent of sub-tasks a Feature. An
     /// Initiative makes four levels, so the top folds by default: Epics stay Epics. Service Management request types are
     /// left out. New statuses named for a backlog are Backlog; statuses in progress named for QA or test are In Review.
-    /// Components become labels, and versions with a date milestones.
+    /// A done item whose resolution is named for dropped work is Canceled. Components become labels, and versions with
+    /// a date milestones.
     /// </summary>
     private static ImportMapping Jira(SnapshotHeader header, ImportMapping mapping)
     {
@@ -173,6 +180,10 @@ public static class ImportMappingDefaults
             States = states,
             Fold = FoldEnd.Top,
             LabelFields = header.Fields.Any(f => f.Id == "components") ? ["components"] : [],
+            CanceledValues = header.Fields.FirstOrDefault(f => f.Id == "resolution") is { } resolution
+                && resolution.Options.Where(Cancels).ToList() is { Count: > 0 } canceling
+                ? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) { [resolution.Id] = canceling }
+                : new Dictionary<string, IReadOnlyList<string>>(),
             MilestoneVersions = [.. header.Versions.Where(v => v.Date is not null).Select(v => v.Id)],
             Scope = mapping.Scope with { SkipTypes = skip },
         };
@@ -278,7 +289,7 @@ public static class ImportMappingDefaults
     /// <summary>The source's category, refined by name hints; null when neither says anything.</summary>
     public static IssueState? ProposeState(string name, string? category)
     {
-        if (Has(name, "won't") || Has(name, "wont") || Has(name, "cancel") || Has(name, "reject") || Has(name, "removed") || Has(name, "duplicate"))
+        if (Cancels(name))
         {
             return IssueState.Canceled;
         }
@@ -337,6 +348,10 @@ public static class ImportMappingDefaults
         var key = new string([.. letters.Take(MaxProjectKeyLength)]);
         return key.Length > 1 ? key : "IMP";
     }
+
+    /// <summary>A status or resolution name that means the work was dropped, not done.</summary>
+    private static bool Cancels(string name) =>
+        Has(name, "won't") || Has(name, "wont") || Has(name, "cancel") || Has(name, "reject") || Has(name, "removed") || Has(name, "duplicate");
 
     private static bool Has(string text, string hint) => text.Contains(hint, StringComparison.OrdinalIgnoreCase);
 }

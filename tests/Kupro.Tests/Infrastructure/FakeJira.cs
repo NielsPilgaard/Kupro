@@ -38,6 +38,7 @@ internal sealed partial class FakeJira : HttpMessageHandler
     public List<FakeJiraIssue> Issues { get; } = [];
     public Dictionary<long, JsonObject> Sprints { get; } = [];
     public Dictionary<string, byte[]> Files { get; } = [];
+    public List<string> Resolutions { get; } = ["Done", "Won't Do", "Duplicate", "Cannot Reproduce"];
 
     /// <summary>How many changelog entries and comments a search embeds before the client must page.</summary>
     public int Embedded { get; set; } = 2;
@@ -147,6 +148,19 @@ internal sealed partial class FakeJira : HttpMessageHandler
             return Json(Array(Fields));
         }
 
+        if (Cloud && path == "rest/api/3/resolution/search")
+        {
+            // Two per page, so the connector has to page.
+            var start = Int(query["startAt"]);
+            var page = Resolutions.Skip(start).Take(2).Select((name, i) => (JsonNode)new JsonObject { ["id"] = $"{start + i + 1}", ["name"] = name });
+            return Json(new JsonObject { ["values"] = Array(page), ["isLast"] = start + 2 >= Resolutions.Count });
+        }
+
+        if (!Cloud && path == "rest/api/2/resolution")
+        {
+            return Json(Array(Resolutions.Select((name, i) => (JsonNode)new JsonObject { ["id"] = $"{i + 1}", ["name"] = name })));
+        }
+
         if (ProjectPath().Match(path) is { Success: true } project && project.Groups["api"].Value == Api)
         {
             var id = project.Groups["id"].Value;
@@ -208,6 +222,8 @@ internal sealed partial class FakeJira : HttpMessageHandler
                         ["isLast"] = start + size >= issue.Histories.Count,
                         ["values"] = Array(histories),
                     });
+                case "/remotelink":
+                    return Json(Array(issue.RemoteLinks));
                 case "/comment":
                     return Json(new JsonObject
                     {
@@ -266,7 +282,7 @@ internal sealed partial class FakeJira : HttpMessageHandler
     [GeneratedRegex(@"^rest/api/(?<api>\d)/project/(?<id>\d+)/(?<what>statuses|versions)$")]
     private static partial Regex ProjectPath();
 
-    [GeneratedRegex(@"^rest/api/(?<api>\d)/issue/(?<id>[^/]+)(?<what>/changelog|/comment|)$")]
+    [GeneratedRegex(@"^rest/api/(?<api>\d)/issue/(?<id>[^/]+)(?<what>/changelog|/comment|/remotelink|)$")]
     private static partial Regex IssuePath();
 
     [GeneratedRegex(@"^rest/agile/1\.0/sprint/(\d+)$")]
@@ -285,6 +301,19 @@ internal sealed class FakeJiraIssue(FakeJira jira, string id, string key, string
     public JsonObject Fields { get; } = [];
     public List<JsonObject> Histories { get; } = [];
     public List<JsonObject> Comments { get; } = [];
+    public List<JsonObject> RemoteLinks { get; } = [];
+
+    /// <summary>A Confluence page or web link, in the <c>remotelink</c> shape.</summary>
+    public FakeJiraIssue Remote(string url, string? title, string application = "")
+    {
+        RemoteLinks.Add(new JsonObject
+        {
+            ["id"] = RemoteLinks.Count + 1,
+            ["application"] = new JsonObject { ["type"] = application },
+            ["object"] = new JsonObject { ["url"] = url, ["title"] = title },
+        });
+        return this;
+    }
 
     public FakeJiraIssue Set(string field, JsonNode? value)
     {

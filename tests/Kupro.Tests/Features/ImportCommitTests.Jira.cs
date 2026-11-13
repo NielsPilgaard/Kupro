@@ -52,6 +52,7 @@ public sealed partial class ImportCommitTests
         story.Labels.ShouldContain("payments");
         story.Description!.ShouldContain("](attachment:", Case.Sensitive, "the image now opens from Kupro storage");
         story.Description!.ShouldNotContain("atlassian.net/rest", Case.Sensitive);
+        story.Description!.ShouldContain("https://acme.atlassian.net/wiki/spaces/PAY/pages/123", Case.Sensitive, "a Confluence link stays a link");
         var task = await IssueAsync("WEB-4");
         task.Type.ShouldBe(IssueType.Task);
         task.Parent!.Key.ShouldBe("WEB-3");

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
@@ -50,6 +51,7 @@ public sealed class JiraConnectorTests
             ("customfield_10050", FieldKind.Select), ("customfield_10051", FieldKind.User), ("customfield_10052", FieldKind.Text),
             ("customfield_10053", FieldKind.Number), ("customfield_10054", FieldKind.Date),
         ], ignoreOrder: true);
+        description.Fields.Single(f => f.Id == "resolution").Options.ShouldBe(["Done", "Won't Do", "Duplicate", "Cannot Reproduce"], "paged in from resolution/search");
     }
 
     [Fact]
@@ -88,6 +90,12 @@ public sealed class JiraConnectorTests
         story.Fields["customfield_10053"].GetDecimal().ShouldBe(1200.5m);
         story.Fields["customfield_10054"].GetString().ShouldBe("2025-05-01");
         items["WEB-5"].Fields["resolution"].GetString().ShouldBe("Won't Do");
+        story.Links.ShouldBe(
+        [
+            new SourceLink { Url = "https://acme.atlassian.net/wiki/spaces/PAY/pages/123", Title = "Payments design" },
+            new SourceLink { Url = "https://stripe.com/docs/testing" },
+        ], "web and Confluence links; a script URL is dropped");
+        items["WEB-4"].Links.ShouldBeEmpty();
         items["WEB-4"].Resolved.ShouldBe(T0.AddDays(5));
 
         // ADF stays ADF; the image it shows by name now carries the attachment's content URL, so the import re-hosts it.
@@ -139,7 +147,7 @@ public sealed class JiraConnectorTests
 
         jira.Requests.ShouldContain(r => r.StartsWith("GET rest/api/3/issue/10012/changelog?startAt=0", StringComparison.Ordinal));
         jira.Requests.ShouldContain(r => r.StartsWith("GET rest/api/3/issue/10012/comment?startAt=0", StringComparison.Ordinal));
-        jira.Requests.ShouldNotContain(r => r.Contains("issue/10013/", StringComparison.Ordinal), "a short changelog is complete in the search");
+        jira.Requests.ShouldNotContain(r => r.Contains("issue/10013/changelog", StringComparison.Ordinal) || r.Contains("issue/10013/comment", StringComparison.Ordinal), "a short changelog is complete in the search");
 
         var comments = records.OfType<SourceComment>().Where(c => c.Item == "10012").ToList();
         comments.Select(c => (c.Id, c.Author)).ShouldBe([("50001", "acc-jonas"), ("50002", "acc-sofie"), ("50003", "acc-sofie")]);
@@ -322,7 +330,26 @@ public sealed class JiraConnectorTests
             ["6"] = IssueState.Canceled,
         }, ignoreOrder: true);
         mapping.LabelFields.ShouldBe(["components"]);
+        mapping.CanceledValues["resolution"].ShouldBe(["Won't Do", "Duplicate"]);
         mapping.MilestoneVersions.ShouldBe(["20001"]);
+
+        // Done is Done, unless the resolution says the work was dropped.
+        var source = new MappedSource(snapshot.Header, mapping, jira.Now);
+        SourceItem Resolved(string? resolution) => new()
+        {
+            Id = "1",
+            Project = "10000",
+            Type = "10002",
+            Status = "5",
+            Title = "Done",
+            Created = T0,
+            Updated = T0,
+            Fields = resolution is null ? new Dictionary<string, JsonElement>() : new Dictionary<string, JsonElement> { ["resolution"] = FieldValue.Text(resolution) },
+        };
+        source.State(Resolved("Done")).ShouldBe(IssueState.Done);
+        source.State(Resolved(null)).ShouldBe(IssueState.Done);
+        source.State(Resolved("duplicate")).ShouldBe(IssueState.Canceled);
+        source.State(Resolved("Won't Do") with { Status = "3" }).ShouldBe(IssueState.InProgress, "only a Done item cancels");
         mapping.People["acc-sofie"].Action.ShouldBe(PersonAction.Member, "no email: matched by name");
         mapping.People["acc-bot"].Action.ShouldBe(PersonAction.Skip);
     }
@@ -444,6 +471,9 @@ public sealed class JiraConnectorTests
             .Set("customfield_10053", 1200.5)
             .Set("customfield_10054", "2025-05-01")
             .Attach("30001", "flow.png", "image/png", "PNG!"u8.ToArray(), Sofie(), T0.AddHours(2))
+            .Remote("https://acme.atlassian.net/wiki/spaces/PAY/pages/123", "Payments design", "com.atlassian.confluence")
+            .Remote("https://stripe.com/docs/testing", " ")
+            .Remote("javascript:alert(1)", "Click")
             .Link("40001", "Blocks", "blocks", "is blocked by", outwardIssue: "10013")
             .Link("40002", "Relates", "relates to", "relates to", inwardIssue: "10014")
             .Link("40003", "Cloners", "clones", "is cloned by", outwardIssue: "10014")

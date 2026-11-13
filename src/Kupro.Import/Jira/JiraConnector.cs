@@ -133,6 +133,8 @@ public sealed class JiraConnector : ISourceConnector
                     continue;
                 }
 
+                item.Links = await RemoteLinksAsync(catalog, issue, ct);
+
                 var attachments = reading.Attachments(issue, item).ToList();
                 var relations = reading.Relations(issue, item).ToList();
                 var files = Jira.Array(issue.Fields, "attachment").ToList();
@@ -371,7 +373,40 @@ public sealed class JiraConnector : ISourceConnector
         }
 
         var fields = await _client.GetAsync($"rest/api/{api}/field", JiraJson.Default.ListJiraField, ct);
-        return new Catalog(_client.Site, cloud, projects, types, workflows, fields);
+        return new Catalog(_client.Site, cloud, projects, types, workflows, fields, await ResolutionsAsync(cloud, ct));
+    }
+
+    /// <summary>The resolution names, so the mapping can say which ones cancel. Cloud deprecated the unpaged list.</summary>
+    private async Task<List<string>> ResolutionsAsync(bool cloud, CancellationToken ct)
+    {
+        if (!cloud)
+        {
+            return [.. (await _client.GetAsync("rest/api/2/resolution", JiraJson.Default.ListJiraResolution, ct)).Select(r => r.Name)];
+        }
+
+        var names = new List<string>();
+        while (true)
+        {
+            // Jira may return fewer than asked, so the next page starts after what came back.
+            var page = await _client.GetAsync($"rest/api/3/resolution/search?startAt={names.Count}&maxResults=50", JiraJson.Default.JiraResolutionPage, ct);
+            names.AddRange(page.Values.Select(r => r.Name));
+            if (page.IsLast || page.Values.Count == 0)
+            {
+                return names;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Confluence pages and web links: one call per issue, since a search doesn't include them. An instance that hides
+    /// them (404, 403) gives none.
+    /// </summary>
+    private async Task<IReadOnlyList<SourceLink>> RemoteLinksAsync(Catalog catalog, JiraIssue issue, CancellationToken ct)
+    {
+        var links = await _client.TryGetAsync($"rest/api/{catalog.Api}/issue/{issue.Id}/remotelink", JiraJson.Default.ListJiraRemoteLink, ct);
+        return [.. (links ?? [])
+            .Where(l => Uri.TryCreate(l.Object?.Url, UriKind.Absolute, out var url) && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp))
+            .Select(l => new SourceLink { Url = l.Object!.Url!, Title = string.IsNullOrWhiteSpace(l.Object.Title) ? null : l.Object.Title })];
     }
 
     /// <summary>What Describe found, kept for the read: dialect, projects, and which custom fields mean what.</summary>
@@ -379,7 +414,7 @@ public sealed class JiraConnector : ISourceConnector
     {
         public Catalog(
             Uri site, bool cloud, List<JiraProject> projects, List<JiraIssueType> types,
-            Dictionary<string, List<JiraTypeStatuses>> workflows, List<JiraField> fields)
+            Dictionary<string, List<JiraTypeStatuses>> workflows, List<JiraField> fields, List<string> resolutions)
         {
             Cloud = cloud;
             Projects = projects;
@@ -463,7 +498,7 @@ public sealed class JiraConnector : ISourceConnector
                 Fields =
                 [
                     new SourceField { Id = ComponentsField, Name = "Components", Kind = FieldKind.MultiSelect },
-                    new SourceField { Id = ResolutionField, Name = "Resolution", Kind = FieldKind.Select },
+                    new SourceField { Id = ResolutionField, Name = "Resolution", Kind = FieldKind.Select, Options = resolutions },
                     new SourceField { Id = TimeLoggedField, Name = "Time logged (hours)", Kind = FieldKind.Number },
                     .. Exported.Values.Select(f => new SourceField { Id = f.Id, Name = f.Name, Kind = Jira.Kind(f)!.Value }),
                 ],
