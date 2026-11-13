@@ -21,10 +21,29 @@ Center ends on 28 March 2029.
 ## Progress
 
 Markup is in: `AdfConverter` and `JiraWikiConverter` (`src/Kupro.Api/Features/Imports/`), registered in
-`MarkupConverters`, with golden files in `tests/Kupro.Tests/Features/Golden/Jira/`. Both leave an image or file named
-only by its file name as text; the connector is to point those it matches at the attachment's content URL (ADF: an
-`attrs.url` on the media node; wiki: `!url!` and `[name|url]`), so the import re-hosts them. Not started: the
-connector (client, reading, Cloud and Data Center dialects), default mappings, `--local`, the site page.
+`MarkupConverters`, with golden files in `tests/Kupro.Tests/Features/Golden/Jira/`.
+
+The connector is in: `Kupro.Import/Jira` (`JiraConnector`, client, reading), registered in `ImportSources`, tested in
+`JiraConnectorTests` against `FakeJira` (Cloud v3 and Data Center v2 response shapes) and end to end in
+`ImportCommitTests.Jira`. Notes on what it does:
+
+- The token field holds `email:api-token` on Cloud (Basic) and a PAT on Data Center (Bearer); Cloud with a bare token
+  is refused as a rejected token.
+- Delta JQL is relative (`updated >= "-Nm"`), so the API user's time zone doesn't matter, and the search runs in key
+  order (not `updated`), so `startAt` paging neither skips nor repeats an issue that changes mid-read.
+- The connector points images and files that name an attachment at its content URL in descriptions and comments.
+- Changelogs and comments embedded in a search are paged in when cut short. An Epic Link key resolves through issues
+  already read, else one lookup. The sprint field is read as objects or the old `Sprint@…[…]` string; a sprint without
+  dates gets them from the Agile API.
+- Worklogs come across as the issue's `timespent` (hours) for the details block; components and resolution are fields.
+- Default mappings are in `ImportMappingDefaults.Jira`: fold `top`, New Feature → Task, Service Management request
+  types skipped, backlog/QA/test state hints, components as labels, dated versions as milestones. App accounts carry
+  `bot: true` (a new optional format property) and default to Skip.
+
+Not done: "resolution → Canceled" per item (a mapping can't express it yet, as in 025), remote links (Confluence and web
+links, one call per issue), the People step's account type and the report's per-project summary (wizard), `--local`
+(the CLI has no `--local` for any source yet), and the site page (waits on the wizard). Recorded fixtures and the live
+run need a Cloud sandbox and a Data Center instance (a manual step); until then the fake stands in for them.
 
 ## Scope
 
@@ -42,7 +61,7 @@ connector (client, reading, Cloud and Data Center dialects), default mappings, `
   with `statusCategory`, priorities, fields (`/field`, custom fields by schema type), users seen on the selected
   projects (assignees, reporters, commenters). Emails are often hidden by Cloud privacy settings; match by name then.
 - Items: Cloud `/rest/api/3/search/jql` (token pagination, eventually consistent, so the 10-minute delta overlap);
-  DC `/rest/api/2/search` (`startAt`). Delta: `updated >= "<cursor>"` ordered by `updated`.
+  DC `/rest/api/2/search` (`startAt`). Delta: `updated >= "-Nm"` (relative to the cursor), in key order.
 - Hierarchy: `parent` (Cloud, and sub-tasks everywhere); `Epic Link` custom field on DC and old Cloud data.
 - Changelog: Cloud `/rest/api/3/issue/{id}/changelog` (paged); DC `expand=changelog`. Change ID = history ID + item index.
 - Comments (paged), attachments (content URL with the same auth), issue links, worklogs (summed into the details block
@@ -99,14 +118,14 @@ connector (client, reading, Cloud and Data Center dialects), default mappings, `
 
 - [ ] Recorded fixtures from a Cloud sandbox (company-managed and team-managed project) and a Data Center instance
       import with no errors; plan and commit agree.
-- [ ] Epic > Story > Sub-task arrives as Epic > Feature > Task; Initiative handling follows the owner's choice.
+- [x] Epic > Story > Sub-task arrives as Epic > Feature > Task; Initiative handling follows the owner's choice.
 - [x] ADF and wiki golden files convert; unknown nodes appear as fenced blocks, never vanish.
-- [ ] Mentions, issue links in text and inline images are rewritten; images open from Kupro storage.
+- [x] Mentions, issue links in text and inline images are rewritten; images open from Kupro storage.
 - [ ] Changelog: status, assignee, sprint and priority history shows as Kupro updates with original actor and time;
       custom-field history as source changes.
-- [ ] Delta re-run picks up an edit made in Jira after the first run, including one inside the overlap window, without
+- [x] Delta re-run picks up an edit made in Jira after the first run, including one inside the overlap window, without
       duplicating anything.
-- [ ] A 429 with `Retry-After` pauses and resumes the run.
+- [x] A 429 with `Retry-After` pauses and resumes the run.
 - [ ] One live run against the Cloud sandbox before marking Done, noted in the PR.
 
 ## Out of scope
