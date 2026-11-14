@@ -22,12 +22,16 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
 `kupro import github [--url <ghes>] [--local]`, tested in `GitHubConnectorTests` against `FakeGitHub` and end to end in
 `ImportCommitTests.GitHub`. Notes on what it does:
 
-- The address is github.com unless `--url` names a GitHub Enterprise Server (its API under `/api/v3`). Pages follow
-  `Link`; the primary rate limit waits for `x-ratelimit-reset`, a secondary one for `Retry-After`.
+- The address is github.com unless `--url` names a GitHub Enterprise Server (its API under `/api/v3`) or a GitHub
+  Enterprise Cloud tenant with data residency (`acme.ghe.com`, API at `api.acme.ghe.com`). Pages follow `Link`; the
+  primary rate limit waits for `x-ratelimit-reset`, a secondary one for `Retry-After`, or a minute when only the body
+  names it.
 - Describe lists the token's repositories with issues on (key = repository name), org issue types (disabled ones
   left out, plus a plain "Issue" type), four statuses (open, closed, closed as not planned, closed as duplicate) and
   each repository's assignable users (bots flagged).
 - The read holds one repository's issues at a time, so a sub-issue gets its parent from the parent's sub-issue list.
+  A delta asks each changed issue without a parent in the read for its parent (`/parent`), so an unchanged parent
+  isn't read as the sub-issue having moved out. A parent in another repository is not picked up on a full read.
   Item key `owner/repo#89` keeps the number and is an alias, as is the issue URL. Pull requests are skipped. The first
   assignee is the assignee; with more, all logins go in the `assignees` field. Milestones are versions; dated ones
   become milestones by default.
@@ -37,10 +41,13 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
 
 - Issue dependencies: an issue whose summary has blockers gets one `dependencies/blocked_by` call; each blocker
   blocks it.
+- References in text: `#89` resolves within the item's own repository, `owner/repo#89` across repositories
+  (`ImportReferences`, `ImportCommitTests.GitHub`).
 
-Not done: Projects (v2) fields (Status, Iteration, a number field; the owner picks the project, so it comes with the
-wizard), rewriting `#89` in text to Kupro keys, the site page (waits on the wizard), and the recorded fixtures and live
-run (a sandbox, a manual step).
+Not done: Projects (v2) fields (Status, Iteration, a number field; the owner picks the project in the import screen,
+task 033), the site page (waits on the same pick), and the recorded fixtures and live run (a sandbox, a manual step).
+Known cost: a delta still reads the repository-wide event list, and a repository's issues are held in memory while
+its sub-issue parents are worked out.
 
 YouTrack is in: `Kupro.Import/YouTrack` (`YouTrackConnector`, client), registered in `ImportSources` and as
 `kupro import youtrack --url <address> [--local]`, tested in `YouTrackConnectorTests` against `FakeYouTrack`.
@@ -60,8 +67,12 @@ YouTrack is in: `Kupro.Import/YouTrack` (`YouTrackConnector`, client), registere
 - Default mapping (`ImportMappingDefaults.YouTrack`): resolved states are Done, or Canceled when named for dropped work
   (Duplicate, Won't fix, Obsolete, Can't Reproduce, Incomplete); unresolved ones go by name.
 
-Not done for YouTrack: the site page (waits on the wizard), an end-to-end commit test, and the recorded fixtures and
-live run (a sandbox, a manual step).
+- Links are read from the outward side, which YouTrack names "is required for" (blocks) and "is duplicated by" (the
+  other issue duplicates this one). A delta reads activities from the cursor (`start`). End to end in
+  `ImportCommitTests.YouTrack`.
+
+Not done for YouTrack: the site page (waits on the import screen pick, task 033), and the recorded fixtures and live
+run (a sandbox, a manual step).
 
 Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registered in `ImportSources` and as
 `kupro import monday [--local]`, tested in `MondayConnectorTests` against `FakeMonday`.
@@ -78,8 +89,12 @@ Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registe
   activity log gives status, assignee and name changes for the items read (Monday keeps the log for a limited time).
   Complexity and rate-limit errors wait their `retry_in_seconds`. Items get new numbers; the item URL is the alias.
 
-Not done for Monday: the wizard's column mapping (a mapping that overrides the picks above), the site page, and the
-recorded fixtures and live run (a sandbox, a manual step).
+- Every read lists the board's groups, so a group added later is there for its items. An item left out by the
+  closed-items cutoff is left out with its subitems. An item with more than 100 updates has the rest paged in; a delta
+  reads the activity log from the cursor.
+
+Not done for Monday: column mapping in the import screen (overrides the picks above; task 033), the site page, and
+the recorded fixtures and live run (a sandbox, a manual step). Known cost: a delta still reads every item on the board.
 
 ## Scope
 
