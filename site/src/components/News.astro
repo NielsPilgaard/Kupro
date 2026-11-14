@@ -1,0 +1,43 @@
+---
+// News page: the changelog (src/changelog.ts), newest first, same structure in both languages.
+import { changelog } from '../changelog';
+import { t, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const n = t(locale).news;
+const fmt = new Intl.DateTimeFormat(n.dateLocale, { dateStyle: 'long', timeZone: 'UTC' });
+/** Backtick-wrapped text becomes code; odd parts after a split on ` are the code parts. */
+const parts = (s: string) => s.split('`').map((text, i) => ({ text, code: i % 2 === 1 }));
+---
+
+<div class="wrap">
+  <header class="p-head">
+    <span class="eyebrow">{n.eyebrow}</span>
+    <h1>{n.title}</h1>
+    <p>{n.sub}</p>
+  </header>
+
+  <div class="news">
+    {
+      changelog.map((e) => (
+        <article class="entry" id={e.date} aria-labelledby={`h-${e.date}`}>
+          <a class="entry-date mono" href={`#${e.date}`}>
+            <time datetime={e.date}>{fmt.format(new Date(e.date))}</time>
+          </a>
+          <div class="entry-body">
+            <h2 id={`h-${e.date}`}>{e[locale].title}</h2>
+            <ul>
+              {e[locale].items.map((item) => (
+                <li>{parts(item).map((p) => (p.code ? <code>{p.text}</code> : p.text))}</li>
+              ))}
+            </ul>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</div>

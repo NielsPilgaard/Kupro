@@ -17,7 +17,7 @@ description: >-
 
 - Anything that processes customer data or runs production = EU company, EU jurisdiction.
 - OSS libraries/frameworks: any origin (React, .NET, Keycloak, …).
-- Exception: GitHub for source code + Actions (no customer data).
+- Exception: GitHub for source code + Actions (no customer data), and CI tooling that only sees the public source, such as Claude drafting the changelog.
 - Vendor register below is the source of truth; add a row before adopting a vendor.
 - Trackers a customer imports from are not vendors: Kupro only reads from the customer's own account ([ADR-019](ADR-019-import.md)).
 

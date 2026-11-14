@@ -21,6 +21,7 @@ description: >-
 - Same tokens (`web/src/styles/tokens.css`) and fonts as the app ([design-guide.md](../design-guide.md)); no third-party requests.
 - Own container (`site`, nginx) on the apex domain; the app moves to `app.<domain>`. Aspire runs it locally ([ADR-012](ADR-012-aspire.md)).
 - Story order: meeting agent first, then fast and easy to use, then the delivery plan, then agents (CLI/MCP), then EU.
+- News page (`/news`, `/da/nyheder`) from `site/src/changelog.ts`; a weekly workflow (`changelog.yml`) has Claude draft each entry from the week's `feat` commits as a PR for review.
 
 ## Status
 

@@ -1,0 +1,11 @@
+---
+import News from '../../components/News.astro';
+import Base from '../../layouts/Base.astro';
+import { t } from '../../i18n';
+
+const c = t('da');
+---
+
+<Base locale="da" page="news" title={c.meta.newsTitle} description={c.meta.newsDescription}>
+  <News locale="da" />
+</Base>

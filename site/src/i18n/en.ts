@@ -9,6 +9,8 @@ export const en = {
       'An issue tracker and planner that listens in standup and suggests the changes people mention. Fast, keyboard first, hosted in the EU.',
     pricingTitle: 'Pricing · Kupro',
     pricingDescription: '€9 per person a month or €90 a year. 30-day free trial with the meeting agent included. No card needed.',
+    newsTitle: 'News · Kupro',
+    newsDescription: 'What changed in Kupro, week by week.',
     notFoundTitle: 'Page not found · Kupro',
     /** Line under the headline on the social card (scripts/brand-images.ts), and the card's alt text. */
     ogDetail: 'Issue tracker and planner. Fast, keyboard first, hosted in the EU.',
@@ -20,6 +22,7 @@ export const en = {
     fast: 'Speed',
     plan: 'Delivery plan',
     pricing: 'Pricing',
+    news: 'News',
     signIn: 'Sign in',
     trial: 'Start a free trial',
     language: 'Dansk',
@@ -195,6 +198,13 @@ export const en = {
       { q: 'Non-profits and education?', a: 'The paid plan is free on request, without the meeting agent: every meeting hour costs us about €0.70 in AI fees, and a free plan pays none of it back.' },
       { q: 'Can we host it ourselves?', a: 'Yes. Kupro is open source under AGPL. Self-hosted has no seat limit; you bring your own servers and AI keys.' },
     ],
+  },
+  news: {
+    eyebrow: 'News',
+    title: 'What’s new in Kupro',
+    sub: 'What changed, week by week. An agent drafts each entry from the week’s commits, and a person reads it before it goes up.',
+    /** Intl locale for the entry dates. */
+    dateLocale: 'en-GB',
   },
   footer: {
     company: 'Pilgaard Development',

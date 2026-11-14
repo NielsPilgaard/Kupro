@@ -2,7 +2,7 @@ import { da } from './da';
 import { en, type Copy } from './en';
 
 export type Locale = 'en' | 'da';
-export type Page = 'home' | 'pricing' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies';
+export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies';
 
 const copy: Record<Locale, Copy> = { en, da };
 
@@ -11,6 +11,7 @@ const paths: Record<Locale, Record<Page, string>> = {
   en: {
     home: '/',
     pricing: '/pricing',
+    news: '/news',
     privacy: '/privacy',
     terms: '/terms',
     dpa: '/dpa',
@@ -20,6 +21,7 @@ const paths: Record<Locale, Record<Page, string>> = {
   da: {
     home: '/da',
     pricing: '/da/priser',
+    news: '/da/nyheder',
     privacy: '/da/privatliv',
     terms: '/da/vilkaar',
     dpa: '/da/databehandleraftale',
