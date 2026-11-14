@@ -121,7 +121,7 @@ internal static class WorkspaceCommands
     {
         var member = new Command("member", "People and agents in the workspace.");
 
-        member.Subcommands.Add(new ApiCommand("list", "List members, invites and deactivated members.", "listMembers").Handle(async (c, ct) =>
+        member.Subcommands.Add(new ApiCommand("list", "List members, invites, deactivated members and placeholders from imports.", "listMembers").Handle(async (c, ct) =>
         {
             var members = await (await c.InWorkspaceAsync(ct)).Members.GetAsync(cancellationToken: ct) ?? [];
             await c.Out.ListAsync(members, ["ID", "KIND", "ROLE", "BILLING", "STATUS", "NAME"],
@@ -164,6 +164,29 @@ internal static class WorkspaceCommands
         {
             await (await c.InWorkspaceAsync(ct)).Members[c.Get(id)].Deactivate.PostAsync(cancellationToken: ct);
             await c.Out.MessageAsync("Member deactivated.");
+        }));
+
+        var placeholderEmail = new Option<string?>("--email") { Description = "Where to send the invite (default: the email from the source)." };
+        var placeholderRole = Cli.EnumOption<WorkspaceRole>("--role", "Role on joining (default member; guest is free: view and comment)");
+        member.Subcommands.Add(new ApiCommand("invite-placeholder", "Invite the person behind a placeholder from an import; their history follows.",
+            "invitePlaceholder") { id, placeholderEmail, placeholderRole, billing }.Handle(async (c, ct) =>
+        {
+            var invited = await (await c.InWorkspaceAsync(ct)).Members[c.Get(id)].Invite.PostAsync(new InvitePlaceholderRequest
+            {
+                Email = c.Get(placeholderEmail),
+                Role = c.Get(placeholderRole) ?? WorkspaceRole.Member,
+                CanManageBilling = c.Get(billing) ? true : null,
+            }, cancellationToken: ct);
+            await c.Out.DoneAsync(invited!, $"Invited {invited!.Name} at {invited.Email}.");
+        }));
+
+        var into = new Option<Guid>("--into") { Description = "Member id of the person who gets the history.", Required = true };
+        member.Subcommands.Add(new ApiCommand("merge", "Merge a placeholder from an import into a person: every reference moves, the placeholder is deleted.",
+            "mergePlaceholder") { id, into }.Handle(async (c, ct) =>
+        {
+            await (await c.InWorkspaceAsync(ct)).Members[c.Get(id)].Merge.PostAsync(
+                new MergePlaceholderRequest { IntoMemberId = c.Get(into) }, cancellationToken: ct);
+            await c.Out.MessageAsync("Placeholder merged.");
         }));
 
         return member;

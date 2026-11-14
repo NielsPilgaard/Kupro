@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
 import type { IssuePriority, IssueState, IssueType } from '../../api/gen/types.gen';
-import { useCreateIssue, useMembers } from '../../api/issues';
+import { isAssignable, useCreateIssue, useMembers } from '../../api/issues';
 import { useUi } from '../../app/UiContext';
 import { Button } from '../../components/ui';
 import { priorities, states, types } from '../../lib/issues';
@@ -156,7 +156,7 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
               <option value="">{t('issue.unassigned')}</option>
               <option value="me">{t('issue.me')}</option>
               {members
-                ?.filter((m) => m.status === 'active' && m.kind === 'human')
+                ?.filter(isAssignable)
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
@@ -171,6 +171,9 @@ export function CreateIssueDialog({ workspace }: { workspace: string }) {
               className={`${field} min-w-32 flex-1`}
             />
           </div>
+          <p className="text-sm text-mute">
+            {t(`type.${type}`)}: {t(`typeHint.${type}`)}
+          </p>
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" onClick={() => ui.setCreateOpen(false)}>
               {t('common.cancel')}

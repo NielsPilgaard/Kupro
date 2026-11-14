@@ -43,7 +43,7 @@ An alternative to Jira, Azure DevOps, Linear, Trello and Monday, for teams that 
 
 ## Quickstart
 
-Prerequisites: [.NET 10 SDK](https://dot.net), [Bun](https://bun.sh) 1.4, Docker.
+Prerequisites: [.NET 11 SDK](https://dot.net), [Bun](https://bun.sh) 1.4, Docker.
 
 ```sh
 dotnet tool restore   # installs the pinned Aspire CLI and dotnet-ef

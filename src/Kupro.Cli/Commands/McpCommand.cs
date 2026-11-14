@@ -107,7 +107,7 @@ internal static class McpCommand
         {
             foreach (var reply in replies)
             {
-                await output.WriteLineAsync(reply);
+                await output.WriteLineAsync(reply, ct);
             }
 
             await output.FlushAsync(ct);

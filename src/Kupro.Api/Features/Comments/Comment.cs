@@ -25,6 +25,12 @@ public sealed class Comment : ITenantOwned
 
     /// <summary>Meeting proposal that wrote this comment (task 015).</summary>
     public Guid? ProposalId { get; set; }
+
+    /// <summary>
+    /// The source's name for the author when an import authors the comment through its shared placeholder, so the
+    /// skipped person's name isn't lost (ADR-019 People).
+    /// </summary>
+    public string? SourceAuthor { get; set; }
 }
 
 internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
@@ -36,6 +42,7 @@ internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.Property(c => c.Via).HasConversion<string>().HasMaxLength(8);
         builder.HasOne<MeetingProposal>().WithMany().HasWorkspaceForeignKey(c => c.ProposalId).OnDelete(DeleteBehavior.SetNull);
         builder.Property(c => c.Body).HasMaxLength(CommentRequest.MaxBody);
+        builder.Property(c => c.SourceAuthor).HasMaxLength(200);
         builder.HasIndex(c => new { c.WorkspaceId, c.IssueId, c.CreatedAt });
     }
 }

@@ -69,11 +69,24 @@ and Compose substitutes them. An unset variable becomes an empty string with onl
 | `STORAGE_BUCKET` | | `kupro-attachments` | `api` | Created by hand, see [Object Storage](#first-deploy-once-per-environment). |
 | `STORAGE_ACCESS_KEY` | | S3 user access key | `api` | User with read/write on the bucket only. |
 | `STORAGE_SECRET_KEY` | yes | S3 user secret key | `api` | |
+| `KEYS_BUCKET` | | `kupro-keys` | `api` | Data Protection keys, on `STORAGE_URL`. See [Object Storage](#first-deploy-once-per-environment). |
+| `KEYS_ACCESS_KEY` | | S3 user access key | `api` | Its own user with read/write on this bucket only. |
+| `KEYS_SECRET_KEY` | yes | S3 user secret key | `api` | |
 | `SCALEWAY_AI_KEY` | yes | Scaleway API secret key | `api` | Meeting agent transcription and proposals ([ADR-015](../adr/ADR-015-meeting-agent-vendors.md)). Key needs Generative APIs permissions only. Empty: no microphone, proposals from the keyword fallback. |
 | `MEMBERS_GUESTS_PER_SEAT` | | `5` | `api` | Free guests per seat ([ADR-013](../adr/ADR-013-seats-billing.md)). Hosted Kupro sets `5`. Empty: no guest cap. |
+| `TRELLO_API_KEY` | | Trello Power-Up API key | `api` | Kupro's own key, paired with each user's Trello token for server-side imports ([ADR-019](../adr/ADR-019-import.md)). Empty: Trello imports only through a snapshot upload. |
 
 Optional, with defaults in the compose file: `BACKUP_AGENT_MEMORY` (`1536m`), `DRILL_TMPFS_SIZE` (`1g`; must hold the
-whole cluster) and `BACKUP_CONSOLE_PORT` (`9090`, on `127.0.0.1` only). `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
+whole cluster) and `BACKUP_CONSOLE_PORT` (`9090`, on `127.0.0.1` only).
+
+Imports (task 023) need no variable of their own: they keep snapshots and uploaded files in the attachments bucket
+(`<workspace>/imports/<id>/`) and source tokens encrypted with the Data Protection keys in `KEYS_BUCKET`. Losing the
+keys only means owners paste their tokens again. Two imports run at once across workspaces (`Imports:MaxConcurrent`,
+default 2, in the API's configuration). A Kupro export's `workspace.json` streams to the API's temp disk, up to
+`Imports:MaxExportJsonMegabytes` (default 1024; env `Imports__MaxExportJsonMegabytes`), which guards the disk against
+a ZIP bomb; raise it for a larger workspace. The "Kupro imports filling object storage" alert warns when imports copy more
+than 20 GB of files in a day. The API reads sources only at public addresses, so an import's URL can't reach the
+services next to it; `Imports:AllowPrivateAddresses` lifts that for a self-hosted Kupro and must stay off on hosted Kupro. `MIGRATIONS_PORT` also appears in the generated `.env` and is unused. Adding a parameter in the AppHost
 (`builder.AddParameter`) adds a row here.
 
 ## Domains
@@ -138,6 +151,10 @@ CLIs then warn and point to `kupro update`. Release that CLI before deploying th
    aws s3api put-bucket-cors --endpoint-url "$STORAGE_URL" --region "$STORAGE_REGION" --bucket "$STORAGE_BUCKET"      --cors-configuration '{"CORSRules":[{"AllowedOrigins":["https://app.<domain>"],"AllowedMethods":["PUT"],"AllowedHeaders":["*"],"MaxAgeSeconds":3600}]}'
    ```
 
+   Create a second bucket for Data Protection keys, with server-side encryption and versioning on, and its own S3 user
+   with read/write on it only (`KEYS_*`). The keys encrypt import source tokens ([ADR-019](../adr/ADR-019-import.md)).
+   Don't reuse the attachments bucket or its user, and don't empty this bucket: every stored source token would have
+   to be pasted again.
 3. **Backups**: buckets, elmah.io and the data volumes, as in [Backups](#backups-once-per-environment) below. The first
    deploy fails without the volumes.
 4. **Dokploy compose app**: source = this GitHub repository, branch `main`, compose path `./deploy/docker-compose.yaml`

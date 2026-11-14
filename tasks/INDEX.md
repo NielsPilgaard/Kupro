@@ -33,19 +33,19 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
 | 23 | [023 Import framework, CSV and snapshot import](023-import-framework.md) | P1 | 1 | 016 (013 to close) | In progress |
 | 33 | [033 Pick the import UI direction](033-import-ui-direction.md) | P1 | 1 | — | Waiting on owner |
-| 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | Todo |
+| 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | In progress |
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | In progress |
-| 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
+| 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | In progress |
 | 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
 ## What an agent can pick up
 
-Checked 2026-11-07. The build order above is not the same as what is buildable: **023 (except its web UI) and the connectors
-024 and 027 are buildable by an agent now**. The 025 and 026 connectors are done; the rest of those tasks waits on
-023. Every other open row waits on a person, directly or through a dependency. Don't spend a session
-re-deriving this; read this table, and update it when a step is done. "Depends on" lists what blocks *starting*; a dependency
-that only blocks closing a task is written "(N to close)".
+Checked 2026-11-14. The build order above is not the same as what is buildable: **no import connector work is left
+for an agent**. The 024, 025, 026, GitHub, YouTrack and Monday connectors are done, `--local` included; what is left of
+them waits on the wizard (033) or a sandbox. Every other open row waits on a person, directly or through a dependency.
+Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
+blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
 
 | Task | State | What unblocks an agent |
 |---|---|---|
@@ -53,10 +53,10 @@ that only blocks closing a task is written "(N to close)".
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
-| 023 | Buildable: being built ahead of 013, except its web UI, which waits on 033. Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
+| 023 | Built except its web UI (waits on 033). Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
 | 033 | Owner decision: which import UI prototype to build. An agent asks the owner and waits; it never picks | The owner's answer |
-| 024, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
-| 025, 026 | Connectors (reading) done. Default mappings, fold, markup rewriting, keys, CLI and site page wait on 023's pipeline and surfaces | 023's mapping model, `MarkupConverter` and import CLI; the sandbox for the close |
+| 024, 025, 026 | Connectors, default mappings and `--local` done. Left: the site pages and People/report wizard bits (wait on 033), recorded fixtures and the close (sandbox accounts, manual steps) | 033, and the sandboxes |
+| 027 | GitHub, YouTrack and Monday done. Left: GitHub's Projects (v2) fields, Monday's column mapping and the site pages (all wait on the wizard, 033) | 033, and the sandboxes for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed

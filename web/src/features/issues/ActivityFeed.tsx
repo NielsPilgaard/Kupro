@@ -11,6 +11,7 @@ import {
   listIssueActivityQueryKey,
   updateCommentMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
+import { listIssueActivity } from '../../api/gen/sdk.gen';
 import type { FeedChange, FeedItem, FeedMeeting, IssuePriority, IssueState, IssueType, RelationKind, Surface, CloseOutcome } from '../../api/gen/types.gen';
 import { useMembers } from '../../api/issues';
 import { Avatar, Button, Kbd } from '../../components/ui';
@@ -32,12 +33,31 @@ const fieldLabels = {
   sprint: 'issue.sprint',
 } as const;
 
+/** Items per request; a full page means there may be older ones (an import can leave thousands). */
+const pageSize = 500;
+
 /** History and comments, oldest first, with a composer at the bottom (task 008). */
 export function ActivityFeed({ workspace, issueKey }: { workspace: string; issueKey: string }) {
+  // Older pages belong to one issue: a new key starts over.
+  return <Feed key={issueKey} workspace={workspace} issueKey={issueKey} />;
+}
+
+function Feed({ workspace, issueKey }: { workspace: string; issueKey: string }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const toast = useToast();
-  const { data: items } = useQuery(listIssueActivityOptions({ path: { workspace, key: issueKey } }));
+  const { data: latest } = useQuery(listIssueActivityOptions({ path: { workspace, key: issueKey }, query: { limit: pageSize } }));
+  const [older, setOlder] = useState<{ items: FeedItem[]; more: boolean }>({ items: [], more: true });
+  const items = latest && [...older.items, ...latest];
+  const canShowOlder = (latest?.length ?? 0) >= pageSize && older.more;
+  const showOlder = useMutation({
+    mutationFn: async () => {
+      const { data } = await listIssueActivity({ path: { workspace, key: issueKey }, query: { before: items?.[0]?.id, limit: pageSize }, throwOnError: true });
+      return data;
+    },
+    onSuccess: (page) => setOlder((o) => ({ items: [...page, ...o.items], more: page.length >= pageSize })),
+    onError: () => toast.error(t('feed.failed')),
+  });
   const { data: me } = useQuery(getMeOptions());
   const { data: members } = useMembers(workspace);
   const myId = members?.find((m) => m.kind === 'human' && m.email === me?.email)?.id;
@@ -48,6 +68,11 @@ export function ActivityFeed({ workspace, issueKey }: { workspace: string; issue
   return (
     <section className="flex flex-col gap-3" aria-label={t('feed.title')}>
       <h3 className="text-sm font-semibold text-mute">{t('feed.title')}</h3>
+      {canShowOlder && (
+        <Button variant="ghost" className="self-start" disabled={showOlder.isPending} onClick={() => showOlder.mutate()}>
+          {t('feed.showOlder')}
+        </Button>
+      )}
       <ol className="flex flex-col gap-3">
         {items?.map((item) =>
           item.kind === 'comment' ? (
@@ -69,10 +94,18 @@ export function ActivityFeed({ workspace, issueKey }: { workspace: string; issue
   );
 }
 
+/** An import's source by name: "Jira", "Azure DevOps". A kind Kupro doesn't know is shown as given. */
+function useSourceName() {
+  const { t } = useTranslation();
+  return (kind?: string | null) => (kind ? t(`feed.source.${kind}`, { defaultValue: kind }) : t('feed.sourceUnknown'));
+}
+
 function EventItem({ item }: { item: FeedItem }) {
   const { t } = useTranslation();
   const ago = useRelativeTime();
-  const name = item.actor.name;
+  const sourceName = useSourceName();
+  // An import keeps the source's name for someone the owner skipped; the shared placeholder only holds the entry.
+  const name = item.sourceActor ?? item.actor.name;
 
   const value = (field: string, v: string | null) => {
     if (v === null) return t('feed.none');
@@ -87,6 +120,9 @@ function EventItem({ item }: { item: FeedItem }) {
         return t('feed.relationAdded', { name, relation: t(`relation.${c.field as RelationKind}`).toLowerCase(), key: c.to });
       case 'relationRemoved':
         return t('feed.relationRemoved', { name, relation: t(`relation.${c.field as RelationKind}`).toLowerCase(), key: c.from });
+      case 'sourceChanged':
+        // The source's own field name and values, as it showed them.
+        return t('feed.sourceChanged', { name, field: c.field, source: sourceName(item.source), from: c.from ?? t('feed.none'), to: c.to ?? t('feed.none') });
       default: {
         if (c.field === 'description') return t('feed.description', { name });
         const label = c.field in fieldLabels ? t(fieldLabels[c.field as keyof typeof fieldLabels]) : c.field;
@@ -98,7 +134,9 @@ function EventItem({ item }: { item: FeedItem }) {
   const lines =
     item.kind === 'created'
       ? [t('feed.created', { name })]
-      : item.kind === 'sprintClosed'
+      : item.kind === 'imported'
+        ? [t('feed.imported', { name, source: sourceName(item.source) })]
+        : item.kind === 'sprintClosed'
         ? [t(`feed.sprintClosed.${of('outcome')?.to as CloseOutcome}`, { name, sprint: of('sprint')?.from, target: of('sprint')?.to ?? t('sprint.backlog') })]
         : item.kind === 'splitFrom'
           ? [t('feed.splitFrom', { name, key: of('issue')?.to })]
@@ -117,7 +155,7 @@ function EventItem({ item }: { item: FeedItem }) {
         ))}
         {item.meeting && <MeetingNote meeting={item.meeting} />}
       </span>
-      <Meta at={item.at} via={item.via} ago={ago} />
+      <Meta at={item.at} via={item.via} source={item.source} ago={ago} />
     </li>
   );
 }
@@ -147,9 +185,9 @@ function CommentItem({
     <li className="flex flex-col gap-1.5 rounded-r2 border border-line bg-panel p-3">
       <div className="flex items-center gap-2 text-sm">
         <Avatar member={item.actor} size={18} />
-        <span className="font-semibold">{item.actor.name}</span>
+        <span className="font-semibold">{item.sourceActor ?? item.actor.name}</span>
         {item.editedAt && <span className="text-mute">{t('feed.edited')}</span>}
-        <Meta at={item.at} via={item.via} ago={ago} />
+        <Meta at={item.at} via={item.via} source={item.source} ago={ago} />
         {mine && !editing && (
           <span className="flex gap-1">
             <Button variant="ghost" className="h-6 px-2 text-sm" onClick={() => setEditing(true)}>
@@ -204,12 +242,14 @@ function MeetingNote({ meeting }: { meeting: FeedMeeting }) {
   );
 }
 
-function Meta({ at, via, ago }: { at: string; via: Surface; ago(iso: string): string }) {
+function Meta({ at, via, source, ago }: { at: string; via: Surface; source?: string | null; ago(iso: string): string }) {
   const { t } = useTranslation();
+  const sourceName = useSourceName();
+  const how = via === 'import' && source ? t('feed.viaImport', { source: sourceName(source) }) : t('feed.via', { surface: t(`feed.surface.${via}`) });
   return (
     <span className="ml-auto shrink-0 text-sm text-mute" title={new Date(at).toLocaleString()}>
       {ago(at)}
-      {via !== 'web' && ` · ${t('feed.via', { surface: t(`feed.surface.${via}`) })}`}
+      {via !== 'web' && ` · ${how}`}
     </span>
   );
 }

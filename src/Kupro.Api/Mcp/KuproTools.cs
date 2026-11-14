@@ -32,7 +32,8 @@ public sealed partial class KuproTools(
     ActivityFeed feed,
     AttachmentService attachments,
     UserService users,
-    MeetingService meetings)
+    MeetingService meetings,
+    Features.Imports.ImportService importService)
 {
     // Repeated in every tool's schema, so it stays short; the server instructions explain when it can be left out.
     private const string WorkspaceHelp = "Workspace slug, if you have several.";
@@ -135,10 +136,9 @@ public sealed partial class KuproTools(
     }
 
     [McpServerTool(Name = "get_issue", ReadOnly = true), Description(
-        "Up to 20 issues by key (e.g. KUP-12): description, children, relations, labels, effort. A key that doesn't exist " +
-        "gets an entry in `errors` and the rest still return. include=activity adds each issue's history (created, field " +
-        "changes with from/to, relations) and comments, oldest first, with who did it and via which surface. Comment " +
-        "bodies are markdown; `attachment:ID` links resolve with get_attachment.")]
+        "Up to 20 issues by key: description, children, relations, labels, effort. A key that doesn't exist gets an entry " +
+        "in `errors` and the rest still return. include=activity adds each issue's history (created, field changes with " +
+        "from/to, relations) and comments, oldest first, with who did it and via which surface.")]
     [CoversOperations("getIssue", "listIssueActivity")]
     public async Task<IssueLookup> GetIssue(
         [Description("Issue keys, 1-20.")] string[] keys,
@@ -154,8 +154,10 @@ public sealed partial class KuproTools(
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
         var issues = await issueService.GetManyAsync(keys, ct);
         var activity = include?.Contains(IssueInclude.Activity) == true ? await feed.GetManyAsync(keys, ct) : null;
-        var found = issues.Select(i => i.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var errors = keys.Where(k => !found.Contains(k.Trim())).Distinct(StringComparer.OrdinalIgnoreCase).Select(k =>
+
+        // A source reference an import kept (#4567, PROJ-1 from Jira) finds its issue too.
+        var found = await issueService.ResolveKeysAsync(keys, ct);
+        var errors = keys.Where(k => !found.ContainsKey(k.Trim())).Distinct(StringComparer.OrdinalIgnoreCase).Select(k =>
         {
             var error = IssueError.NotFound(k);
             return new IssueLookupError(k, error.Code, error.Detail);
@@ -164,8 +166,8 @@ public sealed partial class KuproTools(
     }
 
     [McpServerTool(Name = "create_issues"), Description(
-        "Create 1-100 issues, all-or-nothing. Hierarchy: epic > feature > task (a task may sit directly under an epic); " +
-        "create parents first and pass their key as `parent`. Effort is in hours. Labels are created on first use.")]
+        "Create 1-100 issues, all-or-nothing. A task may sit directly under an epic; create parents first and pass " +
+        "their key as `parent`. New labels are made.")]
     [CoversOperations("createIssues", "createIssue")]
     public async Task<IReadOnlyList<IssueRow>> CreateIssues(
         [Description("Issues to create.")] CreateIssueRequest[] issues,
@@ -351,13 +353,13 @@ public sealed partial class KuproTools(
     }
 
     [McpServerTool(Name = "comment"), Description(
-        "Add a markdown comment to an issue, or edit or delete one of your own comments.")]
+        "Comment on an issue, or edit or delete one of yours.")]
     [CoversOperations("addComment", "updateComment", "deleteComment")]
     public async Task<object> Comment(
         [Description("add, edit or delete.")] string action,
         [Description("Issue key (add).")] string? key = null,
         [Description("Comment id (edit, delete).")] Guid? id = null,
-        [Description("Markdown body (add, edit).")] string? body = null,
+        [Description("Body (add, edit).")] string? body = null,
         [Description(WorkspaceHelp)] string? workspace = null,
         CancellationToken ct = default)
     {

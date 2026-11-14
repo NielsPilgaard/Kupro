@@ -1,5 +1,5 @@
 ---
-title: 'ADR-002: Backend — .NET 10, Plain Controllers, EF Core, PostgreSQL'
+title: 'ADR-002: Backend — .NET 11, Plain Controllers, EF Core, PostgreSQL'
 status: 'Accepted'
 date: '2026-10-03'
 authors: 'Niels'
@@ -7,15 +7,15 @@ tags: ['architecture', 'backend', 'database']
 supersedes: ''
 superseded_by: ''
 description: >-
-  Backend is ASP.NET Core (.NET 10) with plain MVC controllers, one service per feature, EF Core with Npgsql, and
+  Backend is ASP.NET Core (.NET 11) with plain MVC controllers, one service per feature, EF Core with Npgsql, and
   self-hosted PostgreSQL 18. No DDD/CQRS/repository layers; latency is dominated by I/O, so keep the stack boring.
 ---
 
-# ADR-002: Backend — .NET 10, Plain Controllers, EF Core, PostgreSQL
+# ADR-002: Backend — .NET 11, Plain Controllers, EF Core, PostgreSQL
 
 ## TL;DR
 
-- ASP.NET Core on .NET 10, plain `[ApiController]` controllers — thin, call one feature service.
+- ASP.NET Core on .NET 11, plain `[ApiController]` controllers — thin, call one feature service.
 - One plain service per feature owns its data access (EF Core `DbContext` via factory) and rules. No repositories, no MediatR.
 - PostgreSQL 18 (self-hosted, see [ADR-004](ADR-004-hosting.md)). Full-text search via `tsvector` with `english` + `danish` configs.
 - Realtime: SignalR; cross-instance fan-out via Postgres `LISTEN/NOTIFY` when we scale beyond one instance.

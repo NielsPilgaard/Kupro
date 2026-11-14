@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using Kupro.Api.Common;
 using Kupro.Api.Features.Tokens;
 using Kupro.Api.Features.Workspaces;

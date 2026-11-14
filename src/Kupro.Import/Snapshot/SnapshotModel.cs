@@ -57,6 +57,9 @@ public sealed record SnapshotHeader
     /// <summary>Opaque delta cursor for the next run (a time, a sync token). Null when the source has no delta.</summary>
     public string? Cursor { get; init; }
 
+    /// <summary>Holds only what changed since a cursor, so an item missing from it wasn't deleted in the source.</summary>
+    public bool Partial { get; init; }
+
     public IReadOnlyList<SourceProject> Projects { get; set; } = [];
     public IReadOnlyList<SourcePerson> People { get; set; } = [];
     public IReadOnlyList<SourceItemType> ItemTypes { get; set; } = [];
@@ -89,6 +92,18 @@ public sealed record SourceProject
 
     /// <summary>The source's process or template name (ADO "Agile", "Scrum"), for default mappings.</summary>
     public string? Process { get; init; }
+
+    /// <summary>Headcount steps for the delivery plan, when the source has them (a Kupro export does).</summary>
+    public IReadOnlyList<SourceCapacity>? Capacity { get; init; }
+}
+
+/// <summary>People on a project from a month on, until the next step.</summary>
+public sealed record SourceCapacity
+{
+    /// <summary>A day in the first month the headcount applies to; Kupro keeps the month.</summary>
+    public required DateOnly From { get; init; }
+
+    public required decimal People { get; init; }
 }
 
 /// <summary>A source user. Matched to a member by email, then by name, or kept as a placeholder.</summary>
@@ -97,6 +112,12 @@ public sealed record SourcePerson : ISnapshotRecord
     public required string Id { get; init; }
     public required string Name { get; init; }
     public string? Email { get; init; }
+
+    /// <summary>The name mentions use, without the <c>@</c> (Trello username, Linear display name).</summary>
+    public string? Handle { get; init; }
+
+    /// <summary>An app or integration account (Jira Cloud's app users). The People step proposes to skip it.</summary>
+    public bool Bot { get; init; }
 }
 
 public sealed record SourceItemType

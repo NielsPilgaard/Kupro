@@ -63,11 +63,17 @@ files/000001
 - `source.kind`: `jira`, `azure-devops`, `linear` and the other built-in sources, or your own name, which is shown
   as given ("via acme-tool import").
 - `people`: everyone the records refer to. In the wizard's People step each one becomes an existing member, an
-  invite or a placeholder. An email makes matching automatic.
+  invite or a placeholder. An email makes matching automatic. A `handle` is the name mentions use (`@sofie`), so
+  mentions in descriptions and comments are rewritten to the person's Kupro name. Set `bot: true` on an app or
+  integration account and the People step proposes to skip it.
 - `itemTypes[].level` and `statuses[].category` feed the default type and state mapping. Leave them out and the
   owner maps by hand.
 - `sprints[].project`: leave it out when a sprint spans projects. Kupro then creates one sprint per project.
+- `projects[].capacity`: headcount steps for the delivery plan, e.g. `[{ "from": "2027-01-01", "people": 3 }]`. Kupro
+  keeps the month and sets them on a project the import creates; an existing project keeps its own.
 - `counts` and `cursor` are written by Kupro. A script can leave them out.
+- `partial`: `true` when the snapshot holds only what changed since an earlier one. Leave it out for a whole snapshot:
+  an item an earlier run imported and this snapshot lacks is then reported as deleted in the source, and left alone.
 
 ## Records
 
@@ -110,3 +116,7 @@ files/000001
 Upload it in Settings → Import → Snapshot, or run `kupro import snapshot <file.zip>`. Re-importing a newer
 snapshot of the same source updates the issues it created before. Kupro matches them by source ID, and edits made in
 Kupro since are kept ([ADR-019](adr/ADR-019-import.md#re-runs-and-conflicts)).
+
+For a Jira, Azure DevOps, Linear or Trello server Kupro can't reach (behind a VPN), `kupro import <source> --url
+<address> --local` reads it from your machine and uploads the snapshot for you; the source token stays on your machine.
+Add `--import <id>` to re-run into the same import, or `--out <file.zip>` to write the snapshot without uploading it.

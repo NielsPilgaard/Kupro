@@ -1,0 +1,49 @@
+h2. Baggrund
+
+Kunden ønsker at betale med *MobilePay* og _kort_. Spørg [~accountid:557058:f1e2d3c4] eller [~soeren.oe] om {{PAY_LIMIT}}.
+Se [dokumentationen|https://docs.example.dk/betaling] og https://jira.acme.dk/browse/PAY-12.
+-Gammelt krav- og +understreget+ samt ??kilde?? i snake_case og 2025-01-02 - ikke slettet.
+
+* Første punkt
+* Andet punkt
+*# Underpunkt
+*# Næste underpunkt
+# Nummereret
+
+{code:java|title=Betaling.java}
+int beløb = 100; // *ikke fed*
+{code}
+
+{noformat}
+rå _tekst_
+{noformat}
+
+{quote}
+Citat fra *mødet*
+{quote}
+
+bq. Kort citat
+
+{panel:title=Husk}
+GDPR gælder
+{panel}
+
+{warning}
+Pas på
+{warning}
+
+||Metode||Gebyr||
+|Kort [Visa|https://visa.example]|1,5 %|
+|{{a|b}}|{color:red}rød{color}|
+
+!https://jira.acme.dk/secure/attachment/10001/flow.png|thumbnail! og !skitse.png! og [^spec.pdf]
+
+----
+
+{toc}
+
+{roadmap:version=2}
+Q1: betaling
+{roadmap}
+
+Linje\\ny linje og \*stjerne\*

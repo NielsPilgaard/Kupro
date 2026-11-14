@@ -27,18 +27,43 @@ public static class SourceConnectorExtensions
     /// Reads a connector into a snapshot ZIP: the CLI's <c>--local</c> mode, and how tests turn a fake source into an
     /// upload. With <paramref name="includeFiles"/> attachment bytes go into the ZIP, so the import never calls back.
     /// </summary>
-    public static async Task WriteSnapshotAsync(
+    /// <returns>How many files couldn't be fetched; they are in the snapshot without their bytes, so the import counts
+    /// them as missing.</returns>
+    public static async Task<int> WriteSnapshotAsync(
         this ISourceConnector connector, Stream output, ReadScope scope, string? cursor, bool includeFiles,
-        TimeProvider time, CancellationToken ct)
+        TimeProvider time, CancellationToken ct) =>
+        await connector.WriteSnapshotAsync(output, _ => scope, cursor, includeFiles, time, ct);
+
+    /// <summary>As above, with the scope picked from what Describe found (the CLI matches project keys to IDs).</summary>
+    public static async Task<int> WriteSnapshotAsync(
+        this ISourceConnector connector, Stream output, Func<SourceDescription, ReadScope> scopeFor, string? cursor,
+        bool includeFiles, TimeProvider time, CancellationToken ct)
     {
         var description = await connector.DescribeAsync(ct);
-        await using var writer = new SnapshotWriter(output, description);
+        var scope = scopeFor(description);
+        await using var writer = new SnapshotWriter(output, description) { Partial = cursor is not null };
+        var missing = 0;
         await foreach (var record in connector.ReadAsync(scope, cursor, ct))
         {
             if (includeFiles && record is SourceAttachment attachment && attachment.File is null)
             {
-                await using var content = await connector.FetchAttachmentAsync(attachment, ct);
-                await writer.WriteAttachmentAsync(attachment, content, ct);
+                // A file deleted since the read, or one the token may not download, is one file short, not a failed read.
+                Stream content;
+                try
+                {
+                    content = await connector.FetchAttachmentAsync(attachment, ct);
+                }
+                catch (Exception e) when (e is SourceAccessException or HttpRequestException && !ct.IsCancellationRequested)
+                {
+                    missing++;
+                    await writer.WriteAsync(record, ct);
+                    continue;
+                }
+
+                await using (content)
+                {
+                    await writer.WriteAttachmentAsync(attachment, content, ct);
+                }
             }
             else
             {
@@ -47,5 +72,6 @@ public static class SourceConnectorExtensions
         }
 
         await writer.CompleteAsync(time.GetUtcNow(), ct);
+        return missing;
     }
 }

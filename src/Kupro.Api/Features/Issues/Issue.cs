@@ -16,6 +16,17 @@ public enum IssueType
     Epic,
 }
 
+public static class IssueRules
+{
+    /// <summary>The hierarchy above, shared with the import's fit so a plan only shows shapes a write accepts.</summary>
+    public static bool CanBeParent(IssueType child, IssueType parent) => child switch
+    {
+        IssueType.Task => parent is IssueType.Feature or IssueType.Epic,
+        IssueType.Feature => parent is IssueType.Epic,
+        _ => false,
+    };
+}
+
 /// <summary>Fixed workflow (ADR-008). Stored as its ordinal, so board columns sort naturally.</summary>
 public enum IssueState
 {

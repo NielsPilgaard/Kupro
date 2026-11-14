@@ -50,7 +50,7 @@ pasted into Markdown as attachments. Issues come 50 a page with their history, r
 - `@username` mentions and card links (`trello.com/c/…`) need its `MarkupConverter`.
 - Keys (`idShort` under the owner's key) and card URL aliases need its pipeline.
 - The authorize link and token storage need the wizard; Kupro's API key is a manual step.
-- `kupro import trello --local` needs the import CLI group, and the site page needs the wizard.
+- The site page needs the wizard. (`kupro import trello --local --key <api-key>` is in, built with 024's.)
 
 A comment edited after the cursor keeps its action date, so only a full run picks up the edit. Attachments not on
 Trello are fetched without credentials: in the API that needs the same private-address guard (SSRF) as task 025's base
@@ -67,8 +67,8 @@ URL. Recorded fixtures need a Trello sandbox board (a manual step); until then t
   already, so inline images can point at the copies.
 - Keys (`ENG-123`, and the new key after a move to another team) and aliases need its pipeline.
 - Project history, milestone changes in issue history and project updates are not read yet.
-- Key storage and the "where to get it" step need the wizard; `kupro import linear --local` needs the import CLI group,
-  and the site page needs the wizard.
+- Key storage and the "where to get it" step need the wizard, and so does the site page. (`kupro import linear
+  --local` is in, built with 024's.)
 
 Recorded fixtures need a Linear sandbox workspace (a manual step); until then the fake stands in for them. Files
 outside Linear are fetched without credentials, so the API needs the same private-address guard as Trello's.

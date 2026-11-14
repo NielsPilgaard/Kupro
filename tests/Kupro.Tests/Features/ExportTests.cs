@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Kupro.Api.Data;
@@ -9,6 +8,7 @@ using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Exports;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Tokens;
@@ -201,6 +201,48 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
 
         (await _client.GetAsync($"{Ws}/exports/{ready.Id}", Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await _storage.GetAsync(ready.DownloadUrl!, Ct)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Import_records_are_exported_without_the_source_token()
+    {
+        var encrypted = Factory.Services.GetRequiredService<ImportTokens>().Protect(Guid.NewGuid(), "secret-jira-token");
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            scope.ServiceProvider.GetRequiredService<WorkspaceContext>().SetForSystem(_workspace.Id);
+            await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(Ct);
+            var now = DateTimeOffset.UtcNow;
+            var import = new WorkspaceImport
+            {
+                Id = Guid.CreateVersion7(),
+                WorkspaceId = _workspace.Id,
+                SourceKind = "jira",
+                EncryptedToken = encrypted,
+                CreatedAt = now,
+                CreatedById = await db.Members.Select(m => m.Id).SingleAsync(Ct),
+            };
+            db.WorkspaceImports.Add(import);
+            db.IssueAliases.Add(new IssueAlias
+            {
+                Id = Guid.CreateVersion7(),
+                WorkspaceId = _workspace.Id,
+                ImportId = import.Id,
+                Alias = "#4567",
+                CreatedAt = now,
+                IssueId = await db.Issues.Where(i => i.Key == "KUP-1").Select(i => i.Id).SingleAsync(Ct),
+            });
+            await db.SaveChangesAsync(Ct);
+        }
+
+        var started = await ReadAsync<ExportResponse>(await _client.PostAsync($"{Ws}/exports", null, Ct), HttpStatusCode.Accepted);
+        using var zip = await DownloadAsync((await ReadyAsync(started.Id)).DownloadUrl!);
+        var text = await ReadEntryAsync(zip, "workspace.json");
+        using var json = JsonDocument.Parse(text);
+
+        json.RootElement.GetProperty("imports")[0].GetProperty("sourceKind").GetString().ShouldBe("jira");
+        json.RootElement.GetProperty("issueAliases")[0].GetProperty("alias").GetString().ShouldBe("#4567");
+        text.ShouldNotContain(encrypted);
+        text.ShouldNotContain("encryptedToken", Case.Insensitive);
     }
 
     [Fact]

@@ -4,17 +4,21 @@
     <!-- Keep in sync with the Aspire CLI version and Aspire.AppHost.Sdk (ADR-012 IMP-001).
          On a bump, also update the hardcoded -preview suffix on the Keycloak packages below by hand: Dependabot
          leaves it stale, and restore then fails. -->
-    <AspireVersion>13.6.4</AspireVersion>
-    <AspNetCoreVersion>10.0.14</AspNetCoreVersion>
+    <AspireVersion>13.6.5</AspireVersion>
+    <AspNetCoreVersion>11.0.0</AspNetCoreVersion>
+    <!-- EF Core stays on 10 until Npgsql.EntityFrameworkCore.PostgreSQL and EFCore.NamingConventions ship a stable 11.
+         Keep dotnet-ef in .config/dotnet-tools.json on the same version. -->
+    <EfCoreVersion>10.0.14</EfCoreVersion>
     <OpenTelemetryVersion>1.20.1</OpenTelemetryVersion>
   </PropertyGroup>
   <ItemGroup Label="Aspire">
+    <PackageVersion Include="AngleSharp" Version="1.10.0" />
     <PackageVersion Include="Aspire.Hosting.Docker" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="$(AspireVersion)" />
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="$(AspireVersion)-preview.1.26523.11" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="$(AspireVersion)-preview.1.26559.7" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="$(AspireVersion)" />
-    <PackageVersion Include="Aspire.Keycloak.Authentication" Version="$(AspireVersion)-preview.1.26523.11" />
+    <PackageVersion Include="Aspire.Keycloak.Authentication" Version="$(AspireVersion)-preview.1.26559.7" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(AspireVersion)" />
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core / EF Core">
@@ -23,8 +27,8 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="$(AspNetCoreVersion)" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(AspNetCoreVersion)" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EfCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EfCoreVersion)" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104.8" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
@@ -32,8 +36,8 @@
     <PackageVersion Include="ZiggyCreatures.FusionCache" Version="2.9.0" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="11.0.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryVersion)" />

@@ -363,7 +363,13 @@ services:
       Storage__Bucket: "${STORAGE_BUCKET}"
       Storage__AccessKey: "${STORAGE_ACCESS_KEY}"
       Storage__SecretKey: "${STORAGE_SECRET_KEY}"
+      KeyStorage__ServiceUrl: "${STORAGE_URL}"
+      KeyStorage__Region: "${STORAGE_REGION}"
+      KeyStorage__Bucket: "${KEYS_BUCKET}"
+      KeyStorage__AccessKey: "${KEYS_ACCESS_KEY}"
+      KeyStorage__SecretKey: "${KEYS_SECRET_KEY}"
       Members__GuestsPerSeat: "${MEMBERS_GUESTS_PER_SEAT}"
+      Imports__TrelloKey: "${TRELLO_API_KEY}"
     depends_on:
       migrations:
         condition: "service_completed_successfully"

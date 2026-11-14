@@ -9,8 +9,7 @@ namespace Kupro.Import.AzureDevOps;
 
 /// <summary>
 /// Turns Azure DevOps work items, links, comments and updates into snapshot records for one read. Keeps the state a
-/// read needs across items: people already reported, relations already emitted (both ends of a link carry it), and
-/// the newest change time for the cursor.
+/// read needs across items: people already reported and relations already emitted (both ends of a link carry it).
 /// </summary>
 internal sealed class AzureDevOpsReading(Catalog catalog, Uri collection)
 {
@@ -29,9 +28,6 @@ internal sealed class AzureDevOpsReading(Catalog catalog, Uri collection)
     private readonly Dictionary<string, bool> _people = new(StringComparer.Ordinal);
     private readonly List<SourcePerson> _pending = [];
     private readonly HashSet<string> _relations = new(StringComparer.Ordinal);
-
-    /// <summary>The newest <c>System.ChangedDate</c> read: the next delta starts there.</summary>
-    public DateTimeOffset? Newest { get; set; }
 
     /// <summary>People first seen since the last call, to stream before the records that refer to them.</summary>
     public List<SourcePerson> TakePeople()

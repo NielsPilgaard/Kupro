@@ -14,7 +14,7 @@ can be merged quickly.
 
 ## Set up
 
-Follow the [Quickstart](README.md#quickstart): .NET 10 SDK, Bun, Docker, then `dotnet tool restore` and
+Follow the [Quickstart](README.md#quickstart): .NET 11 SDK, Bun, Docker, then `dotnet tool restore` and
 `dotnet aspire run`. The dev login is `dev@kupro.local` / `dev`.
 
 To run the checks you also need PowerShell 7 (`pwsh`) and [ryni](https://github.com/computerlovetech/ryni) for the

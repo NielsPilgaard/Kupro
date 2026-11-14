@@ -22,8 +22,12 @@ public sealed class CommandContext(ParseResult parse, ApiSession session, Output
     public ParseResult Parse { get; } = parse;
     public ApiSession Session { get; } = session;
     public Output Out { get; } = output;
-    public KuproClient Api => _api ??= Session.CreateClient();
+    public KuproClient Api => _api ??= new KuproClient(Adapter);
     private KuproClient? _api;
+
+    /// <summary>The adapter <see cref="Api"/> sends through, for requests it can't build itself.</summary>
+    public Microsoft.Kiota.Abstractions.IRequestAdapter Adapter => _adapter ??= Session.CreateAdapter();
+    private Microsoft.Kiota.Abstractions.IRequestAdapter? _adapter;
 
     public T? Get<T>(Option<T> option) => Parse.GetValue(option);
     public T? Get<T>(Argument<T> argument) => Parse.GetValue(argument);
@@ -54,10 +58,13 @@ public sealed class CommandContext(ParseResult parse, ApiSession session, Output
         Api.Api.V1.Workspaces[await WorkspaceAsync(ct)];
 }
 
-/// <summary>Overrides for in-process runs (tests): config, output and HTTP transport.</summary>
+/// <summary>
+/// Overrides for in-process runs (tests): config, output and HTTP transport. <paramref name="SourceTransport"/> is what
+/// <c>import &lt;source&gt; --local</c> reads the source through.
+/// </summary>
 public sealed record CliRuntime(
     CliConfig Config, TextWriter Out, TextWriter Error, HttpMessageHandler? Transport, bool Json, TextReader? In = null,
-    string? Version = null);
+    string? Version = null, HttpMessageHandler? SourceTransport = null);
 
 public static class Cli
 {
@@ -100,6 +107,7 @@ public static class Cli
                      .Concat(PlanCommands.Build())
                      .Concat(CommentCommands.Build())
                      .Concat(MeetingCommands.Build())
+                     .Concat(ImportCommands.Build())
                      .Concat(InstallCommands.Build())
                      .Append(McpCommand.Build()))
         {
@@ -142,10 +150,10 @@ public static class Cli
             catch (ProblemDetails problem)
             {
                 var code = problem.AdditionalData.TryGetValue("code", out var c) ? c?.ToString() : null;
-                await error.WriteLineAsync($"error: {code ?? problem.Title}{(problem.Detail is { } d ? $": {d}" : "")}");
+                await error.WriteLineAsync($"error: {code ?? problem.Title}{(problem.Detail is { } d ? $": {d}" : "")}", ct);
                 if (problem.AdditionalData.TryGetValue("errors", out var errors) && errors is not null)
                 {
-                    await error.WriteLineAsync(errors.ToString());
+                    await error.WriteLineAsync(errors.ToString(), ct);
                 }
 
                 return 1;
@@ -154,22 +162,22 @@ public static class Cli
             {
                 await error.WriteLineAsync(api.ResponseStatusCode == 401
                     ? "error: not signed in or token rejected. Run `kupro login` or `kupro token set <token>`."
-                    : $"error: the API answered {api.ResponseStatusCode}.");
+                    : $"error: the API answered {api.ResponseStatusCode}.", ct);
                 return 1;
             }
             catch (CliException e)
             {
-                await error.WriteLineAsync($"error: {e.Message}");
+                await error.WriteLineAsync($"error: {e.Message}", ct);
                 return 1;
             }
             catch (HttpRequestException e)
             {
-                await error.WriteLineAsync($"error: can't reach {config.EffectiveUrl} ({e.Message}).");
+                await error.WriteLineAsync($"error: can't reach {config.EffectiveUrl} ({e.Message}).", ct);
                 return 1;
             }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
-                await error.WriteLineAsync("error: the server didn't answer in time. Try again.");
+                await error.WriteLineAsync("error: the server didn't answer in time. Try again.", ct);
                 return 1;
             }
             finally

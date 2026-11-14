@@ -127,6 +127,38 @@ public sealed class ObjectStorage : IDisposable
         }, ct);
     }
 
+    /// <summary>Writes a small text object from the server (Data Protection keys).</summary>
+    public async Task PutTextAsync(string key, string content, string contentType, CancellationToken ct)
+    {
+        await EnsureBucketAsync();
+        await Client.PutObjectAsync(new PutObjectRequest
+        {
+            BucketName = _options.Bucket,
+            Key = key,
+            ContentBody = content,
+            ContentType = contentType,
+        }, ct);
+    }
+
+    /// <summary>Every object's key in the bucket, for small buckets only (Data Protection keys).</summary>
+    public async Task<List<string>> ListAsync(CancellationToken ct)
+    {
+        await EnsureBucketAsync();
+        var keys = new List<string>();
+        var request = new ListObjectsV2Request { BucketName = _options.Bucket };
+        ListObjectsV2Response page;
+        do
+        {
+            page = await Client.ListObjectsV2Async(request, ct);
+            // Null, not empty, when the bucket has no objects.
+            keys.AddRange(page.S3Objects?.Select(o => o.Key) ?? []);
+            request.ContinuationToken = page.NextContinuationToken;
+        }
+        while (page.IsTruncated == true);
+
+        return keys;
+    }
+
     public void Dispose()
     {
         _client?.Dispose();

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Issues;
@@ -307,7 +306,7 @@ public sealed class MeetingBudgetTests(PostgresFixture postgres) : ApiTestBase(p
         var result = await mcp.CallToolAsync(tool, args, cancellationToken: Ct);
         var text = result.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Single().Text;
         result.IsError.ShouldNotBe(true, text);
-        return System.Text.Json.JsonDocument.Parse(text).RootElement;
+        return System.Text.Json.JsonElement.Parse(text);
     }
 
     private static DateTimeOffset Copenhagen(int year, int month, int day, int hour)

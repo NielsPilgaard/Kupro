@@ -109,6 +109,22 @@ public enum PlanView
 public sealed class PlanService(
     IDbContextFactory<KuproDbContext> dbFactory, WorkspaceContext workspace, RealtimeEvents realtime, WorkspaceCache cache, TimeProvider clock)
 {
+    /// <summary>A source version that becomes a milestone, in the caller's context so it commits with what the import recorded about it.</summary>
+    internal Milestone AddImportedMilestone(KuproDbContext db, Guid projectId, string name, DateOnly date)
+    {
+        var milestone = new Milestone
+        {
+            Id = Guid.CreateVersion7(),
+            WorkspaceId = workspace.RequireWorkspaceId(),
+            ProjectId = projectId,
+            Name = name,
+            Date = date,
+            CreatedAt = clock.GetUtcNow(),
+        };
+        db.Milestones.Add(milestone);
+        return milestone;
+    }
+
     public async Task<IssueResult<PlanResponse>> GetPlanAsync(DateOnly? from, DateOnly? to, string[]? projectKeys, PlanView view, CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);

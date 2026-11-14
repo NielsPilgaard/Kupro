@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Features.Sprints;
@@ -41,11 +42,22 @@ public sealed class IssueService(
     public async Task<IssueDetail?> GetAsync(string key, CancellationToken ct) =>
         (await GetManyAsync([key], ct)).SingleOrDefault();
 
-    /// <summary>The issues that exist among <paramref name="keys"/>, in the order asked. The same queries however many keys.</summary>
+    /// <summary>Each of <paramref name="keys"/> that leads to an issue, by its key or an import's alias, with the issue's key.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> ResolveKeysAsync(IEnumerable<string> keys, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await IssueKeys.ResolveAsync(db, keys, ct);
+    }
+
+    /// <summary>
+    /// The issues that exist among <paramref name="keys"/>, in the order asked. A key can also be a source reference an
+    /// import kept as an alias. The same queries however many keys.
+    /// </summary>
     public async Task<IReadOnlyList<IssueDetail>> GetManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct)
     {
-        var normalized = keys.Select(NormalizeKey).Distinct().ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var resolved = await IssueKeys.ResolveAsync(db, keys, ct);
+        var normalized = keys.Select(k => k.Trim()).Where(resolved.ContainsKey).Select(k => resolved[k]).Distinct().ToList();
         var summaries = await db.Issues.AsNoTracking().Where(i => normalized.Contains(i.Key)).Select(SummaryOf(db)).ToListAsync(ct);
         if (summaries.Count == 0)
         {
@@ -78,7 +90,7 @@ public sealed class IssueService(
                         m.Id,
                         m.Kind == MemberKind.Agent
                             ? m.AgentName!
-                            : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                            : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                         m.Kind))
                     .First(),
                 i.CompletedAt,
@@ -160,7 +172,8 @@ public sealed class IssueService(
             issues = issues.Where(i => EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
                     .Matches(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
                 || EF.Functions.TrigramsAreWordSimilar(text, i.Title)
-                || i.Key == key);
+                || i.Key == key
+                || db.IssueAliases.Any(a => a.IssueId == i.Id && (a.Alias == text.Trim() || a.Alias == key)));
 
             if (sort == IssueSort.Relevance)
             {
@@ -168,7 +181,7 @@ public sealed class IssueService(
                 var offset = (int)Math.Clamp(cursor?.Number ?? 0, 0, int.MaxValue);
                 var ranked = await issues
                     .OrderByDescending(i => i.UpdatedAt).ThenByDescending(i => i.Id).Take(RankedMatches)
-                    .OrderByDescending(i => (i.Key == key ? 2 : 0)
+                    .OrderByDescending(i => (i.Key == key || db.IssueAliases.Any(a => a.IssueId == i.Id && (a.Alias == text.Trim() || a.Alias == key)) ? 2 : 0)
                         + EF.Property<NpgsqlTsVector>(i, IssueConfiguration.SearchVector)
                             .Rank(EF.Functions.WebSearchToTsQuery("english", text).Or(EF.Functions.WebSearchToTsQuery("danish", text)))
                         + KuproDbContext.WordSimilarity(text, i.Title))
@@ -456,6 +469,166 @@ public sealed class IssueService(
             : created;
     }
 
+    /// <summary>
+    /// The import's bulk path (ADR-019 IMP-002): adds issues to the caller's context and transaction with the source's
+    /// key, people and times. The caller reserved the numbers. They go below what a column already holds, in the order
+    /// given, so a large import doesn't bury the team's own issues.
+    /// </summary>
+    internal async Task AddImportedAsync(KuproDbContext db, IReadOnlyList<ImportedIssue> rows, CancellationToken ct)
+    {
+        // Before anything else in the transaction, like every sprint lock.
+        var sprints = await SprintLedger.LockSprintsAsync(db, rows.Select(r => r.SprintId).OfType<Guid>().Distinct().ToList(), ct);
+
+        var ranks = new Dictionary<(Guid, IssueState), double>();
+        foreach (var (projectId, state) in rows.Select(r => (r.ProjectId, r.State)).Distinct())
+        {
+            ranks[(projectId, state)] = await db.Issues.Where(i => i.ProjectId == projectId && i.State == state).MaxAsync(i => (double?)i.Rank, ct) ?? 0;
+        }
+
+        var added = new List<Issue>(rows.Count);
+        foreach (var r in rows)
+        {
+            var issue = new Issue
+            {
+                Id = r.Id,
+                WorkspaceId = workspace.RequireWorkspaceId(),
+                ProjectId = r.ProjectId,
+                Number = r.Number,
+                Key = r.Key,
+                Type = r.Type,
+                Title = r.Title,
+                Description = r.Description,
+                State = r.State,
+                Priority = r.Priority,
+                AssigneeId = r.AssigneeId,
+                ParentId = r.ParentId,
+                Effort = r.Effort,
+                StartDate = r.StartDate,
+                DueDate = r.DueDate,
+                Rank = ++ranks[(r.ProjectId, r.State)],
+                SprintId = r.SprintId,
+                CreatedById = r.CreatedById,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt,
+                CompletedAt = r.CompletedAt,
+            };
+            foreach (var labelId in r.LabelIds)
+            {
+                issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = labelId });
+            }
+
+            db.Issues.Add(issue);
+            activity.RecordImported(db, issue.Id, "created", r.CreatedById, r.CreatedAt, r.SourceCreator is { } name ? new { sourceActor = name } : null);
+            added.Add(issue);
+        }
+
+        // A closed sprint takes old issues only from an import. It has no ledger to add to, and the ledger refuses it.
+        var live = added.Where(i => i.SprintId is not { } sprint || sprints.GetValueOrDefault(sprint) != SprintState.Closed);
+        _ = await ledger.RecordAsync(db, live.Select(i => (i.Id, LedgerState.None, LedgerState.Of(i))), ct);
+    }
+
+    /// <summary>
+    /// A re-run's changes to issues the caller has loaded and is tracking: only the named fields, one <c>reimported</c>
+    /// entry per issue with what changed. Like <see cref="AddImportedAsync"/>, the caller saves.
+    /// </summary>
+    internal async Task ApplyImportedAsync(KuproDbContext db, IReadOnlyList<ImportedIssueChange> changes, CancellationToken ct)
+    {
+        if (changes.Count == 0)
+        {
+            return;
+        }
+
+        var sprints = await SprintLedger.LockSprintsAsync(db, changes.SelectMany(c => new[] { c.Issue.SprintId, c.SprintId }).OfType<Guid>().Distinct().ToList(), ct);
+        var before = changes.Select(c => (c.Issue, State: LedgerState.Of(c.Issue))).ToList();
+        var now = clock.GetUtcNow();
+        foreach (var c in changes)
+        {
+            var issue = c.Issue;
+            var log = new Dictionary<string, FieldChange>();
+            if (c.Fields.Contains(ImportedField.Title))
+            {
+                log[ImportedField.Title] = new(issue.Title, c.Title);
+                issue.Title = c.Title;
+            }
+
+            if (c.Fields.Contains(ImportedField.Description))
+            {
+                log[ImportedField.Description] = new(null, null); // bodies are not copied into the log
+                issue.Description = c.Description;
+            }
+
+            if (c.Fields.Contains(ImportedField.State))
+            {
+                log[ImportedField.State] = new(issue.State, c.State);
+                SetState(issue, c.State, c.CompletedAt ?? c.UpdatedAt);
+            }
+
+            if (c.Fields.Contains(ImportedField.Priority))
+            {
+                log[ImportedField.Priority] = new(issue.Priority, c.Priority);
+                issue.Priority = c.Priority;
+            }
+
+            if (c.Fields.Contains(ImportedField.Assignee))
+            {
+                log[ImportedField.Assignee] = new(issue.AssigneeId, c.AssigneeId);
+                issue.AssigneeId = c.AssigneeId;
+            }
+
+            if (c.Fields.Contains(ImportedField.Parent))
+            {
+                log[ImportedField.Parent] = new(issue.ParentId, c.ParentId);
+                issue.ParentId = c.ParentId;
+            }
+
+            if (c.Fields.Contains(ImportedField.Sprint))
+            {
+                log[ImportedField.Sprint] = new(issue.SprintId, c.SprintId);
+                issue.SprintId = c.SprintId;
+            }
+
+            if (c.Fields.Contains(ImportedField.Effort))
+            {
+                log[ImportedField.Effort] = new(issue.Effort, c.Effort);
+                issue.Effort = c.Effort;
+            }
+
+            if (c.Fields.Contains(ImportedField.Start))
+            {
+                log[ImportedField.Start] = new(issue.StartDate, c.StartDate);
+                issue.StartDate = c.StartDate;
+            }
+
+            if (c.Fields.Contains(ImportedField.Due))
+            {
+                log[ImportedField.Due] = new(issue.DueDate, c.DueDate);
+                issue.DueDate = c.DueDate;
+            }
+
+            if (c.Fields.Contains(ImportedField.Labels))
+            {
+                log[ImportedField.Labels] = new(c.FormerLabels, c.LabelNames);
+                var wanted = c.LabelIds.ToHashSet();
+                var had = issue.Labels.Select(l => l.LabelId).ToHashSet();
+                issue.Labels.RemoveAll(l => !wanted.Contains(l.LabelId));
+                foreach (var id in wanted.Except(had))
+                {
+                    issue.Labels.Add(new IssueLabel { WorkspaceId = issue.WorkspaceId, IssueId = issue.Id, LabelId = id });
+                }
+            }
+
+            issue.UpdatedAt = c.UpdatedAt > issue.UpdatedAt ? c.UpdatedAt : issue.UpdatedAt;
+            activity.RecordImported(db, issue.Id, "reimported", c.ActorId, now, log);
+        }
+
+        // Into a closed sprint is how the source has it, and a closed sprint has no ledger. Leaving an active one still counts.
+        LedgerState After(Issue issue, LedgerState was) =>
+            issue.SprintId is { } sprint && sprint != was.SprintId && sprints.GetValueOrDefault(sprint) == SprintState.Closed
+                ? LedgerState.Of(issue) with { SprintId = null }
+                : LedgerState.Of(issue);
+        _ = await ledger.RecordAsync(db, before.Select(b => (b.Issue.Id, b.State, After(b.Issue, b.State))), ct);
+    }
+
     // ---------------------------------------------------------------- update
 
     public async Task<IssueResult<IssueDetail>> UpdateAsync(string key, UpdateIssueRequest request, CancellationToken ct)
@@ -661,7 +834,7 @@ public sealed class IssueService(
                 }
 
                 var childTypes = await db.Issues.Where(ch => ch.ParentId == issue.Id).Select(ch => ch.Type).Distinct().ToListAsync(ct);
-                if (childTypes.Any(t => !Validate.CanBeParent(t, newType)))
+                if (childTypes.Any(t => !IssueRules.CanBeParent(t, newType)))
                 {
                     return new IssueError("invalid_hierarchy",
                         $"{where}{issue.Key} has children that can't sit under a {newType}.");
@@ -1162,14 +1335,14 @@ public sealed class IssueService(
     private Guid? ResolveMemberShorthand(string value) =>
         value == Me ? workspace.MemberId : Guid.TryParse(value, out var id) ? id : null;
 
-    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member; unknown values are left out.</summary>
+    /// <summary>Maps each assignee value (member id or <c>me</c>) to an active member or a placeholder (ADR-019); unknown values are left out.</summary>
     private async Task<Dictionary<string, (Guid Id, MemberKind Kind)>> ResolveAssigneesAsync(
         KuproDbContext db, IEnumerable<string?> values, CancellationToken ct)
     {
         var wanted = values.OfType<string>().Distinct()
             .Select(v => (Value: v, Id: ResolveMemberShorthand(v))).Where(x => x.Id is not null).ToList();
         var ids = wanted.Select(x => x.Id!.Value).Distinct().ToList();
-        var active = await db.Members.Where(m => ids.Contains(m.Id) && m.Status == MemberStatus.Active)
+        var active = await db.Members.Where(m => ids.Contains(m.Id) && (m.Status == MemberStatus.Active || m.Status == MemberStatus.Placeholder))
             .ToDictionaryAsync(m => m.Id, m => m.Kind, ct);
         return wanted.Where(x => active.ContainsKey(x.Id!.Value))
             .ToDictionary(x => x.Value, x => (x.Id!.Value, active[x.Id!.Value]));
@@ -1240,7 +1413,7 @@ public sealed class IssueService(
                     m.Id,
                     m.Kind == MemberKind.Agent
                         ? m.AgentName!
-                        : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                        : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                     m.Kind))
                 .FirstOrDefault(),
             db.Issues.Where(p => p.Id == i.ParentId).Select(p => p.Key).FirstOrDefault(),
@@ -1297,16 +1470,9 @@ public sealed class IssueService(
 
     private static class Validate
     {
-        public static bool CanBeParent(IssueType child, IssueType parent) => child switch
-        {
-            IssueType.Task => parent is IssueType.Feature or IssueType.Epic,
-            IssueType.Feature => parent is IssueType.Epic,
-            _ => false,
-        };
-
         public static IssueError? Parent(IssueType child, ParentInfo? parent) =>
             parent is null ? new IssueError("invalid_parent", "The parent issue doesn't exist.")
-            : CanBeParent(child, parent.Type) ? null
+            : IssueRules.CanBeParent(child, parent.Type) ? null
             : new IssueError("invalid_hierarchy", child == IssueType.Epic
                 ? "Epics are top level and can't have a parent."
                 : $"A {child} can't sit under a {parent.Type}.");
@@ -1354,6 +1520,51 @@ public sealed class IssueService(
             Convert.ToBase64String(Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 }
+
+/// <summary>An issue an import writes, with everything already mapped, fitted and numbered.</summary>
+internal sealed record ImportedIssue(
+    Guid Id,
+    Guid ProjectId,
+    int Number,
+    string Key,
+    IssueType Type,
+    string Title,
+    string? Description,
+    IssueState State,
+    IssuePriority Priority,
+    Guid? AssigneeId,
+    Guid? ParentId,
+    decimal? Effort,
+    DateOnly? StartDate,
+    DateOnly? DueDate,
+    Guid? SprintId,
+    IReadOnlyList<Guid> LabelIds,
+    Guid CreatedById,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CompletedAt,
+    string? SourceCreator);
+
+/// <summary>What a re-run changes on one issue. Only <see cref="Fields"/> are read; the names are <c>ImportedField</c>'s.</summary>
+internal sealed record ImportedIssueChange(
+    Issue Issue,
+    IReadOnlySet<string> Fields,
+    string Title,
+    string? Description,
+    IssueState State,
+    IssuePriority Priority,
+    Guid? AssigneeId,
+    Guid? ParentId,
+    decimal? Effort,
+    DateOnly? StartDate,
+    DateOnly? DueDate,
+    Guid? SprintId,
+    IReadOnlyList<Guid> LabelIds,
+    IReadOnlyList<string> LabelNames,
+    IReadOnlyList<string> FormerLabels,
+    Guid ActorId,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? CompletedAt);
 
 /// <summary>What <see cref="IssueService.ApplyCloseAsync"/> did; the ids and keys are for pushing it after commit.</summary>
 internal sealed record AppliedClose(

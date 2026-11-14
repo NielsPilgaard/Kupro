@@ -111,6 +111,35 @@ public sealed class AttachmentService(
         return await GetAsync(db, id, ct) is { } attachment ? await WithDownloadAsync(attachment) : NotFound(id);
     }
 
+    /// <summary>
+    /// Copies an imported file into storage (ADR-019 History: source links die with the subscription). Safe to repeat
+    /// for the same ID: a resumed import overwrites what a lost batch uploaded.
+    /// </summary>
+    internal Task StoreImportedAsync(Guid id, string path, string contentType, CancellationToken ct) =>
+        storage.UploadFileAsync($"{workspace.RequireWorkspaceId()}/{id}", path, contentType, ct);
+
+    /// <summary>The stored file of an attachment an undone import made; its row is already gone.</summary>
+    internal Task DeleteImportedAsync(Guid id, CancellationToken ct) => storage.DeleteAsync($"{workspace.RequireWorkspaceId()}/{id}", ct);
+
+    /// <summary>The row for a file <see cref="StoreImportedAsync"/> stored, with the source's uploader and time; ready at once.</summary>
+    internal Attachment AddImported(KuproDbContext db, Guid id, Guid issueId, Guid uploadedById, string fileName, string contentType, long size, DateTimeOffset createdAt)
+    {
+        var attachment = new Attachment
+        {
+            Id = id,
+            WorkspaceId = workspace.RequireWorkspaceId(),
+            IssueId = issueId,
+            UploadedById = uploadedById,
+            FileName = fileName,
+            ContentType = contentType,
+            Size = size,
+            Ready = true,
+            CreatedAt = createdAt,
+        };
+        db.Attachments.Add(attachment);
+        return attachment;
+    }
+
     private async Task<AttachmentResponse> WithDownloadAsync(AttachmentResponse a) =>
         a.Ready
             ? a with
@@ -140,7 +169,7 @@ public sealed class AttachmentService(
                         m.Id,
                         m.Kind == MemberKind.Agent
                             ? m.AgentName!
-                            : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                            : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                         m.Kind))
                     .First(),
                 a.CreatedAt,

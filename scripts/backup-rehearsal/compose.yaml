@@ -60,6 +60,7 @@ services:
   api:
     environment:
       Storage__CreateBucket: "true"
+      KeyStorage__CreateBucket: "true"
     # Presigned attachment URLs name host.docker.internal, so the script, the browser and the API reach the same Silo.
     extra_hosts:
       - "host.docker.internal:host-gateway"

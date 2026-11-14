@@ -17,6 +17,15 @@ public enum FeedItemKind
     SprintClosed,
     SplitFrom,
     SplitInto,
+
+    /// <summary>The issue came across in an import (ADR-019 History).</summary>
+    Imported,
+
+    /// <summary>A re-run of the import changed fields Kupro has; <see cref="FeedItem.Changes"/> as for <see cref="Updated"/>.</summary>
+    Reimported,
+
+    /// <summary>A source change to a field Kupro lacks: the field and values as the source named them.</summary>
+    SourceChanged,
 }
 
 /// <summary>
@@ -35,6 +44,8 @@ public sealed record FeedMeeting(Guid MeetingId, Guid ProposalId, string? Snippe
 /// <param name="Body">Comment markdown; null for other kinds.</param>
 /// <param name="EditedAt">When a comment was last edited.</param>
 /// <param name="Meeting">Set when the meeting agent made this change.</param>
+/// <param name="SourceActor">For an import: the source's name for someone the owner skipped, whose entries the shared placeholder holds.</param>
+/// <param name="Source">For an import: the source kind it came from (<c>jira</c>, <c>azure-devops</c>...), for "via Jira import".</param>
 public sealed record FeedItem(
     Guid Id,
     FeedItemKind Kind,
@@ -44,37 +55,86 @@ public sealed record FeedItem(
     IReadOnlyList<FeedChange> Changes,
     string? Body,
     DateTimeOffset? EditedAt,
-    FeedMeeting? Meeting = null);
+    FeedMeeting? Meeting = null,
+    string? SourceActor = null,
+    string? Source = null);
 
 /// <summary>An issue's history and comments merged in time order (task 008).</summary>
 public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
 {
-    /// <summary>Most recent entries kept per issue; older history is rarely read and keeps the response small (ADR-010).</summary>
+    /// <summary>Most items in one response; older ones come a page at a time (ADR-010). An import can leave thousands.</summary>
     public const int Limit = 500;
 
-    public async Task<IReadOnlyList<FeedItem>?> GetAsync(string key, CancellationToken ct) =>
-        (await GetManyAsync([key], ct)).Values.SingleOrDefault();
+    /// <summary>
+    /// A page of an issue's feed, oldest first: the <paramref name="limit"/> newest items, or with <paramref name="before"/>
+    /// (the id of the oldest item the caller has) the ones just before it. A full page means there may be more.
+    /// Null if there is no such issue.
+    /// </summary>
+    public async Task<IssueResult<IReadOnlyList<FeedItem>>?> GetAsync(string key, Guid? before, int limit, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if ((await IssueKeys.ResolveAsync(db, [key], ct)).Values.SingleOrDefault() is not { } found)
+        {
+            return null;
+        }
 
-    /// <summary>Feeds by issue key, for the issues that exist among <paramref name="keys"/>. The same queries however many keys.</summary>
+        var issueId = await db.Issues.Where(i => i.Key == found).Select(i => i.Id).SingleAsync(ct);
+        (DateTimeOffset At, Guid Id)? cursor = null;
+        if (before is { } id)
+        {
+            var at = await db.Activity.Where(a => a.Id == id && a.IssueId == issueId).Select(a => (DateTimeOffset?)a.CreatedAt).SingleOrDefaultAsync(ct)
+                ?? await db.Comments.Where(c => c.Id == id && c.IssueId == issueId).Select(c => (DateTimeOffset?)c.CreatedAt).SingleOrDefaultAsync(ct);
+            if (at is null)
+            {
+                return new IssueError("invalid_cursor", $"{id} is not an item in {found}'s activity.");
+            }
+
+            cursor = (at.Value, id);
+        }
+
+        var feeds = await LoadAsync(db, [(issueId, found)], cursor, Math.Clamp(limit, 1, Limit), ct);
+        return new IssueResult<IReadOnlyList<FeedItem>>(feeds[found], null);
+    }
+
+    /// <summary>The newest page of each issue's feed by issue key, for the issues that exist among <paramref name="keys"/>. The same queries however many keys.</summary>
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<FeedItem>>> GetManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct)
     {
-        var normalized = keys.Select(k => k.Trim().ToUpperInvariant()).Distinct().ToList();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var normalized = (await IssueKeys.ResolveAsync(db, keys, ct)).Values.Distinct().ToList();
         var issues = await db.Issues.Where(i => normalized.Contains(i.Key)).Select(i => new { i.Id, i.Key }).ToListAsync(ct);
+        return await LoadAsync(db, [.. issues.Select(i => (i.Id, i.Key))], null, Limit, ct);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, IReadOnlyList<FeedItem>>> LoadAsync(
+        KuproDbContext db, IReadOnlyList<(Guid Id, string Key)> issues, (DateTimeOffset At, Guid Id)? cursor, int limit, CancellationToken ct)
+    {
         if (issues.Count == 0)
         {
             return new Dictionary<string, IReadOnlyList<FeedItem>>();
         }
 
+        // Each side takes a full page and the merge below keeps the newest of both. Row values keep each read on one index range.
         var issueIds = issues.Select(i => i.Id).ToList();
+        var paged = cursor is not null;
+        var (beforeAt, beforeId) = cursor ?? default;
         var entries = await db.Issues.Where(i => issueIds.Contains(i.Id))
-            .SelectMany(i => db.Activity.Where(a => a.IssueId == i.Id).OrderByDescending(a => a.CreatedAt).Take(Limit))
+            .SelectMany(i => db.Activity
+                .Where(a => a.IssueId == i.Id && (!paged || EF.Functions.LessThan(ValueTuple.Create(a.CreatedAt, a.Id), ValueTuple.Create(beforeAt, beforeId))))
+                .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit))
             .Select(a => new { a.Id, a.IssueId, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId })
             .ToListAsync(ct);
         var comments = await db.Issues.Where(i => issueIds.Contains(i.Id))
-            .SelectMany(i => db.Comments.Where(c => c.IssueId == i.Id).OrderByDescending(c => c.CreatedAt).Take(Limit))
-            .Select(c => new { c.Id, c.IssueId, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt, c.ProposalId })
+            .SelectMany(i => db.Comments
+                .Where(c => c.IssueId == i.Id && (!paged || EF.Functions.LessThan(ValueTuple.Create(c.CreatedAt, c.Id), ValueTuple.Create(beforeAt, beforeId))))
+                .OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id).Take(limit))
+            .Select(c => new { c.Id, c.IssueId, c.AuthorId, c.Via, c.Body, c.CreatedAt, c.EditedAt, c.ProposalId, c.SourceAuthor })
             .ToListAsync(ct);
+
+        // An issue comes from at most one import; entries made through it say which source.
+        var sources = await db.ImportedItems.AsNoTracking().Where(r => r.SourceKind == "item" && issueIds.Contains(r.EntityId))
+            .Join(db.WorkspaceImports, r => r.ImportId, w => w.Id, (r, w) => new { r.EntityId, w.SourceKind })
+            .ToDictionaryAsync(r => r.EntityId, r => r.SourceKind, ct);
+        string? SourceOf(Guid issueId, Surface via) => via == Surface.Import ? sources.GetValueOrDefault(issueId) : null;
 
         var parsed = entries.Select(e => (Entry: e, Data: Parse(e.Data))).ToList();
         var proposalIds = entries.Select(e => e.ProposalId).Concat(comments.Select(c => c.ProposalId))
@@ -89,7 +149,7 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                 m.Id,
                 m.Kind == MemberKind.Agent
                     ? m.AgentName!
-                    : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                    : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
                 m.Kind))
             .ToDictionaryAsync(m => m.Id, ct);
         var parentIds = parsed.SelectMany(p => Ids(p.Data, "parent")).ToHashSet();
@@ -133,9 +193,10 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
             }
 
             var changes = new List<FeedChange>();
-            if (kind is FeedItemKind.Updated && data is { ValueKind: JsonValueKind.Object } fields)
+            if (kind is FeedItemKind.Updated or FeedItemKind.Reimported && data is { ValueKind: JsonValueKind.Object } fields)
             {
-                foreach (var f in fields.EnumerateObject())
+                // Only field changes: an import also keeps the source's name for a skipped actor here (ADR-019 People).
+                foreach (var f in fields.EnumerateObject().Where(f => f.Value.ValueKind == JsonValueKind.Object))
                 {
                     changes.Add(new FeedChange(f.Name,
                         f.Value.TryGetProperty("from", out var from) ? Display(f.Name, from) : null,
@@ -147,6 +208,10 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                 changes.Add(new FeedChange("outcome", null, close.GetProperty("outcome").GetString()));
                 var sprint = close.GetProperty("sprint");
                 changes.Add(new FeedChange("sprint", Display("sprint", sprint.GetProperty("from")), Display("sprint", sprint.GetProperty("to"))));
+            }
+            else if (kind is FeedItemKind.SourceChanged && data is { ValueKind: JsonValueKind.Object } raw)
+            {
+                changes.Add(new FeedChange(Text(raw, "field") ?? "", Text(raw, "from"), Text(raw, "to")));
             }
             else if (kind is FeedItemKind.SplitFrom or FeedItemKind.SplitInto && data is { ValueKind: JsonValueKind.Object } split)
             {
@@ -162,19 +227,22 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
                 changes.Add(kind == FeedItemKind.RelationAdded ? new(typeName, null, other) : new(typeName, other, null));
             }
 
-            items.Add((e.IssueId, new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId))));
+            var sourceActor = data is { ValueKind: JsonValueKind.Object } d ? Text(d, "sourceActor") : null;
+            items.Add((e.IssueId, new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId), sourceActor, SourceOf(e.IssueId, e.Via))));
         }
 
         foreach (var c in comments)
         {
             if (members.TryGetValue(c.AuthorId, out var author))
             {
-                items.Add((c.IssueId, new FeedItem(c.Id, FeedItemKind.Comment, author, c.Via, c.CreatedAt, [], c.Body, c.EditedAt, Meeting(c.ProposalId))));
+                items.Add((c.IssueId, new FeedItem(
+                    c.Id, FeedItemKind.Comment, author, c.Via, c.CreatedAt, [], c.Body, c.EditedAt, Meeting(c.ProposalId), c.SourceAuthor, SourceOf(c.IssueId, c.Via))));
             }
         }
 
         var byIssue = items.ToLookup(i => i.IssueId, i => i.Item);
-        return issues.ToDictionary(i => i.Key, IReadOnlyList<FeedItem> (i) => byIssue[i.Id].OrderBy(f => f.At).ThenBy(f => f.Id).ToList());
+        return issues.ToDictionary(i => i.Key, IReadOnlyList<FeedItem> (i) =>
+            [.. byIssue[i.Id].OrderByDescending(f => f.At).ThenByDescending(f => f.Id).Take(limit).Reverse()]);
     }
 
     private static FeedItemKind? Kind(string kind) => kind switch
@@ -186,8 +254,14 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
         "sprint_closed" => FeedItemKind.SprintClosed,
         "split_from" => FeedItemKind.SplitFrom,
         "split_into" => FeedItemKind.SplitInto,
+        "imported" => FeedItemKind.Imported,
+        "reimported" => FeedItemKind.Reimported,
+        "source_changed" => FeedItemKind.SourceChanged,
         _ => null,
     };
+
+    private static string? Text(JsonElement data, string property) =>
+        data.TryGetProperty(property, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : null;
 
     private static JsonElement? Parse(string? data) => data is null ? null : JsonSerializer.Deserialize<JsonElement>(data);
 

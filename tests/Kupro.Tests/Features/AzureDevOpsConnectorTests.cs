@@ -1,4 +1,7 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using Kupro.Api.Features.Imports;
+using Kupro.Api.Features.Issues;
 using Kupro.Import;
 using Kupro.Import.AzureDevOps;
 using Kupro.Import.Snapshot;
@@ -77,6 +80,41 @@ public sealed class AzureDevOpsConnectorTests
     }
 
     [Fact]
+    public async Task The_default_mapping_makes_critical_bugs_urgent_and_new_items_outside_a_sprint_backlog()
+    {
+        var stream = new MemoryStream();
+        await Connect(Sample()).WriteSnapshotAsync(stream, new ReadScope(), null, includeFiles: false, TimeProvider.System, Ct);
+        stream.Position = 0;
+        await using var snapshot = await SnapshotReader.OpenAsync(stream, Ct);
+        var mapping = ImportMappingDefaults.Propose(snapshot.Header, []);
+
+        mapping.UrgentValues["Microsoft.VSTS.Common.Severity"].ShouldBe(["1 - Critical"]);
+        mapping.BacklogWithoutSprint.ShouldContain($"{Agile}/Bug/New");
+        mapping.BacklogWithoutSprint.ShouldNotContain($"{Agile}/Bug/Active");
+
+        var source = new MappedSource(snapshot.Header, mapping, Now);
+        SourceItem Bug(string state, string? sprint = null, string? severity = null) => new()
+        {
+            Id = "1",
+            Project = "p",
+            Type = $"{Agile}/Bug",
+            Status = $"{Agile}/Bug/{state}",
+            Title = "Bug",
+            Priority = "3",
+            Sprint = sprint,
+            Created = T0,
+            Updated = T0,
+            Fields = severity is null ? new Dictionary<string, JsonElement>() : new Dictionary<string, JsonElement> { ["Microsoft.VSTS.Common.Severity"] = FieldValue.Text(severity) },
+        };
+        source.State(Bug("New")).ShouldBe(IssueState.Backlog);
+        source.State(Bug("New", sprint: "11")).ShouldBe(IssueState.Todo, "planned into a sprint");
+        source.State(Bug("Active")).ShouldBe(IssueState.InProgress);
+        source.Priority(Bug("New", severity: "1 - Critical")).ShouldBe(IssuePriority.Urgent);
+        source.Priority(Bug("New", severity: "2 - High")).ShouldBe(IssuePriority.Low, "priority 3 stands");
+        source.Priority(Bug("New")).ShouldBe(IssuePriority.Low);
+    }
+
+    [Fact]
     public async Task Read_maps_work_items_with_hierarchy_effort_dates_sprints_and_links()
     {
         var ado = Sample();
@@ -145,7 +183,7 @@ public sealed class AzureDevOpsConnectorTests
         people.Single(p => p.Id == "u-sofie").Email.ShouldBe("sofie@acme.example");
         records.IndexOf(people.Single(p => p.Id == "u-sofie")).ShouldBeLessThan(records.IndexOf(items["102"]), "people come before records that use them");
 
-        records[^1].ShouldBe(new ReadCursor(T0.AddDays(5).UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+        records[^1].ShouldBe(new ReadCursor(Now.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
     }
 
     [Fact]
@@ -228,11 +266,11 @@ public sealed class AzureDevOpsConnectorTests
         var records = await connector.ReadAsync(new ReadScope(), T0.AddDays(4).ToString("O"), Ct).ToListAsync(Ct);
 
         records.OfType<SourceItem>().Select(i => i.Id).ShouldBe(["102"]);
-        records[^1].ShouldBe(new ReadCursor(T0.AddDays(5).UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+        records[^1].ShouldBe(new ReadCursor(Now.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
 
         var nothing = await connector.ReadAsync(new ReadScope(), "2026-01-01T00:00:00Z", Ct).ToListAsync(Ct);
         nothing.OfType<SourceItem>().ShouldBeEmpty();
-        nothing[^1].ShouldBe(new ReadCursor("2026-01-01T00:00:00Z"), "no change: the cursor stays");
+        nothing[^1].ShouldBe(new ReadCursor(Now.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)), "no change: the read's start");
     }
 
     [Fact]

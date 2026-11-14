@@ -602,6 +602,29 @@ U += [
 ]
 y += 8
 
+# Imports (task 023, ADR-019): counters from ImportMetrics in the API. Bytes are attachment files copied into object
+# storage; the storage-growth alert watches them, since one large import can add more in a day than months of uploads.
+IMPORT_RUNS = f'kupro_import_runs_total{{{JOB}}}'
+IMPORT_ITEMS = f'kupro_import_items_total{{{JOB}}}'
+IMPORT_BYTES = f'kupro_import_bytes_total{{{JOB}}}'
+IMPORT_BYTES_PER_DAY_LIMIT = 20e9
+U.append(row("Imports (task 023)", y)); y += 1
+import_bytes = ts("Attachment bytes imported per day", [prom(f'sum(increase({IMPORT_BYTES}[1d]))', legend="bytes")],
+                  16, y, w=8, h=8, unit="bytes", threshold_lines=[(IMPORT_BYTES_PER_DAY_LIMIT, "red")],
+                  desc="Files copied into object storage; each point is the 24 hours before it. The red line is the "
+                       "storage-growth alert.")
+U += [
+    ts("Issues written per second", [prom(f'sum(rate({IMPORT_ITEMS}[5m]))', legend="items/s")],
+       0, y, w=8, h=8, unit="short",
+       desc="Issues created or updated by import commits. Flat at zero between runs."),
+    ts("Runs by outcome", [prom(f'sum by (kind, state) (increase({IMPORT_RUNS}[1h]))', legend="{{kind}} {{state}}")],
+       8, y, w=8, h=8, draw="bars", stack=True,
+       overrides=fixed_colors({"commit succeeded": "green", "plan succeeded": "blue", "commit failed": "red", "plan failed": "orange"}),
+       desc="Plans and commits that ended, per hour. A failed commit emails the import's owner with the reason."),
+    import_bytes,
+]
+y += 8
+
 usage = dashboard("kupro-usage", "Kupro – Usage",
                   "Requests by feature area and caller (web/MCP session, API token, agent token), from the request log in Loki.",
                   U, time_from="now-7d", refresh="5m")
@@ -792,6 +815,16 @@ alerts = {"apiVersion": 1, "groups": [{"orgId": 1, "name": "kupro-api", "folder"
         "Check 'Top workspaces by spend' for one workspace running up the bill. If the day is just busy, raise "
         "DailyCeilingEuro in src/Kupro.AppHost/MeetingAgent.cs and deploy.",
         usage, spend_day),
+    rule("kupro-import-storage-growth", "Kupro imports filling object storage", "C", [
+        q_prom("A", f'sum(increase({IMPORT_BYTES}[1d]))', 86400),
+        q_reduce("B", "A"),
+        q_threshold("C", "B", "gt", IMPORT_BYTES_PER_DAY_LIMIT),
+    ], "0s", "warning",
+        "Imports copied {{ humanize1024 $values.B.Value }}B of attachments into object storage in the last 24 hours.",
+        "One import with many files can grow the bucket faster than the storage plan expects. Check which import is "
+        "running (Settings → Import, or `kupro import list` per workspace) and the bucket's size in the OVHcloud console. "
+        "Imports keep going; this is a heads-up, not a stop.",
+        usage, import_bytes),
 ]}]}
 
 for name, d in [("health", health), ("usage", usage), ("errors", errors)]:

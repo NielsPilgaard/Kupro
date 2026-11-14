@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json.Serialization.Metadata;
 using Kupro.Cli.Api;
 using Microsoft.Kiota.Abstractions.Authentication;
@@ -36,7 +35,10 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
 
     public CliConfig Config { get; } = config;
 
-    public KuproClient CreateClient(bool authenticated = true)
+    public KuproClient CreateClient(bool authenticated = true) => new(CreateAdapter(authenticated));
+
+    /// <summary>The adapter behind <see cref="CreateClient"/>, for a request the generated client can't build (a raw upload).</summary>
+    public HttpClientRequestAdapter CreateAdapter(bool authenticated = true)
     {
         // Alongside the command's own requests, so it costs no extra round trip.
         _versionCheck ??= CheckVersionAsync();
@@ -47,7 +49,7 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
         IAuthenticationProvider auth = authenticated
             ? new BaseBearerTokenAuthenticationProvider(new TokenProvider(this))
             : new AnonymousAuthenticationProvider();
-        return new KuproClient(new HttpClientRequestAdapter(auth, httpClient: http) { BaseUrl = Config.EffectiveUrl });
+        return new HttpClientRequestAdapter(auth, httpClient: http) { BaseUrl = Config.EffectiveUrl };
     }
 
     /// <summary>Plain HTTP client on the same transport (tests swap it), for non-generated calls like the MCP bridge.</summary>
@@ -189,7 +191,7 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
         }
 
         var url = device.VerificationUriComplete ?? device.VerificationUri;
-        await output.WriteLineAsync($"Open {url} and confirm the code {device.UserCode}.");
+        await output.WriteLineAsync($"Open {url} and confirm the code {device.UserCode}.", ct);
         TryOpenBrowser(url);
 
         var deadline = DateTimeOffset.UtcNow.AddSeconds(device.ExpiresIn);
@@ -204,7 +206,7 @@ public sealed class ApiSession(CliConfig config, HttpMessageHandler? transport =
                 // The user may already have confirmed in the browser, and the code stays good until the deadline.
                 if (!down)
                 {
-                    await output.WriteLineAsync("The sign-in server isn't answering. Still trying until the code expires.");
+                    await output.WriteLineAsync("The sign-in server isn't answering. Still trying until the code expires.", ct);
                 }
 
                 down = true;

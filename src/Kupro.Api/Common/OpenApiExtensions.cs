@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
 namespace Kupro.Api.Common;
@@ -6,8 +7,10 @@ namespace Kupro.Api.Common;
 public static class OpenApiExtensions
 {
     public static IServiceCollection AddKuproOpenApi(this IServiceCollection services) =>
-        services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
+        services.AddOpenApi(options => OpenApi31(options).AddOperationTransformer(async (operation, context, ct) =>
         {
+            await UseSharedEnumSchemasAsync(operation, context, ct);
+
             // XML-comment text joins lines with the OS newline; normalize so a Windows build matches CI's spec.
             operation.Summary = Lf(operation.Summary);
             operation.Description = Lf(operation.Description);
@@ -37,8 +40,6 @@ public static class OpenApiExtensions
                     Schema = new OpenApiSchema { Type = JsonSchemaType.String, MaxLength = 255 },
                 });
             }
-
-            return Task.CompletedTask;
         }).AddSchemaTransformer((schema, _, _) =>
         {
             schema.Description = Lf(schema.Description);
@@ -80,6 +81,43 @@ public static class OpenApiExtensions
             document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("bearer", document)] = [] }];
             return Task.CompletedTask;
         }));
+
+    // .NET 11 defaults to OpenAPI 3.2, which adds nothing this API uses; 3.1 keeps the public spec readable by
+    // third-party tools that don't support 3.2 yet. The csproj pins the build-time spec the same way.
+    private static OpenApiOptions OpenApi31(OpenApiOptions options)
+    {
+        options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
+        return options;
+    }
+
+    // .NET 11 inlines an enum query parameter's schema with the C# member names (Assignee), ignoring the camelCase
+    // JSON policy. Point it back at the shared component schema, as bodies use, so clients get one camelCase type.
+    private static async Task UseSharedEnumSchemasAsync(
+        OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken ct)
+    {
+        if (context.Document is not { } document)
+        {
+            return;
+        }
+
+        foreach (var description in context.Description.ParameterDescriptions)
+        {
+            var type = description.Type is null ? null : Nullable.GetUnderlyingType(description.Type) ?? description.Type;
+            if (type is not { IsEnum: true }
+                || operation.Parameters?.OfType<OpenApiParameter>().FirstOrDefault(p =>
+                    string.Equals(p.Name, description.Name, StringComparison.OrdinalIgnoreCase)) is not { } parameter)
+            {
+                continue;
+            }
+
+            if (document.Components?.Schemas?.ContainsKey(type.Name) != true)
+            {
+                document.AddComponent(type.Name, await context.GetOrCreateSchemaAsync(type, cancellationToken: ct));
+            }
+
+            parameter.Schema = new OpenApiSchemaReference(type.Name, document);
+        }
+    }
 
     private static string? Lf(string? text) => text?.ReplaceLineEndings("\n");
 }

@@ -19,7 +19,8 @@ public static class McpSetup
         "(KUP-12). Types: epic > feature > task. States: backlog, todo, inProgress, inReview, done, canceled. " +
         "Effort is in hours. Start with get_context; use search_issues before creating duplicates. " +
         "Create an epic with its children in one create_issues call (parent: \"#0\" points at the first item). " +
-        "Descriptions and comments are Markdown. " +
+        "Descriptions and comments are Markdown; `attachment:ID` links resolve with get_attachment. " +
+        "An issue imported from another tracker also answers to its old key (PROJ-1, #4567). " +
         "Tools take a workspace slug, which you can leave out when your token is limited to one workspace or you are in only one.";
 
     /// <summary>The tool list only changes with a deploy. A hint for clients on protocol 2026-07-28; older ones ignore the field (ADR-001 IMP-004).</summary>

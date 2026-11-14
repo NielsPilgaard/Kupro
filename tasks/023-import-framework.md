@@ -25,7 +25,41 @@ storage and jobs (last item in Acceptance criteria).
 
 **Progress**: the snapshot format is done: `Kupro.Import` (model, chunked NDJSON ZIP writer and reader,
 `ISourceConnector`, the snapshot-upload connector), [import-format.md](../docs/import-format.md) with its schema, and
-`SnapshotTests`. Next: Data, then Pipeline.
+`SnapshotTests`. Data is done too: the four import tables (`Features/Imports`, class `WorkspaceImport` for `import`,
+since `Import` collides with the `Kupro.Import` namespace), `ImportTokens` with Data Protection keys in their own bucket, and
+placeholder members with invite and merge on REST, CLI and the Members page. Pipeline has started: the mapping with its
+defaults, `HierarchyFit` and `ImportPlanner` (counts and samples over a snapshot, nothing written), then the first
+commit: the stored snapshot, `ImportJob` with its own queue, `ImportCommit` (projects, people, labels, sprints,
+milestones, keys and aliases, issues with the details block, relations; resumable) and `MarkupConverters` (HTML, plain).
+History is in as well: comments, attachments, changelog replay and mention/link rewriting (`ImportCommit.History`,
+`ImportReferences`). An attachment whose bytes the snapshot doesn't hold is counted and keeps its source link until the
+server-side connectors fetch it. Re-runs work too: per-field updates against `imported_item.last_values`, `import_conflict`
+with Keep/Use source, deltas that rebuild the tree from stored parents, and a `partial` flag in the format so only a whole
+snapshot reports source deletions. A delta must list a holder together with its checklist items. No surface reaches any
+of this yet: `ImportService` is called from tests. The plan runs a re-run's own comparison on a context it never saves,
+so its counts are the commit's. Invites go out when a commit ends, the owner is emailed (EN/DA) after the first commit
+and after a failed one (a failed plan only shows where it was asked for), and Undo, Finish and the 90-day token purge
+are in `ImportService`/`ImportJob`. Imports with a token run their connector (`ImportSources`: Azure DevOps, Linear,
+Trello) into a fresh snapshot with files when a commit starts, from the cursor less a 10-minute overlap; a rejected
+token fails the run and pauses auto-sync until it is replaced; auto-sync queues hourly and turns itself off after 30
+quiet days. Trello needs Kupro's API key, the `trello-api-key` AppHost parameter (`TRELLO_API_KEY`). The feed shows `imported`, `reimported` and `sourceChanged` items with the source and a skipped person's
+source name ("via Jira import", web too), and a source key or URL finds its issue in `GET /issues/{key}`, the feed,
+`get_issue` and search (so the palette). The feed pages: `GET .../activity?before=<oldest item id>&limit=`, `kupro issue activity --before`, and "Show older" on the web. CSV is a source: `Kupro.Import.Csv` (encoding and delimiter detection, quoting, Jira and
+Linear presets, the other columns to the details block), kept as the import's source file and turned into a snapshot
+when a run starts, with its columns on `ImportMapping.Csv`. `ImportService.ProposeMappingAsync` proposes a mapping for
+any import. A Kupro export ZIP is a source too (`Kupro.Import.Kupro`, `StoreExportAsync`): keys, people, sprints,
+milestones, board order, comments, files, field history and project capacity (`projects[].capacity` in the format, set on projects
+the import creates) come across through the same pipeline. Not yet: feed entries other than field changes (relations
+added, sprint closes); `workspace.json` streams to disk table by table (`ExportSpool`; a
+386 MB, 300,000-issue file opened in under a second with a heap peak near 70 MB), capped by
+`Imports:MaxExportJsonMegabytes` (default 1024) against ZIP bombs. The surfaces are in: REST `ImportsController` (owners, people only), `kupro import ...`
+(`create`, `csv`, `snapshot`, `kupro`, `list`, `show`, `upload`, `source`, `mapping [--set]`, `plan`, `run`, `runs`,
+`report`, `sync --auto`, `token`, `conflicts [--keep|--use-source]`, `undo [--check]`, `finish`; tokens from stdin or
+`KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared
+text into the server instructions. Every import endpoint answers 404 for another workspace's ids. Ops: `ImportMetrics`
+(runs, items, stored bytes), an Imports row on the Usage dashboard, the "imports filling object storage" alert (20 GB a
+day) and runbook notes. Left: the web wizard (waits on task 033) and the production run after 013.
+The web wizard waits on task 033.
 
 ## Scope
 
@@ -48,7 +82,9 @@ storage and jobs (last item in Acceptance criteria).
 - Tables from ADR-019 IMP-001: `import`, `import_run`, `imported_item`, `issue_alias`. All tenant-owned and added to
   the export ([task 016](completed/016-workspace-export.md)) or to `ExportWriter.NotExported` with a reason (the
   encrypted token is not exported).
-- Data Protection keys persisted to Postgres. The token is encrypted at rest and never returned by any endpoint.
+- Data Protection keys persisted to their own Object Storage bucket (`KeyStorage__*`), never Postgres. The token is
+  encrypted at rest and never returned by any endpoint. Without key storage `ImportTokens.Enabled` is false and
+  importing with a token answers 503, like attachments without storage.
 - `MemberStatus.Placeholder` with `Member.DisplayName` and optional `Member.PlaceholderEmail`. Seat count, guest cap,
   idle-seat flag and authorization ignore placeholders (they can't sign in). Members page shows them in their own
   group with "Invite" and "Merge into…" ([ADR-013](../docs/adr/ADR-013-seats-billing.md)).
@@ -143,28 +179,28 @@ storage and jobs (last item in Acceptance criteria).
 
 - [ ] A CSV of 1,000 rows with parents, labels and estimates imports through web and CLI. The plan matches what commit
       writes, and the parity test passes (MCP: read-only tool).
-- [ ] A Kupro export ZIP imported into an empty workspace reproduces issues, keys, comments, attachments, sprints and
+- [x] A Kupro export ZIP imported into an empty workspace reproduces issues, keys, comments, attachments, sprints and
       plan data (round-trip test against task 016's writer).
-- [ ] Hierarchy fit: a fixture with four levels and a Task with children produces only valid ADR-008 shapes. Every
+- [x] Hierarchy fit: a fixture with four levels and a Task with children produces only valid ADR-008 shapes. Every
       re-parented item has a `relates` relation to its old parent and is counted in the plan.
-- [ ] Re-run: a source change to a field untouched in Kupro is applied; one edited in Kupro is kept and reported as a
+- [x] Re-run: a source change to a field untouched in Kupro is applied; one edited in Kupro is kept and reported as a
       conflict; nothing is duplicated; a native issue taking the next number causes an alias, not a failure.
-- [ ] Conflicts: Use source applies the source value, Keep Kupro's closes it; a resolved conflict reopens only when
+- [x] Conflicts: Use source applies the source value, Keep Kupro's closes it; a resolved conflict reopens only when
       the source value changes again.
-- [ ] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
+- [x] Four levels: `fold` bottom and top both produce valid ADR-008 shapes and match their plan counts; with top, the
       top-level items exist as Epics with their comments, history and aliases.
-- [ ] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
-- [ ] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
+- [x] A skipped person's comments and changes exist, authored by the shared placeholder with the source name kept.
+- [x] Placeholders: no seat, can't sign in, count in no cap. Inviting one keeps its history. Merging one moves every
       reference (guard test over member foreign keys).
-- [ ] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and
+- [x] Changelog replay: a fixture's state changes show in the issue feed as normal updates with source actor and
       time; unmapped field changes show as source changes. Feed paging returns all 5,000 entries of a large issue
       within budget.
-- [ ] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
-- [ ] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
-- [ ] Undo removes everything the import created and nothing else; it is refused while records it didn't create
+- [x] An alias key works in `GET /issues/{key}`, search, the command palette and `kupro issue view`.
+- [x] A commit killed mid-run resumes without duplicates. A second import in the same workspace waits.
+- [x] Undo removes everything the import created and nothing else; it is refused while records it didn't create
   (native or from another import) reference its issues. Finish deletes the token (checked in the DB).
-- [ ] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
-- [ ] A Danish CSV in Windows-1252 keeps æøå.
+- [x] Tenancy test covers every import table and endpoint ([ADR-009](../docs/adr/ADR-009-multi-tenancy.md)).
+- [x] A Danish CSV in Windows-1252 keeps æøå.
 - [ ] After 013: one import of 10,000+ items with attachments runs on production, survives a container restart
       mid-commit, and the storage-growth alert stays quiet. Noted in the PR.
 
@@ -174,3 +210,5 @@ storage and jobs (last item in Acceptance criteria).
 - OAuth "Connect" buttons.
 - Writing back to the source (comments, "moved to Kupro" links).
 - Two-way sync, webhooks.
+- Defaulting bots to skip ([ADR-019](../docs/adr/ADR-019-import.md) People): the format has no bot flag, so they propose
+  as placeholders and the owner skips them by hand. The owner put this off on 2026-11-08.

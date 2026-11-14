@@ -73,8 +73,9 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
   token), Jira Data Center (personal access token), Azure DevOps (PAT, Work Items read), YouTrack (permanent token),
   Linear (API key), Monday (API token). Trello uses one Kupro API key and the user's click on Trello's authorize link.
 - OAuth "Connect" buttons are a later polish, not a requirement.
-- Tokens are encrypted with ASP.NET Data Protection (keys persisted in Postgres) and deleted on Finish, on Undo, or
-  after 90 days without a run.
+- Tokens are encrypted with ASP.NET Data Protection and deleted on Finish, on Undo, or after 90 days without a run.
+  Keys live in their own Object Storage bucket with their own S3 user, not in Postgres, so a database dump or SQL
+  injection alone can't decrypt the tokens. Losing the keys only means pasting the tokens again.
 - **Rejected token** (expired or revoked PAT mid-migration): the run fails with "token rejected", auto-sync pauses and
   the owner is emailed. The owner pastes a new token on the import; the next run continues from the saved cursor.
 - **Behind a VPN**: `kupro import <source> --local` runs the same connector on the user's machine and uploads the
@@ -86,7 +87,8 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
   existing member, invite (email sent on commit, opt-in per person), **placeholder**, or **skip**.
 - **Skip** is for bots and service accounts. Nothing they wrote is dropped: their comments and changes are authored by
   one shared placeholder per import ("Skipped users from Jira"), with the original name kept on each entry. Items
-  assigned to them come across unassigned. Connectors default app and bot accounts to skip.
+  assigned to them come across unassigned. Connectors default app and bot accounts to skip. A record whose source names
+  no author at all (a CSV without that column) has nobody to misattribute, so it is authored by whoever ran the import.
 - **Placeholder** is a new member status ([ADR-013](ADR-013-seats-billing.md)): a display name and optional email,
   no login, no seat, not counted in the guest cap. It can be an assignee, author and actor like any member.
 - Inviting a placeholder turns that same row into `invited`, then `active`, so its history follows. If the person is
@@ -125,7 +127,8 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
   shows total hours, against capacity when the target is an existing project with capacity set (a new project has
   none yet). Original points go into the details block.
 - **Sprints**: Kupro sprints are per project ([ADR-008](ADR-008-work-item-model.md)). A source sprint spanning
-  projects becomes one sprint per project with the same name and dates. ADO iteration paths → sprints.
+  projects becomes one sprint per project with the same name and dates. ADO iteration paths → sprints. A sprint arrives
+  closed or planned, never active: starting one is the team's move, and that records its baseline ([ADR-020](ADR-020-sprint-close-burndown.md)).
 - **Markup**: Jira ADF (Cloud), Jira wiki markup (Data Center) and ADO HTML convert to Markdown. A construct the
   converter doesn't know is kept as a fenced block, not dropped. `@mentions` are rewritten through the People map,
   links to source issues are rewritten to Kupro keys, and inline images point to re-hosted attachments.

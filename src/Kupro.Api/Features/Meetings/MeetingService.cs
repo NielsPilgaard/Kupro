@@ -1055,7 +1055,7 @@ internal static class MemberRefs
             m.Id,
             m.Kind == MemberKind.Agent
                 ? m.AgentName!
-                : db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
+                : m.DisplayName ?? db.Users.Where(u => u.Id == m.UserId).Select(u => u.DisplayName).FirstOrDefault()!,
             m.Kind);
 
     public static async Task<Dictionary<Guid, MemberRef>> ByIdAsync(KuproDbContext db, IEnumerable<Guid> ids, CancellationToken ct)

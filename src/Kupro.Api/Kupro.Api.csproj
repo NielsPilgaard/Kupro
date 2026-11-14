@@ -4,10 +4,11 @@
     <RootNamespace>Kupro.Api</RootNamespace>
     <!-- Build-time OpenAPI: writes openapi/kupro.json at the repo root (ADR-003 IMP-003). -->
     <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../openapi</OpenApiDocumentsDirectory>
-    <OpenApiGenerateDocumentsOptions>--file-name kupro</OpenApiGenerateDocumentsOptions>
+    <OpenApiGenerateDocumentsOptions>--file-name kupro --openapi-version OpenApi3_1</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AngleSharp" />
     <PackageReference Include="Aspire.Keycloak.Authentication" />
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />

@@ -115,6 +115,8 @@ public sealed class AzureDevOpsConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -150,7 +152,6 @@ public sealed class AzureDevOpsConnector : ISourceConnector
                         }
 
                         var item = reading.Item(project, raw);
-                        reading.Newest = reading.Newest is { } newest && newest >= item.Updated ? newest : item.Updated;
                         if (scope.ResolvedAfter is null || item.Resolved is null || item.Resolved >= scope.ResolvedAfter)
                         {
                             items.Add((raw, item));
@@ -201,7 +202,7 @@ public sealed class AzureDevOpsConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor(reading.Newest?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture) ?? cursor);
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>

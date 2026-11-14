@@ -4,6 +4,7 @@ using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Exports;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Meetings;
 using Kupro.Api.Features.Plan;
@@ -52,6 +53,11 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     public DbSet<MeetingUsage> MeetingUsage => Set<MeetingUsage>();
     public DbSet<MeetingAgentSpend> MeetingAgentSpend => Set<MeetingAgentSpend>();
     public DbSet<WorkspaceExport> WorkspaceExports => Set<WorkspaceExport>();
+    public DbSet<WorkspaceImport> WorkspaceImports => Set<WorkspaceImport>();
+    public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
+    public DbSet<ImportedItem> ImportedItems => Set<ImportedItem>();
+    public DbSet<ImportConflict> ImportConflicts => Set<ImportConflict>();
+    public DbSet<IssueAlias> IssueAliases => Set<IssueAlias>();
 
     /// <summary>
     /// Workspace of the current request; null outside a workspace route, which makes every tenant-owned query empty

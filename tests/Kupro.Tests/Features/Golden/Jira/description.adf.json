@@ -1,0 +1,85 @@
+{
+  "type": "doc",
+  "version": 1,
+  "content": [
+    { "type": "heading", "attrs": { "level": 2 }, "content": [{ "type": "text", "text": "Baggrund" }] },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Kunden ønsker at betale med " },
+        { "type": "text", "text": "MobilePay", "marks": [{ "type": "strong" }] },
+        { "type": "text", "text": " og " },
+        { "type": "text", "text": "kort", "marks": [{ "type": "em" }] },
+        { "type": "text", "text": ". Spørg " },
+        { "type": "mention", "attrs": { "id": "557058:f1e2d3c4", "text": "@Søren Østergaard", "accessLevel": "" } },
+        { "type": "text", "text": " om " },
+        { "type": "text", "text": "PAY_LIMIT", "marks": [{ "type": "code" }] },
+        { "type": "text", "text": ", se " },
+        { "type": "text", "text": "dokumentationen", "marks": [{ "type": "link", "attrs": { "href": "https://docs.example.dk/betaling" } }] },
+        { "type": "text", "text": " og " },
+        { "type": "inlineCard", "attrs": { "url": "https://acme.atlassian.net/browse/PAY-12" } },
+        { "type": "text", "text": "." },
+        { "type": "hardBreak" },
+        { "type": "text", "text": "Gammelt krav", "marks": [{ "type": "strike" }] },
+        { "type": "text", "text": " " },
+        { "type": "emoji", "attrs": { "shortName": ":white_check_mark:", "id": "2705", "text": "✅" } },
+        { "type": "text", "text": " *ikke* fed [x] " },
+        { "type": "status", "attrs": { "text": "I GANG", "color": "blue" } },
+        { "type": "text", "text": " frist " },
+        { "type": "date", "attrs": { "timestamp": "1767225600000" } }
+      ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        { "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Første punkt" }] }] },
+        {
+          "type": "listItem",
+          "content": [
+            { "type": "paragraph", "content": [{ "type": "text", "text": "Andet punkt" }] },
+            {
+              "type": "orderedList",
+              "attrs": { "order": 3 },
+              "content": [{ "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Underpunkt" }] }] }]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "taskList",
+      "attrs": { "localId": "t1" },
+      "content": [
+        { "type": "taskItem", "attrs": { "localId": "a", "state": "DONE" }, "content": [{ "type": "text", "text": "Design godkendt" }] },
+        { "type": "taskItem", "attrs": { "localId": "b", "state": "TODO" }, "content": [{ "type": "text", "text": "Test på iOS" }] }
+      ]
+    },
+    { "type": "codeBlock", "attrs": { "language": "csharp" }, "content": [{ "type": "text", "text": "var beløb = 100m;\nPay(beløb);" }] },
+    { "type": "blockquote", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Citat fra mødet" }] }] },
+    { "type": "panel", "attrs": { "panelType": "warning" }, "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Husk GDPR" }] }] },
+    { "type": "rule" },
+    {
+      "type": "table",
+      "attrs": { "isNumberColumnEnabled": false, "layout": "default" },
+      "content": [
+        { "type": "tableRow", "content": [
+          { "type": "tableHeader", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Metode" }] }] },
+          { "type": "tableHeader", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Gebyr" }] }] }
+        ] },
+        { "type": "tableRow", "content": [
+          { "type": "tableCell", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Kort|Visa" }] }] },
+          { "type": "tableCell", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1,5 %" }] }] }
+        ] }
+      ]
+    },
+    { "type": "mediaSingle", "attrs": { "layout": "center" }, "content": [
+      { "type": "media", "attrs": { "id": "a1b2", "type": "file", "collection": "", "alt": "flow.png", "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10001" } }
+    ] },
+    { "type": "mediaSingle", "attrs": { "layout": "center" }, "content": [
+      { "type": "media", "attrs": { "id": "c3d4", "type": "file", "collection": "", "alt": "skitse.png" } }
+    ] },
+    { "type": "expand", "attrs": { "title": "Tekniske detaljer" }, "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Skjult indhold" }] }] },
+    { "type": "blockCard", "attrs": { "url": "https://acme.atlassian.net/browse/PAY-7" } },
+    { "type": "bodiedExtension", "attrs": { "extensionKey": "roadmap", "extensionType": "com.atlassian.ecosystem" }, "content": [] }
+  ]
+}

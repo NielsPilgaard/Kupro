@@ -17,6 +17,7 @@
         "source": { "$ref": "#/$defs/source" },
         "createdAt": { "$ref": "#/$defs/time" },
         "cursor": { "type": ["string", "null"], "description": "Opaque delta cursor for the next run." },
+        "partial": { "type": "boolean", "description": "Holds only what changed since a cursor; a missing item wasn't deleted in the source." },
         "projects": { "type": "array", "items": { "$ref": "#/$defs/project" } },
         "people": { "type": "array", "items": { "$ref": "#/$defs/person" } },
         "itemTypes": { "type": "array", "items": { "$ref": "#/$defs/itemType" } },
@@ -54,7 +55,19 @@
         "key": { "type": ["string", "null"] },
         "name": { "type": "string" },
         "url": { "type": ["string", "null"] },
-        "process": { "type": ["string", "null"], "description": "Process or template name, e.g. Azure DevOps Agile." }
+        "process": { "type": ["string", "null"], "description": "Process or template name, e.g. Azure DevOps Agile." },
+        "capacity": {
+          "type": ["array", "null"],
+          "description": "Headcount steps for the delivery plan; used for a project the import creates.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string", "format": "date", "description": "A day in the first month the headcount applies to." },
+              "people": { "type": "number", "minimum": 0 }
+            },
+            "required": ["from", "people"]
+          }
+        }
       },
       "required": ["id", "name"]
     },
@@ -63,7 +76,9 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "name": { "type": "string" },
-        "email": { "type": ["string", "null"] }
+        "email": { "type": ["string", "null"] },
+        "handle": { "type": ["string", "null"], "description": "The name mentions use, without the @." },
+        "bot": { "type": "boolean", "description": "An app or integration account; the People step proposes to skip it." }
       },
       "required": ["id", "name"]
     },
