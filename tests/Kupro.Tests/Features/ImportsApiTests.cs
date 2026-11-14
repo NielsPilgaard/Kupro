@@ -130,7 +130,7 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
             output.ShouldContain("First");
 
             // A token never comes from an argument: here it is piped in, for a source Kupro can't read itself.
-            (exit, _, error) = await CliAsync(token, workspace.Slug, "secret-from-stdin", "import", "create", "youtrack");
+            (exit, _, error) = await CliAsync(token, workspace.Slug, "secret-from-stdin", "import", "create", "monday");
             exit.ShouldNotBe(0);
             error.ShouldContain("source_unsupported");
         }

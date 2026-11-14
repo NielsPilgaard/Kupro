@@ -7,6 +7,7 @@ using Kupro.Import.GitHub;
 using Kupro.Import.Jira;
 using Kupro.Import.Linear;
 using Kupro.Import.Trello;
+using Kupro.Import.YouTrack;
 using Microsoft.Kiota.Abstractions.Serialization;
 using ReadScope = Kupro.Import.Snapshot.ReadScope;
 using SnapshotDescription = Kupro.Import.Snapshot.SourceDescription;
@@ -34,6 +35,7 @@ internal static class ImportCommands
                      FromSource(SourceKinds.Jira, "Jira Cloud or Data Center", "--url: the site (https://acme.atlassian.net) or server address. Token: email:api-token on Cloud, a personal access token on Data Center."),
                      FromSource(SourceKinds.AzureDevOps, "Azure DevOps Services or Server", "--url: the organisation or collection address. Token: a personal access token with Work Items (Read)."),
                      FromSource(SourceKinds.GitHub, "GitHub Issues", "--url: only for GitHub Enterprise Server. Token: a fine-grained token with Issues and Metadata (read)."),
+                     FromSource(SourceKinds.YouTrack, "YouTrack Cloud or self-hosted", "--url: the address you open (https://acme.youtrack.cloud). Token: a permanent token."),
                      FromSource(SourceKinds.Linear, "Linear", "Token: a personal API key."),
                      FromSource(SourceKinds.Trello, "Trello", "Token: a Trello token; --key: your Trello API key."),
                      Create(), List(), Show(), Upload(), Source(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), Conflicts(), Undo(), Finish(),
@@ -153,6 +155,7 @@ internal static class ImportCommands
             SourceKinds.AzureDevOps => new AzureDevOpsConnector(http, Url(), token),
             SourceKinds.GitHub => new GitHubConnector(http, url, token),
             SourceKinds.Linear => new LinearConnector(http, token),
+            SourceKinds.YouTrack => new YouTrackConnector(http, Url(), token),
             SourceKinds.Trello => new TrelloConnector(http, key ?? throw new CliException("Give your Trello API key with --key."), token),
             _ => throw new CliException($"Kupro can't read {name} from here."),
         };

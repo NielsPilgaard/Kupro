@@ -37,7 +37,28 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
 
 Not done: Projects (v2) fields (Status, Iteration, a number field), issue dependencies (blocked by), rewriting `#89`
 in text to Kupro keys, the site page (waits on the wizard), and the recorded fixtures and live run (a sandbox, a manual
-step). Monday and YouTrack are not started.
+step).
+
+YouTrack is in: `Kupro.Import/YouTrack` (`YouTrackConnector`, client), registered in `ImportSources` and as
+`kupro import youtrack --url <address> [--local]`, tested in `YouTrackConnectorTests` against `FakeYouTrack`.
+
+- The address is the one people open (`https://acme.youtrack.cloud`, `https://host/youtrack`); the API is under `/api`.
+  Lists page with `$skip`/`$top`.
+- Describe reads each project's custom fields: State values become statuses (resolved ones with category `done`),
+  Type values item types (plain "Issue" for a project without Type), and the other enum, user, number, date and text
+  fields become source fields. Archived projects are listed but read only when named.
+- Items keep `PROJ-123`. Type, State, Priority, Assignee, Estimation (minutes → seconds) and Due Date fill the item;
+  Spent time goes to the `spentTime` field (hours, details block only). Tags are labels. A Subtask link gives the
+  parent; Depend becomes blocks, Duplicate duplicates, the rest relates, each link once. A file shown by name in
+  Markdown points at its signed URL, so the import re-hosts it. Sprints come from agile boards; an issue in several
+  sprints is in the latest.
+- Activities (`activitiesPage`, custom fields and summary) are changes. A delta queries `updated:` a day early (the
+  query reads dates in the token user's time zone) and keeps what changed since the cursor.
+- Default mapping (`ImportMappingDefaults.YouTrack`): resolved states are Done, or Canceled when named for dropped work
+  (Duplicate, Won't fix, Obsolete, Can't Reproduce, Incomplete); unresolved ones go by name.
+
+Not done for YouTrack: the site page (waits on the wizard), an end-to-end commit test, and the recorded fixtures and
+live run (a sandbox, a manual step). Monday is not started.
 
 ## Scope
 

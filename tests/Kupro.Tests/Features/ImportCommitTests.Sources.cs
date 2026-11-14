@@ -104,7 +104,7 @@ public sealed partial class ImportCommitTests
     [Fact]
     public async Task Tokens_are_only_kept_for_sources_kupro_can_read_and_auto_sync_needs_one()
     {
-        (await WithImportsAsync(s => s.CreateAsync(new CreateImportRequest("youtrack", Token: "t"), Ct))).Error!.Code.ShouldBe("source_unsupported");
+        (await WithImportsAsync(s => s.CreateAsync(new CreateImportRequest("monday", Token: "t"), Ct))).Error!.Code.ShouldBe("source_unsupported");
 
         var upload = await WithImportsAsync(s => s.CreateAsync(new CreateImportRequest(SourceKinds.Csv), Ct));
         (await WithImportsAsync(s => s.SetAutoSyncAsync(upload.Value!.Id, true, Ct))).Error!.Code.ShouldBe("auto_sync_needs_token");

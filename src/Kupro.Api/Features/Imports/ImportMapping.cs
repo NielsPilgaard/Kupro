@@ -140,8 +140,30 @@ public static class ImportMappingDefaults
             SourceKinds.AzureDevOps => AzureDevOps(header, mapping),
             SourceKinds.Jira => Jira(header, mapping),
             SourceKinds.GitHub => GitHub(header, mapping),
+            SourceKinds.YouTrack => YouTrack(header, mapping),
             _ => mapping,
         };
+    }
+
+    /// <summary>
+    /// YouTrack (task 027): a state YouTrack counts as resolved is Done, or Canceled when named for dropped work
+    /// (Duplicate, Won't fix, Obsolete, Can't Reproduce, Incomplete). An unresolved state goes by its name: In Progress,
+    /// In Review for review, verification or test, and Todo for the rest (Submitted, Open, Reopened, To be discussed).
+    /// </summary>
+    private static ImportMapping YouTrack(SnapshotHeader header, ImportMapping mapping)
+    {
+        var states = mapping.States.ToDictionary(s => s.Key, s => s.Value, StringComparer.Ordinal);
+        foreach (var status in header.Statuses.DistinctBy(s => s.Id))
+        {
+            var name = status.Name;
+            states[status.Id] = status.Category == "done"
+                ? Cancels(name) || Has(name, "obsolete") || Has(name, "reproduce") || Has(name, "incomplete") ? IssueState.Canceled : IssueState.Done
+                : Has(name, "progress") || Has(name, "develop") ? IssueState.InProgress
+                : Has(name, "review") || Has(name, "verif") || Has(name, "test") ? IssueState.InReview
+                : IssueState.Todo;
+        }
+
+        return mapping with { States = states, StatusesToReview = [] };
     }
 
     /// <summary>
