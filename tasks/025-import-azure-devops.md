@@ -27,9 +27,9 @@ With 023's pipeline in place: default mappings by process are in `ImportMappingD
 impediments and CMMI's change requests, risks and reviews keep a label, test artefacts are skipped through
 `ImportScope.SkipTypes`, priorities 1-4, states in progress named for test or resolved → In Review). Mentions
 (`data-vss-mention`) and `#4567` references are rewritten, and keys and aliases come from the pipeline. The fold choice
-is 023's. Not done: "New with no iteration → Backlog" and Severity 1 → Urgent (both per item, which a mapping can't
-express yet) and the site page (waits on the wizard). `kupro import azure-devops --url <collection> --local` is in
-(built with 024's).
+is 023's. Per item, the mapping's `backlogWithoutSprint` makes "New" with no sprint Backlog, and its `urgentValues`
+makes a Severity "1 - Critical" item Urgent. `kupro import azure-devops --url <collection> --local` is in (built
+with 024's). Not done: the site page (waits on the wizard).
 
 Recorded fixtures need the sandbox (a manual step). Until then the fake stands in for them: replace or check it
 against a recording when one exists. Server-side connectors only reach public addresses (`PublicAddresses`, checked

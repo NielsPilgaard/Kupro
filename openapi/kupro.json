@@ -7237,6 +7237,23 @@
             },
             "description": "Field values that make a Done item Canceled, by field ID: a Jira status says only \"done\", and its resolution\n(\"Won't Do\", \"Duplicate\") says how."
           },
+          "urgentValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Field values that make an item Urgent whatever its priority, by field ID: an Azure DevOps Bug's Severity\n\"1 - Critical\"."
+          },
+          "backlogWithoutSprint": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Statuses that are Backlog, not their mapped state, on an item in no sprint: Azure DevOps \"New\" with no iteration."
+          },
           "statusesToReview": {
             "type": "array",
             "items": {

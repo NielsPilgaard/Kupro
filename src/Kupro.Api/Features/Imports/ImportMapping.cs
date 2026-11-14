@@ -68,6 +68,15 @@ public sealed record ImportMapping
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> CanceledValues { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>
+    /// Field values that make an item Urgent whatever its priority, by field ID: an Azure DevOps Bug's Severity
+    /// "1 - Critical".
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> UrgentValues { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
+
+    /// <summary>Statuses that are Backlog, not their mapped state, on an item in no sprint: Azure DevOps "New" with no iteration.</summary>
+    public IReadOnlyList<string> BacklogWithoutSprint { get; init; } = [];
+
     /// <summary>Statuses with no category and no name hint: Todo for now, and flagged in the plan until the owner looks.</summary>
     public IReadOnlyList<string> StatusesToReview { get; init; } = [];
 
@@ -228,6 +237,11 @@ public static class ImportMappingDefaults
             states[status.Id] = IssueState.InReview;
         }
 
+        // Severity is "1 - Critical" in every process template; a renamed list keeps its "1" prefix.
+        var urgent = header.Fields.FirstOrDefault(f => f.Id == AzureDevOpsSeverity) is { } severity
+            ? severity.Options.Where(o => o.StartsWith('1')).DefaultIfEmpty("1 - Critical").ToList()
+            : [];
+
         return mapping with
         {
             Types = types,
@@ -239,6 +253,12 @@ public static class ImportMappingDefaults
                 ["3"] = IssuePriority.Low,
                 ["4"] = IssuePriority.Low,
             },
+            UrgentValues = urgent.Count > 0
+                ? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) { [AzureDevOpsSeverity] = urgent }
+                : new Dictionary<string, IReadOnlyList<string>>(),
+            BacklogWithoutSprint = [.. header.Statuses
+                .Where(s => s.Category == "Proposed" && string.Equals(s.Name, "New", StringComparison.OrdinalIgnoreCase) && states.GetValueOrDefault(s.Id) is IssueState.Todo)
+                .Select(s => s.Id).Distinct(StringComparer.Ordinal)],
             Scope = mapping.Scope with { SkipTypes = skip },
         };
     }
@@ -348,6 +368,8 @@ public static class ImportMappingDefaults
         var key = new string([.. letters.Take(MaxProjectKeyLength)]);
         return key.Length > 1 ? key : "IMP";
     }
+
+    private const string AzureDevOpsSeverity = "Microsoft.VSTS.Common.Severity";
 
     /// <summary>A status or resolution name that means the work was dropped, not done.</summary>
     private static bool Cancels(string name) =>

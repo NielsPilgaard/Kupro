@@ -56,7 +56,12 @@ public sealed class MappedSource
     public IssueState State(SourceItem item)
     {
         var state = State(item.Status);
-        return state is IssueState.Done && _mapping.CanceledValues.Any(c => Has(item, c.Key, c.Value)) ? IssueState.Canceled : state;
+        if (state is IssueState.Done && _mapping.CanceledValues.Any(c => Has(item, c.Key, c.Value)))
+        {
+            return IssueState.Canceled;
+        }
+
+        return item.Sprint is null && _mapping.BacklogWithoutSprint.Contains(item.Status, StringComparer.Ordinal) ? IssueState.Backlog : state;
     }
 
     private static bool Has(SourceItem item, string field, IReadOnlyList<string> values) =>
@@ -69,7 +74,8 @@ public sealed class MappedSource
 
     public IssueState State(string status) => _mapping.States.TryGetValue(status, out var state) ? state : IssueState.Todo;
 
-    public IssuePriority Priority(SourceItem item) => Priority(item.Priority);
+    public IssuePriority Priority(SourceItem item) =>
+        _mapping.UrgentValues.Any(u => Has(item, u.Key, u.Value)) ? IssuePriority.Urgent : Priority(item.Priority);
 
     public IssuePriority Priority(string? name) =>
         name is not null && _mapping.Priorities.TryGetValue(name, out var priority) ? priority : ImportMappingDefaults.ProposePriority(name);

@@ -1,4 +1,7 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using Kupro.Api.Features.Imports;
+using Kupro.Api.Features.Issues;
 using Kupro.Import;
 using Kupro.Import.AzureDevOps;
 using Kupro.Import.Snapshot;
@@ -74,6 +77,41 @@ public sealed class AzureDevOpsConnectorTests
         fields["Custom.GoLive"].Kind.ShouldBe(FieldKind.Date);
         fields["Custom.Budget"].Kind.ShouldBe(FieldKind.Number);
         fields["Custom.Notes"].Kind.ShouldBe(FieldKind.Text);
+    }
+
+    [Fact]
+    public async Task The_default_mapping_makes_critical_bugs_urgent_and_new_items_outside_a_sprint_backlog()
+    {
+        var stream = new MemoryStream();
+        await Connect(Sample()).WriteSnapshotAsync(stream, new ReadScope(), null, includeFiles: false, TimeProvider.System, Ct);
+        stream.Position = 0;
+        await using var snapshot = await SnapshotReader.OpenAsync(stream, Ct);
+        var mapping = ImportMappingDefaults.Propose(snapshot.Header, []);
+
+        mapping.UrgentValues["Microsoft.VSTS.Common.Severity"].ShouldBe(["1 - Critical"]);
+        mapping.BacklogWithoutSprint.ShouldContain($"{Agile}/Bug/New");
+        mapping.BacklogWithoutSprint.ShouldNotContain($"{Agile}/Bug/Active");
+
+        var source = new MappedSource(snapshot.Header, mapping, Now);
+        SourceItem Bug(string state, string? sprint = null, string? severity = null) => new()
+        {
+            Id = "1",
+            Project = "p",
+            Type = $"{Agile}/Bug",
+            Status = $"{Agile}/Bug/{state}",
+            Title = "Bug",
+            Priority = "3",
+            Sprint = sprint,
+            Created = T0,
+            Updated = T0,
+            Fields = severity is null ? new Dictionary<string, JsonElement>() : new Dictionary<string, JsonElement> { ["Microsoft.VSTS.Common.Severity"] = FieldValue.Text(severity) },
+        };
+        source.State(Bug("New")).ShouldBe(IssueState.Backlog);
+        source.State(Bug("New", sprint: "11")).ShouldBe(IssueState.Todo, "planned into a sprint");
+        source.State(Bug("Active")).ShouldBe(IssueState.InProgress);
+        source.Priority(Bug("New", severity: "1 - Critical")).ShouldBe(IssuePriority.Urgent);
+        source.Priority(Bug("New", severity: "2 - High")).ShouldBe(IssuePriority.Low, "priority 3 stands");
+        source.Priority(Bug("New")).ShouldBe(IssuePriority.Low);
     }
 
     [Fact]
