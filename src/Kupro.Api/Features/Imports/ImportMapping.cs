@@ -139,9 +139,17 @@ public static class ImportMappingDefaults
         {
             SourceKinds.AzureDevOps => AzureDevOps(header, mapping),
             SourceKinds.Jira => Jira(header, mapping),
+            SourceKinds.GitHub => GitHub(header, mapping),
             _ => mapping,
         };
     }
+
+    /// <summary>
+    /// GitHub (task 027): the generic proposal fits (Bug → Task + bug, Feature → Feature, closed as not planned or
+    /// duplicate → Canceled; the fit makes a parent of sub-issues a Feature). Milestones with a due date become milestones.
+    /// </summary>
+    private static ImportMapping GitHub(SnapshotHeader header, ImportMapping mapping) =>
+        mapping with { MilestoneVersions = [.. header.Versions.Where(v => v.Date is not null).Select(v => v.Id)] };
 
     /// <summary>
     /// Jira (task 024): New Feature is a Task like Story and Improvement; the fit makes a parent of sub-tasks a Feature. An

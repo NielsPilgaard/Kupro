@@ -3,6 +3,7 @@ using System.Globalization;
 using Kupro.Cli.Api.Models;
 using Kupro.Import;
 using Kupro.Import.AzureDevOps;
+using Kupro.Import.GitHub;
 using Kupro.Import.Jira;
 using Kupro.Import.Linear;
 using Kupro.Import.Trello;
@@ -32,6 +33,7 @@ internal static class ImportCommands
                      FromFile("kupro", "kupro", "Move a workspace here from a Kupro export ZIP."),
                      FromSource(SourceKinds.Jira, "Jira Cloud or Data Center", "--url: the site (https://acme.atlassian.net) or server address. Token: email:api-token on Cloud, a personal access token on Data Center."),
                      FromSource(SourceKinds.AzureDevOps, "Azure DevOps Services or Server", "--url: the organisation or collection address. Token: a personal access token with Work Items (Read)."),
+                     FromSource(SourceKinds.GitHub, "GitHub Issues", "--url: only for GitHub Enterprise Server. Token: a fine-grained token with Issues and Metadata (read)."),
                      FromSource(SourceKinds.Linear, "Linear", "Token: a personal API key."),
                      FromSource(SourceKinds.Trello, "Trello", "Token: a Trello token; --key: your Trello API key."),
                      Create(), List(), Show(), Upload(), Source(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), Conflicts(), Undo(), Finish(),
@@ -149,6 +151,7 @@ internal static class ImportCommands
         {
             SourceKinds.Jira => new JiraConnector(http, Url(), token),
             SourceKinds.AzureDevOps => new AzureDevOpsConnector(http, Url(), token),
+            SourceKinds.GitHub => new GitHubConnector(http, url, token),
             SourceKinds.Linear => new LinearConnector(http, token),
             SourceKinds.Trello => new TrelloConnector(http, key ?? throw new CliException("Give your Trello API key with --key."), token),
             _ => throw new CliException($"Kupro can't read {name} from here."),

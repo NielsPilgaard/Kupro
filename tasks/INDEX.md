@@ -36,14 +36,14 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 24 | [024 Import from Jira (Cloud and Data Center)](024-import-jira.md) | P1 | 1 | 023 | In progress |
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | In progress |
-| 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | Todo |
+| 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | In progress |
 | 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
 ## What an agent can pick up
 
-Checked 2026-11-12. The build order above is not the same as what is buildable: **023 (except its web UI) and the connectors
-024 and 027 are buildable by an agent now**. The 025 and 026 connectors are done; the rest of those tasks waits on
-023. Every other open row waits on a person, directly or through a dependency. Don't spend a session
+Checked 2026-11-14. The build order above is not the same as what is buildable: **027's Monday and YouTrack connectors,
+and GitHub's Projects (v2) fields, are buildable by an agent now**. The 024, 025, 026 and GitHub connectors are done,
+`--local` included; what is left of them waits on the wizard (033) or a sandbox. Every other open row waits on a person, directly or through a dependency. Don't spend a session
 re-deriving this; read this table, and update it when a step is done. "Depends on" lists what blocks *starting*; a dependency
 that only blocks closing a task is written "(N to close)".
 
@@ -55,8 +55,8 @@ that only blocks closing a task is written "(N to close)".
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
 | 023 | Built except its web UI (waits on 033). Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
 | 033 | Owner decision: which import UI prototype to build. An agent asks the owner and waits; it never picks | The owner's answer |
-| 024, 027 | Buildable: a connector needs only 023's snapshot model and `ISourceConnector`, which are done. Recorded fixtures and the close need sandbox accounts (manual steps) | The sandboxes, for the close |
-| 025, 026 | Buildable: connectors (reading) done, and 023's mapping model, `MarkupConverter`, pipeline and import CLI now exist for default mappings, fold, markup, keys and `--local` | The sandbox, for the close |
+| 024, 025, 026 | Connectors, default mappings and `--local` done. Left: the site pages and People/report wizard bits (wait on 033), recorded fixtures and the close (sandbox accounts, manual steps) | 033, and the sandboxes |
+| 027 | GitHub done except Projects (v2) fields and dependencies; Monday and YouTrack buildable now | The sandboxes, for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
