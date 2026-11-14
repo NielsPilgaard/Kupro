@@ -141,8 +141,36 @@ public static class ImportMappingDefaults
             SourceKinds.Jira => Jira(header, mapping),
             SourceKinds.GitHub => GitHub(header, mapping),
             SourceKinds.YouTrack => YouTrack(header, mapping),
+            SourceKinds.Monday => Monday(header, mapping),
             _ => mapping,
         };
+    }
+
+    /// <summary>
+    /// Monday (task 027): groups are Epics (the owner can skip them, or make the <c>group</c> field labels instead),
+    /// items Tasks, subitems a checklist on their item. A status label Monday marks done is Done; "Working on it" and
+    /// "Stuck" are In Progress; an item without a label is Todo. Other labels go by name and are left to review.
+    /// </summary>
+    private static ImportMapping Monday(SnapshotHeader header, ImportMapping mapping)
+    {
+        var types = mapping.Types.ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal);
+        types["group"] = new TypeTarget(IssueType.Epic);
+        var states = mapping.States.ToDictionary(s => s.Key, s => s.Value, StringComparer.Ordinal);
+        var review = mapping.StatusesToReview.ToHashSet(StringComparer.Ordinal);
+        foreach (var status in header.Statuses.DistinctBy(s => s.Id))
+        {
+            IssueState? known = status.Category == "done" ? IssueState.Done
+                : status.Id == "(none)" ? IssueState.Todo
+                : Has(status.Name, "working") || Has(status.Name, "stuck") || Has(status.Name, "progress") ? IssueState.InProgress
+                : null;
+            if (known is { } state)
+            {
+                states[status.Id] = state;
+                review.Remove(status.Id);
+            }
+        }
+
+        return mapping with { Types = types, States = states, StatusesToReview = [.. review] };
     }
 
     /// <summary>

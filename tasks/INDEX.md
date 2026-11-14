@@ -41,8 +41,8 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-14. The build order above is not the same as what is buildable: **027's Monday connector and GitHub's
-Projects (v2) fields are buildable by an agent now**. The 024, 025, 026, GitHub and YouTrack connectors are done,
+Checked 2026-11-14. The build order above is not the same as what is buildable: **GitHub's Projects (v2) fields (027) are
+buildable by an agent now**. The 024, 025, 026, GitHub, YouTrack and Monday connectors are done,
 `--local` included; what is left of them waits on the wizard (033) or a sandbox. Every other open row waits on a person, directly or through a dependency. Don't spend a session
 re-deriving this; read this table, and update it when a step is done. "Depends on" lists what blocks *starting*; a dependency
 that only blocks closing a task is written "(N to close)".
@@ -56,7 +56,7 @@ that only blocks closing a task is written "(N to close)".
 | 023 | Built except its web UI (waits on 033). Closing it needs one production run | 033 for the web UI; 013 Done, for the close only |
 | 033 | Owner decision: which import UI prototype to build. An agent asks the owner and waits; it never picks | The owner's answer |
 | 024, 025, 026 | Connectors, default mappings and `--local` done. Left: the site pages and People/report wizard bits (wait on 033), recorded fixtures and the close (sandbox accounts, manual steps) | 033, and the sandboxes |
-| 027 | GitHub and YouTrack done (GitHub without Projects (v2) fields and dependencies); Monday buildable now | The sandboxes, for the close |
+| 027 | GitHub, YouTrack and Monday done. Left: GitHub's Projects (v2) fields and dependencies (buildable), Monday's column mapping and the site pages (wait on 033) | 033, and the sandboxes for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed

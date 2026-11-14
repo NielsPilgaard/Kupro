@@ -5,6 +5,7 @@ using Kupro.Import.AzureDevOps;
 using Kupro.Import.GitHub;
 using Kupro.Import.Jira;
 using Kupro.Import.Linear;
+using Kupro.Import.Monday;
 using Kupro.Import.Snapshot;
 using Kupro.Import.Trello;
 using Kupro.Import.YouTrack;
@@ -33,6 +34,7 @@ public sealed class ImportSources
         Register(SourceKinds.GitHub, (import, token) => new GitHubConnector(Client(), import.BaseUrl, token, clock));
         Register(SourceKinds.YouTrack, (import, token) =>
             new YouTrackConnector(Client(), import.BaseUrl ?? throw new ImportFailedException("A YouTrack import needs its address."), token, clock));
+        Register(SourceKinds.Monday, (_, token) => new MondayConnector(Client(), token, clock));
         Register(SourceKinds.Linear, (_, token) => new LinearConnector(Client(), token, LinearAuth.ApiKey, clock));
         if (options.Value.TrelloKey is { Length: > 0 } key)
         {

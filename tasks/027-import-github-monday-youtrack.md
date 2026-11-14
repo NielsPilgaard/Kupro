@@ -58,7 +58,25 @@ YouTrack is in: `Kupro.Import/YouTrack` (`YouTrackConnector`, client), registere
   (Duplicate, Won't fix, Obsolete, Can't Reproduce, Incomplete); unresolved ones go by name.
 
 Not done for YouTrack: the site page (waits on the wizard), an end-to-end commit test, and the recorded fixtures and
-live run (a sandbox, a manual step). Monday is not started.
+live run (a sandbox, a manual step).
+
+Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registered in `ImportSources` and as
+`kupro import monday [--local]`, tested in `MondayConnectorTests` against `FakeMonday`.
+
+- Boards are projects (subitem boards and deleted boards are not; archived ones are read only when named). Groups are
+  items of type `group` with the board's items under them, and every item carries its group title in the `group`
+  field: the default maps groups to Epics; skipping the type and adding `group` to the label fields makes them labels.
+  Subitems are items of type `subitem` under their item (a checklist by default), with their own board's status.
+- Until the wizard maps columns, the connector picks per board: the first status column is the status (labels Monday
+  marks done have category `done`), the first people column the assignee, a timeline the start and due dates (the
+  first date column the due date when it's empty), a numbers column named for an estimate or hours the estimate, one
+  named for points, effort or size the points, and tags and dropdowns the labels. Other columns are fields by title.
+- Updates and their replies are HTML comments; files are attachments, fetched through a fresh signed URL. The board's
+  activity log gives status, assignee and name changes for the items read (Monday keeps the log for a limited time).
+  Complexity and rate-limit errors wait their `retry_in_seconds`. Items get new numbers; the item URL is the alias.
+
+Not done for Monday: the wizard's column mapping (a mapping that overrides the picks above), the site page, and the
+recorded fixtures and live run (a sandbox, a manual step).
 
 ## Scope
 
