@@ -54,6 +54,11 @@ internal sealed record GitHubSubIssuesSummary
     public int Total { get; init; }
 }
 
+internal sealed record GitHubDependencies
+{
+    public int TotalBlockedBy { get; init; }
+}
+
 internal sealed record GitHubIssue
 {
     public required long Id { get; init; }
@@ -73,6 +78,7 @@ internal sealed record GitHubIssue
     public GitHubMilestone? Milestone { get; init; }
     public GitHubIssueType? Type { get; init; }
     public GitHubSubIssuesSummary? SubIssuesSummary { get; init; }
+    public GitHubDependencies? IssueDependenciesSummary { get; init; }
 
     /// <summary>Present on a pull request, which the issues list returns too.</summary>
     public JsonElement? PullRequest { get; init; }

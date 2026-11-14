@@ -143,6 +143,15 @@ public sealed class GitHubConnector : ISourceConnector
                 }
 
                 yield return Item(repo, issue, parents.TryGetValue(issue.Id, out var parentId) ? parentId : null);
+
+                // Asked for only when the issue says it has blockers: one call per blocked issue, not per issue.
+                if (issue.IssueDependenciesSummary?.TotalBlockedBy > 0)
+                {
+                    await foreach (var blocker in _client.TryPagedAsync($"repos/{repo.FullName}/issues/{issue.Number}/dependencies/blocked_by?per_page=100", GitHubJson.Default.ListGitHubIssue, ct))
+                    {
+                        yield return new SourceRelation { From = Id(blocker.Id), To = Id(issue.Id), Kind = RelationKinds.Blocks, Name = "blocked by" };
+                    }
+                }
             }
 
             await foreach (var comment in _client.PagedAsync($"repos/{repo.FullName}/issues/comments?sort=created&direction=asc&per_page=100{sinceQuery}", GitHubJson.Default.ListGitHubComment, ct))

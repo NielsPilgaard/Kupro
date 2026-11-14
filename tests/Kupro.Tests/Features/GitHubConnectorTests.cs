@@ -88,6 +88,8 @@ public sealed class GitHubConnectorTests
         items["acme/api#3"].Parent.ShouldBe("1001");
         items["acme/api#5"].Status.ShouldBe(GitHubConnector.Duplicate);
 
+        records.OfType<SourceRelation>().Select(r => (r.From, r.To, r.Kind)).ShouldBe([("1003", "1002", RelationKinds.Blocks)]);
+        github.Requests.Count(r => r.Contains("/dependencies/", StringComparison.Ordinal)).ShouldBe(1, "only the blocked issue is asked");
         records.OfType<SourceVersion>().Select(v => (v.Id, v.Name, v.Date, v.Released)).ShouldBe(
             [("900", "v1.0", new DateOnly(2025, 4, 1), false), ("901", "Someday", (DateOnly?)null, true)]);
         records.OfType<SourcePerson>().Select(p => p.Handle).ShouldBe(["sofie", "jonas"], ignoreOrder: true, "people the read saw");
@@ -225,6 +227,8 @@ public sealed class GitHubConnectorTests
         duplicate["closed_at"] = T0.AddDays(3).AddHours(1);
 
         github.SubIssues["acme/api#1"] = [2, 3];
+        bug["issue_dependencies_summary"] = new JsonObject { ["total_blocked_by"] = 1, ["blocking"] = 0 };
+        github.BlockedBy["acme/api#2"] = [3];
         github.Comments["acme/api"] =
         [
             new JsonObject { ["id"] = 501, ["issue_url"] = "https://api.github.com/repos/acme/api/issues/2", ["user"] = FakeGitHub.User(2, "jonas"), ["body"] = "Seen it", ["created_at"] = T0.AddDays(1), ["updated_at"] = T0.AddDays(1) },

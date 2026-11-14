@@ -35,9 +35,12 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
   reason), reopened, assigned, unassigned, renamed, milestoned and labeled. Label sets are worked out backwards from
   the labels now. Delta reads use `since` (issues, comments) and drop older events.
 
-Not done: Projects (v2) fields (Status, Iteration, a number field), issue dependencies (blocked by), rewriting `#89`
-in text to Kupro keys, the site page (waits on the wizard), and the recorded fixtures and live run (a sandbox, a manual
-step).
+- Issue dependencies: an issue whose summary has blockers gets one `dependencies/blocked_by` call; each blocker
+  blocks it.
+
+Not done: Projects (v2) fields (Status, Iteration, a number field; the owner picks the project, so it comes with the
+wizard), rewriting `#89` in text to Kupro keys, the site page (waits on the wizard), and the recorded fixtures and live
+run (a sandbox, a manual step).
 
 YouTrack is in: `Kupro.Import/YouTrack` (`YouTrackConnector`, client), registered in `ImportSources` and as
 `kupro import youtrack --url <address> [--local]`, tested in `YouTrackConnectorTests` against `FakeYouTrack`.

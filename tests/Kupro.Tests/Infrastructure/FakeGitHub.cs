@@ -22,6 +22,7 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
     public Dictionary<string, List<JsonObject>> Milestones { get; } = [];
     public Dictionary<string, List<JsonObject>> Issues { get; } = [];
     public Dictionary<string, List<int>> SubIssues { get; } = [];
+    public Dictionary<string, List<int>> BlockedBy { get; } = [];
     public Dictionary<string, List<JsonObject>> Comments { get; } = [];
     public Dictionary<string, List<JsonObject>> Events { get; } = [];
     public List<string> Requests { get; } = [];
@@ -110,6 +111,8 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
             ["repos", var o, var r, "issues"] => Page(Since(List(Issues, $"{o}/{r}"), query["since"], "updated_at"), url, query),
             ["repos", var o, var r, "issues", "comments"] => Page(Since(List(Comments, $"{o}/{r}"), query["since"], "updated_at"), url, query),
             ["repos", var o, var r, "issues", "events"] => Page(List(Events, $"{o}/{r}"), url, query),
+            ["repos", var o, var r, "issues", var n, "dependencies", "blocked_by"] => Page(
+                [.. List(BlockedBy, $"{o}/{r}#{n}").Select(blocker => List(Issues, $"{o}/{r}").Single(i => (int)i["number"]! == blocker))], url, query),
             ["repos", var o, var r, "issues", var n, "sub_issues"] => Page(
                 [.. List(SubIssues, $"{o}/{r}#{n}").Select(child => List(Issues, $"{o}/{r}").Single(i => (int)i["number"]! == child))], url, query),
             _ => NotFound(),
