@@ -153,7 +153,7 @@ public sealed class ImportDescription
     public (string? Text, bool Truncated) Build(
         SourceItem item, IReadOnlyList<ChecklistLine> checklist, IReadOnlyList<(string Field, string Value)> details, ImportReferences references)
     {
-        var body = references.Rewrite(MarkupConverters.ToMarkdown(item.Description, item.DescriptionMarkup));
+        var body = references.Rewrite(MarkupConverters.ToMarkdown(item.Description, item.DescriptionMarkup), item.Id);
         if (checklist.Count > 0)
         {
             var lines = string.Join("\n", checklist.Select(c =>

@@ -14,6 +14,7 @@ public sealed partial class ImportCommitTests
     public async Task A_github_import_keeps_issue_numbers_and_answers_to_owner_repo_references()
     {
         var github = GitHubConnectorTests.Sample();
+        github.Issues["acme/api"].Single(i => (int)i["number"]! == 1)["body"] = "Pay twice: #2, acme/api#3";
         var connector = new GitHubConnector(new HttpClient(github), null, Infrastructure.FakeGitHub.Token);
         connector.Client.Delay = (_, _) => Task.CompletedTask;
         Serve(connector);
@@ -37,7 +38,9 @@ public sealed partial class ImportCommitTests
         var commit = await RunAsync(import, ImportRunKind.Commit);
         commit.State.ShouldBe(ImportRunState.Succeeded, commit.Error);
 
-        (await IssueAsync("API-1")).Type.ShouldBe(IssueType.Feature);
+        var feature = await IssueAsync("API-1");
+        feature.Type.ShouldBe(IssueType.Feature);
+        feature.Description!.ShouldStartWith("Pay twice: API-2, API-3");
         var bug = await IssueAsync("API-2");
         bug.Title.ShouldBe("Pay twice fails");
         bug.Parent!.Key.ShouldBe("API-1");

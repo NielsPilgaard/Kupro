@@ -15,7 +15,8 @@ public sealed partial class ImportReferences(
     IReadOnlyDictionary<string, string> names,
     IReadOnlyDictionary<string, string> handles,
     IReadOnlyDictionary<string, AttachmentRef> files,
-    IReadOnlyDictionary<string, string> issues)
+    IReadOnlyDictionary<string, string> issues,
+    IReadOnlyDictionary<string, string>? scopes = null)
 {
     internal const char MentionOpen = '⟦';
     internal const char MentionClose = '⟧';
@@ -23,7 +24,9 @@ public sealed partial class ImportReferences(
     public static ImportReferences None { get; } = new(
         new Dictionary<string, string>(), new Dictionary<string, string>(), new Dictionary<string, AttachmentRef>(), new Dictionary<string, string>());
 
-    public string? Rewrite(string? markdown)
+    /// <param name="markdown">Imported text.</param>
+    /// <param name="itemId">The source item the text belongs to: GitHub's <c>#89</c> means that item's repository.</param>
+    public string? Rewrite(string? markdown, string? itemId = null)
     {
         if (string.IsNullOrEmpty(markdown) || (!markdown.Contains('@', StringComparison.Ordinal) && !markdown.Contains("://", StringComparison.Ordinal)
             && !markdown.Contains('#', StringComparison.Ordinal)))
@@ -31,6 +34,7 @@ public sealed partial class ImportReferences(
             return markdown;
         }
 
+        var scope = itemId is null ? null : scopes?.GetValueOrDefault(itemId);
         var output = new StringBuilder(markdown.Length);
         string? fence = null;
         foreach (var line in markdown.Split('\n'))
@@ -59,13 +63,13 @@ public sealed partial class ImportReferences(
                 continue;
             }
 
-            output.Append(Inline().Replace(line, Replace));
+            output.Append(Inline().Replace(line, m => Replace(m, scope)));
         }
 
         return output.ToString();
     }
 
-    private string Replace(Match match)
+    private string Replace(Match match, string? scope)
     {
         if (match.Groups["code"].Success)
         {
@@ -112,10 +116,19 @@ public sealed partial class ImportReferences(
             return "@" + MarkupConverters.EscapeText(names.GetValueOrDefault(id, shown));
         }
 
+        if (match.Groups["xref"].Success)
+        {
+            // owner/repo#89, GitHub's reference across repositories.
+            return issues.TryGetValue(match.Groups["xref"].Value, out var referenced) ? referenced : match.Value;
+        }
+
         if (match.Groups["ref"].Success)
         {
-            // #4567 as Azure DevOps and GitHub write it; a number no imported item had stays as written.
-            return issues.TryGetValue(match.Groups["ref"].Value, out var referenced) ? referenced : match.Value;
+            // #4567 as Azure DevOps and GitHub write it (GitHub's within the item's repository); a number no imported
+            // item had stays as written.
+            var reference = match.Groups["ref"].Value;
+            return (scope is not null && issues.TryGetValue(scope + reference, out var scoped)) || issues.TryGetValue(reference, out scoped)
+                ? scoped : match.Value;
         }
 
         var handle = match.Groups["handle"].Value;
@@ -144,6 +157,7 @@ public sealed partial class ImportReferences(
         + @"|<(?<url>https?://[^\s<>]+)>"
         + @"|(?<url>https?://[^\s<>()\[\]]+)"
         + @"|@⟦(?<id>[^⟧|\n]{1,200})(?:\|(?<shown>[^⟧\n]{0,200}))?⟧"
+        + @"|(?<![\w&#/.-])(?<xref>[A-Za-z0-9][\w.-]*/[\w.-]+#\d{1,9})\b"
         + @"|(?<![\w&#/\\])\\?(?<ref>#\d{1,9})\b"
         + @"|(?<![\w@./])@(?<handle>[A-Za-z0-9][A-Za-z0-9._-]{0,63})",
         RegexOptions.IgnoreCase)]

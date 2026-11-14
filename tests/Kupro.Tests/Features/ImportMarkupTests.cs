@@ -74,6 +74,20 @@ public sealed class ImportMarkupTests
     }
 
     [Fact]
+    public void Github_numbers_resolve_within_the_items_repository_and_across_by_owner_and_repo()
+    {
+        var references = new ImportReferences(
+            new Dictionary<string, string>(), new Dictionary<string, string>(), new Dictionary<string, AttachmentRef>(),
+            new Dictionary<string, string> { ["acme/api#2"] = "API-2", ["acme/web#2"] = "WEB-2" },
+            new Dictionary<string, string> { ["1001"] = "acme/api", ["2001"] = "acme/web" });
+
+        references.Rewrite("Fixes #2, see acme/web#2 and acme/web#9", "1001").ShouldBe("Fixes API-2, see WEB-2 and acme/web#9");
+        references.Rewrite("Fixes #2", "2001").ShouldBe("Fixes WEB-2");
+        references.Rewrite("Fixes #2").ShouldBe("Fixes #2", "no repository to read #2 in");
+        references.Rewrite("https://github.com/acme/api#2 stays a link", "1001").ShouldBe("https://github.com/acme/api#2 stays a link");
+    }
+
+    [Fact]
     public void Azure_devops_types_states_and_priorities_follow_the_process()
     {
         var header = new SnapshotHeader

@@ -59,6 +59,7 @@ public sealed partial class ImportCommit
         _counts.AttachmentsMissing = missing;
 
         var issues = new Dictionary<string, string>(StringComparer.Ordinal);
+        var scopes = new Dictionary<string, string>(StringComparer.Ordinal);
         Dictionary<string, string> known;
         List<(string Url, string Key)> earlierLinks;
         List<(Guid Id, string Json)> earlierFiles;
@@ -68,7 +69,7 @@ public sealed partial class ImportCommit
                 .Join(db.Issues, i => i.EntityId, x => x.Id, (i, x) => new { i.SourceId, x.Key })
                 .ToDictionaryAsync(r => r.SourceId, r => r.Key, StringComparer.Ordinal, ct);
             _candidates ??= await CandidatesAsync(db, ct);
-            earlierLinks = await db.IssueAliases.AsNoTracking().Where(a => a.ImportId == _importId && (a.Alias.Contains("://") || EF.Functions.Like(a.Alias, "#%")))
+            earlierLinks = await db.IssueAliases.AsNoTracking().Where(a => a.ImportId == _importId && (a.Alias.Contains("://") || EF.Functions.Like(a.Alias, "%#%")))
                 .Join(db.Issues, a => a.IssueId, x => x.Id, (a, x) => new ValueTuple<string, string>(a.Alias, x.Key)).ToListAsync(ct);
             earlierFiles = await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Attachment && i.LastValues != null)
                 .Select(i => new ValueTuple<Guid, string>(i.EntityId, i.LastValues!)).ToListAsync(ct);
@@ -87,10 +88,17 @@ public sealed partial class ImportCommit
                 issues.TryAdd(url.Trim(), key);
             }
 
-            // A source that numbers its items (Azure DevOps, GitHub) refers to them as #4567 in text.
-            if (item.Key?.Trim() is { Length: > 0 } sourceKey && sourceKey.All(char.IsAsciiDigit))
+            // A source that numbers its items (Azure DevOps) refers to them as #4567 in text; GitHub as owner/repo#89,
+            // or #89 within the same repository.
+            var sourceKey = item.Key?.Trim();
+            if (sourceKey is { Length: > 0 } && sourceKey.All(char.IsAsciiDigit))
             {
                 issues.TryAdd($"#{sourceKey}", key);
+            }
+            else if (sourceKey?.LastIndexOf('#') is > 0 and var hash && sourceKey.Contains('/', StringComparison.Ordinal))
+            {
+                issues.TryAdd(sourceKey, key);
+                scopes[item.Id] = sourceKey[..hash];
             }
         }
 
@@ -121,7 +129,7 @@ public sealed partial class ImportCommit
             }
         }
 
-        return new ImportReferences(names, handles, files, issues);
+        return new ImportReferences(names, handles, files, issues, scopes);
     }
 
     /// <summary>The source item whose issue a record belongs to: the item itself, or for a folded checklist item, its holder.</summary>
@@ -314,7 +322,7 @@ public sealed partial class ImportCommit
 
     private static string CommentBody(SourceComment comment, ImportReferences references)
     {
-        var body = references.Rewrite(MarkupConverters.ToMarkdown(comment.Body, comment.Markup)) ?? EmptyComment;
+        var body = references.Rewrite(MarkupConverters.ToMarkdown(comment.Body, comment.Markup), comment.Item) ?? EmptyComment;
         const string Note = "\n\n*Cut at import: the original is too long for Kupro.*";
         return body.Length <= CommentRequest.MaxBody ? body : string.Concat(body.AsSpan(0, CommentRequest.MaxBody - Note.Length), Note);
     }
