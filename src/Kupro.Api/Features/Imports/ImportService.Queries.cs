@@ -228,6 +228,12 @@ public sealed partial class ImportService
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
             kind = await db.WorkspaceImports.Where(i => i.Id == importId).Select(i => i.SourceKind).SingleOrDefaultAsync(ct);
+
+            // A run in progress reads the file it started with, and a finished or undone import keeps no customer data.
+            if (kind is not null && await ClosedAsync(db, importId, ct) is { } closed)
+            {
+                return closed;
+            }
         }
 
         switch (kind)

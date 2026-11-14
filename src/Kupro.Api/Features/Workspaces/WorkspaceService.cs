@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Email;
+using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
@@ -123,6 +124,7 @@ public enum MemberChangeResult
     IsPlaceholder,
     EmailRequired,
     InvalidMergeTarget,
+    ImportRunning,
 }
 
 /// <summary>Guests counted against the cap, and the cap, when a new guest is refused.</summary>
@@ -443,6 +445,12 @@ public sealed class WorkspaceService(
         if (!validTarget)
         {
             return MemberChangeResult.InvalidMergeTarget;
+        }
+
+        // A running import holds placeholder ids for the people it writes; deleting one under it fails the run.
+        if (await db.ImportRuns.AnyAsync(r => r.Kind == ImportRunKind.Commit && (r.State == ImportRunState.Queued || r.State == ImportRunState.Running), ct))
+        {
+            return MemberChangeResult.ImportRunning;
         }
 
         // Retrying execution strategy: the transaction must run inside it as one retriable unit.

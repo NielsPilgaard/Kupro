@@ -119,6 +119,7 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> MergePlaceholder(Guid memberId, MergePlaceholderRequest request, CancellationToken ct) =>
         ToResult(await workspaces.MergePlaceholderAsync(memberId, request, ct));
 
@@ -133,6 +134,8 @@ public sealed class MembersController(WorkspaceService workspaces) : ControllerB
             "A placeholder has no access to change. Invite it or merge it into a member."),
         MemberChangeResult.InvalidMergeTarget => this.Problem(StatusCodes.Status400BadRequest, "invalid_merge_target",
             "Merge into an active person or another placeholder."),
+        MemberChangeResult.ImportRunning => this.Problem(StatusCodes.Status409Conflict, "import_running",
+            "An import is writing to this workspace. Merge when it has finished."),
         _ => this.Problem(StatusCodes.Status404NotFound, "member_not_found"),
     };
 }

@@ -4,6 +4,7 @@ using Kupro.Api.Features.Issues;
 using Kupro.Import;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
+using Polly.Timeout;
 
 namespace Kupro.Api.Features.Imports;
 
@@ -123,6 +124,10 @@ public sealed partial class ImportService
         catch (ImportFailedException ex)
         {
             return new IssueError("source_unsupported", ex.Message);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException)
+        {
+            return new IssueError("source_unavailable", ImportSources.Unreachable(ex));
         }
     }
 

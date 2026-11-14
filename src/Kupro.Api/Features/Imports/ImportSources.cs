@@ -53,6 +53,21 @@ public sealed class ImportSources
             : throw new ImportFailedException($"Kupro can't read {ImportDescription.SourceName(import.SourceKind)} itself. Upload a snapshot instead.");
 
     /// <summary>The cursor a delta reads from: a time moves back by <see cref="Overlap"/>; anything else is the connector's own and passes as is.</summary>
+    /// <summary>
+    /// Why the source couldn't be reached, for the owner: the innermost HTTP error says it best (a private address
+    /// refused by <see cref="PublicAddresses"/>, a name that doesn't resolve).
+    /// </summary>
+    public static string Unreachable(Exception error)
+    {
+        var reason = error;
+        while (reason.InnerException is HttpRequestException inner)
+        {
+            reason = inner;
+        }
+
+        return error is HttpRequestException ? $"Kupro couldn't reach the source: {reason.Message}" : "The source didn't answer in time. Try again later.";
+    }
+
     public static string? WithOverlap(string? cursor) =>
         cursor is not null && DateTimeOffset.TryParse(cursor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at)
             ? (at - Overlap).UtcDateTime.ToString("O", CultureInfo.InvariantCulture)

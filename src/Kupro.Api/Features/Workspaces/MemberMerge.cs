@@ -46,6 +46,31 @@ internal static class MemberMerge
             || await db.MeetingProposals.AnyAsync(p => p.ReviewedById == member, ct);
     }
 
+    /// <summary>
+    /// Which of <paramref name="members"/> anything still points at: one query per foreign key for all of them, not one
+    /// per member (ADR-010).
+    /// </summary>
+    public static async Task<HashSet<Guid>> ReferencedAsync(KuproDbContext db, Guid workspaceId, IReadOnlyCollection<Guid> members, CancellationToken ct)
+    {
+        var referenced = new HashSet<Guid>();
+        if (members.Count == 0)
+        {
+            return referenced;
+        }
+
+        var ids = members.ToArray();
+        foreach (var (table, column) in ForeignKeys(db.Model).Where(fk => fk.Table != "members"))
+        {
+            // Names come from the EF model, not from input; values are parameters.
+            var sql = "SELECT DISTINCT \"" + column + "\" AS \"Value\" FROM \"" + table + "\" WHERE workspace_id = {0} AND \"" + column + "\" = ANY({1})";
+            referenced.UnionWith(await db.Database.SqlQueryRaw<Guid>(sql, workspaceId, ids).ToListAsync(ct));
+        }
+
+        referenced.UnionWith(await db.TranscriptSegments.Where(t => ids.Contains(t.SpeakerId)).Select(t => t.SpeakerId).Distinct().ToListAsync(ct));
+        referenced.UnionWith(await db.MeetingProposals.Where(p => p.ReviewedById != null && ids.Contains(p.ReviewedById.Value)).Select(p => p.ReviewedById!.Value).Distinct().ToListAsync(ct));
+        return referenced;
+    }
+
     /// <summary>Runs in the caller's transaction. <c>workspaceId</c> is explicit because raw SQL skips the tenant filter.</summary>
     public static async Task MoveReferencesAsync(KuproDbContext db, Guid workspaceId, Guid from, Guid into, CancellationToken ct)
     {

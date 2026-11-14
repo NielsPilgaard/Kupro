@@ -14,6 +14,7 @@ using Kupro.Import.Kupro;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Polly.Timeout;
 
 namespace Kupro.Api.Features.Imports;
 
@@ -419,13 +420,22 @@ public sealed partial class ImportJob(
         context.Surface = Surface.Import;
         await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(ct);
         var run = await db.ImportRuns.SingleAsync(r => r.Id == runId, ct);
-        var import = await db.WorkspaceImports.SingleAsync(i => i.Id == run.ImportId, ct);
 
         // A run resumed after a restart keeps the snapshot it started with: its saved progress counts through that one.
         var starting = run.StartedAt is null;
-        run.State = ImportRunState.Running;
-        run.StartedAt ??= clock.GetUtcNow();
-        await db.SaveChangesAsync(ct);
+        WorkspaceImport import = null!;
+        await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            // The import row FOR SHARE: an undo holding it FOR UPDATE finishes first and this run then reads the import
+            // as undone; one that comes later sees this run as running and refuses.
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await db.Database.ExecuteSqlAsync($"SELECT 1 FROM imports WHERE id = {run.ImportId} FOR SHARE", ct);
+            import = await db.WorkspaceImports.SingleAsync(i => i.Id == run.ImportId, ct);
+            run.State = ImportRunState.Running;
+            run.StartedAt ??= clock.GetUtcNow();
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        });
 
         try
         {
@@ -554,6 +564,10 @@ public sealed partial class ImportJob(
         catch (SourceAccessException ex)
         {
             throw new ImportFailedException(ex.Message, ex);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException)
+        {
+            throw new ImportFailedException(ImportSources.Unreachable(ex), ex);
         }
         finally
         {

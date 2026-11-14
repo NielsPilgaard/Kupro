@@ -1030,10 +1030,19 @@ public sealed partial class ImportCommit(
             var existing = (await db.IssueRelations.Where(r => ids.Contains(r.SourceId) && ids.Contains(r.TargetId))
                     .Select(r => new { r.SourceId, r.TargetId, r.Type }).ToListAsync(ct))
                 .Select(r => (r.SourceId, r.TargetId, r.Type)).ToHashSet();
+
+            // One the import wrote and someone has since removed stays removed: written again, it would also clash
+            // with its own ledger row.
+            var keys = batch.Select(r => RelationKey(r.From, r.To, r.Type)).ToList();
+            var written = (await db.ImportedItems.AsNoTracking()
+                    .Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Relation && keys.Contains(i.SourceId))
+                    .Select(i => i.SourceId).ToListAsync(ct))
+                .ToHashSet(StringComparer.Ordinal);
             var now = clock.GetUtcNow();
             foreach (var (from, to, type) in batch)
             {
-                if (existing.Contains((from, to, type)) || (type == RelationType.Relates && existing.Contains((to, from, type))))
+                if (existing.Contains((from, to, type)) || (type == RelationType.Relates && existing.Contains((to, from, type)))
+                    || written.Contains(RelationKey(from, to, type)))
                 {
                     continue;
                 }
@@ -1050,7 +1059,7 @@ public sealed partial class ImportCommit(
                 db.IssueRelations.Add(relation);
 
                 // Undo tells the import's relations from ones the team added between its issues.
-                Record(db, ImportedKinds.Relation, $"{from:N}/{to:N}/{type}", ImportedEntityKind.Relation, relation.Id);
+                Record(db, ImportedKinds.Relation, RelationKey(from, to, type), ImportedEntityKind.Relation, relation.Id);
                 delta.Relations++;
             }
 
@@ -1063,6 +1072,8 @@ public sealed partial class ImportCommit(
             await realtime.ChangedAsync(ChangeTopic.Issue);
         }
     }
+
+    private static string RelationKey(Guid from, Guid to, RelationType type) => $"{from:N}/{to:N}/{type}";
 
     // ---------------------------------------------------------------- plumbing
 

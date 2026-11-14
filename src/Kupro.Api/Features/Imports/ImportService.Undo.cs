@@ -48,13 +48,15 @@ public sealed partial class ImportService
         {
             db.ChangeTracker.Clear();
             await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            // Locks the import row before looking at its runs: a run takes it FOR SHARE as it starts, so it is either
+            // seen here as running, or waits and then finds the import undone.
+            await db.Database.ExecuteSqlAsync($"SELECT 1 FROM imports WHERE id = {importId} FOR UPDATE", ct);
             if (await ClosedAsync(db, importId, ct) is { } error)
             {
                 return (IssueResult<ImportUndoResult>)error;
             }
 
-            // Locks the import row, so a run can't be queued while this deletes under it.
-            await db.Database.ExecuteSqlAsync($"SELECT 1 FROM imports WHERE id = {importId} FOR UPDATE", ct);
             var check = await CheckAsync(db, importId, ct);
             if (check.BlockerCount > 0)
             {
@@ -92,19 +94,34 @@ public sealed partial class ImportService
     public async Task<IssueResult<WorkspaceImport>> FinishAsync(Guid importId, CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        if (await ClosedAsync(db, importId, ct) is { } error)
+        var result = await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            return error;
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            // As in undo: locked first, so a run starting now is seen or waits.
+            await db.Database.ExecuteSqlAsync($"SELECT 1 FROM imports WHERE id = {importId} FOR UPDATE", ct);
+            if (await ClosedAsync(db, importId, ct) is { } error)
+            {
+                return (IssueResult<WorkspaceImport>)error;
+            }
+
+            var import = await db.WorkspaceImports.SingleAsync(i => i.Id == importId, ct);
+            import.State = ImportState.Finished;
+            import.AutoSync = false;
+            import.EncryptedToken = null;
+            import.FinishedAt = clock.GetUtcNow();
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return (IssueResult<WorkspaceImport>)import;
+        });
+
+        if (result.Value is { } finished)
+        {
+            await snapshots.DeleteAsync(finished.WorkspaceId, importId, ct);
         }
 
-        var import = await db.WorkspaceImports.SingleAsync(i => i.Id == importId, ct);
-        import.State = ImportState.Finished;
-        import.AutoSync = false;
-        import.EncryptedToken = null;
-        import.FinishedAt = clock.GetUtcNow();
-        await db.SaveChangesAsync(ct);
-        await snapshots.DeleteAsync(import.WorkspaceId, importId, ct);
-        return import;
+        return result;
     }
 
     /// <summary>Only an active import with no run in progress can end: a run would write under the change.</summary>
@@ -181,13 +198,9 @@ public sealed partial class ImportService
         // A placeholder someone has since invited is a person now; one still referenced holds someone's history.
         var placeholders = await db.Members.Where(m => Ours(db, importId, ImportedKinds.Person).Contains(m.Id) && m.Status == MemberStatus.Placeholder)
             .Select(m => m.Id).ToListAsync(ct);
-        foreach (var id in placeholders)
-        {
-            if (!await MemberMerge.IsReferencedAsync(db, workspaceId, id, ct))
-            {
-                await db.Members.Where(m => m.Id == id).ExecuteDeleteAsync(ct);
-            }
-        }
+        var held = await MemberMerge.ReferencedAsync(db, workspaceId, placeholders, ct);
+        var unused = placeholders.Where(id => !held.Contains(id)).ToList();
+        await db.Members.Where(m => unused.Contains(m.Id)).ExecuteDeleteAsync(ct);
 
         await db.ImportedItems.Where(i => i.ImportId == importId).ExecuteDeleteAsync(ct);
         return deleted;

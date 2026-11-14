@@ -227,6 +227,24 @@ public sealed partial class ImportCommitTests
     }
 
     [Fact]
+    public async Task A_relation_someone_removed_stays_removed_on_a_rerun()
+    {
+        static FakeConnector Linked()
+        {
+            var source = Source(Item("a", key: "WEB-1"), Item("b", key: "WEB-2"));
+            source.Records.Add(new SourceRelation { From = "a", To = "b", Kind = RelationKinds.Blocks });
+            return source;
+        }
+
+        var import = await ImportedAsync(Linked());
+        await WithDbAsync(async db => (await db.IssueRelations.ExecuteDeleteAsync(Ct)).ShouldBe(1));
+
+        await RerunAsync(import, Linked());
+
+        await WithDbAsync(async db => (await db.IssueRelations.CountAsync(Ct)).ShouldBe(0));
+    }
+
+    [Fact]
     public async Task An_item_the_source_moved_moves_when_kupro_left_it_alone()
     {
         var import = await ImportedAsync(Source(

@@ -10,6 +10,13 @@ public sealed class CsvImportTests
     private static readonly Encoding Windows1252 = CodePagesEncodingProvider.Instance.GetEncoding(1252)!;
 
     [Fact]
+    public async Task A_csv_larger_than_the_cap_is_refused_before_it_is_held()
+    {
+        await using var huge = new MemoryStream(new byte[CsvTable.MaxBytes + 1]);
+        (await Should.ThrowAsync<FormatException>(() => CsvTable.ReadAsync(huge, TestContext.Current.CancellationToken))).Message.ShouldContain("50 MB");
+    }
+
+    [Fact]
     public void A_danish_file_in_windows_1252_keeps_its_letters_and_semicolons()
     {
         var table = CsvTable.Parse(Windows1252.GetBytes("Titel;Beskrivelse\r\nRød grød;\"Med fløde; og \"\"sukker\"\"\nto linjer\"\r\nÆble;\r\n"));

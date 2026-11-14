@@ -26,10 +26,27 @@ public sealed class CsvTable
     /// <summary>Data rows, each as long as <see cref="Headers"/>.</summary>
     public IReadOnlyList<string[]> Rows { get; }
 
+    /// <summary>
+    /// The largest file read: the whole table is held in memory, so this bounds what one upload costs the API. Tens of
+    /// thousands of rows fit; a bigger export goes in parts, or as a snapshot.
+    /// </summary>
+    public const int MaxBytes = 50 << 20;
+
     public static async Task<CsvTable> ReadAsync(Stream stream, CancellationToken ct = default)
     {
         using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, ct);
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(chunk, ct)) > 0)
+        {
+            if (buffer.Length + read > MaxBytes)
+            {
+                throw new FormatException($"The file is larger than {MaxBytes >> 20} MB, the most Kupro reads as CSV. Split it, or import a snapshot (docs/import-format.md).");
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
         return Parse(buffer.ToArray());
     }
 
