@@ -227,6 +227,12 @@ table.cov td:first-child, table.cov th:first-child { text-align: left; }
     <p class="lede">Ten clickable mockups of the import experience from <a href="../../tasks/023-import-framework.md">task 023</a> and <a href="../../docs/adr/ADR-019-import.md">ADR-019</a>, made before any React code so we can pick a direction. Each one is a different idea, not another screen of the same design. Every file walks the whole flow: pick a source and connect, choose scope, map types, states and people, decide the hierarchy, read the dry-run plan, then watch the import and its result. Built on the Kobber tokens from the design guide, light by default (dark via the bar at the top of each page), keyboard reachable.</p>
   </header>
 
+  <section class="note" aria-labelledby="pick" style="border-left-color:var(--acc)">
+    <h2 id="pick">Owner's direction</h2>
+    <p class="sm"><b>Setup: 03 + 07, revised as <a href="11-guided-split-trees.html">11</a>.</b> The live plan from 03 with 07's trees in the Hierarchy step, plus a numbered stepper and a footer that always says what comes next, why Continue is blocked, and one primary button. Sources show product marks; sources without a connector yet (GitHub Issues, Monday, YouTrack) say WIP and can't be picked.</p>
+    <p class="sm"><b>After the first run: <a href="08-connections-dashboard.html">08</a>.</b> 11's finished screen hands over to it.</p>
+  </section>
+
   <section class="note" aria-labelledby="fold">
     <h2 id="fold">The hierarchy is a team choice</h2>
     <p class="sm">Azure DevOps has four levels and Kupro has three. Every direction with a mapping step shows the fold as <b>two equal options with their own counts</b>, never as a buried default:</p>
@@ -565,6 +571,8 @@ const DIRS = [
     'Fastest path to a first run, and honest about what needs a person. Good for Linear and Trello.', 'Mapping details stay hidden, so surprises show up after import. The drawer gets crowded for Azure DevOps.', '●●●●○●○'],
   ['10-mapping-grid.html', 'Spreadsheet grid', 'Every mapping decision is a row: projects, types, states, people, fields, effort. Filter, "needs a look", keyboard navigation, multi-select and bulk set. One tab per import.',
     'Power users and big orgs (200 people, 40 states): fast scanning and bulk edits. The same grid fits CSV column mapping.', 'Intimidating, and loses the story of the import. A real grid role needs careful accessibility work.', '●●●●●●○'],
+  ['11-guided-split-trees.html', 'Guided split pane with trees (03 + 07)', 'The owner\'s pick, revised. 03\'s live plan on the right; 07\'s trees in the Hierarchy step; a numbered stepper (✓ done, ! needs a decision) and a footer with "Next: …", the reason Continue is blocked, and Ctrl Enter. Product marks on sources, WIP sources blocked. Hands over to 08 when done.',
+    'Cause and effect in one frame, and you always know the next step. Free navigation for experts (Skip to review).', 'Same incremental dry-run cost as 03. Trees stack under ~1,000 px of left pane.', '●●●●●●○'],
 ];
 $('#cards').innerHTML = DIRS.map(([f, t, idea, best, worst], i) => `<article class="dc"><h2><span class="n">${String(i + 1).padStart(2, '0')}</span>${t}</h2><p>${idea}</p>
   <dl><dt class="b">Best at</dt><dd>${best}</dd><dt class="w">Worst at</dt><dd>${worst}</dd></dl><a class="btn go" href="${f}">Open ${String(i + 1).padStart(2, '0')} ${icon('arrow', 14)}</a></article>`).join('');
