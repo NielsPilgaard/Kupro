@@ -134,6 +134,7 @@ internal sealed record GitHubEvent
 [JsonSerializable(typeof(List<GitHubUser>))]
 [JsonSerializable(typeof(List<GitHubRepo>))]
 [JsonSerializable(typeof(List<GitHubIssueType>))]
+[JsonSerializable(typeof(GitHubIssue))]
 [JsonSerializable(typeof(List<GitHubIssue>))]
 [JsonSerializable(typeof(List<GitHubMilestone>))]
 [JsonSerializable(typeof(List<GitHubComment>))]

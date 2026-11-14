@@ -63,6 +63,13 @@ public sealed class GitHubConnector : ISourceConnector
             return (GitHubCom, new Uri("https://api.github.com/"));
         }
 
+        // GitHub Enterprise Cloud with data residency (acme.ghe.com) serves its API from api.acme.ghe.com.
+        if (given.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var tenant = given.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase) ? given.Host[4..] : given.Host;
+            return (new Uri($"https://{tenant}"), new Uri($"https://api.{tenant}/"));
+        }
+
         var path = given.AbsolutePath.TrimEnd('/');
         var root = path.EndsWith("/api/v3", StringComparison.OrdinalIgnoreCase) ? path[..^"/api/v3".Length] : path;
         var web = new Uri($"{given.Scheme}://{given.Authority}{root}");
@@ -73,6 +80,8 @@ public sealed class GitHubConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -85,7 +94,6 @@ public sealed class GitHubConnector : ISourceConnector
                 ?? throw new SourceAccessException($"GitHub has no repository {id} that this token can see.", HttpStatusCode.NotFound))];
 
         var people = new HashSet<long>();
-        var newest = since;
         foreach (var repo in repos)
         {
             var project = repo.Id.ToString(CultureInfo.InvariantCulture);
@@ -112,11 +120,6 @@ public sealed class GitHubConnector : ISourceConnector
                     continue;
                 }
 
-                if (newest is null || issue.UpdatedAt > newest)
-                {
-                    newest = issue.UpdatedAt;
-                }
-
                 if (scope.ResolvedAfter is { } after && issue.ClosedAt is { } closed && issue.State == Closed && closed < after)
                 {
                     continue;
@@ -132,6 +135,19 @@ public sealed class GitHubConnector : ISourceConnector
                 await foreach (var child in _client.TryPagedAsync($"repos/{repo.FullName}/issues/{parent.Number}/sub_issues?per_page=100", GitHubJson.Default.ListGitHubIssue, ct))
                 {
                     parents[child.Id] = parent.Id;
+                }
+            }
+
+            // A delta reads only what changed: a sub-issue whose parent didn't change asks for its parent, or the
+            // re-run would read the missing parent as the sub-issue having been moved out.
+            if (since is not null)
+            {
+                foreach (var issue in issues.Where(i => !parents.ContainsKey(i.Id)))
+                {
+                    if (await _client.TryGetAsync($"repos/{repo.FullName}/issues/{issue.Number}/parent", GitHubJson.Default.GitHubIssue, ct) is { } parent)
+                    {
+                        parents[issue.Id] = parent.Id;
+                    }
                 }
             }
 
@@ -202,7 +218,7 @@ public sealed class GitHubConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor((newest ?? _time.GetUtcNow()).UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     /// <summary>GitHub issues carry files as links in their Markdown, not as attachments, so there is nothing to fetch.</summary>

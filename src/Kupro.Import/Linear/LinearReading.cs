@@ -9,7 +9,7 @@ namespace Kupro.Import.Linear;
 /// <summary>
 /// Turns Linear projects, issues, history and comments into snapshot records for one read. Keeps the state a read needs
 /// across them: people already reported, cycle and project names for change texts, issues left out (so their comments
-/// are too), uploads already reported per issue, and the newest change for the cursor.
+/// are too) and uploads already reported per issue.
 /// </summary>
 internal sealed partial class LinearReading(Catalog catalog)
 {
@@ -19,11 +19,6 @@ internal sealed partial class LinearReading(Catalog catalog)
     private readonly HashSet<string> _uploads = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _cycles = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _projects = new(StringComparer.Ordinal);
-
-    /// <summary>The newest <c>updatedAt</c> read: the next delta starts there.</summary>
-    public DateTimeOffset? Newest { get; private set; }
-
-    public void Saw(DateTimeOffset at) => Newest = Newest is { } newest && newest >= at ? newest : at;
 
     /// <summary>People first referred to since the last call, to stream before the records that refer to them.</summary>
     public List<SourcePerson> TakePeople()

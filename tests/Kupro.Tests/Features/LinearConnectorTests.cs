@@ -136,7 +136,7 @@ public sealed class LinearConnectorTests
         people.Select(p => p.Id).ShouldBe([Id(s.Sofie), Id(s.Jonas)], ignoreOrder: true);
         records.IndexOf(people.Single(p => p.Id == Id(s.Sofie))).ShouldBeLessThan(records.IndexOf(checkout), "people come before records that use them");
 
-        records[^1].ShouldBe(new ReadCursor(Utc(T0.AddDays(3))));
+        records[^1].ShouldBe(new ReadCursor(Utc(Now)));
     }
 
     [Fact]
@@ -275,14 +275,14 @@ public sealed class LinearConnectorTests
         records.OfType<SourceComment>().Select(c => c.Body).ShouldBe([$"Logs: [log.txt]({s.Log})"], "only comments written or edited since");
         records.OfType<SourceChange>().Count(c => c.Item == s.Pay.Id).ShouldBe(11, "a changed issue brings its whole history; re-runs skip what they have");
         records.OfType<SourceSprint>().Count().ShouldBe(2, "cycles are small and always read");
-        records[^1].ShouldBe(new ReadCursor(Utc(T0.AddDays(3))));
+        records[^1].ShouldBe(new ReadCursor(Utc(Now)));
         s.Linear.Requests.ShouldContain(r => r.StartsWith("Issues ", StringComparison.Ordinal) && r.Contains("\"updatedAt\":{\"gte\":\"2025-03-04T03:00:00.000Z\"}", StringComparison.Ordinal));
         s.Linear.Requests.ShouldContain(r => r.StartsWith("Projects ", StringComparison.Ordinal) && r.Contains("\"gte\"", StringComparison.Ordinal));
 
         var nothing = await connector.ReadAsync(new ReadScope(), "2026-01-01T00:00:00Z", Ct).ToListAsync(Ct);
         nothing.OfType<SourceItem>().ShouldBeEmpty();
         nothing.OfType<SourceComment>().ShouldBeEmpty();
-        nothing[^1].ShouldBe(new ReadCursor("2026-01-01T00:00:00Z"), "no change: the cursor stays");
+        nothing[^1].ShouldBe(new ReadCursor(Utc(Now)), "no change: the read's start, never earlier than it was");
     }
 
     [Fact]
@@ -412,7 +412,7 @@ public sealed class LinearConnectorTests
         snapshot.Header.People.Count.ShouldBe(3);
         snapshot.Header.Sprints.Count.ShouldBe(2);
         snapshot.Header.Versions.Count.ShouldBe(2);
-        snapshot.Header.Cursor.ShouldBe(Utc(T0.AddDays(3)));
+        snapshot.Header.Cursor.ShouldBe(Utc(Now));
         (await snapshot.ReadAttachmentsAsync(Ct).ToListAsync(Ct)).ShouldAllBe(a => a.File != null);
         var items = await snapshot.ReadItemsAsync(Ct).ToListAsync(Ct);
         items.Single(i => i.Key == "ENG-1").Labels.ShouldBe(["Bug", "Type/Feature"]);

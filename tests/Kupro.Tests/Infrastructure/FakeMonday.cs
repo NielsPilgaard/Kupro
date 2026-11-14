@@ -80,6 +80,13 @@ internal sealed class FakeMonday : HttpMessageHandler
             var board = (string)variables["board"]![0]!;
             data = new JsonObject { ["boards"] = new JsonArray(new JsonObject { ["items_page"] = ItemsPage(board, 0) }) };
         }
+        else if (query.Contains("items(ids:", StringComparison.Ordinal))
+        {
+            var id = (string)variables["ids"]![0]!;
+            var item = Items.Values.SelectMany(i => i).SelectMany(i => (i["subitems"]?.AsArray().OfType<JsonObject>() ?? []).Prepend(i)).Single(i => (string)i["id"]! == id);
+            var page = (int)variables["page"]!;
+            data = new JsonObject { ["items"] = new JsonArray(new JsonObject { ["updates"] = Page(item["updates"]?.AsArray().OfType<JsonObject>().ToList() ?? [], page) }) };
+        }
         else if (query.Contains("activity_logs", StringComparison.Ordinal))
         {
             var board = (string)variables["board"]![0]!;
@@ -104,8 +111,23 @@ internal sealed class FakeMonday : HttpMessageHandler
         return new JsonObject
         {
             ["cursor"] = index + 1 < items.Count ? $"{board}|{index + 1}" : null,
-            ["items"] = new JsonArray([.. items.Skip(index).Take(1).Select(i => (JsonNode)i.DeepClone())]),
+            ["items"] = new JsonArray([.. items.Skip(index).Take(1).Select(i => (JsonNode)FirstUpdates(i))]),
         };
+    }
+
+    /// <summary>Like Monday, an items page carries only the first 100 updates of each item and subitem.</summary>
+    private static JsonObject FirstUpdates(JsonObject item)
+    {
+        var copy = item.DeepClone().AsObject();
+        foreach (var row in (copy["subitems"]?.AsArray().OfType<JsonObject>() ?? []).Prepend(copy))
+        {
+            if (row["updates"] is JsonArray updates)
+            {
+                row["updates"] = new JsonArray([.. updates.Take(100).Select(u => u!.DeepClone())]);
+            }
+        }
+
+        return copy;
     }
 
     private static (string Board, int Index) Cursor(string cursor) => (cursor.Split('|')[0], int.Parse(cursor.Split('|')[1], System.Globalization.CultureInfo.InvariantCulture));

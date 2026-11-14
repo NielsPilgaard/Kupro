@@ -30,6 +30,9 @@ internal sealed partial class FakeJira : HttpMessageHandler
 
     public DateTimeOffset Now { get; set; } = new(2025, 3, 20, 12, 0, 0, TimeSpan.Zero);
 
+    /// <summary>The token user's zone, which JQL dates are read in.</summary>
+    public TimeZoneInfo Zone { get; set; } = TimeZoneInfo.FindSystemTimeZoneById("Europe/Copenhagen");
+
     public List<JsonObject> Projects { get; } = [];
     public List<JsonObject> IssueTypes { get; } = [];
     public Dictionary<string, JsonArray> Workflows { get; } = [];
@@ -101,9 +104,24 @@ internal sealed partial class FakeJira : HttpMessageHandler
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
         }
 
+        var query = System.Web.HttpUtility.ParseQueryString(url.Query);
+        if (request.Content is not null)
+        {
+            // A POST search: its JSON body read as the query string a GET would have had.
+            var body = JsonNode.Parse(request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult())!.AsObject();
+            foreach (var (name, value) in body)
+            {
+                query[name] = value switch
+                {
+                    JsonArray array => string.Join(',', array.Select(v => (string)v!)),
+                    _ => value?.ToString(),
+                };
+            }
+        }
+
         lock (Requests)
         {
-            Requests.Add($"{request.Method} {path}{Uri.UnescapeDataString(url.Query)}");
+            Requests.Add($"{request.Method} {path}{(request.Content is null ? Uri.UnescapeDataString(url.Query) : "?" + string.Join('&', query.AllKeys.Select(k => $"{k}={query[k]}")))}");
             if (Throttle > 0)
             {
                 Throttle--;
@@ -113,7 +131,6 @@ internal sealed partial class FakeJira : HttpMessageHandler
             }
         }
 
-        var query = System.Web.HttpUtility.ParseQueryString(url.Query);
         return Task.FromResult(Route(path, query));
     }
 
@@ -123,6 +140,11 @@ internal sealed partial class FakeJira : HttpMessageHandler
         if (path == "rest/api/2/serverInfo")
         {
             return Json(new JsonObject { ["baseUrl"] = SiteUrl, ["version"] = Cloud ? "1001.0.0" : "9.12.4", ["deploymentType"] = Cloud ? "Cloud" : "Server" });
+        }
+
+        if (path == $"{api}myself")
+        {
+            return Json(new JsonObject { ["accountId"] = "me", ["timeZone"] = Zone.Id });
         }
 
         if (Cloud && path == "rest/api/3/project/search")
@@ -259,7 +281,10 @@ internal sealed partial class FakeJira : HttpMessageHandler
             throw new InvalidOperationException($"The fake doesn't understand: {jql}");
         }
 
-        var since = match.Groups["minutes"].Success ? Now.AddMinutes(-int.Parse(match.Groups["minutes"].Value, CultureInfo.InvariantCulture)) : (DateTimeOffset?)null;
+        var since = match.Groups["minutes"].Success ? Now.AddMinutes(-int.Parse(match.Groups["minutes"].Value, CultureInfo.InvariantCulture))
+            : match.Groups["at"].Success ? new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.ParseExact(match.Groups["at"].Value, "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), Zone))
+            : (DateTimeOffset?)null;
         return [.. Issues
             .Where(i => i.ProjectId == match.Groups["project"].Value && (since is null || i.Updated >= since))
             .OrderBy(i => i.Key.Split('-')[0], StringComparer.Ordinal)
@@ -276,7 +301,7 @@ internal sealed partial class FakeJira : HttpMessageHandler
     private static HttpResponseMessage Json(JsonNode body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
 
-    [GeneratedRegex(@"^project = (?<project>\d+)(?: AND updated >= ""-(?<minutes>\d+)m"")? ORDER BY key ASC$")]
+    [GeneratedRegex(@"^project = (?<project>\d+)(?: AND updated >= ""(?:-(?<minutes>\d+)m|(?<at>\d{4}-\d\d-\d\d \d\d:\d\d))"")?(?: AND \(resolutiondate is EMPTY OR resolutiondate >= ""[\d-]+""\))? ORDER BY key ASC$")]
     private static partial Regex Jql();
 
     [GeneratedRegex(@"^rest/api/(?<api>\d)/project/(?<id>\d+)/(?<what>statuses|versions)$")]

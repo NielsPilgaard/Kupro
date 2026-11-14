@@ -83,16 +83,14 @@ internal sealed class MondayClient(HttpClient http, string token, TimeProvider t
             throw new SourceAccessException($"File {url.AbsolutePath} is not an https address; it was not downloaded.");
         }
 
-        using var response = await http.GetAsync(url, ct);
-        if (!response.IsSuccessStatusCode)
+        var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        return await ResponseStream.OpenAsync(response, r =>
         {
-            throw new SourceAccessException($"Downloading {url.AbsolutePath} answered {(int)response.StatusCode}.", response.StatusCode);
-        }
-
-        var content = new MemoryStream();
-        await response.Content.CopyToAsync(content, ct);
-        content.Position = 0;
-        return content;
+            if (!r.IsSuccessStatusCode)
+            {
+                throw new SourceAccessException($"Downloading {url.AbsolutePath} answered {(int)r.StatusCode}.", r.StatusCode);
+            }
+        }, ct);
     }
 
     private TimeSpan? RetryIn(HttpResponseMessage response, JsonObject? parsed)

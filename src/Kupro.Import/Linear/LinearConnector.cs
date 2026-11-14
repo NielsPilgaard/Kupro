@@ -30,13 +30,17 @@ public sealed class LinearConnector : ISourceConnector
     public const string InitiativesField = "initiatives";
 
     private readonly LinearClient _client;
+    private readonly TimeProvider _time;
     private Catalog? _catalog;
 
     /// <param name="http">Sends the requests; the connector adds the credential to each Linear request, not to the client.</param>
     /// <param name="credential">A personal API key (Settings, Security &amp; access), or an OAuth access token with read scope.</param>
     /// <param name="auth">Which of the two <paramref name="credential"/> is.</param>
-    public LinearConnector(HttpClient http, string credential, LinearAuth auth = LinearAuth.ApiKey, TimeProvider? time = null) =>
-        _client = new LinearClient(http, credential, auth, time ?? TimeProvider.System);
+    public LinearConnector(HttpClient http, string credential, LinearAuth auth = LinearAuth.ApiKey, TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+        _client = new LinearClient(http, credential, auth, _time);
+    }
 
     internal LinearClient Client => _client;
 
@@ -44,6 +48,8 @@ public sealed class LinearConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -62,7 +68,6 @@ public sealed class LinearConnector : ISourceConnector
         var projectFilter = Since(new JsonObject { ["accessibleTeams"] = new JsonObject { ["some"] = IdIn(inScope) } }, since);
         await foreach (var project in PagedAsync("Projects", LinearQueries.Projects, projectFilter, d => d.Projects, ct))
         {
-            reading.Saw(project.UpdatedAt);
             reading.Learn(project);
             var home = project.Teams.Nodes.Select(t => t.Id).FirstOrDefault(inScope.Contains);
             if (project.Trashed is true || home is null)
@@ -100,7 +105,6 @@ public sealed class LinearConnector : ISourceConnector
             var issueFilter = Since(new JsonObject { ["team"] = IdEq(team.Id) }, since);
             await foreach (var issue in PagedAsync("Issues", LinearQueries.Issues, issueFilter, d => d.Issues, ct))
             {
-                reading.Saw(issue.UpdatedAt);
                 if (issue.Trashed is true)
                 {
                     reading.Skip(issue.Id);
@@ -142,7 +146,6 @@ public sealed class LinearConnector : ISourceConnector
             var commentFilter = Since(new JsonObject { ["issue"] = new JsonObject { ["team"] = IdEq(team.Id) } }, since);
             await foreach (var comment in PagedAsync("Comments", LinearQueries.Comments, commentFilter, d => d.Comments, ct))
             {
-                reading.Saw(comment.UpdatedAt);
                 if (comment.IssueId is null || reading.Skipped(comment.IssueId))
                 {
                     continue;
@@ -161,7 +164,7 @@ public sealed class LinearConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor(reading.Newest?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture) ?? cursor);
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>

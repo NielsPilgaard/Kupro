@@ -15,6 +15,7 @@ public sealed partial class ImportCommitTests
     public async Task A_jira_import_keeps_the_tree_rehosts_images_and_a_rerun_adds_no_duplicates()
     {
         var jira = JiraConnectorTests.Cloud();
+        jira.Now = new DateTimeOffset(2025, 3, 6, 9, 0, 0, TimeSpan.Zero);
         var connector = new JiraConnector(jira.Client(), jira.SiteUrl, FakeJira.CloudToken, new JiraClock(jira));
         connector.Client.Delay = (_, _) => Task.CompletedTask;
         Serve(connector);
@@ -61,6 +62,7 @@ public sealed partial class ImportCommitTests
         await WithDbAsync(async db => count = await db.Issues.CountAsync(Ct));
 
         // An edit in Jira after the first run.
+        jira.Now = new DateTimeOffset(2025, 3, 8, 9, 0, 0, TimeSpan.Zero);
         jira.Issues.Single(i => i.Key == "WEB-6").Set("summary", "Apple Pay and Google Pay").Touch(new DateTimeOffset(2025, 3, 7, 9, 0, 0, TimeSpan.Zero));
         var rerun = await RunAsync(import, ImportRunKind.Commit);
 

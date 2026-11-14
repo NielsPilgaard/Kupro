@@ -50,6 +50,8 @@ public sealed class MondayConnector : ISourceConnector
     private const string FirstPageQuery = "query ($board: [ID!], $limit: Int!) { boards(ids: $board) { items_page(limit: $limit) { cursor items { " + ItemFields + " } } } }";
     private const string NextPageQuery = "query ($cursor: String!, $limit: Int!) { next_items_page(cursor: $cursor, limit: $limit) { cursor items { " + ItemFields + " } } }";
     private const string LogQuery = "query ($board: [ID!], $page: Int!) { boards(ids: $board) { activity_logs(limit: 100, page: $page) { id event data user_id created_at } } }";
+    private const string LogSinceQuery = "query ($board: [ID!], $page: Int!, $from: ISO8601DateTime) { boards(ids: $board) { activity_logs(limit: 100, page: $page, from: $from) { id event data user_id created_at } } }";
+    private const string UpdatesQuery = "query ($ids: [ID!], $page: Int!) { items(ids: $ids) { updates(limit: 100, page: $page) { id body created_at updated_at creator_id replies { id body created_at creator_id } } } }";
     private const string AssetQuery = "query ($ids: [ID!]!) { assets(ids: $ids) { id public_url } }";
 
     /// <summary>Columns that are the item itself or Monday's bookkeeping, never fields.</summary>
@@ -75,6 +77,8 @@ public sealed class MondayConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -86,39 +90,42 @@ public sealed class MondayConnector : ISourceConnector
             : [.. scope.Projects.Select(id => catalog.Boards.FirstOrDefault(b => b.Id == id)
                 ?? throw new SourceAccessException($"Monday has no board {id} that this token can see.", HttpStatusCode.NotFound))];
 
-        var newest = since;
         foreach (var board in boards)
         {
+            // A group has no dates of its own, so every read lists them all: a group added since the last read is
+            // there for the items in it.
             foreach (var group in board.Groups)
             {
-                // A group has no dates of its own; it is as old as the read, and never "changed since".
-                if (since is null)
+                yield return new SourceItem
                 {
-                    yield return new SourceItem
-                    {
-                        Id = GroupId(board, group.Id),
-                        Project = board.Id,
-                        Type = GroupType,
-                        Status = NoStatus,
-                        Title = group.Title,
-                        Url = $"{catalog.Web}/boards/{board.Id}",
-                        Created = catalog.ReadAt,
-                        Updated = catalog.ReadAt,
-                    };
-                }
+                    Id = GroupId(board, group.Id),
+                    Project = board.Id,
+                    Type = GroupType,
+                    Status = NoStatus,
+                    Title = group.Title,
+                    Url = $"{catalog.Web}/boards/{board.Id}",
+                    Created = catalog.ReadAt,
+                    Updated = catalog.ReadAt,
+                };
             }
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
             await foreach (var item in ItemsAsync(board.Id, ct))
             {
                 var updated = Time(item["updated_at"]) ?? catalog.ReadAt;
-                newest = newest is { } n && n >= updated ? n : updated;
                 var records = new List<ISnapshotRecord>();
                 var row = Item(catalog, board, item, parent: null, out var resolvedItem);
-                if ((since is null || updated >= since) && !(scope.ResolvedAfter is { } after && resolvedItem < after))
+                if (scope.ResolvedAfter is { } after && resolvedItem < after)
+                {
+                    // Left out with its subitems, which would otherwise point at an item that isn't there.
+                    continue;
+                }
+
+                if (since is null || updated >= since)
                 {
                     seen.Add(row.Id);
                     records.Add(row);
+                    await AllUpdatesAsync(item, ct);
                     records.AddRange(Comments(row.Id, item));
                     records.AddRange(Files(row.Id, item));
                 }
@@ -135,6 +142,7 @@ public sealed class MondayConnector : ISourceConnector
                     var subRow = Item(catalog, subBoard, sub, row.Id, out _) with { Project = board.Id };
                     seen.Add(subRow.Id);
                     records.Add(subRow);
+                    await AllUpdatesAsync(sub, ct);
                     records.AddRange(Comments(subRow.Id, sub));
                     records.AddRange(Files(subRow.Id, sub));
                 }
@@ -151,7 +159,7 @@ public sealed class MondayConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor((newest ?? _time.GetUtcNow()).UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     /// <summary>The public URL Monday signs is short-lived, so it is asked for when the file is fetched.</summary>
@@ -246,6 +254,30 @@ public sealed class MondayConnector : ISourceConnector
         };
     }
 
+    /// <summary>The items page carries an item's first 100 updates; one with more has the rest paged in.</summary>
+    private async Task AllUpdatesAsync(JsonObject item, CancellationToken ct)
+    {
+        if (item["updates"] is not JsonArray updates || updates.Count < PageSize)
+        {
+            return;
+        }
+
+        for (var page = 2; ; page++)
+        {
+            var data = await _client.QueryAsync(UpdatesQuery, new JsonObject { ["ids"] = new JsonArray((string)item["id"]!), ["page"] = page }, ct);
+            var more = data["items"]?.AsArray().FirstOrDefault()?["updates"]?.AsArray().OfType<JsonObject>().ToList() ?? [];
+            foreach (var update in more)
+            {
+                updates.Add(update.DeepClone());
+            }
+
+            if (more.Count < PageSize)
+            {
+                return;
+            }
+        }
+    }
+
     private static IEnumerable<SourceComment> Comments(string item, JsonObject source)
     {
         foreach (var update in source["updates"]?.AsArray().OfType<JsonObject>() ?? [])
@@ -293,7 +325,14 @@ public sealed class MondayConnector : ISourceConnector
     {
         for (var page = 1; ; page++)
         {
-            var data = await _client.QueryAsync(LogQuery, new JsonObject { ["board"] = new JsonArray(board.Id), ["page"] = page }, ct);
+            // A delta asks Monday for the log since the cursor only; the check below stays exact.
+            var variables = new JsonObject { ["board"] = new JsonArray(board.Id), ["page"] = page };
+            if (since is { } from)
+            {
+                variables["from"] = from.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+            }
+
+            var data = await _client.QueryAsync(since is null ? LogQuery : LogSinceQuery, variables, ct);
             var logs = data["boards"]?.AsArray().FirstOrDefault()?["activity_logs"]?.AsArray().OfType<JsonObject>().ToList() ?? [];
             foreach (var log in logs)
             {

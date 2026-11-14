@@ -113,15 +113,27 @@ internal static class ImportCommands
             var file = c.Get(output) ?? new FileInfo(Path.Combine(Path.GetTempPath(), $"kupro-{kind}-{Guid.NewGuid():N}.zip"));
             try
             {
+                int missing;
                 await using (var zip = file.Create())
                 {
-                    await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted), cursor: null, includeFiles: true, TimeProvider.System, ct);
+                    missing = await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted), cursor: null, includeFiles: true, TimeProvider.System, ct);
+                }
+
+                if (missing > 0)
+                {
+                    await c.Out.MessageAsync($"{missing} file(s) couldn't be downloaded from {name}; the import lists them as missing.");
                 }
             }
             catch (SourceAccessException e)
             {
                 file.Delete();
                 throw new CliException($"{name} refused the read: {e.Message}");
+            }
+            catch (HttpRequestException e)
+            {
+                // Not Kupro: the source is what this machine couldn't reach.
+                file.Delete();
+                throw new CliException($"Can't reach {name}: {e.Message}");
             }
             catch
             {
@@ -132,7 +144,7 @@ internal static class ImportCommands
             if (c.Get(output) is not null)
             {
                 file.Refresh();
-                await c.Out.MessageAsync($"Wrote {file.FullName} ({file.Length / 1024.0 / 1024.0:0.0} MB). Upload it with `kupro import snapshot {file.Name}`.");
+                await c.Out.MessageAsync($"Wrote {file.FullName} ({file.Length / 1024.0 / 1024.0:0.0} MB). Upload it with `kupro import snapshot \"{file.FullName}\"`.");
                 return;
             }
 
@@ -151,7 +163,16 @@ internal static class ImportCommands
     private static ISourceConnector Connector(string kind, string name, HttpClient http, string? url, string? key, string token)
     {
         string Url() => url ?? throw new CliException($"Give the {name} address with --url.");
-        return kind switch
+        try
+        {
+            return Create();
+        }
+        catch (Exception e) when (e is ArgumentException or SourceAccessException)
+        {
+            throw new CliException($"--url: {e.Message}");
+        }
+
+        ISourceConnector Create() => kind switch
         {
             SourceKinds.Jira => new JiraConnector(http, Url(), token),
             SourceKinds.AzureDevOps => new AzureDevOpsConnector(http, Url(), token),

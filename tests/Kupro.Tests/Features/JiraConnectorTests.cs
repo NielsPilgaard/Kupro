@@ -221,9 +221,10 @@ public sealed class JiraConnectorTests
     public async Task A_delta_reads_what_changed_since_the_cursor_and_moves_it_on()
     {
         var jira = Cloud();
+        jira.Now = T0.AddDays(5);
         var first = await Connect(jira).ReadAsync(new ReadScope { Projects = ["10000"] }, null, Ct).ToListAsync(Ct);
         var cursor = first.OfType<ReadCursor>().Single().Cursor;
-        cursor.ShouldBe(T0.AddDays(5).UtcDateTime.ToString("O"));
+        cursor.ShouldBe(T0.AddDays(5).UtcDateTime.ToString("O"), "when the read started");
 
         // An edit in Jira after the first run, timed inside the overlap window the pipeline subtracts.
         jira.Now = T0.AddDays(5).AddMinutes(30);
@@ -232,9 +233,10 @@ public sealed class JiraConnectorTests
         jira.Requests.Clear();
         var second = await Connect(jira).ReadAsync(new ReadScope { Projects = ["10000"] }, overlapped, Ct).ToListAsync(Ct);
 
-        jira.Requests.ShouldContain(r => r.Contains("AND updated >= \"-41m\"", StringComparison.Ordinal));
+        jira.Requests.ShouldContain(r => r.Contains("AND updated >= \"2025-03-06 09:49\"", StringComparison.Ordinal),
+            "the overlapped cursor less a minute, in the user's zone (CET), fixed for every page");
         second.OfType<SourceItem>().Select(i => i.Key).ShouldBe(["WEB-4", "WEB-6"], ignoreOrder: true);
-        second.OfType<ReadCursor>().Single().Cursor.ShouldBe(cursor, "nothing newer than the newest seen");
+        second.OfType<ReadCursor>().Single().Cursor.ShouldBe(jira.Now.UtcDateTime.ToString("O"), "when this read started, not the overlapped cursor");
     }
 
     [Fact]

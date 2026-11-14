@@ -55,13 +55,17 @@ public sealed class TrelloConnector : ISourceConnector
         "commentCard,updateCard,addMemberToCard,removeMemberFromCard,addLabelToCard,removeLabelFromCard,updateCustomFieldItem,updateCheckItemStateOnCard";
 
     private readonly TrelloClient _client;
+    private readonly TimeProvider _time;
     private Catalog? _catalog;
 
     /// <param name="http">Sends the requests; the connector adds the key and token to each API request, not to the client.</param>
     /// <param name="key">Kupro's Trello API key.</param>
     /// <param name="token">The user's token from Trello's authorize link, read scope.</param>
-    public TrelloConnector(HttpClient http, string key, string token, TimeProvider? time = null) =>
-        _client = new TrelloClient(http, key, token, time ?? TimeProvider.System);
+    public TrelloConnector(HttpClient http, string key, string token, TimeProvider? time = null)
+    {
+        _time = time ?? TimeProvider.System;
+        _client = new TrelloClient(http, key, token, _time);
+    }
 
     internal TrelloClient Client => _client;
 
@@ -69,6 +73,8 @@ public sealed class TrelloConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -142,7 +148,6 @@ public sealed class TrelloConnector : ISourceConnector
                     continue;
                 }
 
-                reading.Saw(card.DateLastActivity);
                 var related = reading.Related(board, card, item).ToList();
                 var changes = reading.History(board, item, actions).ToList();
                 foreach (var person in reading.TakePeople())
@@ -163,7 +168,7 @@ public sealed class TrelloConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor(reading.Newest?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture) ?? cursor);
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>

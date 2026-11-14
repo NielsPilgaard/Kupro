@@ -10,7 +10,7 @@ namespace Kupro.Import.Jira;
 /// <summary>
 /// Turns Jira issues, links, comments, attachments and changelogs into snapshot records for one read. Keeps the state a
 /// read needs across issues: people already reported, links already emitted (both ends carry them), keys seen (for
-/// Epic Link) and the newest update time for the cursor.
+/// Epic Link).
 /// </summary>
 internal sealed partial class JiraReading(Catalog catalog, Uri site)
 {
@@ -30,9 +30,6 @@ internal sealed partial class JiraReading(Catalog catalog, Uri site)
     private readonly Dictionary<string, bool> _people = new(StringComparer.Ordinal);
     private readonly List<SourcePerson> _pending = [];
     private readonly HashSet<string> _links = new(StringComparer.Ordinal);
-
-    /// <summary>The newest <c>updated</c> read: the next delta starts there.</summary>
-    public DateTimeOffset? Newest { get; set; }
 
     /// <summary>Issue IDs by key, from this read and Epic Link lookups (null: no such issue).</summary>
     public Dictionary<string, string?> IdsByKey { get; } = new(StringComparer.OrdinalIgnoreCase);

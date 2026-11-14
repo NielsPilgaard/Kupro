@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Kupro.Import.Snapshot;
 
 namespace Kupro.Import.Jira;
@@ -78,6 +79,8 @@ public sealed class JiraConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -85,6 +88,7 @@ public sealed class JiraConnector : ISourceConnector
                 ? parsed
                 : throw new ArgumentException($"'{cursor}' is not a Jira cursor (a UTC time).", nameof(cursor));
         var reading = new JiraReading(catalog, _client.Site);
+        var zone = since is null ? null : await ZoneAsync(catalog, ct);
         var sprints = new Dictionary<string, SourceSprint>(StringComparer.Ordinal);
         var projects = scope.Projects.Count == 0
             ? catalog.Projects
@@ -107,10 +111,14 @@ public sealed class JiraConnector : ISourceConnector
             var jql = $"project = {project.Id}";
             if (since is { } from)
             {
-                // Relative, so the API user's time zone (which JQL dates are read in) doesn't matter. Rounded up: a
-                // minute too early only re-reads what the overlap re-reads anyway.
-                var minutes = (long)Math.Ceiling((_time.GetUtcNow() - from).TotalMinutes) + 1;
-                jql += $" AND updated >= \"-{Math.Max(minutes, 1)}m\"";
+                jql += $" AND updated >= {JqlTime(from, zone, started)}";
+            }
+
+            // Closed before the cutoff is left out by Jira, not after fetching its history; a day early, as JQL reads
+            // the date in the user's zone, and the item check below is exact.
+            if (scope.ResolvedAfter is { } cutoff)
+            {
+                jql += string.Create(CultureInfo.InvariantCulture, $" AND (resolutiondate is EMPTY OR resolutiondate >= \"{cutoff.UtcDateTime.AddDays(-1):yyyy-MM-dd}\")");
             }
 
             // Key order is stable while issues change, so startAt paging neither skips nor repeats one.
@@ -127,7 +135,6 @@ public sealed class JiraConnector : ISourceConnector
                 }
 
                 var item = reading.Item(project, issue, epic, sprint.Id);
-                reading.Newest = reading.Newest is { } newest && newest >= item.Updated ? newest : item.Updated;
                 if (scope.ResolvedAfter is not null && item.Resolved < scope.ResolvedAfter)
                 {
                     continue;
@@ -168,7 +175,7 @@ public sealed class JiraConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor(reading.Newest?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture) ?? cursor);
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>
@@ -176,18 +183,54 @@ public sealed class JiraConnector : ISourceConnector
             ? _client.DownloadAsync(url, ct)
             : throw new SourceAccessException($"Attachment {attachment.Id} ({attachment.FileName}) has no URL.");
 
-    /// <summary>Every issue the JQL finds: Cloud pages by token (<c>search/jql</c>), Data Center by <c>startAt</c>.</summary>
+    /// <summary>
+    /// A fixed point in time as JQL takes it: in the token user's zone, a minute early (JQL has no seconds). Relative
+    /// (<c>"-90m"</c>) only when the zone is unknown: Jira works that out again on every page, so the window moves.
+    /// </summary>
+    internal static string JqlTime(DateTimeOffset at, TimeZoneInfo? zone, DateTimeOffset now)
+    {
+        if (zone is null)
+        {
+            var minutes = (long)Math.Ceiling((now - at).TotalMinutes) + 1;
+            return $"\"-{Math.Max(minutes, 1)}m\"";
+        }
+
+        return string.Create(CultureInfo.InvariantCulture, $"\"{TimeZoneInfo.ConvertTime(at.AddMinutes(-1), zone):yyyy-MM-dd HH:mm}\"");
+    }
+
+    private async Task<TimeZoneInfo?> ZoneAsync(Catalog catalog, CancellationToken ct)
+    {
+        var me = await _client.TryGetAsync($"rest/api/{catalog.Api}/myself", JiraJson.Default.JiraMyself, ct);
+        return me?.TimeZone is { Length: > 0 } id && TimeZoneInfo.TryFindSystemTimeZoneById(id, out var zone) ? zone : null;
+    }
+
+    /// <summary>
+    /// Every issue the JQL finds: Cloud pages by token (<c>search/jql</c>), Data Center by <c>startAt</c>. POST, as a
+    /// site's custom fields can make the field list longer than a URL may be.
+    /// </summary>
     private async IAsyncEnumerable<JiraIssue> SearchAsync(Catalog catalog, string jql, [EnumeratorCancellation] CancellationToken ct)
     {
-        var common = $"jql={Uri.EscapeDataString(jql)}&maxResults={PageSize}&fields={Uri.EscapeDataString(catalog.SearchFields)}&expand=changelog";
+        var fields = new JsonArray([.. catalog.SearchFields.Split(',').Select(f => (JsonNode)f)]);
         string? token = null;
         var startAt = 0;
         while (true)
         {
-            var path = catalog.Cloud
-                ? $"rest/api/3/search/jql?{common}{(token is null ? "" : "&nextPageToken=" + Uri.EscapeDataString(token))}"
-                : $"rest/api/2/search?{common}&startAt={startAt}";
-            var page = await _client.GetAsync(path, JiraJson.Default.JiraSearchPage, ct);
+            var body = new JsonObject { ["jql"] = jql, ["maxResults"] = PageSize, ["fields"] = fields.DeepClone() };
+            if (catalog.Cloud)
+            {
+                body["expand"] = "changelog";
+                if (token is not null)
+                {
+                    body["nextPageToken"] = token;
+                }
+            }
+            else
+            {
+                body["expand"] = new JsonArray("changelog");
+                body["startAt"] = startAt;
+            }
+
+            var page = await _client.PostAsync(catalog.Cloud ? "rest/api/3/search/jql" : "rest/api/2/search", body, JiraJson.Default.JiraSearchPage, ct);
             foreach (var issue in page.Issues)
             {
                 yield return issue;

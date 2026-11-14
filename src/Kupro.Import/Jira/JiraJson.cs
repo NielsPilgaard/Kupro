@@ -9,6 +9,13 @@ namespace Kupro.Import.Jira;
 // arguments, so an absent list would arrive as null instead of the empty default. Times stay strings: Jira writes
 // offsets as +0100, which System.Text.Json doesn't read (see Jira.Time).
 
+/// <summary>The token's user (<c>/myself</c>): JQL reads dates in its time zone.</summary>
+internal sealed record JiraMyself
+{
+    /// <summary>An IANA zone, such as "Europe/Copenhagen".</summary>
+    public string? TimeZone { get; init; }
+}
+
 internal sealed record JiraServerInfo
 {
     public string? BaseUrl { get; init; }
@@ -222,6 +229,7 @@ internal sealed record JiraIssueRef
 
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
 [JsonSerializable(typeof(JiraServerInfo))]
+[JsonSerializable(typeof(JiraMyself))]
 [JsonSerializable(typeof(JiraProjectPage))]
 [JsonSerializable(typeof(List<JiraProject>))]
 [JsonSerializable(typeof(List<JiraIssueType>))]

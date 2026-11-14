@@ -30,8 +30,9 @@ public sealed class AdfConverter : IMarkupConverter
             var root = doc.RootElement;
             return root.ValueKind == JsonValueKind.Object && Type(root) == "doc" ? Blocks(Content(root)) : Block(root);
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or InvalidOperationException)
         {
+            // Not JSON, or a node of the wrong kind where ADF has an object: kept as written.
             return MarkupConverters.Fence(source, "json");
         }
     }
@@ -286,10 +287,10 @@ public sealed class AdfConverter : IMarkupConverter
         node.ValueKind == JsonValueKind.Object && node.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
 
     private static string Str(JsonElement node, string name) =>
-        node.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
+        node.ValueKind == JsonValueKind.Object && node.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
 
     private static string? Attr(JsonElement node, string name) =>
-        node.TryGetProperty("attrs", out var a) && a.ValueKind == JsonValueKind.Object && a.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null
+        node.ValueKind == JsonValueKind.Object && node.TryGetProperty("attrs", out var a) && a.ValueKind == JsonValueKind.Object && a.TryGetProperty(name, out var v) && v.ValueKind != JsonValueKind.Null
             ? v.ValueKind == JsonValueKind.String ? v.GetString() : v.GetRawText()
             : null;
 

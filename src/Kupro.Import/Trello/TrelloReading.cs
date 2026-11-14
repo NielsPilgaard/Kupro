@@ -9,7 +9,7 @@ namespace Kupro.Import.Trello;
 /// <summary>
 /// Turns Trello cards and actions into snapshot records for one read. Keeps the state a read needs across cards: the
 /// names of people seen so far (actions and cards name them, attachments and checklist items only give an ID), the
-/// people already reported, and the newest activity for the cursor.
+/// and the people already reported.
 /// </summary>
 internal sealed class TrelloReading
 {
@@ -23,11 +23,6 @@ internal sealed class TrelloReading
         _fields = catalog.Fields;
         Learn(catalog.Members.Values);
     }
-
-    /// <summary>The newest card activity or action read: the next delta starts there.</summary>
-    public DateTimeOffset? Newest { get; private set; }
-
-    public void Saw(DateTimeOffset at) => Newest = Newest is { } newest && newest >= at ? newest : at;
 
     /// <summary>People first referred to since the last call, to stream before the records that refer to them.</summary>
     public List<SourcePerson> TakePeople()
@@ -166,7 +161,6 @@ internal sealed class TrelloReading
         foreach (var action in actions.OrderBy(a => a.Date).ThenBy(a => a.Id, StringComparer.Ordinal))
         {
             Learn(action.MemberCreator);
-            Saw(action.Date);
             var actor = PersonId(action.IdMemberCreator ?? action.MemberCreator?.Id);
             var data = action.Data;
             SourceChange Change(string id, string field, string? from, string? to, string? fromText = null, string? toText = null) => new()

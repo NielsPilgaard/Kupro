@@ -85,19 +85,7 @@ internal sealed class YouTrackClient
             throw new SourceAccessException($"Attachment {absolute.AbsolutePath} is not on {Site.Authority}; it was not downloaded.");
         }
 
-        var response = await SendAsync(absolute, ct);
-        try
-        {
-            EnsureSuccess(response, absolute.AbsolutePath);
-            var content = new MemoryStream();
-            await response.Content.CopyToAsync(content, ct);
-            content.Position = 0;
-            return content;
-        }
-        finally
-        {
-            response.Dispose();
-        }
+        return await ResponseStream.OpenAsync(await SendAsync(absolute, ct), r => EnsureSuccess(r, absolute.AbsolutePath), ct);
     }
 
     private async Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct)

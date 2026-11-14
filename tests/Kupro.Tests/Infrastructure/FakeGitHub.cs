@@ -33,6 +33,9 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
     /// <summary>The next request is refused by the primary rate limit, once.</summary>
     public bool RateLimitOnce { get; set; }
 
+    /// <summary>The next request is refused by a secondary rate limit that names itself only in the body, once.</summary>
+    public bool SecondaryLimitOnce { get; set; }
+
     public static JsonObject User(long id, string login, string type = "User") => new() { ["id"] = id, ["login"] = login, ["type"] = type };
 
     public JsonObject AddRepo(long id, string owner, string name, string ownerType = "Organization", bool hasIssues = true)
@@ -101,6 +104,15 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
             return Task.FromResult(limited);
         }
 
+        if (SecondaryLimitOnce)
+        {
+            SecondaryLimitOnce = false;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden)
+            {
+                Content = new StringContent("""{"message":"You have exceeded a secondary rate limit. Please wait a few minutes before you try again."}"""),
+            });
+        }
+
         var parts = path.Split('/');
         return Task.FromResult(parts switch
         {
@@ -113,6 +125,10 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
             ["repos", var o, var r, "issues", "events"] => Page(List(Events, $"{o}/{r}"), url, query),
             ["repos", var o, var r, "issues", var n, "dependencies", "blocked_by"] => Page(
                 [.. List(BlockedBy, $"{o}/{r}#{n}").Select(blocker => List(Issues, $"{o}/{r}").Single(i => (int)i["number"]! == blocker))], url, query),
+            ["repos", var o, var r, "issues", var n, "parent"] => SubIssues.FirstOrDefault(s => s.Key.StartsWith($"{o}/{r}#", StringComparison.Ordinal)
+                && s.Value.Contains(int.Parse(n, CultureInfo.InvariantCulture))) is { Key: { } parent }
+                ? Json(List(Issues, $"{o}/{r}").Single(i => (int)i["number"]! == int.Parse(parent.Split('#')[1], CultureInfo.InvariantCulture)))
+                : NotFound(),
             ["repos", var o, var r, "issues", var n, "sub_issues"] => Page(
                 [.. List(SubIssues, $"{o}/{r}#{n}").Select(child => List(Issues, $"{o}/{r}").Single(i => (int)i["number"]! == child))], url, query),
             _ => NotFound(),
@@ -141,6 +157,9 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
 
         return response;
     }
+
+    private static HttpResponseMessage Json(JsonObject item) =>
+        new(HttpStatusCode.OK) { Content = new StringContent(item.ToJsonString(), Encoding.UTF8, "application/json") };
 
     private static HttpResponseMessage NotFound() => new(HttpStatusCode.NotFound) { Content = new StringContent("""{"message":"Not Found"}""") };
 }

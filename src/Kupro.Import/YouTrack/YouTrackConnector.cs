@@ -76,6 +76,8 @@ public sealed class YouTrackConnector : ISourceConnector
 
     public async IAsyncEnumerable<ISnapshotRecord> ReadAsync(ReadScope scope, string? cursor, [EnumeratorCancellation] CancellationToken ct)
     {
+        // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
+        var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
         DateTimeOffset? since = cursor is null
             ? null
@@ -120,7 +122,6 @@ public sealed class YouTrackConnector : ISourceConnector
             }
         }
 
-        var newest = since;
         foreach (var project in projects)
         {
             // Days, not times: the query reads dates in the token user's time zone, so a day early and then filtered here.
@@ -139,7 +140,6 @@ public sealed class YouTrackConnector : ISourceConnector
                     continue;
                 }
 
-                newest = newest is { } n && n >= updated ? n : updated;
                 var resolved = issue.Resolved is { } r ? Time(r) : (DateTimeOffset?)null;
                 if (scope.ResolvedAfter is { } after && resolved < after)
                 {
@@ -200,7 +200,7 @@ public sealed class YouTrackConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor((newest ?? _time.GetUtcNow()).UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
     }
 
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>
@@ -252,8 +252,8 @@ public sealed class YouTrackConnector : ISourceConnector
     }
 
     /// <summary>
-    /// Links as relations, each once: a directed link from its outward side (X depends on Y: Y blocks X; X duplicates
-    /// Y), an undirected one from the side with the smaller ID. Subtask links are the hierarchy, not relations.
+    /// Links as relations, each once: a directed link from its outward side, which YouTrack names "is required for"
+    /// (X blocks Y) and "is duplicated by" (Y duplicates X), an undirected one from the side with the smaller ID. Subtask links are the hierarchy, not relations.
     /// </summary>
     internal static IEnumerable<SourceRelation> Relations(YtIssue issue)
     {
@@ -273,9 +273,9 @@ public sealed class YouTrackConnector : ISourceConnector
                 {
                     var label = link.LinkType.SourceToTarget ?? name;
                     yield return name.StartsWith("Depend", StringComparison.OrdinalIgnoreCase)
-                        ? new SourceRelation { From = other.Id, To = issue.Id, Kind = RelationKinds.Blocks, Name = label }
+                        ? new SourceRelation { From = issue.Id, To = other.Id, Kind = RelationKinds.Blocks, Name = label }
                         : name.StartsWith("Duplicate", StringComparison.OrdinalIgnoreCase)
-                            ? new SourceRelation { From = issue.Id, To = other.Id, Kind = RelationKinds.Duplicates, Name = label }
+                            ? new SourceRelation { From = other.Id, To = issue.Id, Kind = RelationKinds.Duplicates, Name = label }
                             : new SourceRelation { From = issue.Id, To = other.Id, Kind = RelationKinds.Relates, Name = label };
                 }
             }
@@ -288,7 +288,9 @@ public sealed class YouTrackConnector : ISourceConnector
         string? after = null;
         do
         {
+            // A delta starts the history at the cursor (start, in ms), so an old issue's whole history isn't read again.
             var path = $"issues/{issue}/activitiesPage?categories=CustomFieldCategory,SummaryCategory&fields={ActivityFields}"
+                + (since is { } from ? $"&start={from.ToUnixTimeMilliseconds()}" : "")
                 + (after is null ? "" : $"&cursor={Uri.EscapeDataString(after)}");
             var page = await _client.GetAsync(path, YouTrackJson.Default.YtActivityPage, ct);
             activities.AddRange(page.Activities.Where(a => since is null || Time(a.Timestamp) >= since));

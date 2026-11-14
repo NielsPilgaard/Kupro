@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
 namespace Kupro.Import.Jira;
@@ -49,6 +50,14 @@ internal sealed class JiraClient
         return await response.Content.ReadFromJsonAsync(type, ct) ?? throw Failure(response.StatusCode, path);
     }
 
+    /// <summary>A POST with a JSON body: searches, whose field list can outgrow a URL.</summary>
+    public async Task<T> PostAsync<T>(string path, JsonNode body, JsonTypeInfo<T> type, CancellationToken ct)
+    {
+        using var response = await SendAsync(Url(path), ct, body.ToJsonString());
+        EnsureSuccess(response, path);
+        return await response.Content.ReadFromJsonAsync(type, ct) ?? throw Failure(response.StatusCode, path);
+    }
+
     /// <summary>Like <see cref="GetAsync{T}"/>, but null when the resource doesn't exist or isn't readable.</summary>
     public async Task<T?> TryGetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct) where T : class
     {
@@ -86,7 +95,7 @@ internal sealed class JiraClient
 
     private Uri Url(string path) => new($"{Site.AbsoluteUri.TrimEnd('/')}/{path}");
 
-    private async Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct)
+    private async Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct, string? json = null)
     {
         for (var attempt = 0; ; attempt++)
         {
@@ -96,7 +105,12 @@ internal sealed class JiraClient
                 await Delay(wait, ct);
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var request = new HttpRequestMessage(json is null ? HttpMethod.Get : HttpMethod.Post, url);
+            if (json is not null)
+            {
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
+
             request.Headers.Authorization = Auth;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -142,39 +156,5 @@ internal sealed class JiraClient
             HttpStatusCode.NotFound => new($"Jira has no {resource}. Check the site URL.", status),
             _ => new($"Jira answered {(int)status} for {resource}.", status),
         };
-    }
-
-    /// <summary>An attachment's body that disposes its response, and so frees the connection, when read to the end.</summary>
-    private sealed class ResponseStream(HttpResponseMessage response, Stream inner) : Stream
-    {
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
-        public override long Length => inner.Length;
-        public override long Position { get => inner.Position; set => throw new NotSupportedException(); }
-
-        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
-
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
-            inner.ReadAsync(buffer, cancellationToken);
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-            inner.ReadAsync(buffer, offset, count, cancellationToken);
-
-        public override void Flush() { }
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                inner.Dispose();
-                response.Dispose();
-            }
-
-            base.Dispose(disposing);
-        }
     }
 }

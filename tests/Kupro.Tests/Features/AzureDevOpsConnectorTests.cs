@@ -183,7 +183,7 @@ public sealed class AzureDevOpsConnectorTests
         people.Single(p => p.Id == "u-sofie").Email.ShouldBe("sofie@acme.example");
         records.IndexOf(people.Single(p => p.Id == "u-sofie")).ShouldBeLessThan(records.IndexOf(items["102"]), "people come before records that use them");
 
-        records[^1].ShouldBe(new ReadCursor(T0.AddDays(5).UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+        records[^1].ShouldBe(new ReadCursor(Now.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
     }
 
     [Fact]
@@ -266,11 +266,11 @@ public sealed class AzureDevOpsConnectorTests
         var records = await connector.ReadAsync(new ReadScope(), T0.AddDays(4).ToString("O"), Ct).ToListAsync(Ct);
 
         records.OfType<SourceItem>().Select(i => i.Id).ShouldBe(["102"]);
-        records[^1].ShouldBe(new ReadCursor(T0.AddDays(5).UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+        records[^1].ShouldBe(new ReadCursor(Now.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
 
         var nothing = await connector.ReadAsync(new ReadScope(), "2026-01-01T00:00:00Z", Ct).ToListAsync(Ct);
         nothing.OfType<SourceItem>().ShouldBeEmpty();
-        nothing[^1].ShouldBe(new ReadCursor("2026-01-01T00:00:00Z"), "no change: the cursor stays");
+        nothing[^1].ShouldBe(new ReadCursor(Now.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture)), "no change: the read's start");
     }
 
     [Fact]

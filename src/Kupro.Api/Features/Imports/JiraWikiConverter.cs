@@ -30,7 +30,7 @@ public sealed partial class JiraWikiConverter : IMarkupConverter
 
         try
         {
-            return Convert(source.Replace(Open, ' ').Replace(Close, ' ').ReplaceLineEndings("\n"), 0);
+            return Convert(source.Replace(Open, ' ').Replace(Close, ' ').ReplaceLineEndings("\n"), 0, []);
         }
         catch (RegexMatchTimeoutException)
         {
@@ -38,10 +38,11 @@ public sealed partial class JiraWikiConverter : IMarkupConverter
         }
     }
 
-    private static string Convert(string text, int depth)
+    /// <param name="blocks">Rendered blocks the placeholders point at, shared with nested calls: a code block inside a
+    /// quote is held by the outer call.</param>
+    private static string Convert(string text, int depth, List<string> blocks)
     {
         // Block macros first, so nothing inside a code block is read as markup. Each becomes a placeholder line.
-        var blocks = new List<string>();
         string Hold(string rendered)
         {
             blocks.Add(rendered);
@@ -66,14 +67,14 @@ public sealed partial class JiraWikiConverter : IMarkupConverter
 
             if (name.Equals("quote", StringComparison.OrdinalIgnoreCase))
             {
-                return Hold(Quote(Convert(body, depth + 1)));
+                return Hold(Quote(Convert(body, depth + 1, blocks)));
             }
 
             if (Panels.Contains(name))
             {
                 var title = Param(m.Groups["params"].Value, "title");
                 var label = title is not null ? MarkupConverters.EscapeText(title) : name.Equals("panel", StringComparison.OrdinalIgnoreCase) ? null : Capital(name);
-                var inner = Convert(body, depth + 1);
+                var inner = Convert(body, depth + 1, blocks);
                 return Hold(Quote(label is null ? inner : $"**{label}:** {inner}"));
             }
 

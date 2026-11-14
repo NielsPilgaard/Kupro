@@ -95,10 +95,29 @@ public sealed class MondayConnectorTests
     [Fact]
     public async Task A_delta_keeps_what_changed_since_the_cursor()
     {
-        var records = await Connect(Sample()).ReadAsync(new ReadScope { Projects = ["10"] }, T0.AddDays(2).ToString("O"), Ct).ToListAsync(Ct);
+        var monday = Sample();
+        var records = await Connect(monday).ReadAsync(new ReadScope { Projects = ["10"] }, T0.AddDays(2).ToString("O"), Ct).ToListAsync(Ct);
 
-        records.OfType<SourceItem>().Select(i => i.Id).ShouldBe(["100", "101"], ignoreOrder: true, "groups and #102 didn't change");
+        monday.Queries.ShouldContain(q => q.Contains("activity_logs(limit: 100, page: $page, from: $from)", StringComparison.Ordinal), "the log since the cursor");
+
+        records.OfType<SourceItem>().Select(i => i.Id).ShouldBe(["10:topics", "10:later", "100", "101"], ignoreOrder: true, "#102 didn't change; groups are always listed");
         records.OfType<SourceChange>().Select(c => c.Item).ShouldBe(["100"]);
+    }
+
+    [Fact]
+    public async Task An_item_with_more_than_a_page_of_updates_keeps_them_all()
+    {
+        var monday = Sample();
+        var updates = monday.Items["10"].Single(i => (string)i["id"]! == "100")["updates"]!.AsArray();
+        for (var n = 0; n < 149; n++)
+        {
+            updates.Add(new JsonObject { ["id"] = $"x{n}", ["body"] = $"<p>{n}</p>", ["created_at"] = At(T0.AddHours(4)), ["creator_id"] = 5 });
+        }
+
+        var records = await Connect(monday).ReadAsync(new ReadScope { Projects = ["10"] }, null, Ct).ToListAsync(Ct);
+
+        records.OfType<SourceComment>().Count(c => c.Item == "100").ShouldBe(151, "150 updates and a reply");
+        monday.Queries.ShouldContain(q => q.Contains("items(ids:", StringComparison.Ordinal));
     }
 
     [Fact]

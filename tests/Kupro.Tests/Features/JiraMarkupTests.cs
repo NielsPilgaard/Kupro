@@ -50,4 +50,18 @@ public sealed class JiraMarkupTests
     [InlineData("*fed*, _kursiv_ og -slettet-", "**fed**, *kursiv* og ~~slettet~~")]
     public void Wiki_edge_cases(string wiki, string markdown) =>
         MarkupConverters.ToMarkdown(wiki, MarkupKind.JiraWiki).ShouldBe(markdown);
+
+    [Fact]
+    public void Adf_with_a_value_where_a_node_belongs_is_kept_as_json()
+    {
+        const string adf = """{"type":"doc","content":[{"type":"heading","attrs":"big","content":[1]},{"type":"codeBlock","content":["x"]}]}""";
+        Should.NotThrow(() => MarkupConverters.ToMarkdown(adf, MarkupKind.Adf));
+    }
+
+    [Fact]
+    public void A_code_block_inside_a_quote_or_panel_is_kept()
+    {
+        MarkupConverters.ToMarkdown("{quote}\nSee:\n{code}x(){code}\n{quote}", MarkupKind.JiraWiki).ShouldBe("> See:\n>\n> ```\n> x()\n> ```");
+        MarkupConverters.ToMarkdown("{code}a{code}\n{info}\n{noformat}b{noformat}\n{info}", MarkupKind.JiraWiki)!.ShouldContain("> b");
+    }
 }

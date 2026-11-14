@@ -43,6 +43,20 @@ internal sealed class GitHubClient
         return await response.Content.ReadFromJsonAsync(type, ct) ?? throw Failure(response.StatusCode, path);
     }
 
+    /// <summary>Like <see cref="GetAsync{T}"/>, but null when the resource doesn't exist or isn't readable.</summary>
+    public async Task<T?> TryGetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
+        where T : class
+    {
+        using var response = await SendAsync(new Uri(Api, path), ct);
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden or HttpStatusCode.Gone)
+        {
+            return null;
+        }
+
+        EnsureSuccess(response, path);
+        return await response.Content.ReadFromJsonAsync(type, ct);
+    }
+
     /// <summary>Every page of a list, following <c>Link: rel="next"</c>. Null items are skipped.</summary>
     public async IAsyncEnumerable<T> PagedAsync<T>(string path, JsonTypeInfo<List<T>> type, [EnumeratorCancellation] CancellationToken ct)
     {
@@ -122,7 +136,7 @@ internal sealed class GitHubClient
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Kupro-Import", "1"));
             request.Headers.Add("X-GitHub-Api-Version", ApiVersion);
             var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (RateLimited(response) is { } until && attempt < MaxRetries)
+            if (await RateLimitedAsync(response, ct) is { } until && attempt < MaxRetries)
             {
                 response.Dispose();
                 _notBefore = until;
@@ -141,7 +155,7 @@ internal sealed class GitHubClient
     }
 
     /// <summary>When to try again, if the response is a rate limit; null otherwise.</summary>
-    private DateTimeOffset? RateLimited(HttpResponseMessage response)
+    private async Task<DateTimeOffset?> RateLimitedAsync(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.StatusCode is not (HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests))
         {
@@ -161,8 +175,15 @@ internal sealed class GitHubClient
                 : now.AddMinutes(1);
         }
 
-        // A 429 without headers is still a limit; a 403 without them is a permission answer.
-        return response.StatusCode == HttpStatusCode.TooManyRequests ? now.AddMinutes(1) : null;
+        // A 429 without headers is still a limit, and so is a 403 that says so (a secondary limit: wait a minute);
+        // any other 403 is a permission answer.
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            return now.AddMinutes(1);
+        }
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+        return body.Contains("secondary rate limit", StringComparison.OrdinalIgnoreCase) ? now.AddMinutes(1) : null;
     }
 
     private static string? Header(HttpResponseMessage response, string name) =>

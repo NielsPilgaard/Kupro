@@ -24,6 +24,8 @@ public sealed class GitHubConnectorTests
     [InlineData("https://github.com/acme", "https://github.com/", "https://api.github.com/")]
     [InlineData("https://ghe.acme.example", "https://ghe.acme.example/", "https://ghe.acme.example/api/v3/")]
     [InlineData("https://ghe.acme.example/api/v3/", "https://ghe.acme.example/", "https://ghe.acme.example/api/v3/")]
+    [InlineData("https://acme.ghe.com", "https://acme.ghe.com/", "https://api.acme.ghe.com/")]
+    [InlineData("https://api.acme.ghe.com/", "https://acme.ghe.com/", "https://api.acme.ghe.com/")]
     public void The_address_is_github_or_an_enterprise_server(string? url, string web, string api)
     {
         var (w, a) = GitHubConnector.Addresses(url);
@@ -43,6 +45,25 @@ public sealed class GitHubConnectorTests
         description.Statuses.Select(s => s.Id).ShouldBe([GitHubConnector.Open, GitHubConnector.Closed, GitHubConnector.NotPlanned, GitHubConnector.Duplicate]);
         description.People.Select(p => (p.Id, p.Handle, p.Bot)).ShouldBe([("1", "sofie", false), ("2", "jonas", false), ("3", "dependabot[bot]", true)], ignoreOrder: true);
         github.Requests.ShouldNotContain(r => r.StartsWith("orgs/sofie", StringComparison.Ordinal), "a user's repositories have no org types");
+    }
+
+    [Fact]
+    public async Task A_secondary_limit_named_only_in_the_body_waits_a_minute()
+    {
+        var github = Sample();
+        github.SecondaryLimitOnce = true;
+        var waits = new List<TimeSpan>();
+        var clock = new Clock { Now = T0 };
+        var connector = new GitHubConnector(new HttpClient(github), null, FakeGitHub.Token, clock);
+        connector.Client.Delay = (wait, _) =>
+        {
+            waits.Add(wait);
+            clock.Now += wait;
+            return Task.CompletedTask;
+        };
+
+        (await connector.DescribeAsync(Ct)).Projects.ShouldNotBeEmpty();
+        waits.ShouldBe([TimeSpan.FromMinutes(1)]);
     }
 
     [Fact]
@@ -110,7 +131,7 @@ public sealed class GitHubConnectorTests
         ]);
         changes[1].Actor.ShouldBe("1");
         records.OfType<SourceChange>().Single(c => c.Item == "1003").To.ShouldBe(GitHubConnector.NotPlanned);
-        records.OfType<ReadCursor>().Single().Cursor.ShouldBe(T0.AddDays(4).UtcDateTime.ToString("O"));
+        records.OfType<ReadCursor>().Single().Cursor.ShouldBe(T0.AddDays(10).UtcDateTime.ToString("O"), "when the read started");
     }
 
     [Fact]
@@ -122,6 +143,7 @@ public sealed class GitHubConnectorTests
 
         github.Requests.ShouldContain(r => r.StartsWith("repos/acme/api/issues?", StringComparison.Ordinal) && r.Contains("since=2025-03-04T09:00:00Z", StringComparison.Ordinal));
         records.OfType<SourceItem>().Select(i => i.Key).ShouldBe(["acme/api#2", "acme/api#5"], ignoreOrder: true);
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#2").Parent.ShouldBe("1001", "its parent didn't change, so it is asked for");
         records.OfType<SourceChange>().Select(c => c.Field).ShouldBe(["status"], "only events since the cursor");
     }
 

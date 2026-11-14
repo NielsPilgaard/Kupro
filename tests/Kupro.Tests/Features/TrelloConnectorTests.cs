@@ -119,7 +119,7 @@ public sealed class TrelloConnectorTests
         people.Single(p => p.Id == s.Sofie.Id).Email.ShouldBe("sofie@acme.example", "the token's own member has an email");
         records.IndexOf(people.Single(p => p.Id == s.Jonas.Id)).ShouldBeLessThan(records.IndexOf(card), "people come before records that use them");
 
-        records[^1].ShouldBe(new ReadCursor(Utc(T0.AddDays(6))));
+        records[^1].ShouldBe(new ReadCursor(Utc(Now)));
     }
 
     [Fact]
@@ -224,12 +224,12 @@ public sealed class TrelloConnectorTests
         banner.Creator.ShouldBe(s.Sofie.Id, "creators come from the full action log, not just the delta");
         records.OfType<SourceChange>().Select(c => c.Field).ShouldBe([TrelloConnector.ArchivedField]);
         records.OfType<SourceComment>().ShouldBeEmpty();
-        records[^1].ShouldBe(new ReadCursor(Utc(T0.AddDays(6))));
+        records[^1].ShouldBe(new ReadCursor(Utc(Now)));
         s.Trello.Requests.ShouldContain(r => r.Contains("filter=commentCard", StringComparison.Ordinal) && r.Contains("since=2025-03-06T09", StringComparison.Ordinal));
 
         var nothing = await connector.ReadAsync(new ReadScope(), "2026-01-01T00:00:00Z", Ct).ToListAsync(Ct);
         nothing.OfType<SourceItem>().ShouldBeEmpty();
-        nothing[^1].ShouldBe(new ReadCursor("2026-01-01T00:00:00Z"), "no change: the cursor stays");
+        nothing[^1].ShouldBe(new ReadCursor(Utc(Now)), "no change: the read's start, never earlier than it was");
     }
 
     [Fact]
@@ -326,7 +326,7 @@ public sealed class TrelloConnectorTests
         snapshot.Header.Source.Kind.ShouldBe(SourceKinds.Trello);
         snapshot.Header.Counts.ShouldBe(new SnapshotCounts { Items = 5, Relations = 0, Comments = 2, Attachments = 1, Changes = 15 });
         snapshot.Header.People.Count.ShouldBe(2);
-        snapshot.Header.Cursor.ShouldBe(Utc(T0.AddDays(6)));
+        snapshot.Header.Cursor.ShouldBe(Utc(Now));
         (await snapshot.ReadAttachmentsAsync(Ct).SingleAsync(Ct)).File.ShouldNotBeNull();
         var items = await snapshot.ReadItemsAsync(Ct).ToListAsync(Ct);
         items.Single(i => i.Title == "Pay by card").Fields.Count.ShouldBe(6);

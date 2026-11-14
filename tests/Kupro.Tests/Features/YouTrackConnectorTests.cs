@@ -83,7 +83,8 @@ public sealed class YouTrackConnectorTests
             a => a.Url.ShouldBe("https://acme.youtrack.cloud/api/files/7-1?sign=ok"));
         records.OfType<SourceComment>().Select(c => (c.Id, c.Author, c.Body)).ShouldBe([("4-1", "1-1", "Reproduced")], "a deleted comment is left out");
         records.OfType<SourceRelation>().Select(r => (r.From, r.To, r.Kind)).ShouldBe(
-            [("2-3", "2-2", RelationKinds.Blocks), ("2-2", "2-3", RelationKinds.Relates)], ignoreOrder: true, "each link once; the subtask link is the parent");
+            [("2-3", "2-2", RelationKinds.Blocks), ("2-2", "2-3", RelationKinds.Relates), ("2-3", "2-1", RelationKinds.Duplicates)], ignoreOrder: true,
+            "each link once, read from the outward side (is required for, is duplicated by); the subtask link is the parent");
 
         var changes = records.OfType<SourceChange>().Where(c => c.Item == "2-2").ToList();
         changes.Select(c => (c.Field, c.From ?? c.FromText, c.To ?? c.ToText)).ShouldBe(
@@ -95,7 +96,7 @@ public sealed class YouTrackConnectorTests
             ("Component", null, "Api"),
         ], "paged in from activitiesPage");
         changes[1].ToText.ShouldBe("sofie");
-        records.OfType<ReadCursor>().Single().Cursor.ShouldBe(T0.AddDays(3).UtcDateTime.ToString("O"));
+        records.OfType<ReadCursor>().Single().Cursor.ShouldBe(T0.AddDays(20).UtcDateTime.ToString("O"), "when the read started");
 
         await using var file = await Connect(youtrack).FetchAttachmentAsync(records.OfType<SourceAttachment>().Single(), Ct);
         new StreamReader(file).ReadToEnd().ShouldBe("PNG!");
@@ -109,6 +110,8 @@ public sealed class YouTrackConnectorTests
         var records = await Connect(youtrack).ReadAsync(new ReadScope { Projects = ["0-1"] }, T0.AddDays(2).AddHours(12).ToString("O"), Ct).ToListAsync(Ct);
 
         youtrack.Requests.ShouldContain(r => r.Contains("updated: 2025-03-02 .. Today", StringComparison.Ordinal));
+        youtrack.Requests.ShouldContain(r => r.Contains($"activitiesPage?", StringComparison.Ordinal)
+            && r.Contains($"start={T0.AddDays(2).AddHours(12).ToUnixTimeMilliseconds()}", StringComparison.Ordinal));
         records.OfType<SourceItem>().Select(i => i.Key).ShouldBe(["WEB-2"]);
         records.OfType<SourceChange>().Select(c => c.Field).ShouldBe(["Component"], "only activities since the cursor");
     }
@@ -195,7 +198,7 @@ public sealed class YouTrackConnectorTests
         JsonObject Link(string direction, string name, bool directed, bool aggregation, string to) => new()
         {
             ["direction"] = direction,
-            ["linkType"] = new JsonObject { ["name"] = name, ["directed"] = directed, ["aggregation"] = aggregation, ["sourceToTarget"] = name.ToLowerInvariant() },
+            ["linkType"] = new JsonObject { ["name"] = name, ["directed"] = directed, ["aggregation"] = aggregation, ["sourceToTarget"] = name switch { "Depend" => "is required for", "Subtask" => "parent for", "Duplicate" => "is duplicated by", _ => name.ToLowerInvariant() } },
             ["issues"] = new JsonArray(new JsonObject { ["id"] = to }),
         };
 
@@ -216,7 +219,7 @@ public sealed class YouTrackConnectorTests
         };
 
         var epic = Issue("2-1", 1, "Payments", "Epic", "In Progress", T0.AddDays(1));
-        epic["links"] = new JsonArray(Link("OUTWARD", "Subtask", true, true, "2-2"));
+        epic["links"] = new JsonArray(Link("OUTWARD", "Subtask", true, true, "2-2"), Link("OUTWARD", "Duplicate", true, false, "2-3"));
         var bug = Issue("2-2", 2, "Pay twice", "Bug", "Fixed", T0.AddDays(3),
             Field("Priority", Named("Critical")),
             Field("Assignee", User("1-1", "sofie", "Sofie Larsen", "sofie@acme.example")),
@@ -231,7 +234,7 @@ public sealed class YouTrackConnectorTests
         bug["tags"] = new JsonArray(Named("payments"));
         bug["links"] = new JsonArray(
             Link("INWARD", "Subtask", true, true, "2-1"),
-            Link("OUTWARD", "Depend", true, false, "2-3"),
+            Link("INWARD", "Depend", true, false, "2-3"),
             Link("BOTH", "Relates", false, false, "2-3"));
         bug["comments"] = new JsonArray(
             new JsonObject { ["id"] = "4-1", ["text"] = "Reproduced", ["author"] = User("1-1", "sofie", "Sofie Larsen"), ["created"] = Ms(T0.AddDays(1)), ["deleted"] = false },
@@ -249,7 +252,7 @@ public sealed class YouTrackConnectorTests
         });
         yt.Files["7-1"] = "PNG!"u8.ToArray();
         var task = Issue("2-3", 3, "Pay by fax", "Task", "Obsolete", T0.AddDays(1));
-        task["links"] = new JsonArray(Link("INWARD", "Depend", true, false, "2-2"), Link("BOTH", "Relates", false, false, "2-2"));
+        task["links"] = new JsonArray(Link("OUTWARD", "Depend", true, false, "2-2"), Link("BOTH", "Relates", false, false, "2-2"), Link("INWARD", "Duplicate", true, false, "2-1"));
         yt.Issues.AddRange([("WEB", epic), ("WEB", bug), ("WEB", task)]);
 
         JsonObject Activity(string id, DateTimeOffset at, string? field, JsonNode? removed, JsonNode? added, string category = "CustomFieldCategory") => new()
