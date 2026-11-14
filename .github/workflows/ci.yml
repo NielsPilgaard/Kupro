@@ -123,7 +123,7 @@ jobs:
           ms=$(( (end - start) / 1000000 )); echo "cold start: ${ms} ms"
           test "$ms" -lt 50
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kupro-${{ matrix.rid }}
           path: out/kupro*

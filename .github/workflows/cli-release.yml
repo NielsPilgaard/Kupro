@@ -77,7 +77,7 @@ jobs:
           mkdir dist
           if [ -f out/kupro.exe ]; then cp out/kupro.exe "dist/kupro-${{ matrix.rid }}.exe"; else cp out/kupro "dist/kupro-${{ matrix.rid }}"; fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: kupro-${{ matrix.rid }}
           path: dist/*
