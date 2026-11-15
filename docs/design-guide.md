@@ -3,7 +3,8 @@ title: 'Kupro — Design Guide'
 description: >-
   The UI rulebook for the web app: Kobber design tokens (colour in light and dark, type, spacing, radius, density),
   app-shell layout, and the spec for every shared component — status ring, type tags, labels, avatars, list rows,
-  board cards, delivery-plan cards, capacity band, command palette, toasts. Brand, voice and glossary live in branding.md.
+  board cards, delivery-plan cards, capacity band, command palette, toasts, and flow patterns (stepper, step footer,
+  live rail, option cards, data table, chips, progress, trees, drawer). Brand, voice and glossary live in branding.md.
 status: 'Accepted'
 purpose: 'Canonical source for UI tokens and component rules; every web UI change follows it.'
 ---
@@ -162,6 +163,9 @@ Pill (radius full), 19 px high, 1 px `--line` border, `xs` `--mute` text, 6 px c
 - **Human**: 22 px circle, initials on a colour derived from the user id.
 - **Agent**: 22 px **rounded square** (radius 6), `--ink` fill, `>_` in mono. Tooltip shows the agent name.
 - **Unassigned**: dashed `--line` circle.
+- **Placeholder** (an imported person without a seat, [ADR-019](adr/ADR-019-import.md)): 22 px circle, 1 px dashed
+  `--mute` border, initials in `--mute`, no fill. Tooltip and `aria-label`: "Name, placeholder". It always has
+  initials; Unassigned never does.
 
 ### List row
 
@@ -213,7 +217,9 @@ made visible ([ADR-001](adr/ADR-001-agent-parity.md)).
 
 ### Buttons and inputs
 
-- **Primary**: `--acc` fill, `--on-acc` text, 600, 30 px, `--r1`, optional trailing `kbd`. One per view.
+- **Primary**: `--acc` fill, `--on-acc` text, 600, 30 px, `--r1`, optional trailing `kbd`. One per view. In a view
+  with a side rail (the import wizard's plan), the primary sits in the main column's footer; the rail's actions are
+  secondary or ghost.
 - **Secondary**: `--panel` fill, 1 px `--line` border, `--ink` text. **Ghost**: no border, `--mute` text.
 - **Destructive**: `--bad` text on secondary; fill only inside the confirm dialog.
 - **Inputs**: 30 px, `--panel`, 1 px `--line`, focus = 2 px `--acc-ink` ring (offset 1 px). Focus ring is the same on
@@ -229,6 +235,142 @@ destructive actions. Auto-dismiss 5 s; errors stay until dismissed.
 ### Icons
 
 16 px, 1.5 px stroke, round caps and joins, `currentColor`. One set (Lucide, MIT, bundled — no CDN). No emoji in the UI.
+
+**Product marks** (import sources) are the exception: each vendor's official logo file, bundled as an SVG asset,
+used as their brand rules allow, never redrawn or recoloured. Their own colours are the one place hex lives outside
+`tokens.css`, and only inside the asset file. Shown in a 30 px tile (`--panel`, 1 px `--line`, `--r1`, mark 18 px),
+40 px (`--r2`, mark 24 px) as a heading mark. Formats without a vendor (CSV, snapshot, Kupro export) use a Lucide
+icon in the same tile.
+
+## Flows and settings
+
+Patterns for multi-step setup flows and the screens that manage them afterwards. First used by import
+([task 023](../tasks/023-import-framework.md)); reuse them before inventing new ones.
+
+### Split pane with live rail
+
+Main column `minmax(0, 1fr)` plus a 340 px rail on `--panel` with a 1 px `--line` left border. The rail shows the
+result of the choices being made (the import's dry-run plan) and updates in place, with `aria-live="polite"`. Below
+900 px the rail stacks under the main column and the step footer becomes sticky at the bottom.
+
+**Key–value with change**: three columns (label, value in mono right-aligned, change since the last edit in mono `xs`
+`--acc-ink`, `+12` / `−3`, empty when unchanged). Counts that wait on a decision show `—`, not 0.
+
+**Open decisions box**: `--r2`, 1 px border of `--warn` mixed 45% into `--line`, fill `--warn` 8% on `--panel`.
+Title "Needs you before import" (600), then one underlined link per open decision that jumps to its step. When none
+are open: a `✓` line in `--ok`.
+
+### Stepper
+
+A row of numbered steps above the main column, on `--bg` with a `--line` bottom border; scrolls sideways, never
+wraps. Each step is a pill button: a 20 px numbered circle (mono `xs` 600, 1.5 px border) and the label. Steps join
+with a 14 px `--line` rule, `--ok` after a done step.
+
+| Step | Circle | Label |
+|---|---|---|
+| Current | `--acc` fill, `--on-acc` number | `--ink` 600 on `--sel`, `aria-current="step"` |
+| Done | `✓` in `--ok`, `--ok` border | `--ink` |
+| Needs a decision | `!`, `--warn` border, `--warn` 18% fill | `--ink` |
+| Not yet seen | number, `--line` border | `--mute` |
+| Locked (e.g. before connect) | as not seen, 55% opacity | disabled |
+
+The accessible name says the status: "Step 3, Hierarchy, needs a decision". Any step that isn't locked can be opened.
+
+### Step footer
+
+Bottom of the main column, `--panel`, `--line` top border, 12 × 20 px padding. Left to right: **Back** (secondary),
+the message block, a `Ctrl Enter` `kbd` hint (hidden below 900 px), then the primary named after where it goes
+("Continue to States →"; on the last step the action itself: "Import 4,812 issues").
+
+- **Message block**: `xs` `--mute` "Step 3 of 9 · Hierarchy", then either "**Next: States** · its hint" or, when the
+  step blocks, why: a `!` line ("Pick one of the two options to continue. There is no default."). On the last step,
+  the open decisions as links, or "Ready. This is exactly what the import writes."
+- **Blocked**: the primary is disabled and the reason is always visible next to it, never only in a tooltip.
+- **Progress**: a 2 px `--acc` line along the footer's top edge, width = done steps / all steps.
+- **Unblocked**: when a change clears the block, the primary pulses twice (a fading `--acc` ring, 900 ms); none with
+  reduced motion. Focus does not move.
+- `Ctrl/Cmd Enter` presses the primary when it is enabled.
+
+### Option cards
+
+For a choice with no default where each option needs a short explanation (import's hierarchy fold). A `fieldset`
+with a 14 px 600 `legend`; options in equal columns (two up, one column below 720 px), never ranked or pre-selected.
+Each card is a `label` around a native radio: `--panel`, 1 px `--line`, `--r2`, 12 px padding. Hover: `--acc-ink`
+border. Checked: `--acc-ink` border plus a 1 px inset `--acc-ink` ring. Keyboard focus shows the focus ring on the
+card.
+
+### Source cards
+
+A grid (`auto-fill`, 220 px minimum, 8 px gap) of toggle buttons (`aria-pressed`): product mark, name (600), one `xs`
+`--mute` line. Selected: as a checked option card plus `--sel` fill. **Not available yet**: disabled, `--sunk` fill,
+dashed border, greyscale mark at 50%, name in `--mute`, the line "Not available yet" and a `WIP` chip at the right.
+They stay visible so people see what's coming; they can't be picked.
+
+### Data table
+
+Inside a `--panel` card (1 px `--line`, `--r2`, clipped). Header row 30 px on `--sunk`, `sm` 600 `--mute`, no
+wrapping. Body rows `--row` high, `--line` between rows, none after the last. Numbers in mono, right-aligned, header
+too. Hover: `--acc` at 6%. Inline controls (selects, checkboxes, key inputs) sit in the cell at full control height.
+
+### Status chips
+
+20 px, `--r1`, `xs` 600, a symbol first so they read without colour. Fills are the colour at 14%.
+
+| Chip | Symbol | Text / fill |
+|---|---|---|
+| OK | `✓` in `--ok` | `--ink` on `--ok` |
+| Warning | `!` in `--warn` | `--ink` on `--warn` |
+| Error | `×` | `--bad` on `--bad` |
+| Neutral | none | `--mute` on `--mute` |
+| Accent | none | `--acc-ink` on `--sel` |
+| WIP | none | `--mute`, no fill, 1 px `--line` border, wide tracking |
+
+**Inline lines**: a warning line starts with a 14 px `--warn` square holding `!` in `--panel`; an OK line starts with
+`✓` in `--ok`. Text stays `--ink`.
+
+### Progress
+
+- **Bar**: 6 px, `--sunk` track, `--acc` fill, radius 3 px. Count beside it in mono ("1,204 / 4,812").
+- **Phases**: a list under the bar, 8 px dots: done = `--ok` filled, current = `--acc` filled and the text 600, next =
+  `--line` ring and `--mute` text.
+- **Distribution**: one 10 px stacked bar, 1 px gaps, segments in each state's colour, `role="img"` with a label, and
+  a legend under it with the status ring, name and count, so it reads without colour.
+
+### Hierarchy trees
+
+Two panes side by side (from source / in Kupro) with a 112 px mapping column between them; one column below a
+740 px container width. Pane: `--panel` card, 46 px `--sunk` header with the product mark, name and level count.
+Nodes are `--row` high: indent guides (1 px `--line`, 14 px per level), status ring, key (mono `--mute`, 66 px), the
+source's level as an outlined tag (1 px `--line`, `xs` 600 `--mute`) or Kupro's type tag, title, and an optional `xs`
+note. A note that marks a changed parent or type gets a `--warn` 14% fill. Hover or focus on a node highlights its
+twin in the other pane (`--sel` plus a 2 px `--acc-ink` inset bar). The mapping column lists `Level → Type`; rows
+that fold are `--warn` 600.
+
+### Drop zone
+
+1.5 px dashed `--line`, `--r2`, `--sunk` fill, centred `--mute` text with a small secondary "choose a file" button.
+
+### Connection list
+
+The list of imports after the first run. One row per import: product mark, name and source, last run, a sparkline,
+actions. Row hover `--acc` at 5%; the open row as a selected list row. Below 960 px only mark and name stay.
+
+**Sparkline**: 30 px high, one 9 px bar per run, 2 px apart; each bar stacks created (`--acc`), updated (`--mute`
+55%) and failed (`--bad`) items. Tooltip and screen-reader text give the numbers ("Run 4: 12 created, 380 updated, 0
+failed").
+
+### Drawer
+
+For a focused task on top of a page (a new import, resolving a conflict). Fixed to the right, `min(480px, 100%)`
+wide, `--panel`, 1 px `--line` left border, float shadow, over a `--scrim` backdrop. Header `--topbar` high (title,
+close button), scrolling body with 16 px padding, footer with the actions (primary first). `Esc` and the backdrop
+close it; focus is trapped inside and returns to the opener.
+
+### Section tabs
+
+Tabs inside a page or panel (issue detail, an import's runs and conflicts): `role="tablist"`, 36 px buttons, a 2 px
+`--acc-ink` bottom border and 600 on the selected one, `--mute` on the rest. A count follows the label in `xs`
+`--mute`. View switching in the topbar uses the segmented control instead.
 
 ## Writing in the UI
 
