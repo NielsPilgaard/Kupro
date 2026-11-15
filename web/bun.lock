@@ -11,7 +11,7 @@
         "@fontsource-variable/bricolage-grotesque": "^5.3.0",
         "@fontsource-variable/hanken-grotesk": "^5.3.0",
         "@fontsource/fragment-mono": "^5.3.0",
-        "@microsoft/signalr": "^10.0.11",
+        "@microsoft/signalr": "^11.0.0",
         "@tanstack/react-query": "^5.106.0",
         "@tanstack/react-router": "^1.170.46",
         "cmdk": "^1.1.1",
@@ -179,7 +179,7 @@
 
     "@lukeed/ms": ["@lukeed/ms@2.0.2", "", {}, "sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA=="],
 
-    "@microsoft/signalr": ["@microsoft/signalr@10.0.11", "", { "dependencies": { "abort-controller": "^3.0.0", "eventsource": "^2.0.2", "fetch-cookie": "^2.0.3", "node-fetch": "^2.6.7", "ws": "^7.5.10" } }, "sha512-FulOJ2EEtKvLQcswe/U7v8pzyXyk7Jua5xgWJPPwyQU/2Z9ORvKcVjyO75VvLsem+CJ1ORRexJ+7Bz1FCei2aw=="],
+    "@microsoft/signalr": ["@microsoft/signalr@11.0.0", "", { "dependencies": { "abort-controller": "^3.0.0", "eventsource": "^2.0.2", "fetch-cookie": "^2.0.3", "node-fetch": "^2.6.7", "ws": "^7.5.10" } }, "sha512-NNYwAOYFaVH8HRt3YWUFJYETZ66G8P3K/g3Ch/6Od+Rrdpe/Uafe8iZp81UI7TIM7qRzjDe5DKUAuwsnt391zg=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.156.0", "", {}, "sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw=="],
 
