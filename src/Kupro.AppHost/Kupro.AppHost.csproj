@@ -12,6 +12,9 @@
     <PackageReference Include="Aspire.Hosting.JavaScript" />
     <PackageReference Include="Aspire.Hosting.Keycloak" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="ModelContextProtocol" VersionOverride="1.4.2" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" VersionOverride="1.21.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" VersionOverride="1.21.0" />
   </ItemGroup>
 
   <ItemGroup>
