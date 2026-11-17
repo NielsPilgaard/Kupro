@@ -44,10 +44,13 @@ public sealed partial class KuproTools
         {
             (ImportsAction.List, _) => new ImportsView(Imports: await importService.ListAsync(ct)),
             (ImportsAction.Runs, { } i) => new ImportsView(Runs: Unwrap(await importService.ListRunsAsync(i, ct))),
-            (ImportsAction.Run, { } r) => new ImportsView(Run: Unwrap(await importService.GetRunAsync(null, r, ct))),
+            (ImportsAction.Run, { } r) => new ImportsView(Run: WithoutTrees(Unwrap(await importService.GetRunAsync(null, r, ct)))),
             (ImportsAction.Conflicts, { } i) => new ImportsView(Conflicts: Unwrap(await importService.ListConflictsAsync(i, all: false, after: null, ct))),
             (ImportsAction.Mapping, { } i) => new ImportsView(Mapping: Unwrap(await importService.GetMappingAsync(i, ct))),
             _ => throw new McpException("invalid_arguments: every action but list needs id: an import's, or for run a run's."),
         };
     }
+
+    /// <summary>The Hierarchy step's sample trees are for the wizard; an agent has the counts (ADR-001 token budget).</summary>
+    private static ImportRunDetail WithoutTrees(ImportRunDetail run) => run.Plan is null ? run : run with { Plan = run.Plan with { Sample = null } };
 }

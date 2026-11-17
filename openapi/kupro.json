@@ -7146,6 +7146,35 @@
         ],
         "description": "Which end of a four-level source folds (ADR-019 Shape). Two equal choices; the connector only preselects."
       },
+      "HierarchySample": {
+        "required": [
+          "source",
+          "bottom",
+          "top"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SampleSourceNode"
+            }
+          },
+          "bottom": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SampleKuproNode"
+            }
+          },
+          "top": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SampleKuproNode"
+            }
+          }
+        },
+        "description": "Real branches of a four-level source and their shape under each fold: the Hierarchy step's trees (prototype 07)."
+      },
       "ImportConflict": {
         "required": [
           "field"
@@ -7504,6 +7533,17 @@
               },
               {
                 "$ref": "#/components/schemas/FoldCounts"
+              }
+            ]
+          },
+          "sample": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only for a four-level source: real branches and where they land under each fold.",
+                "$ref": "#/components/schemas/HierarchySample"
               }
             ]
           },
@@ -9745,6 +9785,92 @@
             "description": "Decisions, applied in order. To approve all of a ticket's proposals, list them all."
           }
         }
+      },
+      "SampleKuproNode": {
+        "required": [
+          "sourceId",
+          "key",
+          "title",
+          "type",
+          "state",
+          "depth",
+          "oldParent",
+          "promoted",
+          "labelOf"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/IssueType"
+          },
+          "state": {
+            "$ref": "#/components/schemas/IssueState"
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "oldParent": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "promoted": {
+            "type": "boolean"
+          },
+          "labelOf": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "Where a sampled item lands under one fold. string? SampleKuproNode.Key is the Kupro key it would get, if its number is free.\nstring? SampleKuproNode.OldParent is the source parent it moves away from (kept as a `relates` relation);\nstring? SampleKuproNode.LabelOf is the folded top-level item whose name becomes its label."
+      },
+      "SampleSourceNode": {
+        "required": [
+          "sourceId",
+          "key",
+          "title",
+          "type",
+          "depth"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "A sampled item as the source shows it. string SampleSourceNode.Type is the source type's name."
       },
       "SetCapacityRequest": {
         "required": [

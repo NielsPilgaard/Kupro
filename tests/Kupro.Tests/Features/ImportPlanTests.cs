@@ -14,6 +14,26 @@ public sealed class ImportPlanTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
+    public void The_hierarchy_sample_takes_the_deepest_branch_first_and_stays_small()
+    {
+        List<FitInput> items =
+        [
+            new("flat", IssueType.Epic, null),
+            new("flatChild", IssueType.Task, "flat"),
+            new("deep", IssueType.Epic, null),
+            .. Enumerable.Range(0, 5).Select(i => new FitInput($"wide{i}", IssueType.Task, "deep")),
+            new("feature", IssueType.Feature, "deep"),
+            new("story", IssueType.Task, "feature"),
+            new("task", IssueType.Task, "story"),
+            new("lonely", IssueType.Task, null),
+        ];
+
+        var picked = HierarchySampler.Pick(items, HierarchyFit.Run(items, FoldEnd.Bottom));
+
+        picked.ShouldBe(["deep", "feature", "story", "task", "wide0", "wide1", "flat", "flatChild"]);
+    }
+
+    [Fact]
     public void A_task_with_children_is_promoted_when_its_parent_allows()
     {
         var fit = HierarchyFit.Run(
@@ -382,9 +402,27 @@ public sealed class ImportPlanTests
         plan.FoldTop.ShouldBe(new FoldCounts(0, 0, 1));
         plan.Reparented.Samples.Single().SourceId.ShouldBe("4");
 
+        var sample = plan.Sample.ShouldNotBeNull();
+        sample.Source.Select(n => (n.SourceId, n.Type, n.Depth)).ShouldBe([("1", "Epic", 0), ("2", "Feature", 1), ("3", "User Story", 2), ("4", "Task", 3)]);
+        sample.Bottom.Select(n => (n.SourceId, n.Key, n.Type, n.Depth, n.OldParent, n.LabelOf)).ShouldBe(
+        [
+            ("1", "WEB-1", IssueType.Epic, 0, null, null),
+            ("2", "WEB-2", IssueType.Feature, 1, null, null),
+            ("3", "WEB-3", IssueType.Task, 2, null, null),
+            ("4", "WEB-4", IssueType.Task, 2, "3", null),
+        ]);
+        sample.Top.Select(n => (n.SourceId, n.Type, n.Depth, n.OldParent, n.LabelOf)).ShouldBe(
+        [
+            ("1", IssueType.Epic, 0, null, null),
+            ("2", IssueType.Epic, 0, "1", "1"),
+            ("3", IssueType.Feature, 1, null, null),
+            ("4", IssueType.Task, 2, null, null),
+        ]);
+
         SourceItem Item(string id, string type, string? parent) => new()
         {
             Id = id,
+            Key = $"#{id}",
             Project = "p",
             Type = type,
             Status = "s",
