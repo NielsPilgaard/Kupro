@@ -46,6 +46,18 @@ public static partial class MarkupConverters
     public static string Mention(string personId, string? shown = null) =>
         $"@{ImportReferences.MentionOpen}{personId}{(shown is { Length: > 0 } ? "|" + shown : "")}{ImportReferences.MentionClose}";
 
+    /// <summary>
+    /// A link or image destination. The angle-bracket form takes spaces and parentheses; a line break can't be in it,
+    /// and a bracket can't end it early.
+    /// </summary>
+    internal static string Destination(string url)
+    {
+        var clean = url.Trim().Replace("\n", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal);
+        return clean.Any(c => char.IsWhiteSpace(c) || c is '(' or ')')
+            ? $"<{clean.Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal)}>"
+            : clean;
+    }
+
     /// <summary>A fence longer than any run of backticks inside, so the content can't close it.</summary>
     internal static string Fence(string text, string language)
     {
@@ -358,20 +370,14 @@ public sealed partial class HtmlConverter : IMarkupConverter
 
         var label = OneLine(InlineAll(a));
         var href = a.GetAttribute("href")?.Trim();
-        return string.IsNullOrEmpty(href) ? label : $"[{(label.Length > 0 ? label : MarkupConverters.EscapeText(href))}]({Destination(href)})";
+        return string.IsNullOrEmpty(href) ? label : $"[{(label.Length > 0 ? label : MarkupConverters.EscapeText(href))}]({MarkupConverters.Destination(href)})";
     }
 
     private static string Image(IElement img)
     {
         var src = img.GetAttribute("src")?.Trim();
-        return string.IsNullOrEmpty(src) ? "" : $"![{MarkupConverters.EscapeText(OneLine(img.GetAttribute("alt") ?? ""))}]({Destination(src)})";
+        return string.IsNullOrEmpty(src) ? "" : $"![{MarkupConverters.EscapeText(OneLine(img.GetAttribute("alt") ?? ""))}]({MarkupConverters.Destination(src)})";
     }
-
-    /// <summary>The angle-bracket form takes spaces and parentheses, and a line break or bracket can't end it early.</summary>
-    private static string Destination(string url) =>
-        url.Any(c => char.IsWhiteSpace(c) || c is '(' or ')')
-            ? $"<{url.Replace("\n", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal).Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal)}>"
-            : url;
 
     [GeneratedRegex(@"[ \t\r\n\f]+")]
     private static partial Regex Whitespace();

@@ -11,6 +11,14 @@ public sealed class ImportMarkupTests
     private static string? Html(string html) => MarkupConverters.ToMarkdown(html, MarkupKind.Html);
 
     [Fact]
+    public void A_link_destination_survives_spaces_brackets_and_line_breaks()
+    {
+        MarkupConverters.Destination("https://x.example/a").ShouldBe("https://x.example/a");
+        MarkupConverters.Destination(" https://x.example/a (1).png ").ShouldBe("<https://x.example/a (1).png>");
+        MarkupConverters.Destination("https://x.example/a\r\nb c<d>").ShouldBe("<https://x.example/ab c%3Cd%3E>");
+    }
+
+    [Fact]
     public void Html_becomes_markdown()
     {
         Html("<p>Æble <b>først</b> and <i>then</i></p><p>Next <a href=\"https://x.example/a\">link</a></p>")

@@ -202,13 +202,13 @@ public sealed class ImportDescription
 
         if (item.Url is { } url)
         {
-            block.Append("[Open the original](").Append(Destination(url)).Append(")\n\n");
+            block.Append("[Open the original](").Append(MarkupConverters.Destination(url)).Append(")\n\n");
         }
 
         foreach (var link in item.Links.Take(100))
         {
             var title = MarkupConverters.EscapeText(Whitespace(link.Title ?? link.Url));
-            block.Append("- [").Append(title).Append("](").Append(Destination(link.Url)).Append(")\n");
+            block.Append("- [").Append(title).Append("](").Append(MarkupConverters.Destination(link.Url)).Append(")\n");
         }
 
         block.Append(item.Links.Count > 0 ? "\n" : "").Append("</details>");
@@ -238,12 +238,4 @@ public sealed class ImportDescription
     }
 
     private static string Whitespace(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-
-    private static string Destination(string url)
-    {
-        var clean = url.Trim().Replace("\n", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal);
-        return clean.Any(c => char.IsWhiteSpace(c) || c is '(' or ')')
-            ? $"<{clean.Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal)}>"
-            : clean;
-    }
 }

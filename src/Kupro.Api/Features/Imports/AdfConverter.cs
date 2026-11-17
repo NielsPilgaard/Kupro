@@ -158,7 +158,7 @@ public sealed class AdfConverter : IMarkupConverter
             var mime = Attr(node, "mimeType");
             var image = Attr(node, "type") == "external"
                 || (Type(node) == "media" && (mime is null || mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase)));
-            return $"{(image ? "!" : "")}[{label}]({Destination(url)})";
+            return $"{(image ? "!" : "")}[{label}]({MarkupConverters.Destination(url)})";
         }
 
         return $"\\[{label}\\]";
@@ -242,7 +242,7 @@ public sealed class AdfConverter : IMarkupConverter
         }
 
         var link = marks.FirstOrDefault(x => Type(x) == "link");
-        return link.ValueKind == JsonValueKind.Object && Attr(link, "href") is { Length: > 0 } href ? $"[{text}]({Destination(href)})" : text;
+        return link.ValueKind == JsonValueKind.Object && Attr(link, "href") is { Length: > 0 } href ? $"[{text}]({MarkupConverters.Destination(href)})" : text;
     }
 
     private static string Wrap(string inner, string marker)
@@ -263,11 +263,6 @@ public sealed class AdfConverter : IMarkupConverter
         var line = OneLine(text);
         return line.Length == 0 ? "" : line.Contains('`', StringComparison.Ordinal) ? $"`` {line} ``" : $"`{line}`";
     }
-
-    private static string Destination(string url) =>
-        url.Any(c => char.IsWhiteSpace(c) || c is '(' or ')')
-            ? $"<{url.Replace("\n", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal).Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal)}>"
-            : url;
 
     private static string Label(string? panelType) => panelType switch
     {
