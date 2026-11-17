@@ -83,11 +83,7 @@ public sealed class GitHubConnector : ISourceConnector
         // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
         var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
-        DateTimeOffset? since = cursor is null
-            ? null
-            : DateTimeOffset.TryParse(cursor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
-                ? parsed
-                : throw new ArgumentException($"'{cursor}' is not a GitHub cursor (a UTC time).", nameof(cursor));
+        var since = DeltaCursor.Since(cursor);
         var repos = scope.Projects.Count == 0
             ? catalog.Repos
             : [.. scope.Projects.Select(id => catalog.Repos.FirstOrDefault(r => r.Id.ToString(CultureInfo.InvariantCulture) == id)
@@ -218,7 +214,7 @@ public sealed class GitHubConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        yield return new ReadCursor(DeltaCursor.At(started));
     }
 
     /// <summary>GitHub issues carry files as links in their Markdown, not as attachments, so there is nothing to fetch.</summary>
