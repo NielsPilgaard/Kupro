@@ -23,6 +23,11 @@ public sealed class MappedSource
         _projects = header.Projects.DistinctBy(p => p.Id).ToDictionary(p => p.Id, StringComparer.Ordinal);
     }
 
+    public FoldEnd Fold => _mapping.Fold;
+
+    /// <summary>A status that appeared after the mapping was saved has no state yet: Todo, and worth a look.</summary>
+    public bool NeedsReview(string status) => !_mapping.States.ContainsKey(status) || _mapping.StatusesToReview.Contains(status);
+
     public bool InScope(SourceItem item) =>
         (_mapping.Scope.Projects.Count == 0 || _mapping.Scope.Projects.Contains(item.Project))
         && !_mapping.Scope.SkipTypes.Contains(item.Type)

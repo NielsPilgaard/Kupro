@@ -31,6 +31,14 @@ public sealed record FitResult(
 {
     /// <summary>Items that ended up under a different parent, or none. A folded top's children are counted in <see cref="FoldedTops"/>.</summary>
     public IReadOnlyList<string> Reparented => [.. OldParents.Select(p => p.Item).Except(FoldedTops.Select(t => t.Item)).Distinct()];
+
+    private readonly Dictionary<string, string> _holders = Checklists.ToDictionary(c => c.Item, c => c.Parent, StringComparer.Ordinal);
+
+    /// <summary>The item whose issue a source record belongs to: the item itself, or a folded checklist item's holder; null if neither has one.</summary>
+    public string? HolderOf(string item) =>
+        _holders.TryGetValue(item, out var holder) ? holder
+        : Items.ContainsKey(item) ? item
+        : null;
 }
 
 /// <summary>

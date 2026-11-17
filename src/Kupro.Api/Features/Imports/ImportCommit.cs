@@ -180,8 +180,8 @@ public sealed partial class ImportCommit(
 
         await LoadKnownAsync(ct);
 
-        var read = await ReadAsync(snapshot, ct);
-        var fit = HierarchyFit.Run(read.Kept, mapping.Fold);
+        var read = await SourceRead.ReadAsync(snapshot, _source, Tree, ct);
+        var fit = read.Fit;
         var tops = await TopTitlesAsync(snapshot, fit, ct);
         var checklists = Checklists(fit, read.ChecklistLines);
 
@@ -191,9 +191,9 @@ public sealed partial class ImportCommit(
         }
 
         await EnsureProjectsAsync(read.Targets, ct);
-        var numbers = await ReserveNumbersAsync(read.Refs, fit, ct);
+        var numbers = await ReserveNumbersAsync(read, ct);
         await EnsureSprintsAndMilestonesAsync(read, ct);
-        var references = await ReferencesAsync(snapshot, read, fit, numbers, ct);
+        var references = await ReferencesAsync(snapshot, read, numbers, ct);
 
         var depths = Depths(fit);
         for (var depth = 0; depth < MaxDepth; depth++)
@@ -274,70 +274,8 @@ public sealed partial class ImportCommit(
         }
     }
 
-    /// <summary>The first pass: what's in scope, as small records. Repeated IDs count once, as in the plan.</summary>
-    private async Task<SourceRead> ReadAsync(SnapshotReader snapshot, CancellationToken ct)
-    {
-        var read = new SourceRead();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        await foreach (var item in snapshot.ReadItemsAsync(ct))
-        {
-            if (!seen.Add(item.Id) || !_source.InScope(item))
-            {
-                continue;
-            }
-
-            var input = Shaped(_source.Input(item));
-            var target = _source.Project(item.Project);
-            read.Kept.Add(input);
-            read.KeptIds.Add(item.Id);
-            read.Refs.Add(new ItemRef(item.Id, target.Key, item.Key, item.Url));
-            read.Targets.Add(target);
-            if (input.Checklist)
-            {
-                read.ChecklistLines[item.Id] = new ChecklistLine(item.Title, _source.State(item) is IssueState.Done or IssueState.Canceled);
-            }
-
-            if (item.Sprint is { } sprint)
-            {
-                read.Sprints.Add((sprint, target.Key));
-            }
-        }
-
-        foreach (var sprint in _header.Sprints.Where(s => s.Project is not null))
-        {
-            // A sprint with no items yet still belongs to a project the import brings over.
-            read.Sprints.Add((sprint.Id, _source.Project(sprint.Project!).Key));
-        }
-
-        AddImportedTree(read, seen);
-        return read;
-    }
-
-    /// <summary>An item already imported keeps the shape it has in Kupro, whatever the mapping and the fold say now (ADR-019 Shape).</summary>
-    private FitInput Shaped(FitInput input) =>
-        _known.TryGetValue(input.Id, out var known) ? input with { Type = known.Type, Level = input.Level ?? known.Level, Checklist = false, Fixed = true }
-        : _folded.TryGetValue(input.Id, out var folded) ? input with { Level = input.Level ?? folded.Level, Checklist = true }
-        : input;
-
-    /// <summary>What earlier runs imported and this snapshot doesn't list, so a new child finds its parent and a holder keeps its checklist.</summary>
-    private void AddImportedTree(SourceRead read, HashSet<string> seen)
-    {
-        foreach (var (id, known) in _known.Where(k => !read.KeptIds.Contains(k.Key)))
-        {
-            read.Kept.Add(new FitInput(id, known.Type, known.SourceParent, known.Level, Fixed: true));
-        }
-
-        foreach (var (id, folded) in _folded.Where(k => !read.KeptIds.Contains(k.Key)))
-        {
-            read.Kept.Add(new FitInput(id, IssueType.Task, folded.SourceParent, folded.Level, Checklist: true));
-            read.ChecklistLines[id] = folded.Line;
-        }
-
-        if (!_header.Partial)
-        {
-            read.Deleted.AddRange(_known.Keys.Where(id => !seen.Contains(id)).Order(StringComparer.Ordinal));
-        }
-    }
+    /// <summary>What earlier runs imported, as this run started.</summary>
+    private ImportTree Tree => new(_known, _folded);
 
     /// <summary>A second pass for the names of folded top-level items only: their children are labelled with them.</summary>
     private async Task<Dictionary<string, string>> TopTitlesAsync(SnapshotReader snapshot, FitResult fit, CancellationToken ct)
@@ -396,7 +334,7 @@ public sealed partial class ImportCommit(
 
     // ---------------------------------------------------------------- what the items need first
 
-    private async Task EnsureProjectsAsync(HashSet<ProjectTarget> targets, CancellationToken ct)
+    private async Task EnsureProjectsAsync(IReadOnlyCollection<ProjectTarget> targets, CancellationToken ct)
     {
         foreach (var key in targets.Select(t => t.Key).Distinct().Where(k => !ProjectKey().IsMatch(k)))
         {
@@ -409,31 +347,27 @@ public sealed partial class ImportCommit(
         {
             created.Clear();
             delta = new ImportRunCounts();
-            var keys = targets.Select(t => t.Key).Distinct().ToList();
-            var existing = await db.Projects.Where(p => keys.Contains(p.Key)).ToDictionaryAsync(p => p.Key, p => p.Id, StringComparer.Ordinal, ct);
-            var ours = await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Project).Select(i => i.EntityId).ToListAsync(ct);
-            var count = await db.Projects.CountAsync(ct);
-            foreach (var group in targets.GroupBy(t => t.Key))
+            var needs = await ProjectNeedsAsync(db, targets, ct);
+            if (needs.Taken is [var taken, ..])
             {
-                var wantsExisting = group.Any(t => t.Existing);
-                if (existing.TryGetValue(group.Key, out var id))
-                {
-                    if (!wantsExisting && !ours.Contains(id))
-                    {
-                        throw new ImportFailedException($"The project key {group.Key} is already used in this workspace. Choose another key, or import into that project.");
-                    }
+                throw new ImportFailedException($"The project key {taken} is already used in this workspace. Choose another key, or import into that project.");
+            }
 
-                    created[group.Key] = id;
-                    continue;
-                }
+            if (needs.Missing is [var missing, ..])
+            {
+                throw new ImportFailedException($"There is no project {missing} to import into.");
+            }
 
-                if (wantsExisting)
-                {
-                    throw new ImportFailedException($"There is no project {group.Key} to import into.");
-                }
+            foreach (var (key, id) in needs.Existing)
+            {
+                created[key] = id;
+            }
 
-                var project = projects.AddImported(db, group.Key, Cut(group.First().Name.Trim(), MaxProjectName), count++);
-                db.ProjectCapacity.AddRange(CapacityOf(group.Key).Select(c => new ProjectCapacity
+            var count = await db.Projects.CountAsync(ct);
+            foreach (var target in needs.Create)
+            {
+                var project = projects.AddImported(db, target.Key, Cut(target.Name.Trim(), MaxProjectName), count++);
+                db.ProjectCapacity.AddRange(CapacityOf(target.Key).Select(c => new ProjectCapacity
                 {
                     Id = Guid.CreateVersion7(),
                     WorkspaceId = workspace.RequireWorkspaceId(),
@@ -441,8 +375,8 @@ public sealed partial class ImportCommit(
                     FromMonth = c.FromMonth,
                     People = c.People,
                 }));
-                Record(db, ImportedKinds.Project, group.Key, ImportedEntityKind.Project, project.Id);
-                created[group.Key] = project.Id;
+                Record(db, ImportedKinds.Project, target.Key, ImportedEntityKind.Project, project.Id);
+                created[target.Key] = project.Id;
                 delta.Projects++;
             }
 
@@ -470,42 +404,72 @@ public sealed partial class ImportCommit(
         .OrderBy(c => c.FromMonth);
 
     /// <summary>
+    /// What each project key the import targets needs (ADR-019 Shape): the project the import made or was pointed at, a
+    /// new one, or the owner's attention. A commit fails on taken or missing keys; a plan lists them.
+    /// </summary>
+    private async Task<ProjectNeeds> ProjectNeedsAsync(KuproDbContext db, IReadOnlyCollection<ProjectTarget> targets, CancellationToken ct)
+    {
+        var keys = targets.Select(t => t.Key).Distinct().ToList();
+        var existing = await db.Projects.Where(p => keys.Contains(p.Key)).ToDictionaryAsync(p => p.Key, p => p.Id, StringComparer.Ordinal, ct);
+        var ours = await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Project).Select(i => i.EntityId).ToListAsync(ct);
+        var needs = new ProjectNeeds();
+        foreach (var group in targets.GroupBy(t => t.Key).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            var wantsExisting = group.Any(t => t.Existing);
+            if (existing.TryGetValue(group.Key, out var id))
+            {
+                if (wantsExisting || ours.Contains(id))
+                {
+                    needs.Existing[group.Key] = id;
+                }
+                else
+                {
+                    needs.Taken.Add(group.Key);
+                }
+            }
+            else if (wantsExisting)
+            {
+                needs.Missing.Add(group.Key);
+            }
+            else
+            {
+                needs.Create.Add(group.First());
+            }
+        }
+
+        return needs;
+    }
+
+    /// <summary>
     /// Numbers for every item still to write: its source number when it has one that is free, else the next free one
     /// (ADR-019 Keys). Reserved before any issue is written, so a team creating issues meanwhile can't take a kept key.
     /// </summary>
-    private async Task<Dictionary<string, int>> ReserveNumbersAsync(List<ItemRef> refs, FitResult fit, CancellationToken ct)
+    private async Task<Dictionary<string, int>> ReserveNumbersAsync(SourceRead read, CancellationToken ct)
     {
-        var numbers = new Dictionary<string, int>(refs.Count, StringComparer.Ordinal);
-        foreach (var group in refs.Where(r => fit.Items.ContainsKey(r.Id) && !_items.ContainsKey(r.Id)).GroupBy(r => r.ProjectKey).OrderBy(g => g.Key, StringComparer.Ordinal))
+        var numbers = new Dictionary<string, int>(read.Refs.Count, StringComparer.Ordinal);
+        foreach (var group in read.New.GroupBy(r => r.ProjectKey).OrderBy(g => g.Key, StringComparer.Ordinal))
         {
             var projectId = _projects[group.Key];
-            var wanted = group.Select(r => (r.Id, Number: SourceNumber(r.Key))).ToList();
+            var wanted = group.ToList();
             var assigned = new Dictionary<string, int>(wanted.Count, StringComparer.Ordinal);
             await WriteAsync(async db =>
             {
                 assigned.Clear();
-                await ProjectService.ReserveImportedNumbersAsync(db, projectId, wanted.Max(w => w.Number ?? 0), ct);
+                await ProjectService.ReserveImportedNumbersAsync(db, projectId, wanted.Max(w => SourceNumber(w.Key) ?? 0), ct);
                 var taken = (await db.Issues.Where(i => i.ProjectId == projectId).Select(i => i.Number).ToListAsync(ct)).ToHashSet();
-                var pending = new List<string>();
-                foreach (var (id, number) in wanted)
+                var (kept, pending) = KeepNumbers(wanted, taken);
+                foreach (var (id, number) in kept)
                 {
-                    if (number is { } kept && taken.Add(kept))
-                    {
-                        assigned[id] = kept;
-                    }
-                    else
-                    {
-                        pending.Add(id);
-                    }
+                    assigned[id] = number;
                 }
 
                 if (pending.Count > 0)
                 {
                     var last = await ProjectService.AllocateIssueNumbersAsync(db, projectId, pending.Count, ct);
                     var next = last - pending.Count;
-                    foreach (var id in pending)
+                    foreach (var item in pending)
                     {
-                        assigned[id] = ++next;
+                        assigned[item.Id] = ++next;
                     }
                 }
             }, ct);
@@ -517,6 +481,26 @@ public sealed partial class ImportCommit(
         }
 
         return numbers;
+    }
+
+    /// <summary>A source number that is free is kept and taken; the rest wait for the next free one (ADR-019 Keys).</summary>
+    private static (Dictionary<string, int> Kept, List<ItemRef> Pending) KeepNumbers(IEnumerable<ItemRef> items, HashSet<int> taken)
+    {
+        var kept = new Dictionary<string, int>(StringComparer.Ordinal);
+        var pending = new List<ItemRef>();
+        foreach (var item in items)
+        {
+            if (SourceNumber(item.Key) is { } number && taken.Add(number))
+            {
+                kept[item.Id] = number;
+            }
+            else
+            {
+                pending.Add(item);
+            }
+        }
+
+        return (kept, pending);
     }
 
     /// <summary><c>PROJ-123</c>, <c>4567</c> and <c>owner/repo#89</c> all keep their number; anything else gets a new one.</summary>
@@ -539,10 +523,11 @@ public sealed partial class ImportCommit(
         {
             added.Clear();
             delta = new ImportRunCounts();
-            foreach (var (sprintId, projectKey) in read.Sprints)
+            foreach (var (sprintId, projectKey) in SprintsToCreate(read))
             {
                 var key = SprintKey(sprintId, projectKey);
-                if (_sprints.ContainsKey(key) || !bySource.TryGetValue(sprintId, out var source) || !_projects.TryGetValue(projectKey, out var projectId))
+                var source = bySource[sprintId];
+                if (!_projects.TryGetValue(projectKey, out var projectId))
                 {
                     continue;
                 }
@@ -556,18 +541,11 @@ public sealed partial class ImportCommit(
                 delta.Sprints++;
             }
 
-            var doneVersions = (await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Version).Select(i => i.SourceId).ToListAsync(ct))
-                .ToHashSet(StringComparer.Ordinal);
-            var versions = _header.Versions.DistinctBy(v => v.Id).ToDictionary(v => v.Id, StringComparer.Ordinal);
-            foreach (var id in _mapping.MilestoneVersions.Where(v => !doneVersions.Contains(v)))
+            foreach (var version in await MilestonesToCreateAsync(db, _projects.Keys, ct))
             {
-                // A milestone is a date on the plan. A version without one stays in the details block.
-                if (versions.TryGetValue(id, out var version) && version.Date is { } date && _projects.TryGetValue(_source.Project(version.Project).Key, out var projectId))
-                {
-                    var milestone = plan.AddImportedMilestone(db, projectId, Cut(version.Name.Trim(), MaxSprintName), date);
-                    Record(db, ImportedKinds.Version, id, ImportedEntityKind.Milestone, milestone.Id);
-                    delta.Milestones++;
-                }
+                var milestone = plan.AddImportedMilestone(db, _projects[_source.Project(version.Project).Key], Cut(version.Name.Trim(), MaxSprintName), version.Date!.Value);
+                Record(db, ImportedKinds.Version, version.Id, ImportedEntityKind.Milestone, milestone.Id);
+                delta.Milestones++;
             }
 
             await SaveCountsAsync(db, delta, ct);
@@ -588,6 +566,27 @@ public sealed partial class ImportCommit(
         {
             await realtime.ChangedAsync(ChangeTopic.Plan);
         }
+    }
+
+    /// <summary>Sprints the import brings that this import hasn't made yet, one per source sprint and project.</summary>
+    private IEnumerable<(string SprintId, string ProjectKey)> SprintsToCreate(SourceRead read)
+    {
+        var known = _header.Sprints.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        return read.Sprints.Where(s => known.Contains(s.SprintId) && !_sprints.ContainsKey(SprintKey(s.SprintId, s.ProjectKey)));
+    }
+
+    /// <summary>
+    /// Versions the mapping makes milestones that this import hasn't made yet. A milestone is a date on the plan: a
+    /// version without one stays in the details block, as does one whose project the import doesn't bring.
+    /// </summary>
+    private async Task<List<SourceVersion>> MilestonesToCreateAsync(KuproDbContext db, IEnumerable<string> projectKeys, CancellationToken ct)
+    {
+        var done = (await db.ImportedItems.AsNoTracking().Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Version).Select(i => i.SourceId).ToListAsync(ct))
+            .ToHashSet(StringComparer.Ordinal);
+        var keys = projectKeys.ToHashSet(StringComparer.Ordinal);
+        var versions = _header.Versions.DistinctBy(v => v.Id).ToDictionary(v => v.Id, StringComparer.Ordinal);
+        return [.. _mapping.MilestoneVersions.Where(id => !done.Contains(id)).Select(versions.GetValueOrDefault).OfType<SourceVersion>()
+            .Where(v => v.Date is not null && keys.Contains(_source.Project(v.Project).Key))];
     }
 
     // ---------------------------------------------------------------- issues
@@ -1143,22 +1142,13 @@ public sealed partial class ImportCommit(
     [GeneratedRegex(@"^(?:.*[-#])?(\d{1,9})$")]
     private static partial Regex NumberInKey();
 
-    private sealed class SourceRead
+    private sealed class ProjectNeeds
     {
-        public List<FitInput> Kept { get; } = [];
-        public HashSet<string> KeptIds { get; } = new(StringComparer.Ordinal);
-        public List<string> Deleted { get; } = [];
-        public List<ItemRef> Refs { get; } = [];
-        public HashSet<ProjectTarget> Targets { get; } = [];
-        public HashSet<(string SprintId, string ProjectKey)> Sprints { get; } = [];
-        public Dictionary<string, ChecklistLine> ChecklistLines { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, Guid> Existing { get; } = new(StringComparer.Ordinal);
+        public List<ProjectTarget> Create { get; } = [];
+        public List<string> Taken { get; } = [];
+        public List<string> Missing { get; } = [];
     }
-
-    private sealed record ItemRef(string Id, string ProjectKey, string? Key, string? Url);
-
-    private sealed record KnownItem(IssueType Type, string Key, string Title, string? SourceParent, int? Level);
-
-    private sealed record KnownChecklist(ChecklistLine Line, string? SourceParent, int? Level);
 }
 
 /// <summary>Values of <see cref="ImportedItem.SourceKind"/>.</summary>

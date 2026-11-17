@@ -33,14 +33,14 @@ public sealed partial class ImportCommit
     /// What imported text can point at, known before any issue is written: numbers are reserved, and an attachment's ID
     /// is derived from its source ID, so an inline image can name its copy before the copy exists.
     /// </summary>
-    private async Task<ImportReferences> ReferencesAsync(SnapshotReader snapshot, SourceRead read, FitResult fit, Dictionary<string, int> numbers, CancellationToken ct)
+    private async Task<ImportReferences> ReferencesAsync(SnapshotReader snapshot, SourceRead read, Dictionary<string, int> numbers, CancellationToken ct)
     {
         var files = new Dictionary<string, AttachmentRef>(StringComparer.Ordinal);
         var missing = 0;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         await foreach (var attachment in snapshot.ReadAttachmentsAsync(ct))
         {
-            if (!seen.Add(attachment.Id) || HolderOf(attachment.Item, fit) is null)
+            if (!seen.Add(attachment.Id) || read.Fit.HolderOf(attachment.Item) is null)
             {
                 continue;
             }
@@ -133,9 +133,9 @@ public sealed partial class ImportCommit
     }
 
     /// <summary>The source item whose issue a record belongs to: the item itself, or for a folded checklist item, its holder.</summary>
-    private string? HolderOf(string sourceItem, FitResult? fit = null) =>
+    private string? HolderOf(string sourceItem) =>
         _holders.TryGetValue(sourceItem, out var holder) ? holder
-        : _items.ContainsKey(sourceItem) || fit?.Items.ContainsKey(sourceItem) == true ? sourceItem
+        : _items.ContainsKey(sourceItem) ? sourceItem
         : null;
 
     private Guid? IssueOf(string sourceItem) => HolderOf(sourceItem) is { } holder && _items.TryGetValue(holder, out var id) ? id : null;
@@ -337,14 +337,7 @@ public sealed partial class ImportCommit
     /// </summary>
     private async Task<Dictionary<string, string>> ReplayChangesAsync(SnapshotReader snapshot, Dictionary<string, string> projectOf, CancellationToken ct)
     {
-        Dictionary<string, string> prior;
-        await using (var db = await dbFactory.CreateDbContextAsync(ct))
-        {
-            prior = await db.ImportedItems.AsNoTracking()
-                .Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item && i.SeenChangeMark != null)
-                .ToDictionaryAsync(i => i.SourceId, i => i.SeenChangeMark!, StringComparer.Ordinal, ct);
-        }
-
+        var history = new ImportedHistory((kind, ids) => DoneAsync(kind, ids, ct), await ChangeMarksAsync(ct));
         var newest = new Dictionary<string, string>(StringComparer.Ordinal);
         var batch = new List<SourceChange>(ChangeBatch);
         var skip = _counts.ChangesRead;
@@ -358,12 +351,12 @@ public sealed partial class ImportCommit
                 continue;
             }
 
-            var mark = Mark(change);
-            if (prior.TryGetValue(change.Item, out var seen) && string.CompareOrdinal(mark, seen) <= 0)
+            if (history.Seen(change))
             {
                 continue;
             }
 
+            var mark = ImportedHistory.Mark(change);
             if (!newest.TryGetValue(change.Item, out var top) || string.CompareOrdinal(mark, top) > 0)
             {
                 newest[change.Item] = mark;
@@ -390,8 +383,14 @@ public sealed partial class ImportCommit
         return newest;
     }
 
-    /// <summary>Sorts by time, then ID: the newest change an item has had replayed. UTC round-trip text sorts by time.</summary>
-    private static string Mark(SourceChange change) => $"{change.At.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)}|{change.Id}";
+    /// <summary>Per item, the newest change an earlier run replayed.</summary>
+    private async Task<Dictionary<string, string>> ChangeMarksAsync(CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.ImportedItems.AsNoTracking()
+            .Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item && i.SeenChangeMark != null)
+            .ToDictionaryAsync(i => i.SourceId, i => i.SeenChangeMark!, StringComparer.Ordinal, ct);
+    }
 
     private async Task WriteChangeBatchAsync(List<SourceChange> batch, int readTo, Dictionary<string, string> projectOf, CancellationToken ct)
     {

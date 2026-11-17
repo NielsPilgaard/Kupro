@@ -1,3 +1,4 @@
+using System.Globalization;
 using Kupro.Api.Features.Plan;
 using Kupro.Import.Snapshot;
 
@@ -75,86 +76,74 @@ public sealed record ImportPlan
     public int ShapesDiffer { get; init; }
 }
 
+/// <summary>Records an earlier run already wrote, so a plan counts only the history a commit would still write.</summary>
+/// <param name="DoneAsync">Of a record kind (<see cref="ImportedKinds"/>), the source IDs among these that are written.</param>
+/// <param name="ChangeMarks">Per item, the newest change replayed (<see cref="Mark"/>).</param>
+internal sealed record ImportedHistory(
+    Func<string, IReadOnlyCollection<string>, Task<HashSet<string>>> DoneAsync, IReadOnlyDictionary<string, string> ChangeMarks)
+{
+    public static ImportedHistory None { get; } = new((_, _) => Task.FromResult(new HashSet<string>(StringComparer.Ordinal)), new Dictionary<string, string>());
+
+    /// <summary>Sorts by time, then ID: the newest change an item has had replayed. UTC round-trip text sorts by time.</summary>
+    public static string Mark(SourceChange change) => $"{change.At.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)}|{change.Id}";
+
+    /// <summary>An earlier run replayed this change already.</summary>
+    public bool Seen(SourceChange change) => ChangeMarks.TryGetValue(change.Item, out var mark) && string.CompareOrdinal(Mark(change), mark) <= 0;
+}
+
 /// <summary>
-/// Runs the whole mapping and hierarchy fit over a stored snapshot without writing anything, so re-planning after a
-/// mapping edit doesn't read the source. Streams the snapshot; only one small record per item stays in memory.
+/// Counts a <see cref="SourceRead"/> without writing anything, so re-planning after a mapping edit doesn't read the
+/// source. Streams the snapshot; only one small record per item stays in memory.
 /// </summary>
 public static class ImportPlanner
 {
     private const int MaxSamples = 5;
+    private const int HistoryChunk = 2000;
 
-    public static Task<ImportPlan> PlanAsync(
-        SnapshotReader snapshot, ImportMapping mapping, IReadOnlySet<string> alreadyImported, DateTimeOffset now, CancellationToken ct) =>
-        PlanAsync(snapshot, mapping, alreadyImported, new Dictionary<string, FitInput>(StringComparer.Ordinal), now, ct);
-
-    /// <param name="tree">What earlier runs imported, as the fit must see it: a delta lists only part of the tree.</param>
-    internal static async Task<ImportPlan> PlanAsync(
-        SnapshotReader snapshot, ImportMapping mapping, IReadOnlySet<string> alreadyImported, IReadOnlyDictionary<string, FitInput> tree, DateTimeOffset now, CancellationToken ct)
+    /// <summary>A first run's plan: nothing imported yet.</summary>
+    public static async Task<ImportPlan> PlanAsync(SnapshotReader snapshot, ImportMapping mapping, DateTimeOffset now, CancellationToken ct)
     {
-        var source = new MappedSource(snapshot.Header, mapping, now);
-        var kept = new List<FitInput>();
-        var skipped = new List<string>();
-        var toReview = new List<string>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var effort = 0m;
-        await foreach (var item in snapshot.ReadItemsAsync(ct))
-        {
-            // Paged source searches can return an item twice when results shift, and scripts can write anything.
-            if (!seen.Add(item.Id))
-            {
-                continue;
-            }
+        var read = await SourceRead.ReadAsync(snapshot, new MappedSource(snapshot.Header, mapping, now), ImportTree.Empty, ct);
+        return await PlanAsync(snapshot, read, ImportedHistory.None, [], ct);
+    }
 
-            if (!source.InScope(item))
-            {
-                skipped.Add(item.Id);
-                continue;
-            }
-
-            var input = source.Input(item);
-            kept.Add(tree.TryGetValue(item.Id, out var known) ? known with { Parent = input.Parent, Level = input.Level ?? known.Level } : input);
-            effort += source.Effort(item) ?? 0;
-            if (NeedsReview(item.Status, mapping))
-            {
-                toReview.Add(item.Id);
-            }
-        }
-
-        var listed = kept.ToList();
-        var keptIds = listed.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
-        kept.AddRange(tree.Values.Where(t => !keptIds.Contains(t.Id)));
-        var fit = HierarchyFit.Run(kept, mapping.Fold);
-        var created = listed.Where(i => !alreadyImported.Contains(i.Id) && !i.Checklist).Select(i => i.Id).ToList();
-        var updated = listed.Where(i => alreadyImported.Contains(i.Id)).Select(i => i.Id).ToList();
-
-        var (comments, attachments, bytes, unknownSize, changes) = await CountHistoryAsync(snapshot, keptIds, ct);
+    /// <param name="keysTaken">Items whose source number another issue in the workspace has.</param>
+    internal static async Task<ImportPlan> PlanAsync(
+        SnapshotReader snapshot, SourceRead read, ImportedHistory history, IReadOnlyList<string> keysTaken, CancellationToken ct)
+    {
+        var fit = read.Fit;
+        var created = read.New.Select(r => r.Id).ToList();
+        var (comments, attachments, bytes, unknownSize, changes) = await CountHistoryAsync(snapshot, fit, history, ct);
 
         var samples = await SampleAsync(
-            snapshot, [created, updated, skipped, fit.Reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], toReview, fit.Cycles], ct);
+            snapshot, [created, read.Skipped, fit.Reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], read.ToReview, fit.Cycles, keysTaken], ct);
         PlanCount Count(IReadOnlyList<string> ids) =>
             new(ids.Count, [.. ids.Take(MaxSamples).Where(samples.ContainsKey).Select(id => samples[id])]);
 
         return new ImportPlan
         {
-            Items = kept.Count + skipped.Count,
+            Items = read.KeptIds.Count + read.Skipped.Count,
             Create = Count(created),
-            Update = Count(updated),
-            SkippedByScope = Count(skipped),
+
+            // Which imported items change takes a re-run's comparison against the workspace; ImportCommit adds it.
+            Update = PlanCount.None,
+            SkippedByScope = Count(read.Skipped),
             Reparented = Count(fit.Reparented),
             Promoted = Count(fit.Promoted),
             FoldedChecklists = Count([.. fit.Checklists.Select(c => c.Item)]),
-            StatusesToReview = Count(toReview),
+            StatusesToReview = Count(read.ToReview),
             ParentLoops = Count(fit.Cycles),
+            KeysTaken = Count(keysTaken),
             Comments = comments,
             Attachments = attachments,
             AttachmentBytes = bytes,
             AttachmentsOfUnknownSize = unknownSize,
             Changes = changes,
-            EffortHours = effort,
+            EffortHours = read.Hours.Values.Sum(),
             FourLevels = fit.FourLevels,
-            FoldBottom = fit.FourLevels ? Fold(kept, FoldEnd.Bottom) : null,
-            FoldTop = fit.FourLevels ? Fold(kept, FoldEnd.Top) : null,
-            ShapesDiffer = Differing(kept, mapping.Fold, fit),
+            FoldBottom = fit.FourLevels ? Fold(read.Kept, FoldEnd.Bottom) : null,
+            FoldTop = fit.FourLevels ? Fold(read.Kept, FoldEnd.Top) : null,
+            ShapesDiffer = Differing(read.Kept, read.Fold, fit),
         };
     }
 
@@ -177,19 +166,24 @@ public static class ImportPlanner
         return new FoldCounts(fit.Reparented.Count, fit.Promoted.Count, fit.FoldedTops.Count);
     }
 
-    /// <summary>A status that appeared after the mapping was saved has no state yet: Todo, and worth a look.</summary>
-    private static bool NeedsReview(string status, ImportMapping mapping) =>
-        !mapping.States.ContainsKey(status) || mapping.StatusesToReview.Contains(status);
-
+    /// <summary>The history a commit would still write: records of items that get an issue, less what earlier runs wrote.</summary>
     private static async Task<(int Comments, int Attachments, long Bytes, int UnknownSize, int Changes)> CountHistoryAsync(
-        SnapshotReader snapshot, HashSet<string> kept, CancellationToken ct)
+        SnapshotReader snapshot, FitResult fit, ImportedHistory history, CancellationToken ct)
     {
-        var comments = await snapshot.ReadCommentsAsync(ct).CountAsync(c => kept.Contains(c.Item), ct);
-        var changes = await snapshot.ReadChangesAsync(ct).CountAsync(c => kept.Contains(c.Item), ct);
-        var (attachments, bytes, unknownSize) = (0, 0L, 0);
-        await foreach (var attachment in snapshot.ReadAttachmentsAsync(ct))
+        var comments = 0;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        await foreach (var chunk in snapshot.ReadCommentsAsync(ct).Where(c => seen.Add(c.Id) && fit.HolderOf(c.Item) is not null).Chunk(HistoryChunk).WithCancellation(ct))
         {
-            if (kept.Contains(attachment.Item))
+            var done = await history.DoneAsync(ImportedKinds.Comment, [.. chunk.Select(c => c.Id)]);
+            comments += chunk.Count(c => !done.Contains(c.Id));
+        }
+
+        var (attachments, bytes, unknownSize) = (0, 0L, 0);
+        seen.Clear();
+        await foreach (var chunk in snapshot.ReadAttachmentsAsync(ct).Where(a => seen.Add(a.Id) && fit.HolderOf(a.Item) is not null).Chunk(HistoryChunk).WithCancellation(ct))
+        {
+            var done = await history.DoneAsync(ImportedKinds.Attachment, [.. chunk.Select(a => a.Id)]);
+            foreach (var attachment in chunk.Where(a => !done.Contains(a.Id)))
             {
                 attachments++;
                 bytes += attachment.Size ?? 0;
@@ -197,11 +191,13 @@ public static class ImportPlanner
             }
         }
 
+        // Folded checklist items have no issue of their own to replay changes on.
+        var changes = await snapshot.ReadChangesAsync(ct).CountAsync(c => fit.Items.ContainsKey(c.Item) && !history.Seen(c), ct);
         return (comments, attachments, bytes, unknownSize, changes);
     }
 
     /// <summary>A second pass for titles of the sampled items only: keeping every title would hold the whole source in memory.</summary>
-    internal static async Task<Dictionary<string, PlanSample>> SampleAsync(
+    private static async Task<Dictionary<string, PlanSample>> SampleAsync(
         SnapshotReader snapshot, IReadOnlyList<IReadOnlyList<string>> counts, CancellationToken ct)
     {
         var wanted = counts.SelectMany(ids => ids.Take(MaxSamples)).ToHashSet(StringComparer.Ordinal);
