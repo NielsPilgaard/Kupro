@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, Navigate, useNavigate, useParams } from '@tanstack/react-router';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   acceptInviteMutation,
   createProjectMutation,
   createWorkspaceMutation,
+  getWorkspaceOptions,
   listInvitesOptions,
   listProjectsOptions,
   listProjectsQueryKey,
@@ -97,6 +98,10 @@ export function NewProjectPage() {
   const { workspace } = useParams({ strict: false }) as { workspace: string };
   const [name, setName] = useState('');
   const key = keyOf(name);
+  // A new workspace's first screen also offers an import; only owners can start one (task 023).
+  const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
+  const { data: info } = useQuery(getWorkspaceOptions({ path: { workspace } }));
+  const empty = projects?.length === 0 && info?.role === 'owner';
   const create = useMutation({
     ...createProjectMutation(),
     onSuccess: (p) => {
@@ -120,6 +125,14 @@ export function NewProjectPage() {
           error={create.isError ? t('project.keyTaken', { key }) : undefined}
           onSubmit={() => key.length >= 2 && create.mutate({ path: { workspace }, body: { key, name: name.trim() } })}
         />
+        {empty && (
+          <p className="text-sm text-mute">
+            {t('imports.emptyPrompt')}{' '}
+            <Link to="/w/$workspace/imports/new" params={{ workspace }} className="text-acc-ink underline">
+              {t('imports.emptyAction')}
+            </Link>
+          </p>
+        )}
       </Centered>
     </>
   );

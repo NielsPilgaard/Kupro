@@ -1,5 +1,5 @@
-using Kupro.Api.Features.Issues;
 using System.Text.Json;
+using Kupro.Api.Features.Issues;
 using Kupro.Import.Csv;
 using Kupro.Import.Kupro;
 using Kupro.Import.Snapshot;
@@ -55,10 +55,39 @@ public sealed partial class ImportService
         }
 
         await snapshots.StoreSourceAsync(workspace.RequireWorkspaceId(), importId, path, "text/csv", ct);
-        return new CsvPreview(
-            table.Delimiter == '\t' ? "tab" : table.Delimiter.ToString(), table.Encoding, table.Headers, table.Rows.Count,
-            [.. table.Rows.Take(CsvSamples).Select(r => (IReadOnlyList<string>)r)], CsvColumns.Propose(table.Headers));
+        return Preview(table, CsvColumns.Propose(table.Headers));
     }
+
+    /// <summary>The stored CSV's preview again, with the columns in force: the wizard shows it after a reload.</summary>
+    public async Task<IssueResult<CsvPreview>> GetCsvPreviewAsync(Guid importId, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var import = await db.WorkspaceImports.AsNoTracking().SingleOrDefaultAsync(i => i.Id == importId, ct);
+        if (Unusable(import, importId) is { } error)
+        {
+            return error;
+        }
+
+        if (import!.SourceKind != SourceKinds.Csv)
+        {
+            return new IssueError("not_csv", "This import doesn't read a CSV file.");
+        }
+
+        await using var source = await snapshots.OpenSourceAsync(import.WorkspaceId, importId, ct);
+        if (source is null)
+        {
+            return new IssueError("no_snapshot", "Upload the CSV file first.");
+        }
+
+        var table = await CsvTable.ReadAsync(source, ct);
+        return Preview(table, CsvColumns.Fit(SavedColumns(import), table.Headers));
+    }
+
+    private static CsvPreview Preview(CsvTable table, CsvColumns columns) => new(
+        table.Delimiter == '\t' ? "tab" : table.Delimiter.ToString(), table.Encoding, table.Headers, table.Rows.Count,
+        [.. table.Rows.Take(CsvSamples).Select(r => (IReadOnlyList<string>)r)], columns);
+
+    private static CsvColumns? SavedColumns(WorkspaceImport import) => import.Mapping is { } json ? ImportMapping.FromJson(json).Csv : null;
 
     /// <summary>Keeps a Kupro export ZIP as the import's source, after checking Kupro can read it.</summary>
     public async Task<IssueResult<SourceDescription>> StoreExportAsync(Guid importId, string path, CancellationToken ct)
@@ -121,17 +150,8 @@ public sealed partial class ImportService
 
         if (import!.SourceKind == SourceKinds.Csv)
         {
-            await using var source = await snapshots.OpenSourceAsync(import.WorkspaceId, importId, ct);
-            if (source is null)
-            {
-                return new IssueError("no_snapshot", "Upload the CSV file first.");
-            }
-
-            var table = await CsvTable.ReadAsync(source, ct);
-            var saved = import.Mapping is { } json ? ImportMapping.FromJson(json).Csv : null;
-            var columns = saved ?? CsvColumns.Propose(table.Headers);
-            var description = await new CsvConnector(table, columns, CsvProjectName, clock).DescribeAsync(ct);
-            return ImportMappingDefaults.Propose(description, members) with { Csv = columns };
+            var csv = await ReadCsvAsync(import, ct);
+            return csv.Error is { } csvError ? csvError : ImportMappingDefaults.Propose(csv.Value!.Description, members) with { Csv = csv.Value.Columns };
         }
 
         if (import.SourceKind == SourceKinds.Kupro)
@@ -160,5 +180,61 @@ public sealed partial class ImportService
 
         await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
         return ImportMappingDefaults.Propose(snapshot.Header, members);
+    }
+
+    /// <summary>What an uploaded source holds, read from the stored file: a CSV with its saved or proposed columns, an export, or a snapshot.</summary>
+    private async Task<IssueResult<SourceDescription>> DescribeUploadAsync(WorkspaceImport import, CancellationToken ct)
+    {
+        if (import.SourceKind == SourceKinds.Csv)
+        {
+            var csv = await ReadCsvAsync(import, ct);
+            return csv.Error is { } error ? error : csv.Value!.Description;
+        }
+
+        if (import.SourceKind == SourceKinds.Kupro)
+        {
+            await using var local = await snapshots.OpenLocalSourceAsync(import.WorkspaceId, import.Id, ct);
+            if (local is null)
+            {
+                return new IssueError("no_snapshot", "Upload the export first.");
+            }
+
+            using var export = await KuproExportConnector.OpenAsync(local, options.Value.MaxExportJsonMegabytes, ct);
+            return await export.DescribeAsync(ct);
+        }
+
+        await using var file = await snapshots.OpenAsync(import.WorkspaceId, import.Id, ct);
+        if (file is null)
+        {
+            return new IssueError("no_snapshot", "The import has no snapshot yet.");
+        }
+
+        await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
+        return Described(snapshot.Header);
+    }
+
+    private static SourceDescription Described(SnapshotHeader header) => new()
+    {
+        Source = header.Source,
+        Projects = header.Projects,
+        People = header.People,
+        ItemTypes = header.ItemTypes,
+        Statuses = header.Statuses,
+        Fields = header.Fields,
+    };
+
+    private sealed record CsvRead(SourceDescription Description, CsvColumns Columns);
+
+    private async Task<IssueResult<CsvRead>> ReadCsvAsync(WorkspaceImport import, CancellationToken ct)
+    {
+        await using var source = await snapshots.OpenSourceAsync(import.WorkspaceId, import.Id, ct);
+        if (source is null)
+        {
+            return new IssueError("no_snapshot", "Upload the CSV file first.");
+        }
+
+        var table = await CsvTable.ReadAsync(source, ct);
+        var columns = CsvColumns.Fit(SavedColumns(import), table.Headers);
+        return new CsvRead(await new CsvConnector(table, columns, CsvProjectName, clock).DescribeAsync(ct), columns);
     }
 }

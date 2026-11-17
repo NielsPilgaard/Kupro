@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import type { MemberResponse, WorkspaceRole } from '../../api/gen/types.gen';
 import {
@@ -87,7 +88,7 @@ function useRefresh(workspace: string) {
   };
 }
 
-function errorText(t: ReturnType<typeof useTranslation>['t'], error: Problem) {
+function errorText(t: TFunction, error: Problem) {
   switch (error?.code) {
     case 'guest_limit_reached':
       return t('members.errors.guestLimit', { count: error.guests, limit: error.guestLimit });
@@ -270,7 +271,7 @@ function MemberRow({ member, workspace, isOwner, lastAction, onAction }: RowProp
 }
 
 /** A person from an import. An owner invites them, and the same member joins, or merges them into someone already here (ADR-019). */
-function PlaceholderRow({ member, targets, workspace, isOwner, lastAction, onAction }: RowProps & { member: MemberResponse; targets: MemberResponse[] }) {
+export function PlaceholderRow({ member, targets, workspace, isOwner, lastAction, onAction }: RowProps & { member: MemberResponse; targets: MemberResponse[] }) {
   const { t } = useTranslation();
   const refresh = useRefresh(workspace);
   const [open, setOpen] = useState<'invite' | 'merge' | null>(null);

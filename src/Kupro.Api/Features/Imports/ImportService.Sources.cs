@@ -106,7 +106,7 @@ public sealed partial class ImportService
 
         if (import!.EncryptedToken is null)
         {
-            return new IssueError("no_token", "This import reads an uploaded snapshot, not the source.");
+            return await DescribeUploadAsync(import, ct);
         }
 
         try

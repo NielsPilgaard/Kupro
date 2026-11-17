@@ -58,8 +58,15 @@ added, sprint closes); `workspace.json` streams to disk table by table (`ExportS
 `KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared
 text into the server instructions. Every import endpoint answers 404 for another workspace's ids. Ops: `ImportMetrics`
 (runs, items, stored bytes), an Imports row on the Usage dashboard, the "imports filling object storage" alert (20 GB a
-day) and runbook notes. Left: the web wizard (waits on task 033) and the production run after 013.
-The web wizard waits on task 033.
+day) and runbook notes. The web is in (`web/src/features/imports`): Imports in the sidebar (owners), the list with
+sparklines, an import's page (runs, conflicts, placeholders; Sync now, auto-sync, token, Undo, Finish), and the guided
+wizard with its live dry-run rail, run progress and finished screen, plus the palette commands and the empty-workspace
+prompt. To serve it, `GET .../source` describes an upload too, and `GET .../mapping?propose=true` (`kupro import mapping
+--propose`) re-proposes after a CSV's columns change. The rail and Hierarchy step show what the plan carries: counts,
+both folds' numbers and re-parented examples, not 07's sample trees or a state distribution. Azure DevOps, Monday and
+YouTrack marks are stand-ins until their official files are bundled (a manual step). Left: 07's source/Kupro sample
+trees on the Hierarchy step (Surfaces requires them; the plan must carry samples first), bundling the three official
+marks (manual), and the production run after 013.
 
 ## Scope
 
@@ -162,10 +169,28 @@ The web wizard waits on task 033.
   prints the proposed one. Each connector task adds `kupro import <source> --local`.
 - MCP: one read-only `imports` tool (list, plan, report, conflicts). Tool budget 19 → 20 (ADR-001 IMP-003). Starting
   runs, resolving conflicts and tokens stay off MCP (ADR-019 Who and where); the parity test records the opt-out.
-- Web: Settings → Import (owners). **The layout waits on the owner's pick in [task 033](033-import-ui-direction.md)**;
-  don't write `web/` code for it before then. Whatever the direction, it covers: source, connect, scope, people,
-  types & states (with the `fold` choice as two equal options for four-level sources), fields & effort, plan,
-  import, report, conflicts, and the list of imports with Sync now, auto-sync, Undo and Finish. Command palette:
+- Web: Settings → Import (owners). The owner's pick ([task 033](completed/033-import-ui-direction.md)):
+
+  > v3+v7 is great, but we need a clearer indication of moving to the next step. We also need icons for the products,
+  > Azure DevOps, Jira etc. Not implemented ones should say WIP and be blocked. 8 is nice for life after import creation.
+
+  Approved as [prototype 11](../prototypes/import/11-guided-split-trees.html) (2026-11-15), with
+  [prototype 08](../prototypes/import/08-connections-dashboard.html) after the first run. Patterns:
+  [design-guide.md](../docs/design-guide.md#flows-and-settings).
+  - **New import** (11): split pane, guided steps on the left, the live dry-run plan in the rail on the right. Steps:
+    1 Source (source cards with product marks; sources without a connector shown as WIP and blocked; connect form or
+    drop zone), 2 Projects (pick, into new or existing, key), 3 Hierarchy (only for four-level sources: the `fold`
+    choice as two equal option cards over 07's source/Kupro trees; no default), 4 Types, 5 States, 6 People, 7 Fields,
+    8 Effort (hours per point has no default), 9 Review (open decisions, counts per project, then Import). A stepper
+    on top, a footer with Back, the next step or why Continue is blocked, and the one primary. The rail lists open
+    decisions and every count with its change since the last edit. Mapping saves as a draft on each change.
+  - **Run**: progress bar and phases in the main column and the rail; the tab can close. Finished screen: the
+    summary, the auto-sync checkbox (on), "Open the import" (to the import's page) and "Go to <project>".
+  - **Imports** (08): the list of imports (mark, name, last run, sparkline of runs). An import's page: section tabs
+    for runs, conflicts and people (placeholders to invite), with Sync now, auto-sync, Undo and Finish. "New import"
+    opens the wizard.
+
+  Command palette:
   "Import from…", "Sync import now", "Open import report". The empty state of a new workspace offers "Coming from
   Jira or Azure DevOps? Import". All strings in the locale files (EN/DA).
 

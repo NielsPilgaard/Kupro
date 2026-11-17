@@ -71,7 +71,7 @@ public sealed class ImportsController(ImportService imports) : ControllerBase
         }
     }
 
-    /// <summary>Projects, people, types, statuses and fields, read live from the source with the import's token.</summary>
+    /// <summary>Projects, people, types, statuses and fields: read live from the source with the import's token, or from the uploaded file.</summary>
     [HttpGet("{id:guid}/source", Name = "describeImportSource")]
     [NoAgentSurface(AgentSurface.Mcp, NotOnMcp)]
     [ProducesResponseType<SourceDescription>(StatusCodes.Status200OK)]
@@ -79,11 +79,22 @@ public sealed class ImportsController(ImportService imports) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SourceDescription>> Describe(Guid id, CancellationToken ct) => this.ToResult(await imports.DescribeAsync(id, ct));
 
+    /// <summary>An uploaded CSV again: rows, headers, encoding, the first rows, and the columns in force.</summary>
+    [HttpGet("{id:guid}/source/csv", Name = "getImportCsvPreview")]
+    [NoAgentSurface(AgentSurface.Mcp, NotOnMcp)]
+    [ProducesResponseType<CsvPreview>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<CsvPreview>> GetCsvPreview(Guid id, CancellationToken ct) => this.ToResult(await imports.GetCsvPreviewAsync(id, ct));
+
     /// <summary>The saved mapping, or the one Kupro proposes (people matched by email and name) until one is saved.</summary>
+    /// <param name="propose">Propose one anyway, from the source and a saved CSV's columns: after the columns change, its types and states do too.</param>
     [HttpGet("{id:guid}/mapping", Name = "getImportMapping")]
     [ProducesResponseType<ImportMappingResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ImportMappingResponse>> GetMapping(Guid id, CancellationToken ct) => this.ToResult(await imports.GetMappingAsync(id, ct));
+    public async Task<ActionResult<ImportMappingResponse>> GetMapping(Guid id, [FromQuery] bool propose = false, CancellationToken ct = default) =>
+        this.ToResult(await imports.GetMappingAsync(id, ct, propose));
 
     /// <summary>Save the mapping. It applies from the next run; issues already imported keep their shape.</summary>
     [HttpPut("{id:guid}/mapping", Name = "setImportMapping")]
