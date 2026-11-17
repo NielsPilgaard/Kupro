@@ -132,3 +132,23 @@
     overflow-x: auto;
   }
 }
+
+/* Step footer: the primary pulses twice when a change clears its block (design guide: step footer). */
+@layer components {
+  @keyframes nudge {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 55%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 10px transparent;
+    }
+  }
+  .nudge {
+    animation: nudge 900ms var(--ease) 2;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nudge {
+      animation: none;
+    }
+  }
+}

@@ -40,7 +40,7 @@ internal static class ImportCommands
                      FromSource(SourceKinds.Monday, "Monday", "Token: a personal API token."),
                      FromSource(SourceKinds.Linear, "Linear", "Token: a personal API key."),
                      FromSource(SourceKinds.Trello, "Trello", "Token: a Trello token; --key: your Trello API key."),
-                     Create(), List(), Show(), Upload(), Source(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), Conflicts(), Undo(), Finish(),
+                     Create(), List(), Show(), Upload(), Source(), Csv(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), Conflicts(), Undo(), Finish(),
                  })
         {
             import.Subcommands.Add(command);
@@ -238,7 +238,7 @@ internal static class ImportCommands
     private static Command Source()
     {
         var id = Id();
-        return new ApiCommand("source", "What the source holds, read live with the import's token: projects, people, types, statuses.", "describeImportSource") { id }
+        return new ApiCommand("source", "What the source holds, read live with the import's token or from the upload: projects, people, types, statuses.", "describeImportSource") { id }
             .Handle(async (c, ct) =>
             {
                 var d = await (await c.InWorkspaceAsync(ct)).Imports[c.Get(id)].Source.GetAsync(cancellationToken: ct);
@@ -247,11 +247,24 @@ internal static class ImportCommands
             });
     }
 
+    private static Command Csv()
+    {
+        var id = Id();
+        return new ApiCommand("csv-info", "An uploaded CSV again: rows, columns and encoding (--json adds the first rows).", "getImportCsvPreview") { id }
+            .Handle(async (c, ct) =>
+            {
+                var p = await (await c.InWorkspaceAsync(ct)).Imports[c.Get(id)].Source.Csv.GetAsync(cancellationToken: ct);
+                await c.Out.ItemAsync(p!, ("Rows", p!.Rows?.ToString(CultureInfo.InvariantCulture)), ("Columns", string.Join(", ", p.Headers ?? [])),
+                    ("Encoding", $"{p.Encoding}, '{p.Delimiter}'"));
+            });
+    }
+
     private static Command Mapping()
     {
         var id = Id();
         var set = new Option<string?>("--set") { Description = "Save this mapping file (JSON; - for stdin). Without it, prints the mapping in force, or the proposed one." };
-        return new ApiCommand("mapping", "Print or save the mapping: people, projects, types, states, fields and effort.", "getImportMapping", "setImportMapping") { id, set }
+        var propose = new Option<bool>("--propose") { Description = "Print the proposed mapping even when one is saved: after changing a CSV's columns, its types and states change too." };
+        return new ApiCommand("mapping", "Print or save the mapping: people, projects, types, states, fields and effort.", "getImportMapping", "setImportMapping") { id, set, propose }
             .Handle(async (c, ct) =>
             {
                 var api = (await c.InWorkspaceAsync(ct)).Imports[c.Get(id)].Mapping;
@@ -265,7 +278,7 @@ internal static class ImportCommands
                 }
 
                 // Always JSON: this is the file to edit and save back.
-                var current = await api.GetAsync(cancellationToken: ct);
+                var current = await api.GetAsync(r => r.QueryParameters.Propose = c.Get(propose), ct);
                 await c.Out.Writer.WriteLineAsync(await KiotaJsonSerializer.SerializeAsStringAsync(current!.Mapping!, serializeOnlyChangedValues: false, ct), ct);
             });
     }

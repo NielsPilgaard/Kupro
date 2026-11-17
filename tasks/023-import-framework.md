@@ -58,7 +58,13 @@ added, sprint closes); `workspace.json` streams to disk table by table (`ExportS
 `KUPRO_IMPORT_TOKEN`) and the read-only MCP `imports` tool, which fits ADR-001's 19 KB tool list after moving shared
 text into the server instructions. Every import endpoint answers 404 for another workspace's ids. Ops: `ImportMetrics`
 (runs, items, stored bytes), an Imports row on the Usage dashboard, the "imports filling object storage" alert (20 GB a
-day) and runbook notes. Left: the web wizard (direction picked in task 033, see Surfaces) and the production run after 013.
+day) and runbook notes. The web is in (`web/src/features/imports`): Imports in the sidebar (owners), the list with
+sparklines, an import's page (runs, conflicts, placeholders; Sync now, auto-sync, token, Undo, Finish), and the guided
+wizard with its live dry-run rail, run progress and finished screen, plus the palette commands and the empty-workspace
+prompt. To serve it, `GET .../source` describes an upload too, and `GET .../mapping?propose=true` (`kupro import mapping
+--propose`) re-proposes after a CSV's columns change. The rail and Hierarchy step show what the plan carries: counts,
+both folds' numbers and re-parented examples, not 07's sample trees or a state distribution. Azure DevOps, Monday and
+YouTrack marks are stand-ins until their official files are bundled (a manual step). Left: the production run after 013.
 
 ## Scope
 

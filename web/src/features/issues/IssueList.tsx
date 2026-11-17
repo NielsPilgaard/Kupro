@@ -1,7 +1,8 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
 import { listItems, loadedStateIssues, useIssues, useStateIssues, type IssueFilters } from '../../api/issues';
 import type { IssuePriority, IssueState, IssueSummary } from '../../api/gen/types.gen';
 import { useUi } from '../../app/UiContext';
@@ -27,6 +28,9 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
   const query: IssueFilters = { ...filters, sort: 'priority' };
   // One row is enough to tell an empty project from groups that are still loading.
   const { data: probe } =useIssues(workspace, { ...filters, limit: 1 });
+  // Keys are mono: room for the longest project key, a dash and four digits keeps them on one line and aligned.
+  const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
+  const keyChars = Math.max(3, ...(projects ?? []).map((p) => p.key.length)) + 5;
 
   const open = (key: string) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: key }) });
   // Read from the cache at key time: the groups own their queries.
@@ -59,7 +63,7 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
   }
 
   return (
-    <div role="list" aria-label={t('issue.list')}>
+    <div role="list" aria-label={t('issue.list')} style={{ '--key-ch': keyChars } as React.CSSProperties}>
       {states.map((state) => (
         <Group
           key={state}
@@ -147,10 +151,10 @@ function IssueRow({
       role="listitem"
       onClick={onOpen}
       data-key={issue.key}
-      className={`grid h-[var(--row)] w-full grid-cols-[14px_66px_minmax(0,1fr)_auto_52px_22px] items-center gap-3 border-b border-line/60 px-4 text-left hover:bg-sel/50 ${active ? 'bg-sel shadow-[inset_2px_0_0_var(--acc-ink)]' : ''}`}
+      className={`grid h-[var(--row)] w-full grid-cols-[14px_auto_minmax(0,1fr)_auto_52px_22px] items-center gap-3 border-b border-line/60 px-4 text-left hover:bg-sel/50 ${active ? 'bg-sel shadow-[inset_2px_0_0_var(--acc-ink)]' : ''}`}
     >
       <StatusRing state={issue.state} />
-      <span className="font-mono text-sm text-mute">{issue.key}</span>
+      <span className="w-[calc(var(--key-ch)*1ch)] truncate font-mono text-sm text-mute">{issue.key}</span>
       <span className="flex min-w-0 items-center gap-1.5">
         <PriorityIcon priority={issue.priority} />
         <TypeTag type={issue.type} />
@@ -158,7 +162,10 @@ function IssueRow({
           {issue.title}
         </span>
       </span>
-      <Labels names={issue.labels} />
+      {/* A cell even without labels, so effort and avatar keep their columns. */}
+      <span>
+        <Labels names={issue.labels} />
+      </span>
       <span className="text-right font-mono text-sm text-mute tabular-nums">{issue.effort ? hours(issue.effort) : ''}</span>
       <Avatar member={issue.assignee} />
     </button>

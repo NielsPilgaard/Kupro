@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Users } from 'lucide-react';
+import { ArrowDownToLine, CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getMeOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
+import { getMeOptions, getWorkspaceOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
 import { useRealtime } from '../api/realtime';
 import { signOut } from '../auth/auth';
 import { Kbd } from '../components/ui';
@@ -64,6 +64,7 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
   const ui = useUi();
   const { data: workspaces } = useQuery(listWorkspacesOptions());
   const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
+  const { data: info } = useQuery(getWorkspaceOptions({ path: { workspace } }));
   const current = workspaces?.find((w) => w.slug === workspace);
   const nav =
     'flex h-[var(--nav-item)] items-center gap-2 rounded-r1 px-2 text-side-ink hover:bg-side-sel 3xl:gap-2.5 3xl:text-md 3xl:[&>svg]:size-[18px]';
@@ -160,6 +161,12 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           <Users size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.members')}
         </Link>
+        {info?.role === 'owner' && (
+          <Link to="/w/$workspace/imports" params={{ workspace }} className={nav} activeProps={active}>
+            <ArrowDownToLine size={16} strokeWidth={1.5} aria-hidden="true" />
+            {!collapsed && t('nav.imports')}
+          </Link>
+        )}
         <Link to="/settings" className={nav}>
           <CircleUser size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.settings')}

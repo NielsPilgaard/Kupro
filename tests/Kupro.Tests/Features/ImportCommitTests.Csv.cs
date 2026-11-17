@@ -49,6 +49,14 @@ public sealed partial class ImportCommitTests
             Projects = new Dictionary<string, ProjectTarget> { ["csv"] = new("CSV", "From a spreadsheet") },
         });
 
+        // The wizard's steps read an upload's description the same way as a connected source's.
+        var described = await WithImportsAsync(s => s.DescribeAsync(import, Ct));
+        described.Value!.Projects.Single().Id.ShouldBe("csv");
+        described.Value.ItemTypes.Select(t => t.Name).ShouldBe(["Epic", "Feature", "Task"], ignoreOrder: true);
+        var proposed = (await WithImportsAsync(s => s.GetMappingAsync(import, Ct, propose: true))).Value!;
+        proposed.Saved.ShouldBeFalse();
+        proposed.Mapping.Csv!.Parent.ShouldBe("Parent");
+
         var dryRun = await RunAsync(import, ImportRunKind.DryRun);
         dryRun.State.ShouldBe(ImportRunState.Succeeded, dryRun.Error);
         var plan = JsonSerializer.Deserialize<ImportPlan>(dryRun.Report!, JsonSerializerOptions.Web)!;
@@ -81,6 +89,13 @@ public sealed partial class ImportCommitTests
             Csv = m.Csv! with { Title = "Titel", Status = "Status", Assignee = "Ansvarlig" },
             Projects = new Dictionary<string, ProjectTarget> { ["csv"] = new("DK", "Dansk") },
         });
+
+        // After a reload the wizard reads the preview again, with the saved columns.
+        var preview = (await WithImportsAsync(s => s.GetCsvPreviewAsync(import, Ct))).Value!;
+        (preview.Rows, preview.Encoding, preview.Delimiter).ShouldBe((1, "windows-1252", ";"));
+        preview.Samples.Single().ShouldBe(["Rød grød med fløde", "Færdig", "Søren Ærø"]);
+        preview.Columns.Assignee.ShouldBe("Ansvarlig");
+
         (await RunAsync(import, ImportRunKind.Commit)).State.ShouldBe(ImportRunState.Succeeded);
 
         var issue = await IssueAsync("DK-1");

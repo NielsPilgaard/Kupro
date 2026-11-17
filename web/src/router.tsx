@@ -2,6 +2,9 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from './app/AppShell';
 import { callbackPath, completeSignIn, getSession, signIn } from './auth/auth';
+import { ImportPage, ImportsPage } from './features/imports/ImportsPage';
+import { ImportWizardPage, type WizardSearch } from './features/imports/ImportWizard';
+import type { StepId } from './features/imports/wizard';
 import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/IssuePages';
 import { MembersPage } from './features/members/MembersPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -59,6 +62,29 @@ const workspaceRoute = createRoute({ getParentRoute: () => authedRoute, path: '/
 const workspaceIndexRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/', component: WorkspaceIndexPage });
 const newProjectRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/new-project', component: NewProjectPage });
 const membersRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/members', component: MembersPage });
+const importsRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/imports', component: ImportsPage });
+const wizardSearch = (search: Record<string, unknown>): WizardSearch => ({
+  ...(typeof search.step === 'string' ? { step: search.step as StepId } : {}),
+  ...(typeof search.run === 'string' ? { run: search.run } : {}),
+  ...(typeof search.total === 'number' ? { total: search.total } : {}),
+  ...(search.first === true ? { first: true } : {}),
+});
+const newImportRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/imports/new', component: ImportWizardPage, validateSearch: wizardSearch });
+const importSetupRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/imports/$importId/setup',
+  component: ImportWizardPage,
+  validateSearch: wizardSearch,
+});
+const importRoute = createRoute({
+  getParentRoute: () => workspaceRoute,
+  path: '/imports/$importId',
+  component: ImportPage,
+  validateSearch: (search: Record<string, unknown>): { tab?: 'runs' | 'conflicts' | 'people'; issue?: string; meeting?: string } => ({
+    ...(search.tab === 'runs' || search.tab === 'conflicts' || search.tab === 'people' ? { tab: search.tab } : {}),
+    ...withIssue(search),
+  }),
+});
 const myIssuesRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/my-issues',
@@ -109,7 +135,20 @@ const routeTree = rootRoute.addChildren([
   authedRoute.addChildren([
     homeRoute,
     settingsRoute,
-    workspaceRoute.addChildren([workspaceIndexRoute, newProjectRoute, membersRoute, myIssuesRoute, sprintsRoute, sprintReportRoute, planRoute, projectRoute]),
+    workspaceRoute.addChildren([
+      workspaceIndexRoute,
+      newProjectRoute,
+      membersRoute,
+      importsRoute,
+      newImportRoute,
+      importSetupRoute,
+      importRoute,
+      myIssuesRoute,
+      sprintsRoute,
+      sprintReportRoute,
+      planRoute,
+      projectRoute,
+    ]),
   ]),
 ]);
 
