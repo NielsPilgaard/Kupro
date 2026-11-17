@@ -96,6 +96,29 @@ public sealed class ImportedField
 
     public ImportedValues WithJson(ImportedValues to, string json) => _parse(to, json);
 
+    /// <summary>
+    /// What a re-run does with every field: <paramref name="next"/> is the source now, <paramref name="last"/> what was
+    /// last imported, <paramref name="current"/> what Kupro holds. Kupro wins where both sides changed a field.
+    /// </summary>
+    public static Dictionary<ImportedField, ImportFieldDecision> DecideAll(ImportedValues next, ImportedValues last, ImportedValues current)
+    {
+        var decisions = All.ToDictionary(f => f, f => f.Decide(next, last, current));
+
+        // A start after a due date can't be stored. Two sides each moving one date can make one, so that takes the owner.
+        var (startField, dueField) = (Named(Start), Named(Due));
+        var start = decisions[startField] == ImportFieldDecision.Apply ? next.Start : current.Start;
+        var due = decisions[dueField] == ImportFieldDecision.Apply ? next.Due : current.Due;
+        if (start > due)
+        {
+            foreach (var field in new[] { startField, dueField }.Where(f => decisions[f] == ImportFieldDecision.Apply))
+            {
+                decisions[field] = ImportFieldDecision.Conflict;
+            }
+        }
+
+        return decisions;
+    }
+
     public ImportFieldDecision Decide(ImportedValues next, ImportedValues last, ImportedValues current)
     {
         var (source, remembered, kupro) = (_get(next), _get(last), _get(current));

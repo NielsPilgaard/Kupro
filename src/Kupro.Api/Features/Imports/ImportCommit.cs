@@ -134,7 +134,6 @@ public sealed partial class ImportCommit(
     private const int MaxProjectName = 100;
     private const int MaxSprintName = 100;
     private const int MaxAlias = 512;
-    private const int MaxEffort = 1_000_000;
     private const int MaxDepth = 3;
     private const int MaxAttempts = 3;
 
@@ -167,6 +166,8 @@ public sealed partial class ImportCommit(
     private ImportMapping _mapping = null!;
     private MappedSource _source = null!;
     private ImportDescription _description = null!;
+    private ItemValues _values = null!;
+    private ChangeTranslator _changes = null!;
     private List<MemberCandidate>? _candidates;
 
     /// <summary>What the finished run has to tell the owner, with examples. Set by <see cref="RunAsync"/>.</summary>
@@ -228,6 +229,8 @@ public sealed partial class ImportCommit(
         _mapping = mapping;
         _source = new MappedSource(_header, mapping, clock.GetUtcNow());
         _description = new ImportDescription(_header, mapping);
+        _values = new ItemValues(_source, _description);
+        _changes = new ChangeTranslator(_header, _source);
     }
 
     // ---------------------------------------------------------------- what is there already
@@ -658,7 +661,7 @@ public sealed partial class ImportCommit(
             var drafts = todo.Select(item =>
             {
                 var tooLong = new List<string>();
-                var itemLabels = _description.Labels(item, _source.Type(item), tops.GetValueOrDefault(item.Id), tooLong);
+                var itemLabels = _values.Labels(item, tops.GetValueOrDefault(item.Id), tooLong);
                 return (Item: item, Labels: itemLabels, TooLong: tooLong);
             }).ToList();
             await ResolveLabelsAsync(db, drafts.SelectMany(d => d.Labels).Distinct(StringComparer.Ordinal).ToList(), newLabels, delta, ct);
@@ -676,7 +679,8 @@ public sealed partial class ImportCommit(
                 var assignee = item.Assignee is { } a ? Member(a, newPeople) : null;
                 var creator = creators[item.Id] ?? SkippedId(newPeople);
                 var parentId = fitted.Parent is { } parent ? _items[parent] : (Guid?)null;
-                var (values, truncated) = ValuesOf(item, itemLabels, tooLong, assignee, parentId, tops.GetValueOrDefault(item.Id), checklists, references);
+                var (values, truncated) = _values.Of(
+                    item, itemLabels, tooLong, assignee, parentId, SprintOf(item), tops.GetValueOrDefault(item.Id), [.. checklists[item.Id].Select(c => c.Line)], references);
                 delta.Truncated += truncated ? 1 : 0;
                 delta.Renumbered += SourceNumber(item.Key) is { } wanted && wanted != numbers[item.Id] ? 1 : 0;
                 var labelIds = itemLabels.Select(l => _labels.TryGetValue(l, out var known) ? known : newLabels[l]).ToList();
@@ -733,31 +737,8 @@ public sealed partial class ImportCommit(
         }
     }
 
-    /// <summary>The item as Kupro values: what the first write stores and what a re-run compares against.</summary>
-    private (ImportedValues Values, bool Truncated) ValuesOf(
-        SourceItem item, IReadOnlyList<string> itemLabels, List<string> tooLong, Guid? assignee, Guid? parent, string? top,
-        ILookup<string, (string Id, ChecklistLine Line)> checklists, ImportReferences references)
-    {
-        var effort = _source.Effort(item);
-        var effortFits = effort is >= 0 and < MaxEffort;
-        var start = item.Start > item.Due ? null : item.Start;
-        var details = _description.Details(item, tooLong, item.Assignee is not null && assignee is null);
-        if (effort is not null && !effortFits)
-        {
-            details.Add(("Effort", effort.Value.ToString(CultureInfo.InvariantCulture)));
-        }
-
-        if (item.Start is not null && start is null)
-        {
-            details.Add(("Start date", item.Start.Value.ToString("O", CultureInfo.InvariantCulture)));
-        }
-
-        var (description, truncated) = _description.Build(item, [.. checklists[item.Id].Select(c => c.Line)], details, references);
-        var title = string.IsNullOrWhiteSpace(item.Title) ? "(no title)" : Cut(item.Title.Trim(), ImportDescription.MaxTitle);
-        var sprintId = item.Sprint is { } sprint && _sprints.TryGetValue(SprintKey(sprint, _source.Project(item.Project).Key), out var found) ? found : (Guid?)null;
-        var effortValue = effortFits ? Math.Round(effort!.Value, 2) : (decimal?)null;
-        return (new ImportedValues(title, description, _source.State(item), _source.Priority(item), assignee, parent, sprintId, effortValue, start, item.Due, itemLabels, top), truncated);
-    }
+    private Guid? SprintOf(SourceItem item) =>
+        item.Sprint is { } sprint && _sprints.TryGetValue(SprintKey(sprint, _source.Project(item.Project).Key), out var id) ? id : null;
 
     private void RecordChecklist(KuproDbContext db, string sourceId, ChecklistLine line, string holder, Guid issueId)
     {

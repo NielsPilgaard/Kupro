@@ -130,7 +130,7 @@ public sealed partial class ImportCommit
         {
             if (seen.Add(item.Id) && read.KeptIds.Contains(item.Id) && read.Fit.Items.ContainsKey(item.Id))
             {
-                names.UnionWith(_description.Labels(item, _source.Type(item), tops.GetValueOrDefault(item.Id), []));
+                names.UnionWith(_values.Labels(item, tops.GetValueOrDefault(item.Id), []));
             }
         }
 

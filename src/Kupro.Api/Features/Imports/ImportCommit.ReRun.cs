@@ -104,7 +104,7 @@ public sealed partial class ImportCommit
         {
             var last = ImportedField.Deserialize(rows[item.Id].LastValues!);
             var tooLong = new List<string>();
-            var itemLabels = _description.Labels(item, _source.Type(item), last.FoldedTop, tooLong);
+            var itemLabels = _values.Labels(item, last.FoldedTop, tooLong);
             return (Item: item, Last: last, Labels: itemLabels, TooLong: tooLong);
         }).ToList();
         await ResolveLabelsAsync(db, drafts.SelectMany(d => d.Labels).Distinct(StringComparer.Ordinal).ToList(), newLabels, delta, ct);
@@ -121,13 +121,12 @@ public sealed partial class ImportCommit
             // A fold or mapping changed since doesn't move an imported item. Only the source moving it does.
             var moved = !string.Equals(item.Parent, row.SourceParent, StringComparison.Ordinal);
             var parent = !moved ? last.Parent : fit.Items[item.Id].Parent is { } fitted ? _items[fitted] : null;
-            var (next, _) = ValuesOf(item, itemLabels, tooLong, assignee, parent, last.FoldedTop, checklists, references);
+            var (next, _) = _values.Of(item, itemLabels, tooLong, assignee, parent, SprintOf(item), last.FoldedTop, [.. checklists[item.Id].Select(c => c.Line)], references);
             var former = issue.Labels.Select(l => labelNames[l.LabelId]).Order(StringComparer.Ordinal).ToList();
             var current = new ImportedValues(
                 issue.Title, issue.Description, issue.State, issue.Priority, issue.AssigneeId, issue.ParentId, issue.SprintId, issue.Effort, issue.StartDate, issue.DueDate, former);
 
-            var decisions = ImportedField.All.ToDictionary(f => f, f => f.Decide(next, last, current));
-            KeepDatesValid(decisions, next, current);
+            var decisions = ImportedField.DecideAll(next, last, current);
 
             var remembered = last;
             var apply = new HashSet<string>(StringComparer.Ordinal);
@@ -185,23 +184,6 @@ public sealed partial class ImportCommit
         }
 
         return changes;
-    }
-
-    /// <summary>A start after a due date can't be stored. Two sides each moving one date can make one, so that takes the owner.</summary>
-    private static void KeepDatesValid(Dictionary<ImportedField, ImportFieldDecision> decisions, ImportedValues next, ImportedValues current)
-    {
-        var (startField, dueField) = (ImportedField.Named(ImportedField.Start), ImportedField.Named(ImportedField.Due));
-        var start = decisions[startField] == ImportFieldDecision.Apply ? next.Start : current.Start;
-        var due = decisions[dueField] == ImportFieldDecision.Apply ? next.Due : current.Due;
-        if (start <= due || start is null || due is null)
-        {
-            return;
-        }
-
-        foreach (var field in new[] { startField, dueField }.Where(f => decisions[f] == ImportFieldDecision.Apply))
-        {
-            decisions[field] = ImportFieldDecision.Conflict;
-        }
     }
 
     private void Disagree(
