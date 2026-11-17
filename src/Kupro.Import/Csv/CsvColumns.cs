@@ -48,6 +48,13 @@ public sealed record CsvColumns
         new[] { Key, Id, Title, Description, Type, Status, Priority, Assignee, Creator, Parent, Labels, EstimateHours, EstimateSeconds, Points, Start, Due, Created, Updated, Resolved, Project }
             .OfType<string>();
 
+    /// <summary>
+    /// These columns if the file still has every one, else a fresh proposal: a replaced file with other headers must
+    /// not fall back to empty titles and default types.
+    /// </summary>
+    public static CsvColumns Fit(CsvColumns? saved, IReadOnlyList<string> headers) =>
+        saved is not null && saved.Used().All(c => headers.Contains(c, StringComparer.OrdinalIgnoreCase)) ? saved : Propose(headers);
+
     /// <summary>The known export the headers come from, else a guess by common names. The owner can change any of it.</summary>
     public static CsvColumns Propose(IReadOnlyList<string> headers)
     {

@@ -41,7 +41,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 ## What an agent can pick up
 
 Checked 2026-11-17. The build order above is not the same as what is buildable: 023's web wizard is built, so **the
-agent tasks are the wizard bits and site pages of 024–027**. The 024, 025, 026, GitHub, YouTrack and Monday connectors
+agent tasks are 023's Hierarchy sample trees and the wizard bits and site pages of 024–027**. The 024, 025, 026, GitHub, YouTrack and Monday connectors
 are done, `--local` included; the rest of them waits on a sandbox. Every other open row waits on a person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -52,7 +52,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
-| 023 | Built, web wizard included; waiting on the production run | 013 Done |
+| 023 | Built, web wizard included. Left: the Hierarchy step's sample trees (the plan must carry them), three official product marks (manual) and the production run | Nothing for the trees; the owner for the marks; 013 Done for the run |
 | 024, 025, 026 | Connectors, default mappings and `--local` done. Left: the site pages and People/report wizard bits (023's wizard is built), recorded fixtures and the close (sandbox accounts, manual steps) | Nothing for the wizard bits; the sandboxes for the rest |
 | 027 | GitHub, YouTrack and Monday done. Left: GitHub's Projects (v2) fields, Monday's column mapping and the site pages (023's wizard is built) | Nothing for those; the sandboxes for the close |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |

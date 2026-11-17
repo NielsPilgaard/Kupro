@@ -797,7 +797,7 @@
     "typeFor": "Type i Kupro for {{name}}",
     "labelFor": "Label for {{name}}",
     "statesTitle": "Status",
-    "statesLede": "Mapped efter hver status' kategori, hvor kilden har en. Skift en række, så opdateres planen til højre.",
+    "statesLede": "Mappet efter hver status' kategori, hvor kilden har en. Skift en række, så opdateres planen til højre.",
     "stateFor": "Status i Kupro for {{name}}",
     "checkThis": "Tjek denne",
     "peopleTitle": "Personer",

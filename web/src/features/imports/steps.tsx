@@ -469,6 +469,8 @@ export function EffortStep({ mapping, update, plan, decided, decide }: StepProps
       <label className="flex flex-col gap-1">
         <span className="text-sm font-semibold">{t('importWizard.hoursPerPoint')}</span>
         <input
+          // Uncontrolled: remount when "no effort" toggles, so the box shows the saved value, not the last typed one.
+          key={String(noEffort)}
           className={`${control} w-32 font-mono`}
           inputMode="decimal"
           placeholder="6"

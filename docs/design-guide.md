@@ -303,7 +303,8 @@ card.
 
 A grid (`auto-fill`, 220 px minimum, 8 px gap) of toggle buttons (`aria-pressed`): product mark, name (600), one `xs`
 `--mute` line. Selected: as a checked option card plus `--sel` fill. **Not available yet**: disabled, `--sunk` fill,
-dashed border, greyscale mark at 50%, name in `--mute`, the line "Not available yet" and a `WIP` chip at the right.
+dashed border, the mark in its own colours (never greyed: marks are not recoloured), name in `--mute`, the line "Not
+available yet" and a `WIP` chip at the right.
 They stay visible so people see what's coming; they can't be picked.
 
 ### Data table

@@ -80,7 +80,7 @@ public sealed partial class ImportService
         }
 
         var table = await CsvTable.ReadAsync(source, ct);
-        return Preview(table, SavedColumns(import) ?? CsvColumns.Propose(table.Headers));
+        return Preview(table, CsvColumns.Fit(SavedColumns(import), table.Headers));
     }
 
     private static CsvPreview Preview(CsvTable table, CsvColumns columns) => new(
@@ -234,7 +234,7 @@ public sealed partial class ImportService
         }
 
         var table = await CsvTable.ReadAsync(source, ct);
-        var columns = SavedColumns(import) ?? CsvColumns.Propose(table.Headers);
+        var columns = CsvColumns.Fit(SavedColumns(import), table.Headers);
         return new CsvRead(await new CsvConnector(table, columns, CsvProjectName, clock).DescribeAsync(ct), columns);
     }
 }

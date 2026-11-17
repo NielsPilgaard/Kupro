@@ -28,9 +28,10 @@ export function IssueList({ workspace, filters, emptyText }: { workspace: string
   const query: IssueFilters = { ...filters, sort: 'priority' };
   // One row is enough to tell an empty project from groups that are still loading.
   const { data: probe } =useIssues(workspace, { ...filters, limit: 1 });
-  // Keys are mono: room for the longest project key, a dash and four digits keeps them on one line and aligned.
+  // Keys are mono: room for the longest project key, a dash and at least four digits keeps them aligned. The column is
+  // a minimum, so a longer key (an imported number) still shows whole.
   const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
-  const keyChars = Math.max(3, ...(projects ?? []).map((p) => p.key.length)) + 5;
+  const keyChars = Math.max(8, ...(projects ?? []).map((p) => p.key.length + 1 + Math.max(4, String(p.issueCount).length)));
 
   const open = (key: string) => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: key }) });
   // Read from the cache at key time: the groups own their queries.
@@ -154,7 +155,7 @@ function IssueRow({
       className={`grid h-[var(--row)] w-full grid-cols-[14px_auto_minmax(0,1fr)_auto_52px_22px] items-center gap-3 border-b border-line/60 px-4 text-left hover:bg-sel/50 ${active ? 'bg-sel shadow-[inset_2px_0_0_var(--acc-ink)]' : ''}`}
     >
       <StatusRing state={issue.state} />
-      <span className="w-[calc(var(--key-ch)*1ch)] truncate font-mono text-sm text-mute">{issue.key}</span>
+      <span className="min-w-[calc(var(--key-ch)*1ch)] shrink-0 whitespace-nowrap font-mono text-sm text-mute">{issue.key}</span>
       <span className="flex min-w-0 items-center gap-1.5">
         <PriorityIcon priority={issue.priority} />
         <TypeTag type={issue.type} />

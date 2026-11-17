@@ -118,11 +118,6 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
     request(mappingQuery.data.saved ? null : mappingQuery.data.mapping, 0);
   }, [mappingQuery.data, request]);
 
-  const go = (target: StepId) => {
-    if (!connected && target !== 'source') return;
-    void navigate({ to: '.', search: { step: target }, replace: false });
-  };
-
   const update = (fn: (m: ImportMapping) => ImportMapping) => {
     if (!mapping) return;
     const next = fn(mapping);
@@ -217,8 +212,17 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
     }
   };
 
+  // Every way off the source step (footer, stepper, rail) saves changed CSV columns first.
+  const leave = async (target: StepId) => {
+    if (!connected && target !== 'source') return;
+    if (step === 'source' && target !== 'source' && csvColumns && !(await applyCsvColumns())) return;
+    void navigate({ to: '.', search: { step: target }, replace: false });
+  };
+  const go = (target: StepId) => void leave(target);
+
   const start = async () => {
-    if (!importId || open.length) return;
+    // Commit only what the rail shows: a plan of the current mapping, not one still saving, planning or failed.
+    if (!importId || open.length || !planner.current) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -242,7 +246,6 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
     // Before the import exists, the source blocker only clears by connecting.
     if (step === 'source' && !importId) return void (sourceReady && connect());
     if (blocker) return;
-    if (step === 'source' && csvColumns && !(await applyCsvColumns())) return;
     if (step === 'review') return void start();
     const following = steps[index + 1];
     if (following) go(following);
@@ -327,6 +330,8 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
             index={index}
             blocker={blocker}
             plan={plan}
+            planCurrent={planner.current}
+            planError={planner.error}
             open={open}
             connected={connected || sourceReady}
             fileSource={!!sourceOf(kindNow)?.file}
@@ -405,6 +410,8 @@ function Footer(props: {
   index: number;
   blocker: Blocker | null;
   plan?: ImportPlan;
+  planCurrent: boolean;
+  planError?: string;
   open: StepId[];
   connected: boolean;
   fileSource: boolean;
@@ -430,7 +437,7 @@ function Footer(props: {
     message = props.connected ? <NextLine step={nextStep} /> : <WarnLine>{t('importWizard.blocked.source')}</WarnLine>;
   } else if (last) {
     label = props.hadCommit ? t('importWizard.runAgain') : t('importWizard.importN', { count: plan?.create.count ?? 0, n: number.format(plan?.create.count ?? 0) });
-    disabled ||= open.length > 0 || !plan;
+    disabled ||= open.length > 0 || !props.planCurrent;
     message = open.length ? (
       <WarnLine>
         {t('importWizard.decisionsLeft', { count: open.length })}{' '}
@@ -443,6 +450,10 @@ function Footer(props: {
           </span>
         ))}
       </WarnLine>
+    ) : props.planError ? (
+      <WarnLine>{t('importRail.failed', { error: props.planError })}</WarnLine>
+    ) : !props.planCurrent ? (
+      <span className="text-sm text-mute">{t('importRail.planning')}</span>
     ) : (
       <OkLine>{t('importWizard.ready')}</OkLine>
     );
@@ -624,7 +635,7 @@ function SourcePicker({
             onClick={() => onKind(s.kind)}
             className="group flex min-w-0 items-center gap-2.5 rounded-r2 border border-line bg-panel p-2.5 text-left hover:enabled:border-acc-ink disabled:cursor-not-allowed disabled:border-dashed disabled:bg-sunk aria-pressed:border-acc-ink aria-pressed:bg-sel aria-pressed:shadow-[inset_0_0_0_1px_var(--acc-ink)]"
           >
-            <span className="group-disabled:opacity-50 group-disabled:grayscale">
+            <span>
               <SourceMark kind={s.kind} />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
@@ -815,13 +826,15 @@ function RunView({ workspace, importId, runId, total, first }: { workspace: stri
   const failed = run?.state === 'failed';
 
   // A first run from a token import syncs hourly unless the owner unticks it (the finished screen's checkbox, on).
+  // Applied once: `first` leaves the URL in the same step, so a reload or Back can't undo the owner's later choice.
   const switched = useRef(false);
   const mutateAutoSync = autoSync.mutate;
   useEffect(() => {
-    if (!done || !first || switched.current || !imp?.hasToken || imp.autoSync) return;
+    if (!done || !first || switched.current || !imp) return;
     switched.current = true;
-    mutateAutoSync({ path: { workspace, id: importId }, body: { enabled: true } });
-  }, [done, first, imp, mutateAutoSync, importId, workspace]);
+    if (imp.hasToken && !imp.autoSync) mutateAutoSync({ path: { workspace, id: importId }, body: { enabled: true } });
+    void navigate({ to: '.', search: { run: runId, total }, replace: true });
+  }, [done, first, imp, mutateAutoSync, importId, workspace, navigate, runId, total]);
 
   // The run made the projects: refresh the sidebar for every source, file or token.
   useEffect(() => {
