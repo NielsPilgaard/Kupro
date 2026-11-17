@@ -70,7 +70,7 @@ public sealed class ConsoleAccess
             {
                 HttpOnly = true,
                 SameSite = SameSiteMode.Strict,
-                Secure = false, // Plain http through the SSH tunnel.
+                Secure = context.Request.IsHttps, // Plain http through the SSH tunnel.
                 MaxAge = TimeSpan.FromHours(12),
                 Path = "/",
             });

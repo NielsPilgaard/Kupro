@@ -65,7 +65,7 @@ builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.Name = "backup-console-af";
     options.Cookie.SameSite = SameSiteMode.Strict;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // Plain http through the SSH tunnel.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Plain http through the SSH tunnel.
 });
 
 var app = builder.Build();

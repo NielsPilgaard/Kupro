@@ -100,7 +100,7 @@ for (const path of paths) {
   if (buf.includes(0)) continue;
   const before = buf.toString('utf8');
   let after = rename(before);
-  if (tokenFrom) after = after.replace(new RegExp(`\\b${tokenFrom}_`, 'g'), `${tokenTo}_`);
+  if (tokenFrom) after = after.replace(new RegExp(`\\b${tokenFrom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_`, 'g'), `${tokenTo}_`);
   if (after !== before) {
     filesChanged++;
     if (!dryRun) writeFileSync(path, after);
