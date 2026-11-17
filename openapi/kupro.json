@@ -7572,7 +7572,9 @@
           "lastRunAt",
           "lastChangeAt",
           "finishedAt",
-          "lastRun"
+          "lastRun",
+          "committed",
+          "recentCommits"
         ],
         "type": "object",
         "properties": {
@@ -7639,6 +7641,17 @@
                 "$ref": "#/components/schemas/ImportRunResponse"
               }
             ]
+          },
+          "committed": {
+            "type": "boolean",
+            "description": "A commit has succeeded at least once: setup is done."
+          },
+          "recentCommits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRunResponse"
+            },
+            "description": "The last commits, oldest first, for the list's sparkline without a request per import."
           }
         },
         "description": "An import as the owner sees it. The token itself is never returned; bool ImportResponse.HasToken says whether one is kept."

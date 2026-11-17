@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Kupro.Api.Data;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Workspaces;
@@ -9,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Kupro.Api.Features.Imports;
 
 /// <summary>An import as the owner sees it. The token itself is never returned; <see cref="HasToken"/> says whether one is kept.</summary>
+/// <param name="Committed">A commit has succeeded at least once: setup is done.</param>
+/// <param name="RecentCommits">The last commits, oldest first, for the list's sparkline without a request per import.</param>
 public sealed record ImportResponse(
     Guid Id,
     string SourceKind,
@@ -21,7 +24,9 @@ public sealed record ImportResponse(
     DateTimeOffset? LastRunAt,
     DateTimeOffset? LastChangeAt,
     DateTimeOffset? FinishedAt,
-    ImportRunResponse? LastRun);
+    ImportRunResponse? LastRun,
+    bool Committed,
+    IReadOnlyList<ImportRunResponse> RecentCommits);
 
 /// <summary>A dry run or a commit. <see cref="Counts"/> is what a commit did so far; a finished one's report is on <c>getImportRun</c>.</summary>
 public sealed record ImportRunResponse(
@@ -59,16 +64,31 @@ public sealed partial class ImportService
     private const int MaxRuns = 50;
     private const int MaxConflicts = 200;
     private const int MaxShown = 200;
+    private const int RecentCommits = 14;
 
     public async Task<IReadOnlyList<ImportResponse>> ListAsync(CancellationToken ct)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var imports = await db.WorkspaceImports.AsNoTracking().OrderByDescending(i => i.CreatedAt).ToListAsync(ct);
+        return await ResponsesAsync(db, imports, ct);
+    }
+
+    /// <summary>Each import with its last run, whether it committed, and its recent commits: three queries for any number of imports.</summary>
+    private static async Task<IReadOnlyList<ImportResponse>> ResponsesAsync(KuproDbContext db, IReadOnlyList<WorkspaceImport> imports, CancellationToken ct)
+    {
         var ids = imports.Select(i => i.Id).ToList();
-        var last = (await db.ImportRuns.AsNoTracking().Where(r => ids.Contains(r.ImportId))
-                .GroupBy(r => r.ImportId).Select(g => g.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).First()).ToListAsync(ct))
+        var runs = db.ImportRuns.AsNoTracking().Where(r => ids.Contains(r.ImportId));
+        var last = (await runs.GroupBy(r => r.ImportId).Select(g => g.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).First()).ToListAsync(ct))
             .ToDictionary(r => r.ImportId);
-        return [.. imports.Select(i => Response(i, last.GetValueOrDefault(i.Id)))];
+        // Per import, its newest commits: a lateral join, so auto-sync's hourly runs aren't all loaded to keep fourteen.
+        var recent = (await db.WorkspaceImports.AsNoTracking().Where(i => ids.Contains(i.Id))
+                .SelectMany(i => db.ImportRuns.Where(r => r.ImportId == i.Id && r.Kind == ImportRunKind.Commit)
+                    .OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Take(RecentCommits))
+                .AsNoTracking().ToListAsync(ct))
+            .ToLookup(r => r.ImportId);
+        var committed = (await runs.Where(r => r.Kind == ImportRunKind.Commit && r.State == ImportRunState.Succeeded).Select(r => r.ImportId).Distinct().ToListAsync(ct))
+            .ToHashSet();
+        return [.. imports.Select(i => Response(i, last.GetValueOrDefault(i.Id), committed.Contains(i.Id), [.. recent[i.Id].OrderBy(r => r.CreatedAt).ThenBy(r => r.Id).Select(RunResponse)]))];
     }
 
     public async Task<IssueResult<ImportResponse>> GetAsync(Guid importId, CancellationToken ct)
@@ -80,8 +100,7 @@ public sealed partial class ImportService
             return NotFound(importId);
         }
 
-        var last = await db.ImportRuns.AsNoTracking().Where(r => r.ImportId == importId).OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).FirstOrDefaultAsync(ct);
-        return Response(import, last);
+        return (await ResponsesAsync(db, [import], ct))[0];
     }
 
     public async Task<IssueResult<IReadOnlyList<ImportRunResponse>>> ListRunsAsync(Guid importId, CancellationToken ct)
@@ -252,9 +271,9 @@ public sealed partial class ImportService
         }
     }
 
-    private static ImportResponse Response(WorkspaceImport i, ImportRun? last) =>
+    private static ImportResponse Response(WorkspaceImport i, ImportRun? last, bool committed, IReadOnlyList<ImportRunResponse> recent) =>
         new(i.Id, i.SourceKind, i.BaseUrl, i.State, i.AutoSync, i.EncryptedToken is not null, i.TokenRejectedAt, i.CreatedAt, i.LastRunAt, i.LastChangeAt, i.FinishedAt,
-            last is null ? null : RunResponse(last));
+            last is null ? null : RunResponse(last), committed, recent);
 
     private static ImportRunResponse RunResponse(ImportRun r) =>
         new(r.Id, r.Kind, r.State, r.Counts is { } json ? JsonSerializer.Deserialize<ImportRunCounts>(json, JsonSerializerOptions.Web) : null, r.Error,

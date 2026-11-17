@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ImportPlan, ImportRunResponse, MemberResponse } from '../../api/gen/types.gen';
-import { blockerOf, delta, effortNeeded, formatBytes, matchOf, openDecisions, phaseOf, sparkBars, stepsFor } from './wizard';
+import type { ImportMapping, ImportPlan, ImportRunResponse, MemberResponse } from '../../api/gen/types.gen';
+import { blockerOf, delta, effortNeeded, formatBytes, matchOf, mergeProposal, openDecisions, phaseOf, sparkBars, stepsFor } from './wizard';
 
 const count = (n: number) => ({ count: n, samples: [] });
 const plan = (over: Partial<ImportPlan> = {}): ImportPlan => ({
@@ -97,5 +97,28 @@ describe('import wizard helpers', () => {
     expect(formatBytes(3_400_000_000, 'en')).toBe('3.4 GB');
     expect(formatBytes(3_400_000_000, 'da')).toBe('3,4 GB');
     expect(formatBytes(512, 'en')).toBe('512 B');
+  });
+
+  it("keeps the owner's choices when changed CSV columns are re-proposed", () => {
+    const current = {
+      csv: { title: 'Name', type: 'Kind' },
+      types: { Bug: { type: 'bug' }, Chore: { type: 'task' } },
+      states: { Open: 'todo', Weird: 'inProgress' },
+      statusesToReview: [],
+      hoursPerPoint: 6,
+    } as unknown as ImportMapping;
+    const proposed = {
+      csv: { title: 'Name', type: 'Type' },
+      types: { Bug: { type: 'task' }, Story: { type: 'story' } },
+      states: { Open: 'backlog' },
+      statusesToReview: ['Weird', 'New'],
+      hoursPerPoint: null,
+    } as unknown as ImportMapping;
+    const merged = mergeProposal(current, proposed);
+    expect(merged.csv).toEqual(proposed.csv);
+    expect(merged.types).toEqual({ Bug: { type: 'bug' }, Story: { type: 'story' } });
+    expect(merged.states).toEqual({ Open: 'todo', Weird: 'inProgress' });
+    expect(merged.statusesToReview).toEqual(['New']);
+    expect(merged.hoursPerPoint).toBe(6);
   });
 });

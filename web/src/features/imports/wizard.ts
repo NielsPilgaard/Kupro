@@ -17,6 +17,32 @@ export interface Decisions {
 
 export type Blocker = 'source' | 'fold' | 'effort' | 'projectKeys' | 'projectsMissing';
 
+/**
+ * A re-proposal after a CSV's columns change, laid over the owner's draft: values the new columns bring (types,
+ * states, people, projects) come from the proposal, but each one the owner already mapped keeps their choice, and
+ * every other choice (effort, scope, fold, fields) stays as it was.
+ */
+export function mergeProposal(current: ImportMapping, proposed: ImportMapping): ImportMapping {
+  const review = proposed.statusesToReview ?? [];
+  const states = { ...keepChosen(current.states, proposed.states) };
+  for (const id of review) if (current.states?.[id]) states[id] = current.states[id];
+  return {
+    ...current,
+    csv: proposed.csv,
+    projects: keepChosen(current.projects, proposed.projects),
+    people: keepChosen(current.people, proposed.people),
+    types: keepChosen(current.types, proposed.types),
+    priorities: keepChosen(current.priorities, proposed.priorities),
+    states,
+    statusesToReview: review.filter((id) => !current.states?.[id]),
+  };
+}
+
+/** The proposal's keys (what the source holds now), each with the owner's value where they had one. */
+function keepChosen<T>(chosen: Record<string, T> | undefined, proposed: Record<string, T> | undefined): Record<string, T> {
+  return Object.fromEntries(Object.entries(proposed ?? {}).map(([id, value]) => [id, chosen?.[id] ?? value]));
+}
+
 /** A CSV without a points column has nothing to convert, so Effort needs no answer. */
 export function effortNeeded(mapping: ImportMapping | undefined) {
   return !(mapping?.csv && !mapping.csv.points);
