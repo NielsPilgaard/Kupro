@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Globalization;
 using Kupro.Import;
 using Kupro.Import.AzureDevOps;
 using Kupro.Import.GitHub;
@@ -68,10 +67,7 @@ public sealed class ImportSources
         return error is HttpRequestException ? $"Kupro couldn't reach the source: {reason.Message}" : "The source didn't answer in time. Try again later.";
     }
 
-    public static string? WithOverlap(string? cursor) =>
-        cursor is not null && DateTimeOffset.TryParse(cursor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at)
-            ? (at - Overlap).UtcDateTime.ToString("O", CultureInfo.InvariantCulture)
-            : cursor;
+    public static string? WithOverlap(string? cursor) => DeltaCursor.WithOverlap(cursor, Overlap);
 
     /// <summary>What the connector reads: the mapping's projects, and closed items no older than its cutoff.</summary>
     public static ReadScope Scope(ImportMapping mapping, DateTimeOffset now) => new()

@@ -18,18 +18,16 @@ internal sealed partial class AzureDevOpsClient(HttpClient http, Uri collection,
     /// <summary>Tried from newest on a Server that rejects 7.1. 6.0 is Server 2020, 5.0 is Server 2019.</summary>
     private static readonly string[] ServerVersions = ["7.1", "7.0", "6.0", "5.1", "5.0"];
 
-    private const int MaxRetries = 6;
-
     private readonly AuthenticationHeaderValue _auth =
         new("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + token)));
 
+    private readonly SourceThrottle _throttle = new(time);
     private string? _version;
-    private DateTimeOffset _notBefore;
 
     public Uri Collection { get; } = collection;
 
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
-    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; } = (wait, ct) => Task.Delay(wait, time, ct);
+    public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     /// <summary>True for <c>dev.azure.com</c> and <c>*.visualstudio.com</c>; anything else is Azure DevOps Server.</summary>
     public bool IsServices { get; } = IsServicesHost(collection);
@@ -147,15 +145,9 @@ internal sealed partial class AzureDevOpsClient(HttpClient http, Uri collection,
         var url = Uri.TryCreate(pathOrUrl, UriKind.Absolute, out var absolute) && absolute.Scheme.StartsWith("http", StringComparison.Ordinal)
             ? absolute
             : new Uri($"{Collection.AbsoluteUri.TrimEnd('/')}/{pathOrUrl}");
-        for (var attempt = 0; ; attempt++)
+        var response = await _throttle.SendAsync(http, () =>
         {
-            var wait = _notBefore - time.GetUtcNow();
-            if (wait > TimeSpan.Zero)
-            {
-                await Delay(wait, ct);
-            }
-
-            using var request = new HttpRequestMessage(method, url);
+            var request = new HttpRequestMessage(method, url);
             if (json is not null)
             {
                 request.Content = new ByteArrayContent(json) { Headers = { ContentType = new MediaTypeHeaderValue("application/json") } };
@@ -163,36 +155,30 @@ internal sealed partial class AzureDevOpsClient(HttpClient http, Uri collection,
 
             request.Headers.Authorization = _auth;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            var retryAfter = RetryAfter(response);
-            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable && attempt < MaxRetries)
-            {
-                response.Dispose();
-                _notBefore = time.GetUtcNow() + (retryAfter ?? TimeSpan.FromSeconds(Math.Pow(2, attempt)));
-                continue;
-            }
-
-            if (retryAfter is { } delay)
-            {
-                _notBefore = time.GetUtcNow() + delay;
-            }
-
-            return response;
+            return request;
+        }, (response, attempt) => ValueTask.FromResult(response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable
+            ? RetryAfter(response) ?? SourceThrottle.Backoff(attempt)
+            : (TimeSpan?)null), ct);
+        if (RetryAfter(response) is { } delay)
+        {
+            _throttle.PauseFor(delay);
         }
+
+        return response;
     }
 
     /// <summary><c>Retry-After</c>, or the reset time when <c>X-RateLimit-Remaining</c> hit zero.</summary>
     private TimeSpan? RetryAfter(HttpResponseMessage response)
     {
-        if (response.Headers.RetryAfter is { } header)
+        if (_throttle.RetryAfter(response) is { } retryAfter)
         {
-            return header.Delta ?? (header.Date - time.GetUtcNow());
+            return retryAfter;
         }
 
-        if (Header(response, "X-RateLimit-Remaining") is "0"
-            && long.TryParse(Header(response, "X-RateLimit-Reset"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var reset))
+        if (SourceThrottle.Header(response, "X-RateLimit-Remaining") is "0"
+            && long.TryParse(SourceThrottle.Header(response, "X-RateLimit-Reset"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var reset))
         {
-            return DateTimeOffset.FromUnixTimeSeconds(reset) - time.GetUtcNow();
+            return DateTimeOffset.FromUnixTimeSeconds(reset) - _throttle.Now;
         }
 
         return null;

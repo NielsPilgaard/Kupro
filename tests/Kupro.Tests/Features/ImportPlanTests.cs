@@ -196,11 +196,16 @@ public sealed class ImportPlanTests
         await using var snapshot = await SampleAsync();
         var mapping = ImportMappingDefaults.Propose(snapshot.Header, []);
 
-        var plan = await ImportPlanner.PlanAsync(snapshot, mapping, new HashSet<string> { "200" }, Now, Ct);
+        var imported = new ImportTree(
+            new Dictionary<string, KnownItem> { ["200"] = new(IssueType.Task, "OPS-1", "Rotate keys", null, null) },
+            new Dictionary<string, KnownChecklist>());
+        var read = await SourceRead.ReadAsync(snapshot, new MappedSource(snapshot.Header, mapping, Now), imported, counting: true, Ct);
+
+        var plan = await ImportPlanner.PlanAsync(snapshot, read, ImportedHistory.None, [], Ct);
 
         plan.Items.ShouldBe(3);
         plan.Create.Count.ShouldBe(2);
-        plan.Update.Samples.Single().ShouldBe(new PlanSample("200", "OPS-1", "Rotate keys"));
+        plan.Create.Samples.ShouldNotContain(s => s.SourceId == "200");
         plan.Comments.ShouldBe(1);
         plan.Attachments.ShouldBe(1);
         plan.AttachmentBytes.ShouldBe(4);
@@ -220,7 +225,7 @@ public sealed class ImportPlanTests
             Scope = new ImportScope { Projects = ["20"] },
         };
 
-        var plan = await ImportPlanner.PlanAsync(snapshot, mapping, new HashSet<string>(), Now, Ct);
+        var plan = await ImportPlanner.PlanAsync(snapshot, mapping, Now, Ct);
 
         plan.Create.Samples.Single().SourceId.ShouldBe("200");
         plan.SkippedByScope.Count.ShouldBe(2);
@@ -239,7 +244,7 @@ public sealed class ImportPlanTests
             Scope = new ImportScope { ClosedOlderThanMonths = 6 },
         };
 
-        var plan = await ImportPlanner.PlanAsync(snapshot, mapping, new HashSet<string>(), Now, Ct);
+        var plan = await ImportPlanner.PlanAsync(snapshot, mapping, Now, Ct);
 
         plan.SkippedByScope.Samples.Single().SourceId.ShouldBe("101");
     }
@@ -286,7 +291,7 @@ public sealed class ImportPlanTests
         });
         await using var snapshot = await SnapshotOfAsync(source);
 
-        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), new HashSet<string>(), Now, Ct);
+        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), Now, Ct);
 
         plan.StatusesToReview.Samples.Single().SourceId.ShouldBe("300");
     }
@@ -298,9 +303,49 @@ public sealed class ImportPlanTests
         source.Records.Add(source.Records.OfType<SourceItem>().First());
         await using var snapshot = await SnapshotOfAsync(source);
 
-        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), new HashSet<string>(), Now, Ct);
+        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), Now, Ct);
 
         plan.Create.Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task A_checklist_item_with_nothing_to_fold_into_is_counted_as_created_with_its_effort()
+    {
+        var created = Now.AddDays(-1);
+        var description = new SourceDescription
+        {
+            Source = new SnapshotSource { Kind = SourceKinds.Trello },
+            Projects = [new SourceProject { Id = "p", Name = "Board" }],
+            ItemTypes = [new SourceItemType { Id = "card", Name = "Card" }, new SourceItemType { Id = "check", Name = "Checklist item" }],
+            Statuses = [new SourceStatus { Id = "s", Name = "To Do", Category = "new" }],
+        };
+        var source = new FakeConnector(description);
+        source.Records.AddRange(
+        [
+            Item("card", "card", null, null),
+            Item("folded", "check", "card", 3600),
+            Item("alone", "check", null, 7200),
+        ]);
+        await using var snapshot = await SnapshotOfAsync(source);
+
+        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), Now, Ct);
+
+        plan.Create.Samples.Select(s => s.SourceId).ShouldBe(["card", "alone"], ignoreOrder: true);
+        plan.FoldedChecklists.Samples.Single().SourceId.ShouldBe("folded");
+        plan.EffortHours.ShouldBe(2);
+
+        SourceItem Item(string id, string type, string? parent, long? seconds) => new()
+        {
+            Id = id,
+            Project = "p",
+            Type = type,
+            Status = "s",
+            Title = id,
+            Parent = parent,
+            EstimateSeconds = seconds,
+            Created = created,
+            Updated = created,
+        };
     }
 
     [Fact]
@@ -330,7 +375,7 @@ public sealed class ImportPlanTests
         ]);
         await using var snapshot = await SnapshotOfAsync(source);
 
-        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), new HashSet<string>(), Now, Ct);
+        var plan = await ImportPlanner.PlanAsync(snapshot, ImportMappingDefaults.Propose(snapshot.Header, []), Now, Ct);
 
         plan.FourLevels.ShouldBeTrue();
         plan.FoldBottom.ShouldBe(new FoldCounts(1, 0, 0));

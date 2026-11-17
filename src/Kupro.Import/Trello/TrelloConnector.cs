@@ -76,11 +76,7 @@ public sealed class TrelloConnector : ISourceConnector
         // The next delta starts when this read did: anything changed while it ran is read again, nothing is missed.
         var started = _time.GetUtcNow();
         var catalog = await CatalogAsync(ct);
-        DateTimeOffset? since = cursor is null
-            ? null
-            : DateTimeOffset.TryParse(cursor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
-                ? parsed
-                : throw new ArgumentException($"'{cursor}' is not a Trello cursor (a UTC time).", nameof(cursor));
+        var since = DeltaCursor.Since(cursor);
 
         var boards = new List<BoardInfo>();
         if (scope.Projects.Count == 0)
@@ -168,7 +164,7 @@ public sealed class TrelloConnector : ISourceConnector
             }
         }
 
-        yield return new ReadCursor(started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        yield return new ReadCursor(DeltaCursor.At(started));
     }
 
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>

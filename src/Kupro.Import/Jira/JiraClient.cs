@@ -14,17 +14,14 @@ namespace Kupro.Import.Jira;
 /// </summary>
 internal sealed class JiraClient
 {
-    private const int MaxRetries = 6;
-
     private readonly HttpClient _http;
-    private readonly TimeProvider _time;
-    private DateTimeOffset _notBefore;
+    private readonly SourceThrottle _throttle;
 
     /// <param name="token"><c>email:api-token</c> for Basic auth (Cloud), anything else is a PAT sent as Bearer.</param>
     public JiraClient(HttpClient http, Uri site, string token, TimeProvider time)
     {
         _http = http;
-        _time = time;
+        _throttle = new SourceThrottle(time);
         Site = site;
         Basic = token.Contains(':', StringComparison.Ordinal);
         Auth = Basic
@@ -40,8 +37,7 @@ internal sealed class JiraClient
     private AuthenticationHeaderValue Auth { get; }
 
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
-    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; }
-        = (wait, ct) => Task.Delay(wait, TimeProvider.System, ct);
+    public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     public async Task<T> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
     {
@@ -97,15 +93,9 @@ internal sealed class JiraClient
 
     private async Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct, string? json = null)
     {
-        for (var attempt = 0; ; attempt++)
+        var response = await _throttle.SendAsync(_http, () =>
         {
-            var wait = _notBefore - _time.GetUtcNow();
-            if (wait > TimeSpan.Zero)
-            {
-                await Delay(wait, ct);
-            }
-
-            using var request = new HttpRequestMessage(json is null ? HttpMethod.Get : HttpMethod.Post, url);
+            var request = new HttpRequestMessage(json is null ? HttpMethod.Get : HttpMethod.Post, url);
             if (json is not null)
             {
                 request.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -113,22 +103,14 @@ internal sealed class JiraClient
 
             request.Headers.Authorization = Auth;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            var retryAfter = response.Headers.RetryAfter is { } header ? header.Delta ?? (header.Date - _time.GetUtcNow()) : null;
-            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable && attempt < MaxRetries)
-            {
-                response.Dispose();
-                _notBefore = _time.GetUtcNow() + (retryAfter ?? TimeSpan.FromSeconds(Math.Pow(2, attempt)));
-                continue;
-            }
-
-            if (retryAfter is { } delay)
-            {
-                _notBefore = _time.GetUtcNow() + delay;
-            }
-
-            return response;
+            return request;
+        }, _throttle.RetryIn, ct);
+        if (_throttle.RetryAfter(response) is { } delay)
+        {
+            _throttle.PauseFor(delay);
         }
+
+        return response;
     }
 
     private static void EnsureSuccess(HttpResponseMessage response, string path)

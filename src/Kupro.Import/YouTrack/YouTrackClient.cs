@@ -13,17 +13,14 @@ namespace Kupro.Import.YouTrack;
 internal sealed class YouTrackClient
 {
     public const int PageSize = 100;
-    private const int MaxRetries = 6;
-
     private readonly HttpClient _http;
-    private readonly TimeProvider _time;
+    private readonly SourceThrottle _throttle;
     private readonly AuthenticationHeaderValue _auth;
-    private DateTimeOffset _notBefore;
 
     public YouTrackClient(HttpClient http, Uri site, string token, TimeProvider time)
     {
         _http = http;
-        _time = time;
+        _throttle = new SourceThrottle(time);
         Site = site;
         Api = new Uri($"{site.AbsoluteUri.TrimEnd('/')}/api/");
         _auth = new AuthenticationHeaderValue("Bearer", token.Trim());
@@ -35,8 +32,7 @@ internal sealed class YouTrackClient
     public Uri Api { get; }
 
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
-    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; }
-        = (wait, ct) => Task.Delay(wait, TimeProvider.System, ct);
+    public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     public async Task<T> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
     {
@@ -88,31 +84,14 @@ internal sealed class YouTrackClient
         return await ResponseStream.OpenAsync(await SendAsync(absolute, ct), r => EnsureSuccess(r, absolute.AbsolutePath), ct);
     }
 
-    private async Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct)
-    {
-        for (var attempt = 0; ; attempt++)
+    private Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct) =>
+        _throttle.SendAsync(_http, () =>
         {
-            var wait = _notBefore - _time.GetUtcNow();
-            if (wait > TimeSpan.Zero)
-            {
-                await Delay(wait, ct);
-            }
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Authorization = _auth;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable && attempt < MaxRetries)
-            {
-                var retry = response.Headers.RetryAfter is { } header ? header.Delta ?? (header.Date - _time.GetUtcNow()) : null;
-                response.Dispose();
-                _notBefore = _time.GetUtcNow() + (retry ?? TimeSpan.FromSeconds(Math.Pow(2, attempt)));
-                continue;
-            }
-
-            return response;
-        }
-    }
+            return request;
+        }, _throttle.RetryIn, ct);
 
     private static void EnsureSuccess(HttpResponseMessage response, string path)
     {

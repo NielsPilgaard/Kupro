@@ -16,12 +16,11 @@ internal sealed class MondayClient(HttpClient http, string token, TimeProvider t
 {
     public static readonly Uri Api = new("https://api.monday.com/v2");
     private const string ApiVersion = "2025-04";
-    private const int MaxRetries = 6;
 
-    private DateTimeOffset _notBefore;
+    private readonly SourceThrottle _throttle = new(time);
 
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
-    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; } = (wait, ct) => Task.Delay(wait, time, ct);
+    public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     /// <summary>Runs one query and returns its <c>data</c>. Any GraphQL error fails the call: a partial page would drop items.</summary>
     public async Task<JsonObject> QueryAsync(string query, JsonObject? variables, CancellationToken ct)
@@ -29,12 +28,7 @@ internal sealed class MondayClient(HttpClient http, string token, TimeProvider t
         var body = new JsonObject { ["query"] = query, ["variables"] = variables ?? [] }.ToJsonString();
         for (var attempt = 0; ; attempt++)
         {
-            var wait = _notBefore - time.GetUtcNow();
-            if (wait > TimeSpan.Zero)
-            {
-                await Delay(wait, ct);
-            }
-
+            await _throttle.WaitAsync(ct);
             using var request = new HttpRequestMessage(HttpMethod.Post, Api) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
             request.Headers.TryAddWithoutValidation("Authorization", token.Trim());
             request.Headers.Add("API-Version", ApiVersion);
@@ -54,9 +48,9 @@ internal sealed class MondayClient(HttpClient http, string token, TimeProvider t
             var code = (string?)parsed?["error_code"] ?? errors?.Select(e => (string?)e?["extensions"]?["code"]).FirstOrDefault(c => c is not null);
             var limited = response.StatusCode == HttpStatusCode.TooManyRequests
                 || code is "ComplexityException" or "COMPLEXITY_BUDGET_EXHAUSTED" or "RATE_LIMIT_EXCEEDED" or "maxConcurrencyExceeded";
-            if ((limited || response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway) && attempt < MaxRetries)
+            if ((limited || response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway) && attempt < SourceThrottle.MaxRetries)
             {
-                _notBefore = time.GetUtcNow() + (RetryIn(response, parsed) ?? TimeSpan.FromSeconds(Math.Pow(2, attempt) * (limited ? 15 : 1)));
+                _throttle.PauseFor(RetryIn(response, parsed) ?? SourceThrottle.Backoff(attempt, limited ? 15 : 1));
                 continue;
             }
 
@@ -95,7 +89,7 @@ internal sealed class MondayClient(HttpClient http, string token, TimeProvider t
 
     private TimeSpan? RetryIn(HttpResponseMessage response, JsonObject? parsed)
     {
-        if (response.Headers.RetryAfter is { } header && (header.Delta ?? (header.Date - time.GetUtcNow())) is { } delta)
+        if (_throttle.RetryAfter(response) is { } delta)
         {
             return delta;
         }

@@ -290,7 +290,7 @@ public sealed partial class JiraWikiConverter : IMarkupConverter
         {
             var src = m.Groups["src"].Value.Trim();
             var name = FileName(src);
-            return IsUrl(src) ? $"![{MarkupConverters.EscapeText(name)}]({Destination(src)})" : $"\\[{MarkupConverters.EscapeText(name)}\\]";
+            return IsUrl(src) ? $"![{MarkupConverters.EscapeText(name)}]({MarkupConverters.Destination(src)})" : $"\\[{MarkupConverters.EscapeText(name)}\\]";
         }
 
         if (m.Groups["inner"].Success)
@@ -356,7 +356,7 @@ public sealed partial class JiraWikiConverter : IMarkupConverter
 
         if (IsUrl(target) || target.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase))
         {
-            return label is null ? target : $"[{Inline(label.Trim())}]({Destination(target)})";
+            return label is null ? target : $"[{Inline(label.Trim())}]({MarkupConverters.Destination(target)})";
         }
 
         if (target.StartsWith('#'))
@@ -392,9 +392,6 @@ public sealed partial class JiraWikiConverter : IMarkupConverter
         var name = path[(path.LastIndexOf('/') + 1)..];
         return Uri.UnescapeDataString(name.Length == 0 ? src : name);
     }
-
-    private static string Destination(string url) =>
-        url.Any(c => char.IsWhiteSpace(c) || c is '(' or ')') ? $"<{url.Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal)}>" : url;
 
     private static string OneLine(string text) => string.Join(" ", text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim())).Trim();
 

@@ -15,15 +15,14 @@ internal sealed partial class TrelloClient(HttpClient http, string key, string t
 {
     public static readonly Uri Api = new("https://api.trello.com/1/");
 
-    private const int MaxRetries = 6;
     private static readonly TimeSpan DefaultWindow = TimeSpan.FromSeconds(10);
 
     private readonly AuthenticationHeaderValue _auth = new("OAuth", $"oauth_consumer_key=\"{key}\", oauth_token=\"{token}\"");
 
-    private DateTimeOffset _notBefore;
+    private readonly SourceThrottle _throttle = new(time);
 
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
-    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; } = (wait, ct) => Task.Delay(wait, time, ct);
+    public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     public async Task<T> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
     {
@@ -64,50 +63,32 @@ internal sealed partial class TrelloClient(HttpClient http, string key, string t
     private async Task<HttpResponseMessage> SendAsync(Uri url, bool authorize, CancellationToken ct)
     {
         authorize &= url.Host.Equals(Api.Host, StringComparison.OrdinalIgnoreCase) && url.Scheme == Uri.UriSchemeHttps;
-        for (var attempt = 0; ; attempt++)
+        var response = await _throttle.SendAsync(http, () =>
         {
-            var wait = _notBefore - time.GetUtcNow();
-            if (wait > TimeSpan.Zero)
-            {
-                await Delay(wait, ct);
-            }
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             if (authorize)
             {
                 request.Headers.Authorization = _auth;
             }
 
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable && attempt < MaxRetries)
-            {
-                var retry = RetryAfter(response) ?? Window(response) ?? TimeSpan.FromSeconds(Math.Pow(2, attempt));
-                response.Dispose();
-                _notBefore = time.GetUtcNow() + retry;
-                continue;
-            }
-
-            if (authorize && (Header(response, "x-rate-limit-api-token-remaining") is "0" || Header(response, "x-rate-limit-api-key-remaining") is "0"))
-            {
-                _notBefore = time.GetUtcNow() + (Window(response) ?? DefaultWindow);
-            }
-
-            return response;
+            return request;
+        }, (response, attempt) => ValueTask.FromResult(response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable
+            ? _throttle.RetryAfter(response) ?? Window(response) ?? SourceThrottle.Backoff(attempt)
+            : (TimeSpan?)null), ct);
+        if (authorize && (SourceThrottle.Header(response, "x-rate-limit-api-token-remaining") is "0" || SourceThrottle.Header(response, "x-rate-limit-api-key-remaining") is "0"))
+        {
+            _throttle.PauseFor(Window(response) ?? DefaultWindow);
         }
-    }
 
-    private TimeSpan? RetryAfter(HttpResponseMessage response) =>
-        response.Headers.RetryAfter is { } header ? header.Delta ?? (header.Date - time.GetUtcNow()) : null;
+        return response;
+    }
 
     /// <summary>The rate-limit window from <c>x-rate-limit-api-token-interval-ms</c>: waiting it out resets the count.</summary>
     private static TimeSpan? Window(HttpResponseMessage response) =>
-        int.TryParse(Header(response, "x-rate-limit-api-token-interval-ms"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var ms)
+        int.TryParse(SourceThrottle.Header(response, "x-rate-limit-api-token-interval-ms"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var ms)
             ? TimeSpan.FromMilliseconds(ms)
             : null;
-
-    private static string? Header(HttpResponseMessage response, string name) =>
-        response.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response, string path, CancellationToken ct)
     {

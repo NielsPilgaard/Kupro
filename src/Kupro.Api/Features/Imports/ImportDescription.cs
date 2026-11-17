@@ -19,6 +19,9 @@ public sealed class ImportDescription
     public const int MaxLength = 100_000;
 
     public const int MaxTitle = 500;
+
+    /// <summary>The first <paramref name="length"/> characters, trimmed at the end: the one cut for imported titles and names.</summary>
+    internal static string Cut(string text, int length) => text.Length > length ? text[..length].TrimEnd() : text;
     private const int MaxLabel = 50;
     private const int MaxValue = 1000;
     private const int MaxBlock = 50_000;
@@ -202,13 +205,13 @@ public sealed class ImportDescription
 
         if (item.Url is { } url)
         {
-            block.Append("[Open the original](").Append(Destination(url)).Append(")\n\n");
+            block.Append("[Open the original](").Append(MarkupConverters.Destination(url)).Append(")\n\n");
         }
 
         foreach (var link in item.Links.Take(100))
         {
             var title = MarkupConverters.EscapeText(Whitespace(link.Title ?? link.Url));
-            block.Append("- [").Append(title).Append("](").Append(Destination(link.Url)).Append(")\n");
+            block.Append("- [").Append(title).Append("](").Append(MarkupConverters.Destination(link.Url)).Append(")\n");
         }
 
         block.Append(item.Links.Count > 0 ? "\n" : "").Append("</details>");
@@ -238,12 +241,4 @@ public sealed class ImportDescription
     }
 
     private static string Whitespace(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-
-    private static string Destination(string url)
-    {
-        var clean = url.Trim().Replace("\n", "", StringComparison.Ordinal).Replace("\r", "", StringComparison.Ordinal);
-        return clean.Any(c => char.IsWhiteSpace(c) || c is '(' or ')')
-            ? $"<{clean.Replace("<", "%3C", StringComparison.Ordinal).Replace(">", "%3E", StringComparison.Ordinal)}>"
-            : clean;
-    }
 }

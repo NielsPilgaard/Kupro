@@ -1,12 +1,9 @@
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Kupro.Api.Data;
-using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Comments;
-using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
 using Kupro.Import.Snapshot;
 using Microsoft.AspNetCore.StaticFiles;
@@ -33,14 +30,14 @@ public sealed partial class ImportCommit
     /// What imported text can point at, known before any issue is written: numbers are reserved, and an attachment's ID
     /// is derived from its source ID, so an inline image can name its copy before the copy exists.
     /// </summary>
-    private async Task<ImportReferences> ReferencesAsync(SnapshotReader snapshot, SourceRead read, FitResult fit, Dictionary<string, int> numbers, CancellationToken ct)
+    private async Task<ImportReferences> ReferencesAsync(SnapshotReader snapshot, SourceRead read, Dictionary<string, int> numbers, CancellationToken ct)
     {
         var files = new Dictionary<string, AttachmentRef>(StringComparer.Ordinal);
         var missing = 0;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         await foreach (var attachment in snapshot.ReadAttachmentsAsync(ct))
         {
-            if (!seen.Add(attachment.Id) || HolderOf(attachment.Item, fit) is null)
+            if (!seen.Add(attachment.Id) || read.Fit.HolderOf(attachment.Item) is null)
             {
                 continue;
             }
@@ -132,13 +129,7 @@ public sealed partial class ImportCommit
         return new ImportReferences(names, handles, files, issues, scopes);
     }
 
-    /// <summary>The source item whose issue a record belongs to: the item itself, or for a folded checklist item, its holder.</summary>
-    private string? HolderOf(string sourceItem, FitResult? fit = null) =>
-        _holders.TryGetValue(sourceItem, out var holder) ? holder
-        : _items.ContainsKey(sourceItem) || fit?.Items.ContainsKey(sourceItem) == true ? sourceItem
-        : null;
-
-    private Guid? IssueOf(string sourceItem) => HolderOf(sourceItem) is { } holder && _items.TryGetValue(holder, out var id) ? id : null;
+    private Guid? IssueOf(string sourceItem) => _fit.HolderOf(sourceItem) is { } holder && _items.TryGetValue(holder, out var id) ? id : null;
 
     /// <summary>The same ID for the same source record in every run of this import, so a retried upload overwrites itself.</summary>
     private Guid StableId(string kind, string sourceId)
@@ -337,14 +328,7 @@ public sealed partial class ImportCommit
     /// </summary>
     private async Task<Dictionary<string, string>> ReplayChangesAsync(SnapshotReader snapshot, Dictionary<string, string> projectOf, CancellationToken ct)
     {
-        Dictionary<string, string> prior;
-        await using (var db = await dbFactory.CreateDbContextAsync(ct))
-        {
-            prior = await db.ImportedItems.AsNoTracking()
-                .Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item && i.SeenChangeMark != null)
-                .ToDictionaryAsync(i => i.SourceId, i => i.SeenChangeMark!, StringComparer.Ordinal, ct);
-        }
-
+        var marks = await ChangeMarksAsync(ct);
         var newest = new Dictionary<string, string>(StringComparer.Ordinal);
         var batch = new List<SourceChange>(ChangeBatch);
         var skip = _counts.ChangesRead;
@@ -358,12 +342,12 @@ public sealed partial class ImportCommit
                 continue;
             }
 
-            var mark = Mark(change);
-            if (prior.TryGetValue(change.Item, out var seen) && string.CompareOrdinal(mark, seen) <= 0)
+            if (ImportedHistory.Seen(marks, change))
             {
                 continue;
             }
 
+            var mark = ImportedHistory.Mark(change);
             if (!newest.TryGetValue(change.Item, out var top) || string.CompareOrdinal(mark, top) > 0)
             {
                 newest[change.Item] = mark;
@@ -390,8 +374,14 @@ public sealed partial class ImportCommit
         return newest;
     }
 
-    /// <summary>Sorts by time, then ID: the newest change an item has had replayed. UTC round-trip text sorts by time.</summary>
-    private static string Mark(SourceChange change) => $"{change.At.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)}|{change.Id}";
+    /// <summary>Per item, the newest change an earlier run replayed.</summary>
+    private async Task<Dictionary<string, string>> ChangeMarksAsync(CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.ImportedItems.AsNoTracking()
+            .Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Item && i.SeenChangeMark != null)
+            .ToDictionaryAsync(i => i.SourceId, i => i.SeenChangeMark!, StringComparer.Ordinal, ct);
+    }
 
     private async Task WriteChangeBatchAsync(List<SourceChange> batch, int readTo, Dictionary<string, string> projectOf, CancellationToken ct)
     {
@@ -404,10 +394,14 @@ public sealed partial class ImportCommit
             var assignees = batch.Where(c => c.Field == ChangeFields.Assignee).SelectMany(c => new[] { c.From, c.To });
             await ResolvePeopleAsync(db, assignees.OfType<string>().Distinct(), newPeople, delta, ct);
             var actor = await ActorsAsync(db, batch.Select(c => c.Actor), newPeople, delta, ct);
+            var targets = new ChangeTargets(
+                p => Member(p, newPeople),
+                i => _items.TryGetValue(i, out var id) ? id : null,
+                (item, s) => projectOf.GetValueOrDefault(item) is { } projectKey && _sprints.TryGetValue(SprintKey(s, projectKey), out var id) ? id : null);
             foreach (var change in batch)
             {
                 var (actorId, sourceActor) = actor(change.Actor);
-                var (kind, data) = Translate(change, projectOf.GetValueOrDefault(change.Item), newPeople);
+                var (kind, data) = _changes.Translate(change, targets);
                 if (kind is null)
                 {
                     continue;
@@ -419,7 +413,7 @@ public sealed partial class ImportCommit
                 }
 
                 activity.RecordImported(db, _items[change.Item], kind, actorId, change.At.ToUniversalTime(), data);
-                if (kind == SourceChangedKind)
+                if (kind == ChangeTranslator.SourceChanged)
                 {
                     delta.SourceChanges++;
                 }
@@ -436,81 +430,6 @@ public sealed partial class ImportCommit
         _counts.Add(delta);
         await realtime.ChangedAsync(ChangeTopic.Issue);
     }
-
-    internal const string SourceChangedKind = "source_changed";
-
-    /// <summary>
-    /// One source change as a feed entry. A field Kupro has, with both sides translatable, is <c>updated</c>; anything
-    /// else (a field Kupro lacks, a skipped person, a parent outside the import) is <c>source_changed</c> as the source
-    /// showed it, so no history is lost and none is invented. A change that maps to no change at all is dropped.
-    /// </summary>
-    private (string? Kind, Dictionary<string, object?> Data) Translate(SourceChange change, string? projectKey, Dictionary<string, Guid?> newPeople)
-    {
-        Dictionary<string, object?> Updated(string field, object? from, object? to) => new() { [field] = new FieldChange(from, to) };
-
-        (string?, Dictionary<string, object?>) Raw()
-        {
-            var name = _header.Fields.FirstOrDefault(f => f.Id == change.Field)?.Name ?? change.Field;
-            return (SourceChangedKind, new Dictionary<string, object?>
-            {
-                ["field"] = name,
-                ["from"] = change.FromText ?? change.From,
-                ["to"] = change.ToText ?? change.To,
-            });
-        }
-
-        (string?, Dictionary<string, object?>) Mapped<T>(string field, Func<string, T?> map, bool ifUnknownRaw = true)
-        {
-            var from = change.From is { } f ? map(f) : default;
-            var to = change.To is { } t ? map(t) : default;
-            if (ifUnknownRaw && ((change.From is not null && from is null) || (change.To is not null && to is null)))
-            {
-                return Raw();
-            }
-
-            return Equals(from, to) ? (null, []) : ("updated", Updated(field, from, to));
-        }
-
-        switch (change.Field)
-        {
-            case ChangeFields.Status:
-                return Mapped<IssueState?>("state", s => _source.State(s));
-            case ChangeFields.Type:
-                return Mapped<IssueType?>("type", t => _source.TypeOf(t));
-            case ChangeFields.Priority:
-                return Mapped<IssuePriority?>("priority", p => _source.Priority(p));
-            case ChangeFields.Title:
-                return Mapped("title", t => t.Trim() is { Length: > 0 } title ? Cut(title, ImportDescription.MaxTitle) : null);
-            case ChangeFields.Description:
-                return ("updated", Updated("description", null, null));
-            case ChangeFields.Assignee:
-                return Mapped<Guid?>("assignee", p => Member(p, newPeople));
-            case ChangeFields.Parent:
-                return Mapped<Guid?>("parent", p => _items.TryGetValue(p, out var id) ? id : null);
-            case ChangeFields.Sprint:
-                return Mapped<Guid?>("sprint", s => projectKey is not null && _sprints.TryGetValue(SprintKey(s, projectKey), out var id) ? id : null);
-            case ChangeFields.Labels:
-                var (fromLabels, toLabels) = (LabelList(change.FromText ?? change.From), LabelList(change.ToText ?? change.To));
-                return fromLabels.SequenceEqual(toLabels) ? (null, []) : ("updated", Updated("labels", fromLabels, toLabels));
-            case ChangeFields.EstimateSeconds:
-                return Mapped<decimal?>("effort", s => long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds) && seconds >= 0 ? MappedSource.EffortOfSeconds(seconds) : null);
-            case ChangeFields.Points:
-                return Mapped<decimal?>("effort", p => decimal.TryParse(p, NumberStyles.Number, CultureInfo.InvariantCulture, out var points) ? _source.EffortOfPoints(points) : null);
-            case ChangeFields.Start:
-                return Mapped<DateOnly?>("startDate", Day);
-            case ChangeFields.Due:
-                return Mapped<DateOnly?>("dueDate", Day);
-            default:
-                return Raw();
-        }
-    }
-
-    private static DateOnly? Day(string text) =>
-        DateOnly.TryParse(text.Length >= 10 ? text[..10] : text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : null;
-
-    /// <summary>Labels as the source listed them: one name, or several split on <c>;</c> or <c>,</c> (Azure DevOps tags).</summary>
-    private static List<string> LabelList(string? text) =>
-        text is null ? [] : [.. text.Split([';', ','], StringSplitOptions.RemoveEmptyEntries).Select(LabelService.Normalize).Where(n => n.Length > 0).Order(StringComparer.Ordinal)];
 
     /// <summary>Remembers the newest change replayed per item, after the replay, so a resumed replay isn't cut short by its own marks.</summary>
     private async Task MarkChangesSeenAsync(Dictionary<string, string> newest, CancellationToken ct)
@@ -573,22 +492,4 @@ public sealed partial class ImportCommit
 
     /// <summary>A copied file, as text imported later needs to find it.</summary>
     private sealed record StoredFile(string Url, string FileName, bool Image);
-}
-
-/// <summary>The <see cref="SourceChange.Field"/> names for item properties (docs/import-format.md, Changes).</summary>
-internal static class ChangeFields
-{
-    public const string Status = "status";
-    public const string Type = "type";
-    public const string Title = "title";
-    public const string Description = "description";
-    public const string Priority = "priority";
-    public const string Assignee = "assignee";
-    public const string Parent = "parent";
-    public const string Sprint = "sprint";
-    public const string Labels = "labels";
-    public const string EstimateSeconds = "estimateSeconds";
-    public const string Points = "points";
-    public const string Start = "start";
-    public const string Due = "due";
 }

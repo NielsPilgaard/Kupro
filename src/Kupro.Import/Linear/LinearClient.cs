@@ -29,14 +29,12 @@ internal sealed class LinearClient(HttpClient http, string credential, LinearAut
     /// <summary>Files pasted into descriptions and comments; Linear serves them only to an authenticated request.</summary>
     public const string UploadHost = "uploads.linear.app";
 
-    private const int MaxRetries = 6;
-
     private readonly string _header = auth == LinearAuth.OAuth ? "Bearer " + credential : credential;
 
-    private DateTimeOffset _notBefore;
+    private readonly SourceThrottle _throttle = new(time);
 
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
-    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; } = (wait, ct) => Task.Delay(wait, time, ct);
+    public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     /// <summary>
     /// Runs one query. <paramref name="operation"/> is its name, for error messages; <paramref name="variables"/> is
@@ -64,9 +62,9 @@ internal sealed class LinearClient(HttpClient http, string credential, LinearAut
             var errors = parsed?.Errors ?? [];
             var rateLimited = response.StatusCode == HttpStatusCode.TooManyRequests || errors.Any(e => Code(e) == "RATELIMITED");
             var unavailable = response.StatusCode is HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout;
-            if ((rateLimited || unavailable) && attempt < MaxRetries)
+            if ((rateLimited || unavailable) && attempt < SourceThrottle.MaxRetries)
             {
-                _notBefore = time.GetUtcNow() + (RetryAfter(response) ?? (rateLimited ? Reset(response) : null) ?? TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+                _throttle.PauseFor(_throttle.RetryAfter(response) ?? (rateLimited ? Reset(response) : null) ?? SourceThrottle.Backoff(attempt));
                 continue;
             }
 
@@ -118,12 +116,7 @@ internal sealed class LinearClient(HttpClient http, string credential, LinearAut
     /// <summary>Sends a POST (with a body) or GET, after any wait the last response asked for. Only Linear's hosts get the credential.</summary>
     private async Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct, byte[]? body = null)
     {
-        var wait = _notBefore - time.GetUtcNow();
-        if (wait > TimeSpan.Zero)
-        {
-            await Delay(wait, ct);
-        }
-
+        await _throttle.WaitAsync(ct);
         using var request = new HttpRequestMessage(body is null ? HttpMethod.Get : HttpMethod.Post, url);
         if (body is not null)
         {
@@ -169,12 +162,9 @@ internal sealed class LinearClient(HttpClient http, string credential, LinearAut
 
         if (until is { } delay && delay > TimeSpan.Zero)
         {
-            _notBefore = time.GetUtcNow() + delay;
+            _throttle.PauseFor(delay);
         }
     }
-
-    private TimeSpan? RetryAfter(HttpResponseMessage response) =>
-        response.Headers.RetryAfter is { } header ? header.Delta ?? (header.Date - time.GetUtcNow()) : null;
 
     /// <summary>The later of the two resets of the limits that ran out, or of both when the answer doesn't say which.</summary>
     private TimeSpan? Reset(HttpResponseMessage response)
@@ -193,7 +183,7 @@ internal sealed class LinearClient(HttpClient http, string credential, LinearAut
 
     /// <summary>Time until a reset header's epoch-milliseconds moment.</summary>
     private TimeSpan? Until(HttpResponseMessage response, string name) =>
-        Number(response, name) is { } ms ? DateTimeOffset.FromUnixTimeMilliseconds(ms) - time.GetUtcNow() : null;
+        Number(response, name) is { } ms ? DateTimeOffset.FromUnixTimeMilliseconds(ms) - _throttle.Now : null;
 
     private static long? Number(HttpResponseMessage response, string name) =>
         response.Headers.TryGetValues(name, out var values)
