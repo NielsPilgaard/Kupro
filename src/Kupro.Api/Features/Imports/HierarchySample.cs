@@ -28,9 +28,10 @@ internal static class HierarchySampler
     private const int MinBranch = 3;
 
     /// <summary>Pre-order IDs of up to two branches, deepest first, so the sample shows every level the source has.</summary>
-    public static List<string> Pick(IReadOnlyList<FitInput> items, FitResult fit)
+    /// <param name="listed">Items the snapshot lists; earlier-imported items it doesn't can't be shown, so they take no slot.</param>
+    public static List<string> Pick(IReadOnlyList<FitInput> items, FitResult fit, IReadOnlySet<string> listed)
     {
-        var all = items.Where(i => fit.Items.ContainsKey(i.Id)).DistinctBy(i => i.Id).ToList();
+        var all = items.Where(i => listed.Contains(i.Id) && fit.Items.ContainsKey(i.Id)).DistinctBy(i => i.Id).ToList();
         var ids = all.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
         var children = all.Where(i => i.Parent is not null && ids.Contains(i.Parent)).ToLookup(i => i.Parent!, i => i.Id, StringComparer.Ordinal);
         var roots = all.Where(i => i.Parent is null || !ids.Contains(i.Parent)).Select(i => i.Id).ToList();

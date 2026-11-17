@@ -124,7 +124,7 @@ public static class ImportPlanner
 
         var bottom = fit.FourLevels ? HierarchyFit.Run(read.Kept, FoldEnd.Bottom) : null;
         var top = fit.FourLevels ? HierarchyFit.Run(read.Kept, FoldEnd.Top) : null;
-        var branch = bottom is null ? [] : HierarchySampler.Pick(read.Kept, bottom);
+        var branch = bottom is null ? [] : HierarchySampler.Pick(read.Kept, bottom, read.KeptIds);
 
         var samples = await SampleAsync(
             snapshot, [created, read.Skipped, fit.Reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], read.ToReview, fit.Cycles, keysTaken], branch, ct);

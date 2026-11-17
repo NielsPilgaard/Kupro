@@ -28,9 +28,26 @@ public sealed class ImportPlanTests
             new("lonely", IssueType.Task, null),
         ];
 
-        var picked = HierarchySampler.Pick(items, HierarchyFit.Run(items, FoldEnd.Bottom));
+        var picked = HierarchySampler.Pick(items, HierarchyFit.Run(items, FoldEnd.Bottom), items.Select(i => i.Id).ToHashSet());
 
         picked.ShouldBe(["deep", "feature", "story", "task", "wide0", "wide1", "flat", "flatChild"]);
+    }
+
+    [Fact]
+    public void The_hierarchy_sample_skips_earlier_imported_items_the_snapshot_does_not_list()
+    {
+        List<FitInput> items =
+        [
+            new("old", IssueType.Epic, null, Fixed: true),
+            new("oldFeature", IssueType.Feature, "old", Fixed: true),
+            new("oldStory", IssueType.Task, "oldFeature", Fixed: true),
+            new("epic", IssueType.Epic, null),
+            new("story", IssueType.Task, "epic"),
+        ];
+
+        var picked = HierarchySampler.Pick(items, HierarchyFit.Run(items, FoldEnd.Bottom), new HashSet<string> { "epic", "story" });
+
+        picked.ShouldBe(["epic", "story"]);
     }
 
     [Fact]

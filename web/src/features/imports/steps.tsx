@@ -267,7 +267,7 @@ function HierarchyTrees({ sample, fold, kind }: { sample: HierarchySample; fold?
             {sample.source.map((n) => {
               const landedAs = byId.get(n.sourceId);
               return (
-                <li key={n.sourceId} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
+                <li key={n.sourceId} aria-level={n.depth + 1} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
                   <Guides depth={n.depth} />
                   {landedAs && <StatusRing state={landedAs.state} />}
                   <span className="min-w-[66px] shrink-0 font-mono text-sm whitespace-nowrap text-mute">{n.key ?? `#${n.sourceId}`}</span>
@@ -289,7 +289,7 @@ function HierarchyTrees({ sample, fold, kind }: { sample: HierarchySample; fold?
               {landed.map((n) => {
                 const text = note(n);
                 return (
-                  <li key={n.sourceId} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
+                  <li key={n.sourceId} aria-level={n.depth + 1} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
                     <Guides depth={n.depth} />
                     <StatusRing state={n.state} />
                     <span className="min-w-[66px] shrink-0 font-mono text-sm whitespace-nowrap text-mute">{n.key ?? '—'}</span>
