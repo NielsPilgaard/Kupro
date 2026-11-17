@@ -23,6 +23,7 @@ import {
 import { createImport, getImportMapping, runImport, setImportMapping, uploadImportSource } from '../../api/gen/sdk.gen';
 import type { CsvColumns, ImportMapping, ImportPlan, ImportUpload } from '../../api/gen/types.gen';
 import { Topbar } from '../../app/AppShell';
+import { useToast } from '../../components/Toasts';
 import { Button, Kbd } from '../../components/ui';
 import { useHours } from '../../lib/format';
 import { useShortcuts } from '../../lib/shortcuts';
@@ -46,6 +47,7 @@ import {
   blockerOf,
   delta,
   formatBytes,
+  mergeProposal,
   openDecisions,
   peopleCounts,
   phaseOf,
@@ -78,6 +80,7 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
   const { t } = useTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const toast = useToast();
   const sourceName = useSourceName();
   const path = { workspace, id: importId ?? '' };
   const enabled = !!importId;
@@ -148,8 +151,17 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
       const created = await createImport({ path: { workspace }, body: { sourceKind: kind, baseUrl: form.url.trim() || null, token: token || null } });
       if (!created.data) throw created.error;
       const id = created.data.id;
-      if (source.file && form.file) await upload(id, form.file);
       void qc.invalidateQueries({ queryKey: listImportsQueryKey({ path: { workspace } }) });
+      if (source.file && form.file) {
+        try {
+          await upload(id, form.file);
+        } catch (e) {
+          // The import exists now: retry the upload on its own source step, not by creating another draft.
+          toast.error(problemText(e) ?? t('imports.errors.failed'));
+          void navigate({ to: '/w/$workspace/imports/$importId/setup', params: { workspace, importId: id }, search: { step: 'source' } });
+          return;
+        }
+      }
       void navigate({
         to: '/w/$workspace/imports/$importId/setup',
         params: { workspace, importId: id },
@@ -199,9 +211,10 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
     try {
       await setImportMapping({ path, body: { ...mapping, csv: csvColumns }, throwOnError: true });
       const proposed = (await getImportMapping({ path, query: { propose: true }, throwOnError: true })).data.mapping;
-      setDraft(proposed);
+      const merged = mergeProposal(mapping, proposed);
+      setDraft(merged);
       setCsvColumns(undefined);
-      planner.request(proposed, 0);
+      planner.request(merged, 0);
       await qc.invalidateQueries({ queryKey: describeImportSourceQueryKey({ path }) });
       return true;
     } catch (e) {

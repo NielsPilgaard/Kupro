@@ -54,7 +54,7 @@ public sealed partial class ImportService
             return new IssueError("invalid_csv", ex.Message);
         }
 
-        await snapshots.StoreSourceAsync(workspace.RequireWorkspaceId(), importId, path, "text/csv", ct);
+        await snapshots.StoreCsvAsync(workspace.RequireWorkspaceId(), importId, path, table, ct);
         return Preview(table, CsvColumns.Propose(table.Headers));
     }
 
@@ -73,13 +73,11 @@ public sealed partial class ImportService
             return new IssueError("not_csv", "This import doesn't read a CSV file.");
         }
 
-        await using var source = await snapshots.OpenSourceAsync(import.WorkspaceId, importId, ct);
-        if (source is null)
+        if (await snapshots.ReadCsvAsync(import.WorkspaceId, importId, ct) is not { } table)
         {
             return new IssueError("no_snapshot", "Upload the CSV file first.");
         }
 
-        var table = await CsvTable.ReadAsync(source, ct);
         return Preview(table, CsvColumns.Fit(SavedColumns(import), table.Headers));
     }
 
@@ -166,20 +164,8 @@ public sealed partial class ImportService
             return ImportMappingDefaults.Propose(await export.DescribeAsync(ct), members) with { MilestoneVersions = export.Milestones() };
         }
 
-        if (import.EncryptedToken is not null)
-        {
-            var described = await DescribeAsync(importId, ct);
-            return described.Error is { } describeError ? describeError : ImportMappingDefaults.Propose(described.Value!, members);
-        }
-
-        await using var file = await snapshots.OpenAsync(import.WorkspaceId, importId, ct);
-        if (file is null)
-        {
-            return new IssueError("no_snapshot", "The import has no snapshot yet.");
-        }
-
-        await using var snapshot = await SnapshotReader.OpenAsync(file, ct);
-        return ImportMappingDefaults.Propose(snapshot.Header, members);
+        var described = import.EncryptedToken is not null ? await DescribeAsync(importId, ct) : await DescribeUploadAsync(import, ct);
+        return described.Error is { } describeError ? describeError : ImportMappingDefaults.Propose(described.Value!, members);
     }
 
     /// <summary>What an uploaded source holds, read from the stored file: a CSV with its saved or proposed columns, an export, or a snapshot.</summary>
@@ -227,13 +213,11 @@ public sealed partial class ImportService
 
     private async Task<IssueResult<CsvRead>> ReadCsvAsync(WorkspaceImport import, CancellationToken ct)
     {
-        await using var source = await snapshots.OpenSourceAsync(import.WorkspaceId, import.Id, ct);
-        if (source is null)
+        if (await snapshots.ReadCsvAsync(import.WorkspaceId, import.Id, ct) is not { } table)
         {
             return new IssueError("no_snapshot", "Upload the CSV file first.");
         }
 
-        var table = await CsvTable.ReadAsync(source, ct);
         var columns = CsvColumns.Fit(SavedColumns(import), table.Headers);
         return new CsvRead(await new CsvConnector(table, columns, CsvProjectName, clock).DescribeAsync(ct), columns);
     }

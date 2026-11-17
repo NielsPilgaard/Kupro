@@ -41,7 +41,11 @@ export function ImportsPage() {
   const { t } = useTranslation();
   const { workspace } = useParams({ strict: false }) as { workspace: string };
   const navigate = useNavigate();
-  const { data: imports, isPending } = useQuery(listImportsOptions({ path: { workspace } }));
+  // One request for the whole list: each import carries its last run and recent commits. Poll while one runs.
+  const { data: imports, isPending } = useQuery({
+    ...listImportsOptions({ path: { workspace } }),
+    refetchInterval: (q) => (q.state.data?.some((i) => active(i.lastRun)) ? 2000 : false),
+  });
 
   return (
     <>
@@ -80,8 +84,8 @@ export function ImportsPage() {
 function useStatus() {
   const { t } = useTranslation();
   const date = useDate();
-  return (i: ImportResponse, runs?: ImportRunResponse[]) => {
-    const committed = runs?.some((r) => r.kind === 'commit' && r.state === 'succeeded') ?? i.lastRun?.kind === 'commit';
+  return (i: ImportResponse) => {
+    const committed = i.committed;
     if (i.state === 'finished') return { tone: 'neutral' as const, text: t('imports.status.finished', { date: date(i.finishedAt) }) };
     if (i.state === 'undone') return { tone: 'neutral' as const, text: t('imports.status.undone') };
     if (i.tokenRejectedAt) return { tone: 'bad' as const, text: t('imports.status.tokenRejected') };
@@ -100,9 +104,8 @@ function ImportRow({ workspace, imp }: { workspace: string; imp: ImportResponse 
   const sourceName = useSourceName();
   const relative = useRelativeTime();
   const status = useStatus();
-  const { data: runs } = useQuery({ ...listImportRunsOptions({ path: { workspace, id: imp.id } }), refetchInterval: (q) => poll(q.state.data) });
-  const s = status(imp, runs);
-  const committed = runs?.some((r) => r.kind === 'commit' && r.state === 'succeeded');
+  const s = status(imp);
+  const committed = imp.committed;
   const open = () => void navigate({ to: '/w/$workspace/imports/$importId', params: { workspace, importId: imp.id } });
 
   return (
@@ -119,7 +122,7 @@ function ImportRow({ workspace, imp }: { workspace: string; imp: ImportResponse 
         <span className="text-xs text-mute">{imp.lastRunAt ? t('imports.lastRun', { when: relative(imp.lastRunAt) }) : t('imports.neverRun')}</span>
       </div>
       <div className="w-36 max-[960px]:hidden">
-        <Sparkline bars={sparkBars(runs ?? [])} />
+        <Sparkline bars={sparkBars(imp.recentCommits)} />
       </div>
       <div className="flex gap-1 max-[960px]:hidden">
         {imp.state === 'active' && !committed ? (

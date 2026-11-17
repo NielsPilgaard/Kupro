@@ -13,6 +13,7 @@ using Kupro.Import.Csv;
 using Kupro.Import.Kupro;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Polly.Timeout;
 
@@ -42,9 +43,44 @@ public sealed class ImportOptions
 }
 
 /// <summary>Where an import's stored snapshot lives. Plans and commits read this copy, so re-planning doesn't read the source. Singleton.</summary>
-public sealed class ImportSnapshots(ObjectStorage storage)
+public sealed class ImportSnapshots(ObjectStorage storage, IMemoryCache cache)
 {
+    /// <summary>
+    /// One wizard load asks for a CSV's description, preview and mapping, so its parse is kept briefly. A new upload
+    /// replaces it on this instance; another API instance could serve the old file for at most this long.
+    /// </summary>
+    private static readonly TimeSpan CsvKept = TimeSpan.FromMinutes(1);
+
     public bool Enabled => storage.Enabled;
+
+    /// <summary>Stores an uploaded CSV and keeps its parse for the requests that follow the upload.</summary>
+    public async Task StoreCsvAsync(Guid workspaceId, Guid importId, string path, CsvTable table, CancellationToken ct)
+    {
+        await StoreSourceAsync(workspaceId, importId, path, "text/csv", ct);
+        cache.Set(CsvKey(workspaceId, importId), table, CsvKept);
+    }
+
+    /// <summary>The uploaded CSV, parsed. Null if none is stored.</summary>
+    public async Task<CsvTable?> ReadCsvAsync(Guid workspaceId, Guid importId, CancellationToken ct)
+    {
+        var key = CsvKey(workspaceId, importId);
+        if (cache.TryGetValue(key, out CsvTable? kept))
+        {
+            return kept;
+        }
+
+        await using var source = await OpenSourceAsync(workspaceId, importId, ct);
+        if (source is null)
+        {
+            return null;
+        }
+
+        var table = await CsvTable.ReadAsync(source, ct);
+        cache.Set(key, table, CsvKept);
+        return table;
+    }
+
+    private static (string, Guid, Guid) CsvKey(Guid workspaceId, Guid importId) => ("import-csv", workspaceId, importId);
 
     public Task StoreAsync(Guid workspaceId, Guid importId, string path, CancellationToken ct) =>
         storage.UploadFileAsync(ObjectKey(workspaceId, importId), path, "application/zip", ct);
