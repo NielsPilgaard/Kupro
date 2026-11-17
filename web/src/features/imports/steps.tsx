@@ -267,6 +267,7 @@ function HierarchyTrees({ sample, fold, kind }: { sample: HierarchySample; fold?
             {sample.source.map((n) => {
               const landedAs = byId.get(n.sourceId);
               return (
+                // biome-ignore lint/a11y/useAriaPropsSupportedByRole: ARIA 1.2 allows aria-level on listitem; it exposes the tree depth.
                 <li key={n.sourceId} aria-level={n.depth + 1} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
                   <Guides depth={n.depth} />
                   {landedAs && <StatusRing state={landedAs.state} />}
@@ -289,6 +290,7 @@ function HierarchyTrees({ sample, fold, kind }: { sample: HierarchySample; fold?
               {landed.map((n) => {
                 const text = note(n);
                 return (
+                  // biome-ignore lint/a11y/useAriaPropsSupportedByRole: ARIA 1.2 allows aria-level on listitem; it exposes the tree depth.
                   <li key={n.sourceId} aria-level={n.depth + 1} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
                     <Guides depth={n.depth} />
                     <StatusRing state={n.state} />
