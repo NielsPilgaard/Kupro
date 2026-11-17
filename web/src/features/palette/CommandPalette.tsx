@@ -1,14 +1,24 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Command } from 'cmdk';
-import { CircleCheck, FolderKanban, Inbox, List, Plus, Search, Tag, UserRound, Users } from 'lucide-react';
+import { ArrowDownToLine, CircleCheck, FileText, FolderKanban, Inbox, List, Plus, RefreshCw, Search, Tag, UserRound, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getMeOptions, listIssuesOptions, listLabelsOptions, listProjectsOptions } from '../../api/gen/@tanstack/react-query.gen';
+import {
+  getMeOptions,
+  getWorkspaceOptions,
+  listImportsOptions,
+  listIssuesOptions,
+  listLabelsOptions,
+  listProjectsOptions,
+} from '../../api/gen/@tanstack/react-query.gen';
+import { runImport } from '../../api/gen/sdk.gen';
 import type { IssuePriority, IssueState } from '../../api/gen/types.gen';
 import { isAssignable, useIssues, useMembers, useUpdateIssue } from '../../api/issues';
 import { useUi, type PalettePage } from '../../app/UiContext';
 import { Avatar, Kbd, LabelPill, PriorityIcon, StatusRing } from '../../components/ui';
+import { useToast } from '../../components/Toasts';
+import { useImportName } from '../imports/sources';
 import { cliFor, priorities, states } from '../../lib/issues';
 
 interface Entry {
@@ -40,6 +50,12 @@ export function CommandPalette({ workspace }: { workspace: string }) {
   const { data: projects } = useQuery({ ...listProjectsOptions({ path: { workspace } }), enabled: !!page });
   const { data: labels } = useQuery({ ...listLabelsOptions({ path: { workspace } }), enabled: page === 'label' });
   const { data: members } = useMembers(workspace);
+  // Imports are an owner's (task 023): "Import from…", "Sync import now", "Open import report".
+  const { data: info } = useQuery({ ...getWorkspaceOptions({ path: { workspace } }), enabled: !!page });
+  const owner = info?.role === 'owner';
+  const { data: imports } = useQuery({ ...listImportsOptions({ path: { workspace } }), enabled: !!page && owner });
+  const importName = useImportName();
+  const toast = useToast();
   // Recently updated issues before a search starts; the server search finds the rest.
   const { data: recent } = useIssues(workspace, { sort: 'updated', limit: 20 });
 
@@ -130,6 +146,30 @@ export function CommandPalette({ workspace }: { workspace: string }) {
             : []),
           { id: 'nav:mine', label: t('nav.myIssues'), icon: <Inbox size={16} />, cli: 'kupro issue list --assignee me', run: () => { close(); void navigate({ to: '/w/$workspace/my-issues', params: { workspace } }); } },
           { id: 'nav:members', label: t('palette.members'), icon: <Users size={16} />, cli: 'kupro member list', run: () => { close(); void navigate({ to: '/w/$workspace/members', params: { workspace } }); } },
+          ...(owner
+            ? [
+                { id: 'nav:import', label: t('imports.palette.importFrom'), icon: <ArrowDownToLine size={16} />, cli: 'kupro import create <source> --url <url>', run: () => { close(); void navigate({ to: '/w/$workspace/imports/new', params: { workspace } }); } },
+                ...(imports ?? [])
+                  .filter((i) => i.state === 'active' && i.lastChangeAt)
+                  .map((i) => ({
+                    id: `import:${i.id}:sync`,
+                    label: t('imports.palette.sync', { name: importName(i) }),
+                    icon: <RefreshCw size={16} />,
+                    cli: `kupro import run ${i.id}`,
+                    run: () => {
+                      close();
+                      void runImport({ path: { workspace, id: i.id } }).then((r) => (r.response?.ok ? toast.info(t('importPage.syncStarted')) : toast.error(t('imports.errors.failed'))));
+                    },
+                  })),
+                ...(imports ?? []).map((i) => ({
+                  id: `import:${i.id}:report`,
+                  label: t('imports.palette.report', { name: importName(i) }),
+                  icon: <FileText size={16} />,
+                  cli: `kupro import report ${i.id}`,
+                  run: () => { close(); void navigate({ to: '/w/$workspace/imports/$importId', params: { workspace, importId: i.id } }); },
+                })),
+              ]
+            : []),
           ...(projects ?? []).flatMap((p) => [
             { id: `nav:${p.key}:list`, label: t('palette.openList', { name: p.name }), icon: <List size={16} />, cli: `kupro issue list --project ${p.key}`, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'list' } }); } },
             { id: `nav:${p.key}:board`, label: t('palette.openBoard', { name: p.name }), icon: <FolderKanban size={16} />, run: () => { close(); void navigate({ to: '/w/$workspace/p/$project', params: { workspace, project: p.key }, search: { view: 'board' } }); } },
@@ -148,7 +188,7 @@ export function CommandPalette({ workspace }: { workspace: string }) {
         ];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t]);
+  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t, owner, imports]);
 
   if (!page) return null;
   // While searching, the server has already matched the issues; commands are matched here by a plain substring so

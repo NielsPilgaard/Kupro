@@ -82,6 +82,16 @@ public sealed class CsvImportTests
     }
 
     [Fact]
+    public void Saved_columns_are_kept_only_while_the_file_still_has_them()
+    {
+        var saved = new CsvColumns { Title = "Name", Status = "State" };
+
+        CsvColumns.Fit(saved, ["name", "state", "Notes"]).ShouldBeSameAs(saved);
+        CsvColumns.Fit(saved, ["Title", "Status"]).Title.ShouldBe("Title");
+        CsvColumns.Fit(null, ["Title"]).Title.ShouldBe("Title");
+    }
+
+    [Fact]
     public void An_empty_file_says_what_it_needs()
     {
         Should.Throw<FormatException>(() => CsvTable.Parse([])).Message.ShouldContain("header row");

@@ -592,7 +592,7 @@ public sealed partial class ImportJob(
                 if (import.SourceKind == SourceKinds.Csv)
                 {
                     var table = await CsvTable.ReadAsync(source, ct);
-                    var csv = new CsvConnector(table, mapping.Csv ?? CsvColumns.Propose(table.Headers), ImportService.CsvProjectName, clock);
+                    var csv = new CsvConnector(table, CsvColumns.Fit(mapping.Csv, table.Headers), ImportService.CsvProjectName, clock);
                     await csv.WriteSnapshotAsync(file, scope, null, includeFiles: false, clock, ct);
                 }
                 else

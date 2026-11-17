@@ -113,7 +113,7 @@ public sealed partial class ImportService
             run.Kind == ImportRunKind.Commit && run.Report is { } report ? JsonSerializer.Deserialize<ImportRunReport>(report, web) : null);
     }
 
-    public async Task<IssueResult<ImportMappingResponse>> GetMappingAsync(Guid importId, CancellationToken ct)
+    public async Task<IssueResult<ImportMappingResponse>> GetMappingAsync(Guid importId, CancellationToken ct, bool propose = false)
     {
         await using (var db = await dbFactory.CreateDbContextAsync(ct))
         {
@@ -123,7 +123,7 @@ public sealed partial class ImportService
                 return NotFound(importId);
             }
 
-            if (saved.Mapping is { } json)
+            if (saved.Mapping is { } json && !propose)
             {
                 return new ImportMappingResponse(ImportMapping.FromJson(json), Saved: true);
             }
@@ -248,15 +248,7 @@ public sealed partial class ImportService
                 return export.Error is { } exportError ? exportError : new ImportUpload(export.Value, null);
             default:
                 var snapshot = await StoreSnapshotAsync(importId, path, ct);
-                return snapshot.Error is { } snapshotError ? snapshotError : new ImportUpload(new SourceDescription
-                {
-                    Source = snapshot.Value!.Source,
-                    Projects = snapshot.Value.Projects,
-                    People = snapshot.Value.People,
-                    ItemTypes = snapshot.Value.ItemTypes,
-                    Statuses = snapshot.Value.Statuses,
-                    Fields = snapshot.Value.Fields,
-                }, null);
+                return snapshot.Error is { } snapshotError ? snapshotError : new ImportUpload(Described(snapshot.Value!), null);
         }
     }
 

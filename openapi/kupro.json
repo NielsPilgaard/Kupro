@@ -4095,7 +4095,7 @@
         "tags": [
           "Imports"
         ],
-        "summary": "Projects, people, types, statuses and fields, read live from the source with the import's token.",
+        "summary": "Projects, people, types, statuses and fields: read live from the source with the import's token, or from the uploaded file.",
         "operationId": "describeImportSource",
         "parameters": [
           {
@@ -4150,6 +4150,76 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/imports/{id}/source/csv": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "An uploaded CSV again: rows, headers, encoding, the first rows, and the columns in force.",
+        "operationId": "getImportCsvPreview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/imports/{id}/mapping": {
       "get": {
         "tags": [
@@ -4165,6 +4235,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "propose",
+            "in": "query",
+            "description": "Propose one anyway, from the source and a saved CSV's columns: after the columns change, its types and states do too.",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           },
           {

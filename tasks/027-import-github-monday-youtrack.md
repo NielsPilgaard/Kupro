@@ -45,7 +45,7 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
   (`ImportReferences`, `ImportCommitTests.GitHub`).
 
 Not done: Projects (v2) fields (Status, Iteration, a number field; the owner picks the project in the import screen,
-task 033), the site page (waits on the same pick), and the recorded fixtures and live run (a sandbox, a manual step).
+the wizard, task 023), the site page (waits on the wizard), and the recorded fixtures and live run (a sandbox, a manual step).
 Known cost: a delta still reads the repository-wide event list, and a repository's issues are held in memory while
 its sub-issue parents are worked out.
 
@@ -71,7 +71,7 @@ YouTrack is in: `Kupro.Import/YouTrack` (`YouTrackConnector`, client), registere
   other issue duplicates this one). A delta reads activities from the cursor (`start`). End to end in
   `ImportCommitTests.YouTrack`.
 
-Not done for YouTrack: the site page (waits on the import screen pick, task 033), and the recorded fixtures and live
+Not done for YouTrack: the site page (waits on the wizard, task 023), and the recorded fixtures and live
 run (a sandbox, a manual step).
 
 Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registered in `ImportSources` and as
@@ -93,7 +93,7 @@ Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registe
   closed-items cutoff is left out with its subitems. An item with more than 100 updates has the rest paged in; a delta
   reads the activity log from the cursor.
 
-Not done for Monday: column mapping in the import screen (overrides the picks above; task 033), the site page, and
+Not done for Monday: column mapping in the import screen (overrides the picks above; the wizard, task 023), the site page, and
 the recorded fixtures and live run (a sandbox, a manual step). Known cost: a delta still reads every item on the board.
 
 ## Scope
