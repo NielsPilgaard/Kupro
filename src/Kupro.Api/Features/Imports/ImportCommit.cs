@@ -148,8 +148,8 @@ public sealed partial class ImportCommit(
     private readonly Dictionary<string, Guid> _sprints = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Guid> _labels = new(StringComparer.Ordinal);
 
-    /// <summary>A folded checklist item's source ID to the item that holds it: its comments and files go there.</summary>
-    private readonly Dictionary<string, string> _holders = new(StringComparer.Ordinal);
+    /// <summary>This run's fit: it says which item holds a folded checklist item's comments and files.</summary>
+    private FitResult _fit = null!;
 
     /// <summary>What earlier runs imported, as this run started. Everything else this run writes is new.</summary>
     private readonly Dictionary<string, KnownItem> _known = new(StringComparer.Ordinal);
@@ -181,15 +181,11 @@ public sealed partial class ImportCommit(
 
         await LoadKnownAsync(ct);
 
-        var read = await SourceRead.ReadAsync(snapshot, _source, Tree, ct);
+        var read = await SourceRead.ReadAsync(snapshot, _source, Tree, counting: false, ct);
         var fit = read.Fit;
         var tops = await TopTitlesAsync(snapshot, fit, ct);
         var checklists = Checklists(fit, read.ChecklistLines);
-
-        foreach (var checklist in fit.Checklists)
-        {
-            _holders[checklist.Item] = checklist.Parent;
-        }
+        _fit = fit;
 
         await EnsureProjectsAsync(read.Targets, ct);
         var numbers = await ReserveNumbersAsync(read, ct);
@@ -369,7 +365,7 @@ public sealed partial class ImportCommit(
             var count = await db.Projects.CountAsync(ct);
             foreach (var target in needs.Create)
             {
-                var project = projects.AddImported(db, target.Key, Cut(target.Name.Trim(), MaxProjectName), count++);
+                var project = projects.AddImported(db, target.Key, ImportDescription.Cut(target.Name.Trim(), MaxProjectName), count++);
                 db.ProjectCapacity.AddRange(CapacityOf(target.Key).Select(c => new ProjectCapacity
                 {
                     Id = Guid.CreateVersion7(),
@@ -413,7 +409,7 @@ public sealed partial class ImportCommit(
     private async Task<ProjectNeeds> ProjectNeedsAsync(KuproDbContext db, IReadOnlyCollection<ProjectTarget> targets, CancellationToken ct)
     {
         var keys = targets.Select(t => t.Key).Distinct().ToList();
-        var existing = await db.Projects.Where(p => keys.Contains(p.Key)).ToDictionaryAsync(p => p.Key, p => p.Id, StringComparer.Ordinal, ct);
+        var existing = await db.Projects.AsNoTracking().Where(p => keys.Contains(p.Key)).Select(p => new { p.Key, p.Id }).ToDictionaryAsync(p => p.Key, p => p.Id, StringComparer.Ordinal, ct);
         var ours = await db.ImportedItems.Where(i => i.ImportId == _importId && i.SourceKind == ImportedKinds.Project).Select(i => i.EntityId).ToListAsync(ct);
         var needs = new ProjectNeeds();
         foreach (var group in targets.GroupBy(t => t.Key).OrderBy(g => g.Key, StringComparer.Ordinal))
@@ -538,7 +534,7 @@ public sealed partial class ImportCommit(
                 var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
                 var start = source.Start ?? source.End ?? today;
                 var end = source.End ?? source.Start ?? today;
-                var sprint = sprints.AddImported(db, projectId, Cut(source.Name.Trim(), MaxSprintName), start < end ? start : end, start < end ? end : start, source.Closed);
+                var sprint = sprints.AddImported(db, projectId, ImportDescription.Cut(source.Name.Trim(), MaxSprintName), start < end ? start : end, start < end ? end : start, source.Closed);
                 Record(db, ImportedKinds.Sprint, key, ImportedEntityKind.Sprint, sprint.Id);
                 added[key] = sprint.Id;
                 delta.Sprints++;
@@ -546,7 +542,7 @@ public sealed partial class ImportCommit(
 
             foreach (var version in await MilestonesToCreateAsync(db, _projects.Keys, ct))
             {
-                var milestone = plan.AddImportedMilestone(db, _projects[_source.Project(version.Project).Key], Cut(version.Name.Trim(), MaxSprintName), version.Date!.Value);
+                var milestone = plan.AddImportedMilestone(db, _projects[_source.Project(version.Project).Key], ImportDescription.Cut(version.Name.Trim(), MaxSprintName), version.Date!.Value);
                 Record(db, ImportedKinds.Version, version.Id, ImportedEntityKind.Milestone, milestone.Id);
                 delta.Milestones++;
             }
@@ -797,7 +793,7 @@ public sealed partial class ImportCommit(
                 default:
                     // Inviting happens when the run finishes: the same row becomes the invite, so history follows it.
                     var source = people.GetValueOrDefault(id);
-                    var placeholder = workspaces.AddPlaceholder(db, Cut(source?.Name ?? id, 200), source?.Email is { Length: <= 320 } email ? email : null);
+                    var placeholder = workspaces.AddPlaceholder(db, ImportDescription.Cut(source?.Name ?? id, 200), source?.Email is { Length: <= 320 } email ? email : null);
                     Record(db, ImportedKinds.Person, id, ImportedEntityKind.Member, placeholder.Id);
                     added[id] = placeholder.Id;
                     delta.Members++;
@@ -1114,8 +1110,6 @@ public sealed partial class ImportCommit(
     }
 
     private static string SprintKey(string sprintId, string projectKey) => $"{sprintId}/{projectKey}";
-
-    private static string Cut(string text, int length) => text.Length > length ? text[..length].TrimEnd() : text;
 
     [GeneratedRegex(ProjectService.KeyPattern)]
     private static partial Regex ProjectKey();

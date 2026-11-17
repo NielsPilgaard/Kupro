@@ -5,8 +5,11 @@ using Kupro.Import.Snapshot;
 
 namespace Kupro.Api.Features.Imports;
 
-/// <summary>What a change can point at in the workspace, by source ID. Null: the import has nothing for it.</summary>
-internal sealed record ChangeTargets(Func<string, Guid?> Member, Func<string, Guid?> Issue, Func<string, Guid?> Sprint);
+/// <summary>
+/// What a change can point at in the workspace, by source ID. Null: the import has nothing for it. A sprint is looked
+/// up by the changed item and the sprint, as each project gets its own copy of a sprint.
+/// </summary>
+internal sealed record ChangeTargets(Func<string, Guid?> Member, Func<string, Guid?> Issue, Func<string, string, Guid?> Sprint);
 
 /// <summary>
 /// Source changes as feed entries (ADR-019 Changelog replay). A field Kupro has, with both sides translatable, is
@@ -55,7 +58,7 @@ internal sealed class ChangeTranslator(SnapshotHeader header, MappedSource sourc
             case ChangeFields.Priority:
                 return Mapped<IssuePriority?>("priority", p => source.Priority(p));
             case ChangeFields.Title:
-                return Mapped("title", t => t.Trim() is { Length: > 0 } title ? (title.Length > ImportDescription.MaxTitle ? title[..ImportDescription.MaxTitle].TrimEnd() : title) : null);
+                return Mapped("title", t => t.Trim() is { Length: > 0 } title ? ImportDescription.Cut(title, ImportDescription.MaxTitle) : null);
             case ChangeFields.Description:
                 return (Updated, Data("description", null, null));
             case ChangeFields.Assignee:
@@ -63,7 +66,7 @@ internal sealed class ChangeTranslator(SnapshotHeader header, MappedSource sourc
             case ChangeFields.Parent:
                 return Mapped<Guid?>("parent", targets.Issue);
             case ChangeFields.Sprint:
-                return Mapped<Guid?>("sprint", targets.Sprint);
+                return Mapped<Guid?>("sprint", s => targets.Sprint(change.Item, s));
             case ChangeFields.Labels:
                 var (fromLabels, toLabels) = (LabelList(change.FromText ?? change.From), LabelList(change.ToText ?? change.To));
                 return fromLabels.SequenceEqual(toLabels) ? (null, []) : (Updated, Data("labels", fromLabels, toLabels));

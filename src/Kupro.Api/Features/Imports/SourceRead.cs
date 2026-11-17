@@ -24,7 +24,10 @@ internal sealed record ItemRef(string Id, string ProjectKey, string? Key, string
 /// </summary>
 internal sealed class SourceRead
 {
-    private SourceRead(ImportTree tree, FoldEnd fold) => (Tree, Fold) = (tree, fold);
+    private SourceRead(ImportTree tree, FoldEnd fold, bool counting) => (Tree, Fold, _counting) = (tree, fold, counting);
+
+    /// <summary>Whether to fill what only a plan reads: <see cref="Skipped"/>, <see cref="ToReview"/> and <see cref="Hours"/>.</summary>
+    private readonly bool _counting;
 
     public ImportTree Tree { get; }
     public FoldEnd Fold { get; }
@@ -35,7 +38,10 @@ internal sealed class SourceRead
     /// <summary>The snapshot's in-scope items.</summary>
     public HashSet<string> KeptIds { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>Out-of-scope items. Plan only.</summary>
     public List<string> Skipped { get; } = [];
+
+    /// <summary>In-scope items whose status the owner should review. Plan only.</summary>
     public List<string> ToReview { get; } = [];
 
     /// <summary>Imported items a whole snapshot no longer has.</summary>
@@ -46,7 +52,7 @@ internal sealed class SourceRead
     public HashSet<(string SprintId, string ProjectKey)> Sprints { get; } = [];
     public Dictionary<string, ChecklistLine> ChecklistLines { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>Hours per target project key, over the snapshot's in-scope items that get an issue.</summary>
+    /// <summary>Hours per target project key, over the snapshot's in-scope items that get an issue. Plan only.</summary>
     public Dictionary<string, decimal> Hours { get; } = new(StringComparer.Ordinal);
 
     public FitResult Fit { get; private set; } = null!;
@@ -55,9 +61,10 @@ internal sealed class SourceRead
     public IEnumerable<ItemRef> New => Refs.Where(r => Fit.Items.ContainsKey(r.Id) && !Tree.Items.ContainsKey(r.Id));
 
     /// <summary>Repeated IDs count once: paged source searches can return an item twice, and scripts can write anything.</summary>
-    public static async Task<SourceRead> ReadAsync(SnapshotReader snapshot, MappedSource source, ImportTree tree, CancellationToken ct)
+    /// <param name="counting">A plan: also fill what only it reads. A commit leaves it out, to hold less per item.</param>
+    public static async Task<SourceRead> ReadAsync(SnapshotReader snapshot, MappedSource source, ImportTree tree, bool counting, CancellationToken ct)
     {
-        var read = new SourceRead(tree, source.Fold);
+        var read = new SourceRead(tree, source.Fold, counting);
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         // A checklist item's hours count only if the fit can't fold it and it stays an item.
@@ -71,7 +78,11 @@ internal sealed class SourceRead
 
             if (!source.InScope(item))
             {
-                read.Skipped.Add(item.Id);
+                if (counting)
+                {
+                    read.Skipped.Add(item.Id);
+                }
+
                 continue;
             }
 
@@ -81,7 +92,7 @@ internal sealed class SourceRead
             read.KeptIds.Add(item.Id);
             read.Refs.Add(new ItemRef(item.Id, target.Key, item.Key, item.Url));
             read.Targets.Add(target);
-            if (source.NeedsReview(item.Status))
+            if (counting && source.NeedsReview(item.Status))
             {
                 read.ToReview.Add(item.Id);
             }
@@ -89,9 +100,12 @@ internal sealed class SourceRead
             if (input.Checklist)
             {
                 read.ChecklistLines[item.Id] = new ChecklistLine(item.Title, source.State(item) is IssueState.Done or IssueState.Canceled);
-                checklistHours.Add((item.Id, target.Key, source.Effort(item) ?? 0));
+                if (counting)
+                {
+                    checklistHours.Add((item.Id, target.Key, source.Effort(item) ?? 0));
+                }
             }
-            else
+            else if (counting)
             {
                 read.AddHours(target.Key, source.Effort(item) ?? 0);
             }

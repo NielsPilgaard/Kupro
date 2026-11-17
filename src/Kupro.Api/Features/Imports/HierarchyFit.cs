@@ -20,19 +20,28 @@ public sealed record FoldedChecklist(string Item, string Parent);
 /// <summary>An item under a folded top-level item, labelled with that item's name.</summary>
 public sealed record FoldedTop(string Item, string Top);
 
-public sealed record FitResult(
-    IReadOnlyDictionary<string, FittedItem> Items,
-    IReadOnlyList<OldParent> OldParents,
-    IReadOnlyList<FoldedChecklist> Checklists,
-    IReadOnlyList<FoldedTop> FoldedTops,
-    IReadOnlyList<string> Promoted,
-    IReadOnlyList<string> Cycles,
-    bool FourLevels)
+/// <summary>The fit's outcome. A class, not a record: <see cref="HolderOf"/> keeps a lookup built from <see cref="Checklists"/>.</summary>
+public sealed class FitResult(
+    IReadOnlyDictionary<string, FittedItem> items,
+    IReadOnlyList<OldParent> oldParents,
+    IReadOnlyList<FoldedChecklist> checklists,
+    IReadOnlyList<FoldedTop> foldedTops,
+    IReadOnlyList<string> promoted,
+    IReadOnlyList<string> cycles,
+    bool fourLevels)
 {
+    public IReadOnlyDictionary<string, FittedItem> Items { get; } = items;
+    public IReadOnlyList<OldParent> OldParents { get; } = oldParents;
+    public IReadOnlyList<FoldedChecklist> Checklists { get; } = checklists;
+    public IReadOnlyList<FoldedTop> FoldedTops { get; } = foldedTops;
+    public IReadOnlyList<string> Promoted { get; } = promoted;
+    public IReadOnlyList<string> Cycles { get; } = cycles;
+    public bool FourLevels { get; } = fourLevels;
+
     /// <summary>Items that ended up under a different parent, or none. A folded top's children are counted in <see cref="FoldedTops"/>.</summary>
     public IReadOnlyList<string> Reparented => [.. OldParents.Select(p => p.Item).Except(FoldedTops.Select(t => t.Item)).Distinct()];
 
-    private readonly Dictionary<string, string> _holders = Checklists.ToDictionary(c => c.Item, c => c.Parent, StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _holders = checklists.ToDictionary(c => c.Item, c => c.Parent, StringComparer.Ordinal);
 
     /// <summary>The item whose issue a source record belongs to: the item itself, or a folded checklist item's holder; null if neither has one.</summary>
     public string? HolderOf(string item) =>

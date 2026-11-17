@@ -199,7 +199,7 @@ public sealed class ImportPlanTests
         var imported = new ImportTree(
             new Dictionary<string, KnownItem> { ["200"] = new(IssueType.Task, "OPS-1", "Rotate keys", null, null) },
             new Dictionary<string, KnownChecklist>());
-        var read = await SourceRead.ReadAsync(snapshot, new MappedSource(snapshot.Header, mapping, Now), imported, Ct);
+        var read = await SourceRead.ReadAsync(snapshot, new MappedSource(snapshot.Header, mapping, Now), imported, counting: true, Ct);
 
         var plan = await ImportPlanner.PlanAsync(snapshot, read, ImportedHistory.None, [], Ct);
 

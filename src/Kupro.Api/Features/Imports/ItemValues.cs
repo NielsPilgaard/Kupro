@@ -36,10 +36,8 @@ internal sealed class ItemValues(MappedSource source, ImportDescription descript
         }
 
         var (text, truncated) = description.Build(item, checklist, details, references);
-        var title = string.IsNullOrWhiteSpace(item.Title) ? "(no title)" : Cut(item.Title.Trim(), ImportDescription.MaxTitle);
+        var title = string.IsNullOrWhiteSpace(item.Title) ? "(no title)" : ImportDescription.Cut(item.Title.Trim(), ImportDescription.MaxTitle);
         var effortValue = effortFits ? Math.Round(effort!.Value, 2) : (decimal?)null;
         return (new ImportedValues(title, text, source.State(item), source.Priority(item), assignee, parent, sprint, effortValue, start, item.Due, labels, foldedTop), truncated);
     }
-
-    private static string Cut(string text, int length) => text.Length > length ? text[..length].TrimEnd() : text;
 }

@@ -129,13 +129,7 @@ public sealed partial class ImportCommit
         return new ImportReferences(names, handles, files, issues, scopes);
     }
 
-    /// <summary>The source item whose issue a record belongs to: the item itself, or for a folded checklist item, its holder.</summary>
-    private string? HolderOf(string sourceItem) =>
-        _holders.TryGetValue(sourceItem, out var holder) ? holder
-        : _items.ContainsKey(sourceItem) ? sourceItem
-        : null;
-
-    private Guid? IssueOf(string sourceItem) => HolderOf(sourceItem) is { } holder && _items.TryGetValue(holder, out var id) ? id : null;
+    private Guid? IssueOf(string sourceItem) => _fit.HolderOf(sourceItem) is { } holder && _items.TryGetValue(holder, out var id) ? id : null;
 
     /// <summary>The same ID for the same source record in every run of this import, so a retried upload overwrites itself.</summary>
     private Guid StableId(string kind, string sourceId)
@@ -334,7 +328,7 @@ public sealed partial class ImportCommit
     /// </summary>
     private async Task<Dictionary<string, string>> ReplayChangesAsync(SnapshotReader snapshot, Dictionary<string, string> projectOf, CancellationToken ct)
     {
-        var history = new ImportedHistory((kind, ids) => DoneAsync(kind, ids, ct), await ChangeMarksAsync(ct));
+        var marks = await ChangeMarksAsync(ct);
         var newest = new Dictionary<string, string>(StringComparer.Ordinal);
         var batch = new List<SourceChange>(ChangeBatch);
         var skip = _counts.ChangesRead;
@@ -348,7 +342,7 @@ public sealed partial class ImportCommit
                 continue;
             }
 
-            if (history.Seen(change))
+            if (ImportedHistory.Seen(marks, change))
             {
                 continue;
             }
@@ -400,14 +394,14 @@ public sealed partial class ImportCommit
             var assignees = batch.Where(c => c.Field == ChangeFields.Assignee).SelectMany(c => new[] { c.From, c.To });
             await ResolvePeopleAsync(db, assignees.OfType<string>().Distinct(), newPeople, delta, ct);
             var actor = await ActorsAsync(db, batch.Select(c => c.Actor), newPeople, delta, ct);
+            var targets = new ChangeTargets(
+                p => Member(p, newPeople),
+                i => _items.TryGetValue(i, out var id) ? id : null,
+                (item, s) => projectOf.GetValueOrDefault(item) is { } projectKey && _sprints.TryGetValue(SprintKey(s, projectKey), out var id) ? id : null);
             foreach (var change in batch)
             {
                 var (actorId, sourceActor) = actor(change.Actor);
-                var projectKey = projectOf.GetValueOrDefault(change.Item);
-                var (kind, data) = _changes.Translate(change, new ChangeTargets(
-                    p => Member(p, newPeople),
-                    i => _items.TryGetValue(i, out var id) ? id : null,
-                    s => projectKey is not null && _sprints.TryGetValue(SprintKey(s, projectKey), out var id) ? id : null));
+                var (kind, data) = _changes.Translate(change, targets);
                 if (kind is null)
                 {
                     continue;

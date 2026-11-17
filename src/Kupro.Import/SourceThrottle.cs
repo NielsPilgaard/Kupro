@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net;
 
 namespace Kupro.Import;
@@ -62,9 +61,6 @@ internal sealed class SourceThrottle(TimeProvider time)
     /// <summary>Holds the next request back by <paramref name="wait"/> from now.</summary>
     public void PauseFor(TimeSpan wait) => _notBefore = Now + wait;
 
-    /// <summary>Holds the next request back until <paramref name="at"/>.</summary>
-    public void PauseUntil(DateTimeOffset at) => _notBefore = at;
-
     /// <summary>The response's <c>Retry-After</c>, as a delay.</summary>
     public TimeSpan? RetryAfter(HttpResponseMessage response) =>
         response.Headers.RetryAfter is { } header ? header.Delta ?? (header.Date - Now) : null;
@@ -74,28 +70,4 @@ internal sealed class SourceThrottle(TimeProvider time)
 
     public static string? Header(HttpResponseMessage response, string name) =>
         response.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
-}
-
-/// <summary>
-/// The cursor every connector with deltas writes (ADR-019 Mode, delta runs): the UTC time its read started, so anything
-/// changed while a read ran is read again by the next. The server moves it back by an overlap for eventually consistent
-/// searches; re-reading an item is harmless, as runs match by source ID.
-/// </summary>
-public static class DeltaCursor
-{
-    /// <summary>When to read changes from; null for a full read.</summary>
-    public static DateTimeOffset? Since(string? cursor) =>
-        cursor is null ? null
-        : TryParse(cursor, out var at) ? at
-        : throw new ArgumentException($"'{cursor}' is not a delta cursor (a UTC time).", nameof(cursor));
-
-    /// <summary>The cursor for a read that started at <paramref name="started"/>.</summary>
-    public static string At(DateTimeOffset started) => started.UtcDateTime.ToString("O", CultureInfo.InvariantCulture);
-
-    /// <summary>The cursor moved back by <paramref name="overlap"/>. Anything that isn't a time (a script's own cursor) passes as it is.</summary>
-    public static string? WithOverlap(string? cursor, TimeSpan overlap) =>
-        cursor is not null && TryParse(cursor, out var at) ? At(at - overlap) : cursor;
-
-    private static bool TryParse(string cursor, out DateTimeOffset at) =>
-        DateTimeOffset.TryParse(cursor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out at);
 }

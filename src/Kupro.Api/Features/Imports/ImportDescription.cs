@@ -19,6 +19,9 @@ public sealed class ImportDescription
     public const int MaxLength = 100_000;
 
     public const int MaxTitle = 500;
+
+    /// <summary>The first <paramref name="length"/> characters, trimmed at the end: the one cut for imported titles and names.</summary>
+    internal static string Cut(string text, int length) => text.Length > length ? text[..length].TrimEnd() : text;
     private const int MaxLabel = 50;
     private const int MaxValue = 1000;
     private const int MaxBlock = 50_000;

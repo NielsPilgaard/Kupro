@@ -88,7 +88,11 @@ internal sealed record ImportedHistory(
     public static string Mark(SourceChange change) => $"{change.At.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)}|{change.Id}";
 
     /// <summary>An earlier run replayed this change already.</summary>
-    public bool Seen(SourceChange change) => ChangeMarks.TryGetValue(change.Item, out var mark) && string.CompareOrdinal(Mark(change), mark) <= 0;
+    public bool Seen(SourceChange change) => Seen(ChangeMarks, change);
+
+    /// <summary>An earlier run replayed this change already, by <paramref name="marks"/> (<see cref="ChangeMarks"/>).</summary>
+    public static bool Seen(IReadOnlyDictionary<string, string> marks, SourceChange change) =>
+        marks.TryGetValue(change.Item, out var mark) && string.CompareOrdinal(Mark(change), mark) <= 0;
 }
 
 /// <summary>
@@ -103,7 +107,7 @@ public static class ImportPlanner
     /// <summary>A first run's plan: nothing imported yet.</summary>
     public static async Task<ImportPlan> PlanAsync(SnapshotReader snapshot, ImportMapping mapping, DateTimeOffset now, CancellationToken ct)
     {
-        var read = await SourceRead.ReadAsync(snapshot, new MappedSource(snapshot.Header, mapping, now), ImportTree.Empty, ct);
+        var read = await SourceRead.ReadAsync(snapshot, new MappedSource(snapshot.Header, mapping, now), ImportTree.Empty, counting: true, ct);
         return await PlanAsync(snapshot, read, ImportedHistory.None, [], ct);
     }
 

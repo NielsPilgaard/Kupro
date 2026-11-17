@@ -16,13 +16,10 @@ public sealed partial class ImportCommit
         Start(import, snapshot, mapping);
         await LoadKnownAsync(ct);
 
-        var read = await SourceRead.ReadAsync(snapshot, _source, Tree, ct);
+        var read = await SourceRead.ReadAsync(snapshot, _source, Tree, counting: true, ct);
         var fit = read.Fit;
         var checklists = Checklists(fit, read.ChecklistLines);
-        foreach (var checklist in fit.Checklists)
-        {
-            _holders[checklist.Item] = checklist.Parent;
-        }
+        _fit = fit;
 
         var (needs, keysTaken, milestones) = await WorkspaceChecksAsync(read, ct);
         var sprintsToCreate = StandInSprints(read);

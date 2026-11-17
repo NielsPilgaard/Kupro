@@ -140,7 +140,7 @@ public sealed class ImportDecisionTests
     private static SourceChange Change(string field, string? from, string? to) =>
         new() { Id = "c1", Item = "10", At = Now, Field = field, From = from, To = to };
 
-    private static ChangeTargets Targets(Func<string, Guid?>? member = null) => new(member ?? (_ => null), _ => null, _ => null);
+    private static ChangeTargets Targets(Func<string, Guid?>? member = null) => new(member ?? (_ => null), _ => null, (_, _) => null);
 
     private static (string? Kind, Dictionary<string, object?> Data) Translate(SourceChange change, ChangeTargets? targets = null) =>
         new ChangeTranslator(Header, new MappedSource(Header, Mapping, Now)).Translate(change, targets ?? Targets());
