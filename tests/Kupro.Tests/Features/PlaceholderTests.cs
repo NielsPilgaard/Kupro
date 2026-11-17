@@ -267,6 +267,8 @@ public sealed class PlaceholderTests(PostgresFixture postgres)
         var project = await db.Projects.Select(p => p.Id).SingleAsync(Ct);
         var meeting = new MeetingSession { Id = Guid.CreateVersion7(), WorkspaceId = ws, ProjectId = project, Language = "en", StartedById = _ownerId, AgentId = _ownerId, StartedAt = now };
         db.Meetings.Add(meeting);
+        // MeetingTests runs the cross-tenant purge with a clock days ahead; a year's retention keeps this segment out of it.
+        db.MeetingSettings.Add(new MeetingSettings { WorkspaceId = ws, TranscriptRetentionDays = 365 });
         db.TranscriptSegments.Add(new TranscriptSegment { Id = Guid.CreateVersion7(), WorkspaceId = ws, SessionId = meeting.Id, SpeakerId = placeholder, Text = "Hello", CreatedAt = now });
         db.MeetingProposals.Add(new MeetingProposal
         {
