@@ -24,13 +24,14 @@ internal sealed record ItemRef(string Id, string ProjectKey, string? Key, string
 /// </summary>
 internal sealed class SourceRead
 {
-    private SourceRead(ImportTree tree, FoldEnd fold, bool counting) => (Tree, Fold, _counting) = (tree, fold, counting);
+    private SourceRead(ImportTree tree, MappedSource source, bool counting) => (Tree, Source, _counting) = (tree, source, counting);
 
     /// <summary>Whether to fill what only a plan reads: <see cref="Skipped"/>, <see cref="ToReview"/> and <see cref="Hours"/>.</summary>
     private readonly bool _counting;
 
     public ImportTree Tree { get; }
-    public FoldEnd Fold { get; }
+    public MappedSource Source { get; }
+    public FoldEnd Fold => Source.Fold;
 
     /// <summary>What the fit runs on: this snapshot's in-scope items, plus what earlier runs imported that it doesn't list.</summary>
     public List<FitInput> Kept { get; } = [];
@@ -64,7 +65,7 @@ internal sealed class SourceRead
     /// <param name="counting">A plan: also fill what only it reads. A commit leaves it out, to hold less per item.</param>
     public static async Task<SourceRead> ReadAsync(SnapshotReader snapshot, MappedSource source, ImportTree tree, bool counting, CancellationToken ct)
     {
-        var read = new SourceRead(tree, source.Fold, counting);
+        var read = new SourceRead(tree, source, counting);
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
         // A checklist item's hours count only if the fit can't fold it and it stays an item.

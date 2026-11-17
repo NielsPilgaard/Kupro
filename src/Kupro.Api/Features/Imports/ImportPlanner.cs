@@ -52,6 +52,9 @@ public sealed record ImportPlan
 
     public FoldCounts? FoldTop { get; init; }
 
+    /// <summary>Only for a four-level source: real branches and where they land under each fold.</summary>
+    public HierarchySample? Sample { get; init; }
+
     /// <summary>Fields both sides changed, carried over or new. The source's <see cref="PlanSample.SourceId"/> is the field here.</summary>
     public PlanCount Conflicts { get; init; } = PlanCount.None;
 
@@ -119,10 +122,14 @@ public static class ImportPlanner
         var created = read.New.Select(r => r.Id).ToList();
         var (comments, attachments, bytes, unknownSize, changes) = await CountHistoryAsync(snapshot, fit, history, ct);
 
+        var bottom = fit.FourLevels ? HierarchyFit.Run(read.Kept, FoldEnd.Bottom) : null;
+        var top = fit.FourLevels ? HierarchyFit.Run(read.Kept, FoldEnd.Top) : null;
+        var branch = bottom is null ? [] : HierarchySampler.Pick(read.Kept, bottom, read.KeptIds);
+
         var samples = await SampleAsync(
-            snapshot, [created, read.Skipped, fit.Reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], read.ToReview, fit.Cycles, keysTaken], ct);
+            snapshot, [created, read.Skipped, fit.Reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], read.ToReview, fit.Cycles, keysTaken], branch, ct);
         PlanCount Count(IReadOnlyList<string> ids) =>
-            new(ids.Count, [.. ids.Take(MaxSamples).Where(samples.ContainsKey).Select(id => samples[id])]);
+            new(ids.Count, [.. ids.Take(MaxSamples).Where(samples.ContainsKey).Select(id => new PlanSample(id, samples[id].Key, samples[id].Title))]);
 
         return new ImportPlan
         {
@@ -145,8 +152,9 @@ public static class ImportPlanner
             Changes = changes,
             EffortHours = read.Hours.Values.Sum(),
             FourLevels = fit.FourLevels,
-            FoldBottom = fit.FourLevels ? Fold(read.Kept, FoldEnd.Bottom) : null,
-            FoldTop = fit.FourLevels ? Fold(read.Kept, FoldEnd.Top) : null,
+            FoldBottom = bottom is null ? null : Fold(bottom),
+            FoldTop = top is null ? null : Fold(top),
+            Sample = bottom is null || top is null ? null : Sample(snapshot.Header, read, branch, samples, keysTaken, bottom, top),
             ShapesDiffer = Differing(read.Kept, read.Fold, fit),
         };
     }
@@ -164,10 +172,18 @@ public static class ImportPlanner
             && (would.Type != has.Type || would.Parent != has.Parent));
     }
 
-    private static FoldCounts Fold(List<FitInput> items, FoldEnd end)
+    private static FoldCounts Fold(FitResult fit) => new(fit.Reparented.Count, fit.Promoted.Count, fit.FoldedTops.Count);
+
+    private static HierarchySample Sample(
+        SnapshotHeader header, SourceRead read, List<string> branch, Dictionary<string, SourceItem> items, IReadOnlyList<string> keysTaken, FitResult bottom, FitResult top)
     {
-        var fit = HierarchyFit.Run(items, end);
-        return new FoldCounts(fit.Reparented.Count, fit.Promoted.Count, fit.FoldedTops.Count);
+        var types = header.ItemTypes.DistinctBy(t => t.Id).ToDictionary(t => t.Id, t => t.Name, StringComparer.Ordinal);
+        var wanted = branch.Except(keysTaken).ToHashSet(StringComparer.Ordinal);
+        var keys = read.Refs
+            .Where(r => wanted.Contains(r.Id) && ImportCommit.SourceNumber(r.Key) is not null)
+            .DistinctBy(r => r.Id)
+            .ToDictionary(r => r.Id, r => $"{r.ProjectKey}-{ImportCommit.SourceNumber(r.Key)}", StringComparer.Ordinal);
+        return HierarchySampler.Build(branch, read.Kept, items, types, read.Source.State, keys, bottom, top);
     }
 
     /// <summary>The history a commit would still write: records of items that get an issue, less what earlier runs wrote.</summary>
@@ -200,17 +216,18 @@ public static class ImportPlanner
         return (comments, attachments, bytes, unknownSize, changes);
     }
 
-    /// <summary>A second pass for titles of the sampled items only: keeping every title would hold the whole source in memory.</summary>
-    private static async Task<Dictionary<string, PlanSample>> SampleAsync(
-        SnapshotReader snapshot, IReadOnlyList<IReadOnlyList<string>> counts, CancellationToken ct)
+    /// <summary>A second pass for the sampled items only: keeping every item would hold the whole source in memory.</summary>
+    /// <param name="branch">The hierarchy sample's IDs, read whole.</param>
+    private static async Task<Dictionary<string, SourceItem>> SampleAsync(
+        SnapshotReader snapshot, IReadOnlyList<IReadOnlyList<string>> counts, IReadOnlyList<string> branch, CancellationToken ct)
     {
-        var wanted = counts.SelectMany(ids => ids.Take(MaxSamples)).ToHashSet(StringComparer.Ordinal);
-        var samples = new Dictionary<string, PlanSample>(wanted.Count, StringComparer.Ordinal);
+        var wanted = counts.SelectMany(ids => ids.Take(MaxSamples)).Concat(branch).ToHashSet(StringComparer.Ordinal);
+        var samples = new Dictionary<string, SourceItem>(wanted.Count, StringComparer.Ordinal);
         await foreach (var item in snapshot.ReadItemsAsync(ct))
         {
             if (wanted.Contains(item.Id))
             {
-                samples[item.Id] = new PlanSample(item.Id, item.Key, item.Title);
+                samples.TryAdd(item.Id, item);
             }
         }
 

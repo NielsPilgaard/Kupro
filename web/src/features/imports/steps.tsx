@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   CsvColumns,
   CsvPreview,
   FoldEnd,
+  HierarchySample,
   ImportMapping,
   ImportPlan,
   IssueState,
@@ -11,13 +12,15 @@ import type {
   MemberResponse,
   PersonTarget,
   ProjectResponse,
+  SampleKuproNode,
   SourceDescription,
 } from '../../api/gen/types.gen';
 import { Button, StatusRing, TypeTag } from '../../components/ui';
+import { Wordmark } from '../../components/Wordmark';
 import { useHours } from '../../lib/format';
 import { states } from '../../lib/issues';
-import { Chip, OkLine, TableCard, WarnLine } from './parts';
-import { control } from './sources';
+import { Chip, OkLine, SourceMark, TableCard, WarnLine } from './parts';
+import { control, useSourceName } from './sources';
 import { formatBytes, matchOf, peopleCounts, type Decisions, type StepId } from './wizard';
 
 export interface StepProps {
@@ -208,21 +211,110 @@ export function HierarchyStep({ mapping, update, description, plan, decided, dec
           );
         })}
       </fieldset>
-      {chosen && plan && plan.reparented.count > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <h2 className="text-lg font-semibold">{t('importWizard.reparentedSamples')}</h2>
-          <ul className="flex flex-col rounded-r2 border border-line bg-panel">
-            {plan.reparented.samples.map((s) => (
-              <li key={s.sourceId} className="flex h-[var(--row)] items-center gap-2 border-b border-line px-3 last:border-b-0">
-                <span className="w-24 shrink-0 font-mono text-sm text-mute">{s.key ?? `#${s.sourceId}`}</span>
-                <span className="truncate">{s.title}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-sm text-mute">{t('importWizard.reparentedNote')}</p>
-        </div>
-      )}
+      {plan?.sample && plan.sample.source.length > 0 && <HierarchyTrees sample={plan.sample} fold={chosen} kind={description.source.kind} />}
     </>
+  );
+}
+
+/** Indent guides, one per level (prototype 07). */
+function Guides({ depth }: { depth: number }) {
+  return Array.from({ length: depth }, (_, i) => <span key={i} aria-hidden="true" className="ml-2.5 w-3.5 shrink-0 self-stretch border-l border-line" />);
+}
+
+const nodeRow =
+  'flex h-[var(--row)] min-w-0 items-center gap-1.5 border-b border-line/55 pr-2 pl-1.5 last:border-b-0 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-acc-ink';
+const twin = 'bg-sel shadow-[inset_2px_0_0_var(--acc-ink)]';
+
+/** Real branches in the source and where they land under the chosen fold. Hover or focus an item to find its twin. */
+function HierarchyTrees({ sample, fold, kind }: { sample: HierarchySample; fold?: FoldEnd; kind: string }) {
+  const { t } = useTranslation();
+  const sourceName = useSourceName();
+  const [hover, setHover] = useState<string | null>(null);
+  const landed = fold === 'bottom' ? sample.bottom : fold === 'top' ? sample.top : undefined;
+  const byId = new Map(landed?.map((n) => [n.sourceId, n]));
+  const sourceKey = (id: string) => sample.source.find((x) => x.sourceId === id)?.key ?? `#${id}`;
+  const tops = new Set(landed?.flatMap((n) => (n.labelOf ? [n.labelOf] : [])));
+  const note = (n: SampleKuproNode) =>
+    n.labelOf
+      ? t('importWizard.treeLabel', { name: byId.get(n.labelOf)?.title ?? sourceKey(n.labelOf) })
+      : tops.has(n.sourceId)
+        ? t('importWizard.treeTop')
+        : n.oldParent
+          ? t('importWizard.treeMoved', { key: byId.get(n.oldParent)?.key ?? sourceKey(n.oldParent) })
+          : n.promoted
+            ? t('importWizard.treePromoted')
+            : null;
+  const twinProps = (id: string) => ({
+    tabIndex: 0,
+    onMouseEnter: () => setHover(id),
+    onMouseLeave: () => setHover(null),
+    onFocus: () => setHover(id),
+    onBlur: () => setHover(null),
+  });
+  const pane = 'flex min-w-0 flex-col overflow-hidden rounded-r2 border border-line bg-panel';
+  const head = 'flex h-[46px] items-center gap-2 border-b border-line bg-sunk px-2.5';
+  const inSource = t('importWizard.treeIn', { name: sourceName(kind) });
+
+  return (
+    <div className="@container flex flex-col gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 @max-[920px]:grid-cols-1">
+        <section className={pane} aria-label={inSource}>
+          <header className={head}>
+            <SourceMark kind={kind} />
+            <b className="truncate">{inSource}</b>
+          </header>
+          <ul>
+            {sample.source.map((n) => {
+              const landedAs = byId.get(n.sourceId);
+              return (
+                // biome-ignore lint/a11y/useAriaPropsSupportedByRole: ARIA 1.2 allows aria-level on listitem; it exposes the tree depth.
+                <li key={n.sourceId} aria-level={n.depth + 1} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
+                  <Guides depth={n.depth} />
+                  {landedAs && <StatusRing state={landedAs.state} />}
+                  <span className="min-w-[66px] shrink-0 font-mono text-sm whitespace-nowrap text-mute">{n.key ?? `#${n.sourceId}`}</span>
+                  <span className="inline-flex h-4 shrink-0 items-center rounded-r1 border border-line px-1 text-sm font-semibold text-mute">{n.type}</span>
+                  <span className="min-w-[30%] flex-1 truncate" title={n.title}>
+                    {n.title}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+        <section className={pane} aria-label={t('importWizard.treeInKupro')}>
+          <header className={head}>
+            <Wordmark size="sm" />
+          </header>
+          {landed ? (
+            <ul>
+              {landed.map((n) => {
+                const text = note(n);
+                return (
+                  // biome-ignore lint/a11y/useAriaPropsSupportedByRole: ARIA 1.2 allows aria-level on listitem; it exposes the tree depth.
+                  <li key={n.sourceId} aria-level={n.depth + 1} className={`${nodeRow} ${hover === n.sourceId ? twin : ''}`} {...twinProps(n.sourceId)}>
+                    <Guides depth={n.depth} />
+                    <StatusRing state={n.state} />
+                    <span className="min-w-[66px] shrink-0 font-mono text-sm whitespace-nowrap text-mute">{n.key ?? '—'}</span>
+                    <TypeTag type={n.type} />
+                    <span className="min-w-[30%] flex-1 truncate" title={n.title}>
+                      {n.title}
+                    </span>
+                    {text && (
+                      <span className="max-w-[45%] min-w-18 shrink truncate rounded-r1 bg-warn/14 px-1.5 text-sm text-ink" title={text}>
+                        {text}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="my-auto px-4 py-6 text-center text-mute">{t('importWizard.treePick')}</p>
+          )}
+        </section>
+      </div>
+      <p className="text-sm text-mute">{t('importWizard.treeLegend')}</p>
+    </div>
   );
 }
 

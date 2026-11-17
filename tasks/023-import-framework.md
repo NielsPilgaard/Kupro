@@ -63,10 +63,10 @@ sparklines, an import's page (runs, conflicts, placeholders; Sync now, auto-sync
 wizard with its live dry-run rail, run progress and finished screen, plus the palette commands and the empty-workspace
 prompt. To serve it, `GET .../source` describes an upload too, and `GET .../mapping?propose=true` (`kupro import mapping
 --propose`) re-proposes after a CSV's columns change. The rail and Hierarchy step show what the plan carries: counts,
-both folds' numbers and re-parented examples, not 07's sample trees or a state distribution. Azure DevOps, Monday and
-YouTrack marks are stand-ins until their official files are bundled (a manual step). Left: 07's source/Kupro sample
-trees on the Hierarchy step (Surfaces requires them; the plan must carry samples first), bundling the three official
-marks (manual), and the production run after 013.
+both folds' numbers, and 07's source/Kupro trees: a four-level plan's `sample` holds up to two real branches (deepest
+first, 12 items) and where each lands under both folds (`HierarchySampler`). No state distribution. Azure DevOps,
+Monday and YouTrack marks are stand-ins until their official files are bundled (a manual step). Left: bundling the three
+official marks (manual), and the production run after 013.
 
 ## Scope
 
