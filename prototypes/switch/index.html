@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index · Switch page prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--font-ui)}
+a{color:var(--acc-ink);text-underline-offset:2px}
+h1,h2,h3{margin:0;line-height:1.15;font-family:var(--font-display);text-wrap:balance}
+p,ul,ol{margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:clamp(16px,4vw,40px)}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:12px;align-items:center}
+.proto span{flex:1}.proto button{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer}
+.top{border-bottom:1px solid var(--line);background:var(--panel)}
+.top-in{display:flex;align-items:center;gap:24px;height:60px}
+.lockup{font:700 22px var(--font-display);color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.top nav{display:flex;gap:18px}.top nav a{color:var(--mute);text-decoration:none;font-size:15px}
+.sp{flex:1}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r1);font:600 15px var(--font-ui);text-decoration:none;border:1px solid transparent;cursor:pointer}
+.btn.pri{background:var(--acc);color:var(--on-acc)}.btn.sec{background:var(--panel);color:var(--ink);border-color:var(--line)}
+.btn.sm{height:32px;padding:0 12px;font-size:14px}
+.eyebrow{font:12px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:13px;background:var(--panel)}
+.chip.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 9%,transparent)}
+code,pre{font-family:var(--font-mono);font-size:14px}
+pre{background:var(--side);color:var(--side-ink);padding:14px 16px;border-radius:var(--r2);overflow-x:auto;margin:0}
+footer{border-top:1px solid var(--line);margin-top:72px;padding:28px 0;color:var(--mute);font-size:14px}
+@media (max-width:720px){.top nav,.top .sec{display:none}}
+.g{display:grid;gap:14px;padding:40px 0}.g a{display:block;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:18px;text-decoration:none;color:var(--ink)}.g a span{display:block;color:var(--mute);font-size:15px}</style>
+</head>
+<body>
+<div class="proto"><span>PROTOTYPE · kupro.app/switch/jira · Index</span><a href="index.html" style="color:inherit">All directions</a><button type="button" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">Theme</button></div>
+<header class="top"><div class="wrap top-in"><a class="lockup" href="#">kupro</a><nav><a href="#">Meeting agent</a><a href="#">Fast</a><a href="#">Delivery plan</a><a href="#">Pricing</a></nav><span class="sp"></span><a class="btn sec sm" href="#">Sign in</a><a class="btn pri sm" href="#">Start a free trial</a></div></header>
+<main class="wrap"><div class="g"><h1>Switch pages: three directions</h1><p style="color:var(--mute)">One template for every <code>kupro.app/switch/&lt;source&gt;</code> page (tasks 024–027), shown for Jira. Pick one.</p>
+<a href="01-checklist.html"><b>01 Checklist</b><span>Pricing-page structure: head, deadline banner, two boxes (comes across / changes), three numbered steps, VPN snippet. Cheapest to build; all text.</span></a>
+<a href="02-mapping-table.html"><b>02 Mapping table</b><span>"In Jira → In Kupro" table with tabs as the centrepiece, a live day count to the Data Center deadline, steps as a strip. Most concrete; the table is per-source content.</span></a>
+<a href="03-walkthrough.html"><b>03 Walkthrough</b><span>A Jira issue next to the same issue in Kupro, a Cloud / Data Center toggle that switches the token step, "what changes" as a FAQ. Most persuasive; most per-source content.</span></a>
+</div></main>
+<footer><div class="wrap">Made in Denmark, hosted in the EU · Privacy · Terms</div></footer>
+<script></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+---
+import Switch from '../../../components/Switch.astro';
+import Base from '../../../layouts/Base.astro';
+import { t } from '../../../i18n';
+
+const c = t('da');
+---
+
+<Base locale="da" page="switchJira" title={c.meta.switchJiraTitle} description={c.meta.switchJiraDescription}>
+  <Switch locale="da" source="jira" />
+</Base>

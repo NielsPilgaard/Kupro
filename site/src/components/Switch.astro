@@ -1,0 +1,81 @@
+---
+// A /switch/<source> page (tasks 024–027, prototype 01 Checklist): what comes across, what changes, three steps.
+import { appUrl, t, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  source: 'jira';
+}
+
+const { locale, source } = Astro.props;
+const c = t(locale).switch;
+const s = c.sources[source];
+---
+
+<div class="wrap sw">
+  <header class="p-head">
+    <span class="eyebrow">{s.eyebrow}</span>
+    <h1>{s.title}</h1>
+    <p>{s.sub}</p>
+    <div class="acts">
+      <a class="btn pri" href={appUrl}>{c.cta}</a>
+      <a class="btn sec" href="#how">{c.how}</a>
+    </div>
+  </header>
+
+  {
+    s.deadline && (
+      <aside class="sw-deadline">
+        <span class="chip">{s.deadline.date}</span>
+        <p>
+          <b>{s.deadline.title}</b> {s.deadline.body}
+        </p>
+      </aside>
+    )
+  }
+
+  <div class="sw-cols">
+    <section class="sw-box" aria-labelledby="sw-comes">
+      <h2 id="sw-comes">{c.comesTitle}</h2>
+      <ul>
+        {
+          s.comes.map((x) => (
+            <li>
+              <svg class="ok" aria-hidden="true"><use href="#i-check"></use></svg>
+              <span><b>{x.t}</b>{x.d}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+    <section class="sw-box" aria-labelledby="sw-changes">
+      <h2 id="sw-changes">{c.changesTitle}</h2>
+      <ul>
+        {
+          s.changes.map((x) => (
+            <li>
+              <span class="ch" aria-hidden="true">→</span>
+              <span><b>{x.t}</b>{x.d}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+  </div>
+
+  <section class="block" id="how" aria-labelledby="sw-steps">
+    <div class="sec-h"><h2 id="sw-steps">{c.stepsTitle}</h2></div>
+    <ol class="sw-steps">
+      {
+        s.steps.map((x) => (
+          <li>
+            <b>{x.t}</b>
+            <span>{x.d}</span>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="sw-local">{c.local.replace('{source}', s.name)}</p>
+    <pre><code>{s.command}</code></pre>
+  </section>
+</div>

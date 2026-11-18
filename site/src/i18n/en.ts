@@ -11,6 +11,8 @@ export const en = {
     pricingDescription: '€9 per person a month or €90 a year. 30-day free trial with the meeting agent included. No card needed.',
     newsTitle: 'News · Kupro',
     newsDescription: 'What changed in Kupro, week by week.',
+    switchJiraTitle: 'Switch from Jira · Kupro',
+    switchJiraDescription: 'Import your Jira Cloud or Data Center projects into Kupro with their history, sprints and keys. Rehearse first, switch when ready.',
     notFoundTitle: 'Page not found · Kupro',
     /** Line under the headline on the social card (scripts/brand-images.ts), and the card's alt text. */
     ogDetail: 'Issue tracker and planner. Fast, keyboard first, hosted in the EU.',
@@ -206,10 +208,54 @@ export const en = {
     /** Intl locale for the entry dates. */
     dateLocale: 'en-GB',
   },
+  switch: {
+    comesTitle: 'What comes across',
+    changesTitle: 'What changes',
+    stepsTitle: 'Three steps',
+    cta: 'Start a free trial',
+    how: 'How it works',
+    /** {source} is the source's name. */
+    local: '{source} behind a VPN? Run the import on your own machine; the token never leaves it:',
+    sources: {
+      jira: {
+        name: 'Jira',
+        eyebrow: 'Switch from Jira',
+        title: 'Bring your Jira projects. Keep the history.',
+        sub: 'Kupro imports from Jira Cloud and Data Center: issues, sprints, comments, files and who changed what. Rehearse it on real data, keep working in Jira, and switch on the day that suits you.',
+        deadline: {
+          date: '28 March 2029',
+          title: 'Jira Data Center support ends on 28 March 2029.',
+          body: 'Server support ended in 2024. Kupro reads both, so you can move before the date, not on it.',
+        },
+        comes: [
+          { t: 'Projects and keys', d: 'PROJ-123 stays PROJ-123. A key longer than ten letters gets a shorter one, and the old key keeps working as an alias.' },
+          { t: 'Epics, stories and sub-tasks', d: 'Epic > Story > Sub-task lands as Epic > Feature > Task. With Initiatives, you choose how the four levels fold.' },
+          { t: 'Statuses and priorities', d: 'Each status maps by its category into Kupro’s workflow. You see the mapping and can change it.' },
+          { t: 'Sprints and versions', d: 'Sprints keep their dates. Versions with a release date become milestones on the delivery plan.' },
+          { t: 'Comments, files and links', d: 'Mentions, links to other issues and inline images are rewritten to point inside Kupro.' },
+          { t: 'History', d: 'Status, assignee, sprint and priority changes show with the original person and time.' },
+          { t: 'Labels and components', d: 'Labels stay labels. Components become labels too, unless you untick them.' },
+        ],
+        changes: [
+          { t: 'One workflow', d: 'Backlog, Todo, In Progress, In Review, Done, Canceled. Your own statuses map into these.' },
+          { t: 'No custom fields', d: 'Their values stay readable in a details block on each issue, and their history comes along.' },
+          { t: 'No time tracking', d: 'Logged work is added up in the details block.' },
+          { t: 'Service Management', d: 'Request types, queues and SLAs stay in Jira.' },
+        ],
+        steps: [
+          { t: 'Make a token', d: 'Jira Cloud: an API token from your Atlassian account. Data Center: a personal access token.' },
+          { t: 'Rehearse', d: 'In Kupro, open Import from… and pick Jira. Paste the address and token, check the mapping, and see a dry run before anything is written.' },
+          { t: 'Import, then switch when ready', d: 'Kupro syncs every hour, so the team can keep working in Jira. Press Finish migration on the day you move.' },
+        ],
+        command: 'kupro import jira --url https://jira.example.com --local',
+      },
+    },
+  },
   footer: {
     company: 'Pilgaard Development',
     cvr: 'CVR 41249269',
     product: 'Product',
+    switchJira: 'Switch from Jira',
     legal: 'Legal',
     cookieLine: 'No tracking. We only use the cookies sign-in needs.',
     privacy: 'Privacy',
