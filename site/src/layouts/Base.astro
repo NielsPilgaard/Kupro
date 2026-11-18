@@ -31,6 +31,19 @@ const organization = {
   url: new URL('/', site).href,
   logo: new URL('/icon-512.png', site).href,
 };
+// What Kupro is, for search and agents. No offers: prices live in ADR-013 and the pricing copy, not here.
+const application = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: c.meta.siteName,
+  description: c.meta.homeDescription,
+  url: new URL('/', site).href,
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web, Windows, macOS, Linux',
+  inLanguage: ['en', 'da'],
+  publisher: { '@type': 'Organization', name: c.meta.siteName, url: new URL('/', site).href },
+};
+const markdown = (p: string) => (p === '/' ? '/index.md' : `${p}.md`);
 ---
 
 <!doctype html>
@@ -55,6 +68,8 @@ const organization = {
           <link rel="alternate" hreflang={locale} href={url(locale)} />
           <link rel="alternate" hreflang={alt} href={url(alt)} />
           <link rel="alternate" hreflang="x-default" href={url('en')} />
+          {/* Markdown twin for agents (integrations/agents.mjs). */}
+          <link rel="alternate" type="text/markdown" href={markdown(path(locale, page))} />
         </>
       )
     }
@@ -71,6 +86,7 @@ const organization = {
     <meta property="og:image:alt" content={c.meta.ogImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     {page === 'home' && <script type="application/ld+json" is:inline set:html={JSON.stringify(organization)} />}
+    {page === 'home' && <script type="application/ld+json" is:inline set:html={JSON.stringify(application)} />}
   </head>
   <body>
     <Icons />

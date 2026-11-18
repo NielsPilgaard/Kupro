@@ -4,9 +4,9 @@ export const en = {
   meta: {
     lang: 'en',
     siteName: 'Kupro',
-    homeTitle: 'Kupro · Say it in standup. It’s in the tracker.',
+    homeTitle: 'Kupro · Issue tracker and planner for the whole team',
     homeDescription:
-      'An issue tracker and planner that listens in standup and suggests the changes people mention. Fast, keyboard first, hosted in the EU.',
+      'Every task, bug and plan in one place, for developers and sales alike. Just talk in your meetings and Kupro suggests the changes. Hosted in the EU.',
     pricingTitle: 'Pricing · Kupro',
     pricingDescription: '€9 per person a month or €90 a year. 30-day free trial with the meeting agent included. No card needed.',
     newsTitle: 'News · Kupro',
@@ -15,8 +15,8 @@ export const en = {
     switchJiraDescription: 'Import your Jira Cloud or Data Center projects into Kupro with their history, sprints and keys. Rehearse first, switch when ready.',
     notFoundTitle: 'Page not found · Kupro',
     /** Line under the headline on the social card (scripts/brand-images.ts), and the card's alt text. */
-    ogDetail: 'Issue tracker and planner. Fast, keyboard first, hosted in the EU.',
-    ogImageAlt: 'Kupro: Say it in standup. It’s in the tracker.',
+    ogDetail: 'Every task, bug and plan in one place. Quick to use, hosted in the EU.',
+    ogImageAlt: 'Kupro: Talk it through. Kupro keeps the tracker up to date.',
   },
   nav: {
     label: 'Main',
@@ -34,8 +34,8 @@ export const en = {
   },
   hero: {
     eyebrow: 'Meeting agent · made in Denmark',
-    title: 'Say it in standup. It’s in the tracker.',
-    sub: 'Kupro listens while your team talks and suggests the issue changes people mention. Nothing changes until someone approves it. Nothing you say is kept after the meeting.',
+    title: 'Talk it through. Kupro keeps the tracker up to date.',
+    sub: 'No more moving issues, fixing titles or assigning work by hand. Kupro listens while your team talks and suggests the issue changes people mention. Nothing changes until someone approves it. Nothing you say is kept after the meeting.',
     ctaPrimary: 'Start a free trial',
     ctaSecondary: 'See pricing',
     fine: '30 days free, meeting agent included. No card needed. Danish and English.',
@@ -215,7 +215,7 @@ export const en = {
     cta: 'Start a free trial',
     how: 'How it works',
     /** {source} is the source's name. */
-    local: '{source} behind a VPN? Run the import on your own machine; the token never leaves it:',
+    local: '{source} behind a VPN? Run the import on your own machine; the token never leaves it. Put the token in KUPRO_IMPORT_TOKEN first. A local import doesn’t sync, so run it again just before you switch:',
     sources: {
       jira: {
         name: 'Jira',
@@ -243,9 +243,9 @@ export const en = {
           { t: 'Service Management', d: 'Request types, queues and SLAs stay in Jira.' },
         ],
         steps: [
-          { t: 'Make a token', d: 'Jira Cloud: an API token from your Atlassian account. Data Center: a personal access token.' },
+          { t: 'Make a token', d: 'Jira Cloud: an API token from your Atlassian account (for a local import, write it as email:api-token). Data Center: a personal access token.' },
           { t: 'Rehearse', d: 'In Kupro, open Import from… and pick Jira. Paste the address and token, check the mapping, and see a dry run before anything is written.' },
-          { t: 'Import, then switch when ready', d: 'Kupro syncs every hour, so the team can keep working in Jira. Press Finish migration on the day you move.' },
+          { t: 'Import, then switch when ready', d: 'A connected import syncs every hour, so the team can keep working in Jira. Press Finish migration on the day you move.' },
         ],
         command: 'kupro import jira --url https://jira.example.com --local',
       },
@@ -268,7 +268,15 @@ export const en = {
     nav: 'Legal',
     pendingTitle: 'The Danish version is on its way',
     pendingBody: 'Until the Danish text has been reviewed, the English version applies.',
-    readEnglish: 'Read the English version'
+    readEnglish: 'Read the English version',
+    /** Meta description per legal page. */
+    descriptions: {
+      privacy: 'What personal data Kupro collects, including in meetings, why we use it, how long we keep it, who else sees it and your rights.',
+      terms: 'The terms for using Kupro: accounts and workspaces, agents, the meeting agent, your data, plans and payment, and liability.',
+      dpa: 'Kupro’s data processing agreement: what we process on your behalf, our sub-processors, security and how to accept it.',
+      subprocessors: 'The vendors that process data for Kupro, what each one does, and the services we don’t use.',
+      cookies: 'The cookies and browser storage Kupro uses: only what sign-in needs. No tracking, so no cookie banner.',
+    },
   },
   notFound: {
     title: 'This page doesn’t exist',

@@ -5,9 +5,9 @@ export const da: Copy = {
   meta: {
     lang: 'da',
     siteName: 'Kupro',
-    homeTitle: 'Kupro · Sig det til standup. Så står det i trackeren.',
+    homeTitle: 'Kupro · Issue tracker og planlægger for hele teamet',
     homeDescription:
-      'En issue tracker og planlægger, der lytter med til standup og foreslår de ændringer, I nævner. Hurtig, bygget til tastaturet og hostet i EU.',
+      'Alle opgaver, fejl og planer samlet ét sted, for både udviklere og salg. Snak om det på mødet, så foreslår Kupro ændringerne. Hostet i EU.',
     pricingTitle: 'Priser · Kupro',
     pricingDescription: '69 kr. pr. person om måneden eller 690 kr. om året. 30 dages gratis prøveperiode med mødeagenten. Intet kort.',
     newsTitle: 'Nyheder · Kupro',
@@ -15,8 +15,8 @@ export const da: Copy = {
     switchJiraTitle: 'Skift fra Jira · Kupro',
     switchJiraDescription: 'Importér jeres projekter fra Jira Cloud eller Data Center til Kupro med historik, sprints og nøgler. Prøv først, skift når I er klar.',
     notFoundTitle: 'Siden findes ikke · Kupro',
-    ogDetail: 'Issue tracker og planlægger. Hurtig, bygget til tastaturet og hostet i EU.',
-    ogImageAlt: 'Kupro: Sig det til standup. Så står det i trackeren.',
+    ogDetail: 'Alle opgaver, fejl og planer samlet ét sted. Hurtigt at bruge, hostet i EU.',
+    ogImageAlt: 'Kupro: Tal det igennem. Kupro holder styr på opgaverne.',
   },
   nav: {
     label: 'Hovedmenu',
@@ -34,8 +34,8 @@ export const da: Copy = {
   },
   hero: {
     eyebrow: 'Mødeagent · lavet i Danmark',
-    title: 'Sig det til standup. Så står det i trackeren.',
-    sub: 'Kupro lytter med, mens I taler, og foreslår de ændringer på opgaverne, som bliver nævnt. Intet ændres, før nogen godkender det. Intet af det, I siger, gemmes efter mødet.',
+    title: 'Tal det igennem. Kupro holder styr på opgaverne.',
+    sub: 'Slut med at flytte opgaver, rette titler og fordele arbejdet i hånden. Kupro lytter med, mens I taler, og foreslår de ændringer på opgaverne, som bliver nævnt. Intet ændres, før nogen godkender det. Intet af det, I siger, gemmes efter mødet.',
     ctaPrimary: 'Prøv gratis',
     ctaSecondary: 'Se priser',
     fine: '30 dage gratis med mødeagenten. Intet kort. Dansk og engelsk.',
@@ -213,7 +213,7 @@ export const da: Copy = {
     stepsTitle: 'Tre trin',
     cta: 'Start en gratis prøveperiode',
     how: 'Sådan gør I',
-    local: 'Ligger {source} bag en VPN? Kør importen på jeres egen maskine; tokenet forlader den aldrig:',
+    local: 'Ligger {source} bag en VPN? Kør importen på jeres egen maskine; tokenet forlader den aldrig. Læg først tokenet i KUPRO_IMPORT_TOKEN. En lokal import synkroniserer ikke, så kør den igen lige før I skifter:',
     sources: {
       jira: {
         name: 'Jira',
@@ -241,9 +241,9 @@ export const da: Copy = {
           { t: 'Service Management', d: 'Request types, køer og SLA’er bliver i Jira.' },
         ],
         steps: [
-          { t: 'Lav et token', d: 'Jira Cloud: et API-token fra jeres Atlassian-konto. Data Center: et personligt adgangstoken.' },
+          { t: 'Lav et token', d: 'Jira Cloud: et API-token fra jeres Atlassian-konto (til en lokal import skrives det som e-mail:api-token). Data Center: et personligt adgangstoken.' },
           { t: 'Prøv det først', d: 'Åbn Importer fra… i Kupro, og vælg Jira. Indsæt adressen og tokenet, tjek oversættelsen, og se en prøvekørsel, før noget bliver skrevet.' },
-          { t: 'Importér, og skift når I er klar', d: 'Kupro synkroniserer hver time, så teamet kan arbejde videre i Jira. Tryk Afslut migrering den dag, I flytter.' },
+          { t: 'Importér, og skift når I er klar', d: 'En forbundet import synkroniserer hver time, så teamet kan arbejde videre i Jira. Tryk Afslut migrering den dag, I flytter.' },
         ],
         command: 'kupro import jira --url https://jira.example.com --local',
       },
@@ -267,6 +267,13 @@ export const da: Copy = {
     pendingTitle: 'Den danske udgave er på vej',
     pendingBody: 'Indtil den danske tekst er gennemgået, gælder den engelske udgave.',
     readEnglish: 'Læs den engelske udgave',
+    descriptions: {
+      privacy: 'Hvilke personoplysninger Kupro indsamler, også i møder, hvorfor vi bruger dem, hvor længe vi gemmer dem, hvem der ellers ser dem, og dine rettigheder.',
+      terms: 'Vilkårene for at bruge Kupro: konti og arbejdsområder, agenter, mødeagenten, jeres data, abonnement og betaling samt ansvar.',
+      dpa: 'Kupros databehandleraftale: hvad vi behandler på jeres vegne, vores underdatabehandlere, sikkerhed og hvordan I accepterer den.',
+      subprocessors: 'De leverandører, der behandler data for Kupro, hvad hver af dem gør, og de tjenester vi ikke bruger.',
+      cookies: 'De cookies og den browserlagring, Kupro bruger: kun det, login kræver. Ingen sporing, så intet cookiebanner.',
+    },
   },
   notFound: {
     title: 'Siden findes ikke',

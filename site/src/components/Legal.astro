@@ -23,7 +23,7 @@ const pages: LegalPage[] = ['privacy', 'terms', 'dpa', 'subprocessors', 'cookies
 const Body = english;
 ---
 
-<Base locale={locale} page={page} title={`${c.footer[page]} · ${c.meta.siteName}`}>
+<Base locale={locale} page={page} title={`${c.footer[page]} · ${c.meta.siteName}`} description={c.legal.descriptions[page]}>
   <div class="wrap">
     <nav class="legal-nav" aria-label={c.legal.nav}>
       {pages.map((p) => <a href={path(locale, p)} aria-current={p === page ? 'page' : undefined}>{c.footer[p]}</a>)}
