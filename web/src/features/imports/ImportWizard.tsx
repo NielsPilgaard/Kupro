@@ -27,7 +27,7 @@ import { useToast } from '../../components/Toasts';
 import { Button, Kbd } from '../../components/ui';
 import { useHours } from '../../lib/format';
 import { useShortcuts } from '../../lib/shortcuts';
-import { Chip, OkLine, Phases, ProgressBar, SourceMark, WarnLine } from './parts';
+import { Chip, OkLine, Phases, ProgressBar, ProjectSummary, SourceMark, WarnLine } from './parts';
 import { control, sourceOf, sources, useSourceName, type ConnectKind, type FileKind, type SourceInfo, type SourceKind, type UrlKind } from './sources';
 import {
   CsvColumnsTable,
@@ -915,6 +915,11 @@ function RunView({ workspace, importId, runId, total, first }: { workspace: stri
                   placeholders: number.format(placeholders),
                 })}
               </OkLine>
+              {detail?.report?.projects && (
+                <div className="max-w-[640px]">
+                  <ProjectSummary projects={detail.report.projects} />
+                </div>
+              )}
               <div className="flex max-w-[640px] flex-col gap-3 rounded-r2 border border-line bg-panel p-4">
                 <h2 className="text-lg font-semibold">{t('importRun.next')}</h2>
                 <p>{t('importRun.nextText')}</p>

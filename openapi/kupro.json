@@ -7599,6 +7599,33 @@
         },
         "description": "The dry run's result (ADR-019 Pipeline), stored as an ImportRun's report."
       },
+      "ImportProjectSummary": {
+        "required": [
+          "project",
+          "imported",
+          "reparented",
+          "conflicts"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "imported": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reparented": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflicts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "description": "One project's line in a run report: issues the import has brought in so far, items this run's hierarchy fit put\nunder another parent than the source's, and conflicts open now."
+      },
       "ImportResponse": {
         "required": [
           "id",
@@ -7859,6 +7886,13 @@
           },
           "deletedInSource": {
             "$ref": "#/components/schemas/PlanCount"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportProjectSummary"
+            },
+            "description": "Per Kupro project, by key. Empty on reports stored before it existed."
           }
         },
         "description": "What a finished commit has to tell the owner, stored as its string? ImportRun.Report."

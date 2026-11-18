@@ -8,7 +8,17 @@ using Microsoft.EntityFrameworkCore;
 namespace Kupro.Api.Features.Imports;
 
 /// <summary>What a finished commit has to tell the owner, stored as its <see cref="ImportRun.Report"/>.</summary>
-public sealed record ImportRunReport(PlanCount Conflicts, PlanCount DeletedInSource);
+public sealed record ImportRunReport(PlanCount Conflicts, PlanCount DeletedInSource)
+{
+    /// <summary>Per Kupro project, by key. Empty on reports stored before it existed.</summary>
+    public IReadOnlyList<ImportProjectSummary> Projects { get; init; } = [];
+}
+
+/// <summary>
+/// One project's line in a run report: issues the import has brought in so far, items this run's hierarchy fit put
+/// under another parent than the source's, and conflicts open now.
+/// </summary>
+public sealed record ImportProjectSummary(string Project, int Imported, int Reparented, int Conflicts);
 
 /// <summary>
 /// Items an earlier run imported (ADR-019 Re-runs and conflicts). A field is updated only while Kupro still holds what
@@ -242,7 +252,31 @@ public sealed partial class ImportCommit
         _counts.DeletedInSource = read.Deleted.Count;
         return new ImportRunReport(
             new PlanCount(count, samples),
-            DeletedSamples(read));
+            DeletedSamples(read))
+        {
+            Projects = await ProjectSummariesAsync(db, open, read, ct),
+        };
+    }
+
+    private async Task<List<ImportProjectSummary>> ProjectSummariesAsync(KuproDbContext db, IQueryable<ImportConflict> open, SourceRead read, CancellationToken ct)
+    {
+        var imported = await db.ImportedItems.AsNoTracking()
+            .Where(i => i.ImportId == _importId && i.EntityKind == ImportedEntityKind.Issue)
+            .Join(db.Issues, i => i.EntityId, x => x.Id, (_, x) => x.ProjectId)
+            .Join(db.Projects, p => p, p => p.Id, (_, p) => p.Key)
+            .GroupBy(k => k).Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Key, g => g.Count, StringComparer.Ordinal, ct);
+        var conflicts = await open
+            .Join(db.Issues, c => c.IssueId, x => x.Id, (_, x) => x.ProjectId)
+            .Join(db.Projects, p => p, p => p.Id, (_, p) => p.Key)
+            .GroupBy(k => k).Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Key, g => g.Count, StringComparer.Ordinal, ct);
+        var projectOf = read.Refs.ToDictionary(r => r.Id, r => r.ProjectKey, StringComparer.Ordinal);
+        var reparented = _fit.Reparented.Where(projectOf.ContainsKey).GroupBy(id => projectOf[id], StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+
+        return [.. imported.Keys.Union(conflicts.Keys).Union(reparented.Keys).Order(StringComparer.Ordinal)
+            .Select(key => new ImportProjectSummary(key, imported.GetValueOrDefault(key), reparented.GetValueOrDefault(key), conflicts.GetValueOrDefault(key)))];
     }
 
     private PlanCount DeletedSamples(SourceRead read) =>

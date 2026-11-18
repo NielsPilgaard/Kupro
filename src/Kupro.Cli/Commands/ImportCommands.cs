@@ -483,7 +483,10 @@ internal static class ImportCommands
         await c.Out.ItemAsync(detail, ("Run", run.Id.ToString()), ("State", Cli.Dashed(run.State.ToString()!)),
             ("Created", counts?.Issues?.ToString(CultureInfo.InvariantCulture)), ("Updated", counts?.Updated?.ToString(CultureInfo.InvariantCulture)),
             ("Comments", counts?.Comments?.ToString(CultureInfo.InvariantCulture)), ("Attachments", counts?.Attachments?.ToString(CultureInfo.InvariantCulture)),
-            ("Conflicts", Count(detail.Report?.Conflicts)), ("Deleted there", Count(detail.Report?.DeletedInSource)));
+            ("Conflicts", Count(detail.Report?.Conflicts)), ("Deleted there", Count(detail.Report?.DeletedInSource)),
+            ("Per project", detail.Report?.Projects is { Count: > 0 } projects
+                ? string.Join("; ", projects.Select(p => $"{p.Project}: {p.Imported} imported, {p.Reparented} re-parented, {p.Conflicts} conflicts"))
+                : null));
     }
 
     private static async Task Checked(CommandContext c, ImportUndoCheck check) =>

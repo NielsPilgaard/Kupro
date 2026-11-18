@@ -69,7 +69,9 @@ public sealed partial class ImportCommitTests
         var conflict = (await ConflictsAsync()).Single();
         conflict.Field.ShouldBe(ImportedField.Priority);
         conflict.State.ShouldBe(ImportConflictState.Open);
-        JsonSerializer.Deserialize<ImportRunReport>(run.Report!, JsonSerializerOptions.Web)!.Conflicts.Samples.Single().Key.ShouldBe("WEB-1");
+        var report = JsonSerializer.Deserialize<ImportRunReport>(run.Report!, JsonSerializerOptions.Web)!;
+        report.Conflicts.Samples.Single().Key.ShouldBe("WEB-1");
+        report.Projects.ShouldBe([new ImportProjectSummary("WEB", Imported: 1, Reparented: 0, Conflicts: 1)]);
 
         await WithDbAsync(async db =>
         {

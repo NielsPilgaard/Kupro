@@ -44,6 +44,7 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
         var done = await WaitAsync(client, $"{url}/{import.Id}/runs/{run.Id}");
         done.Run.Counts!.Issues.ShouldBe(2);
         done.Report!.Conflicts.Count.ShouldBe(0);
+        done.Report.Projects.ShouldBe([new ImportProjectSummary("CSV", Imported: 2, Reparented: 0, Conflicts: 0)]);
         (await GetAsync<IssueDetail>(client, $"/api/v1/workspaces/{workspace.Slug}/issues/CSV-2")).State.ShouldBe(IssueState.Done);
 
         (await GetAsync<List<ImportResponse>>(client, url)).Single().LastRun!.Id.ShouldBe(run.Id);

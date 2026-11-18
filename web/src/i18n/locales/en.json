@@ -1008,7 +1008,13 @@
     "error": "Error: {{error}}",
     "planLine": "Would create {{create}} and update {{update}} issues.",
     "deleted_one": "{{count}} item is gone from the source and was left alone:",
-    "deleted_other": "{{count}} items are gone from the source and were left alone:"
+    "deleted_other": "{{count}} items are gone from the source and were left alone:",
+    "perProject": {
+      "project": "Project",
+      "imported": "Imported",
+      "reparented": "Re-parented",
+      "conflicts": "Conflicts"
+    }
   },
   "importConflicts": {
     "lede": "Someone changed these in Kupro after the last import. Kupro kept its value; the source value is shown so you can decide.",

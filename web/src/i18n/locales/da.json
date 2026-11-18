@@ -1008,7 +1008,13 @@
     "error": "Fejl: {{error}}",
     "planLine": "Ville oprette {{create}} og opdatere {{update}} opgaver.",
     "deleted_one": "{{count}} opgave er væk i kilden og blev ikke rørt:",
-    "deleted_other": "{{count}} opgaver er væk i kilden og blev ikke rørt:"
+    "deleted_other": "{{count}} opgaver er væk i kilden og blev ikke rørt:",
+    "perProject": {
+      "project": "Projekt",
+      "imported": "Importeret",
+      "reparented": "Flyttet",
+      "conflicts": "Konflikter"
+    }
   },
   "importConflicts": {
     "lede": "Nogen har ændret disse i Kupro efter sidste import. Kupro beholdt sin værdi; kildens værdi vises, så du kan beslutte.",
