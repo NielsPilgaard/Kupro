@@ -229,6 +229,18 @@ public sealed partial class ImportCommitTests
     }
 
     [Fact]
+    public async Task A_delta_without_a_moved_child_does_not_count_it_as_reparented_again()
+    {
+        var import = await ImportedAsync(Source(Item("e", key: "WEB-1", type: "epic"), Item("t", key: "WEB-2", type: "task", parent: "e")));
+        await RerunAsync(import, Source(Item("n", key: "WEB-3", type: "task", parent: "t")), cursor: "since");
+        await StoreAsync(import, Source(Item("x", key: "WEB-4")), false, "since");
+
+        (await DryRunAsync(import)).Reparented.Count.ShouldBe(0);
+        var run = await RunAsync(import, ImportRunKind.Commit);
+        JsonSerializer.Deserialize<ImportRunReport>(run.Report!, JsonSerializerOptions.Web)!.Projects.Single().Reparented.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task A_relation_someone_removed_stays_removed_on_a_rerun()
     {
         static FakeConnector Linked()
