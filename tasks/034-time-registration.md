@@ -51,7 +51,10 @@ Write `ADR-021: Time registration` before any code. Proposed answers; the ADR de
    only for human members; agents and guests have none. An agent using a person's token logs as that person, like
    every other action.
 3. **Schedule**: an optional weekly schedule per member (hours per weekday). A day with no entries counts as the
-   schedule, so a member only logs deviations. Only if the legal check allows it.
+   schedule, so a member only logs deviations. A schedule change applies from a chosen date; earlier days keep the
+   schedule that was in force then (schedules are dated versions), so past exports don't change. A member can mark a
+   scheduled day as not worked (a day marker, not a 0-minute entry), and that day counts as 0. Only if the legal check
+   allows it.
 4. **Who sees what**: a member sees and edits their own entries. Owners see everyone's and export them (the employer
    needs them). Members don't see each other's day totals; time logged on an issue shows as a total on the issue to
    everyone who can see the issue, with names only to Owners. To decide.
