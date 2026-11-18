@@ -43,7 +43,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 Checked 2026-11-17. The build order above is not the same as what is buildable. **Pick up next**: the Azure
 DevOps switch page (025), then Linear and Trello (026), then GitHub, Monday and YouTrack (027), each a copy block under
-`switch.sources` in `site/src/i18n/{en,da}.ts` plus two page files, on the Jira page's template (`Switch.astro`, pick
+`switch.sources` in `site/src/i18n/{en,da}.ts`, its id in `Switch.astro`'s `Props.source`, plus two page files, on the Jira page's template (`Switch.astro`, pick
 01 Checklist). Then 027's GitHub Projects (v2) fields and Monday's column mapping. Then 034: draft ADR-021 (Proposed)
 from the task's "Decisions for the ADR"; the owner accepts it before prototypes and code. Every other open row waits
 on a person.
