@@ -54,7 +54,8 @@ Write `ADR-021: Time registration` before any code. Proposed answers; the ADR de
    schedule, so a member only logs deviations. A schedule change applies from a chosen date; earlier days keep the
    schedule that was in force then (schedules are dated versions), so past exports don't change. A member can mark a
    scheduled day as not worked (a day marker, not a 0-minute entry), and that day counts as 0. Only if the legal check
-   allows it.
+   allows it. The marker only switches off the schedule: a day's count is always the sum of its entries (imported
+   worklogs included), so entries on a marked day count as usual.
 4. **Who sees what**: a member sees and edits their own entries. Owners see everyone's and export them (the employer
    needs them). Members don't see each other's day totals; time logged on an issue shows as a total on the issue to
    everyone who can see the issue, with names only to Owners. To decide.
