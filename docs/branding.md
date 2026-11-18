@@ -59,8 +59,9 @@ middle bar in verdigris: the piece of work currently in flow.
 
 Raster files are rendered from the mark by `bun scripts/brand-images.ts`, never drawn by hand: `favicon.ico` and the
 app icons (listed in `manifest.json`) in `web/public/` and `site/public/`, the site's social cards (`og-image.png`,
-`og-image-da.png`, headline from the hero copy), Keycloak's login favicon, and the GitHub
-[social preview](images/social-preview.png). The script keeps its own copy of the mark geometry and palette and does
+`og-image-da.png`, headline from the hero copy), Keycloak's login favicon, the GitHub
+[social preview](images/social-preview.png) and the LinkedIn [cover image](images/linkedin-banner.png) (the page logo
+is `icon-512.png`). The script keeps its own copy of the mark geometry and palette and does
 not read the SVGs above: after changing the mark or palette, edit the constants in the script too, then rerun it (a
 headline change only needs the rerun).
 
@@ -153,6 +154,8 @@ Mechanics of i18n: [ADR-011](adr/ADR-011-i18n.md). Domain definitions: [ADR-008]
 
 ## Taglines
 
-Primary: **Plan the year. Ship the week.** (DA: *Planlæg året. Lever ugen.*)
+Primary: **Talk it through. Kupro keeps the tracker up to date.** (DA: *Tal det igennem. Kupro holder styr på
+opgaverne.*) Site headline, social cards, LinkedIn. The point: no more moving issues, fixing titles or assigning by hand,
+so people can focus on talking to each other. Comes from [vision.md](vision.md).
 
-Alternates: "The issue tracker your agents can use too." · "European. Fast. Built to plan."
+Alternates: "Plan the year. Ship the week." (contributors, GitHub) · "The issue tracker your agents can use too."
