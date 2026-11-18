@@ -27,24 +27,25 @@ async function htmlFiles(dir) {
   return out;
 }
 
-function converter(site) {
+function converter(base) {
   const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
   td.use(gfm);
   td.remove(['svg', 'script', 'style', 'form', 'button']);
-  // Absolute links and images: the Markdown is read out of context, often far from the site.
+  // Absolute links and images: the Markdown is read out of context, often far from the site. Resolved against the
+  // page's own URL, like the browser does (#how on /switch/jira is /switch/jira#how).
   td.addRule('absoluteLinks', {
     filter: (node) => node.nodeName === 'A' && node.getAttribute('href'),
     replacement: (content, node) => {
       const text = content.trim();
       const gap = node.nextSibling?.nodeName === 'A' ? ' ' : '';
-      return text ? `[${text}](${new URL(node.getAttribute('href'), site).href})${gap}` : '';
+      return text ? `[${text}](${new URL(node.getAttribute('href'), base).href})${gap}` : '';
     },
   });
   td.addRule('absoluteImages', {
     filter: 'img',
     replacement: (_, node) => {
       const src = node.getAttribute('src');
-      return src ? `![${node.getAttribute('alt') ?? ''}](${new URL(src, site).href})` : '';
+      return src ? `![${node.getAttribute('alt') ?? ''}](${new URL(src, base).href})` : '';
     },
   });
   // Price units sit in <small> right after the amount: "€9 per seat", not "€9per seat".
@@ -77,7 +78,6 @@ export default function agents({ appUrl }) {
       'astro:build:done': async ({ dir, logger }) => {
         const root = fileURLToPath(dir);
         const site = process.env.SITE_URL ?? 'http://localhost:4321';
-        const td = converter(site);
         const pages = [];
 
         for (const file of await htmlFiles(root)) {
@@ -85,16 +85,17 @@ export default function agents({ appUrl }) {
           const main = html.match(/<main[^>]*>([\s\S]*)<\/main>/);
           if (!main) continue;
           const title = meta(html, /<title>([^<]*)<\/title>/);
-          let md = td.turndown(main[1]).trim();
+          const rel = relative(root, file).split(sep).join('/').replace(/\.html$/, '');
+          const path = rel === 'index' ? '/' : `/${rel}`;
+          let md = converter(new URL(path, site)).turndown(main[1]).trim();
           // Start at the page heading (eyebrows above it are decoration); pages without one get the <title>.
           const h1 = md.search(/^# /m);
           md = h1 >= 0 ? md.slice(h1) : `# ${title}\n\n${md}`;
           await writeFile(file.replace(/\.html$/, '.md'), `${md}\n`);
 
-          const rel = relative(root, file).split(sep).join('/').replace(/\.html$/, '');
           pages.push({
             lang: meta(html, /<html lang="([^"]+)"/),
-            path: rel === 'index' ? '/' : `/${rel}`,
+            path,
             md: `/${rel}.md`,
             title,
             description: meta(html, /<meta name="description" content="([^"]*)"/),
