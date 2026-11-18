@@ -272,6 +272,20 @@ public sealed partial class ImportCommit
             .GroupBy(k => k).Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.Key, g => g.Count, StringComparer.Ordinal, ct);
         var projectOf = read.Refs.ToDictionary(r => r.Id, r => r.ProjectKey, StringComparer.Ordinal);
+        // An item a delta left out is fitted from the import's tree, not Refs: count it in the project it lives in.
+        var missing = _fit.Reparented.Where(id => !projectOf.ContainsKey(id) && _items.ContainsKey(id)).ToDictionary(id => _items[id], id => id);
+        if (missing.Count > 0)
+        {
+            var ids = missing.Keys.ToList();
+            var keys = await db.Issues.AsNoTracking().Where(x => ids.Contains(x.Id))
+                .Join(db.Projects, x => x.ProjectId, p => p.Id, (x, p) => new { x.Id, p.Key })
+                .ToListAsync(ct);
+            foreach (var k in keys)
+            {
+                projectOf[missing[k.Id]] = k.Key;
+            }
+        }
+
         var reparented = _fit.Reparented.Where(projectOf.ContainsKey).GroupBy(id => projectOf[id], StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
 
