@@ -2,7 +2,7 @@ import { da } from './da';
 import { en, type Copy } from './en';
 
 export type Locale = 'en' | 'da';
-export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies' | 'switchJira' | 'switchAzureDevOps' | 'switchLinear' | 'switchTrello';
+export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies' | 'switchJira' | 'switchAzureDevOps' | 'switchLinear' | 'switchTrello' | 'switchGithub' | 'switchMonday' | 'switchYoutrack';
 
 const copy: Record<Locale, Copy> = { en, da };
 
@@ -21,6 +21,9 @@ const paths: Record<Locale, Record<Page, string>> = {
     switchAzureDevOps: '/switch/azure-devops',
     switchLinear: '/switch/linear',
     switchTrello: '/switch/trello',
+    switchGithub: '/switch/github',
+    switchMonday: '/switch/monday',
+    switchYoutrack: '/switch/youtrack',
   },
   da: {
     home: '/da',
@@ -35,6 +38,9 @@ const paths: Record<Locale, Record<Page, string>> = {
     switchAzureDevOps: '/da/skift/azure-devops',
     switchLinear: '/da/skift/linear',
     switchTrello: '/da/skift/trello',
+    switchGithub: '/da/skift/github',
+    switchMonday: '/da/skift/monday',
+    switchYoutrack: '/da/skift/youtrack',
   },
 };
 

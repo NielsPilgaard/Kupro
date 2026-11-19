@@ -1,0 +1,11 @@
+---
+import Switch from '../../../components/Switch.astro';
+import Base from '../../../layouts/Base.astro';
+import { t } from '../../../i18n';
+
+const c = t('da');
+---
+
+<Base locale="da" page="switchMonday" title={c.meta.switchMondayTitle} description={c.meta.switchMondayDescription}>
+  <Switch locale="da" source="monday" />
+</Base>
