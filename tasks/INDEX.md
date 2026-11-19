@@ -41,10 +41,10 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-17. The build order above is not the same as what is buildable. **Pick up next**: the Azure
-DevOps switch page (025), then Linear and Trello (026), then GitHub, Monday and YouTrack (027), each a copy block under
-`switch.sources` in `site/src/i18n/{en,da}.ts`, its id in `Switch.astro`'s `Props.source`, plus two page files, on the Jira page's template (`Switch.astro`, pick
-01 Checklist). Then 027's GitHub Projects (v2) fields and Monday's column mapping. Then 034: draft ADR-021 (Proposed)
+Checked 2026-11-19. The build order above is not the same as what is buildable. **Pick up next**: the Linear and
+Trello switch pages (026), then GitHub, Monday and YouTrack (027). Each is a copy block under `switch.sources` in
+`site/src/i18n/{en,da}.ts`, a `switch<Name>` page and path in `site/src/i18n/index.ts`, two page files and a footer
+link, on the Jira and Azure DevOps pages' template (`Switch.astro`, pick 01 Checklist). Then 027's GitHub Projects (v2) fields and Monday's column mapping. Then 034: draft ADR-021 (Proposed)
 from the task's "Decisions for the ADR"; the owner accepts it before prototypes and code. Every other open row waits
 on a person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
@@ -57,7 +57,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |
 | 023 | Built, web wizard and Hierarchy trees included. Left: three official product marks (manual) and the production run | The owner for the marks; 013 Done for the run |
-| 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras and the Jira site page done. Left: the Azure DevOps, Linear and Trello site pages, recorded fixtures and the close (sandbox accounts, manual steps) | Nothing for the pages; the sandboxes for the rest |
+| 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras and the Jira and Azure DevOps site pages done. Left: the Linear and Trello site pages, recorded fixtures and the close (sandbox accounts, manual steps) | Nothing for the pages; the sandboxes for the rest |
 | 027 | GitHub, YouTrack and Monday done. Left: GitHub's Projects (v2) fields, Monday's column mapping and the site pages (023's wizard is built) | Nothing for those; the sandboxes for the close |
 | 034 | Spec written; needs ADR-021 and a legal check of the Danish rules | Nothing for the ADR draft; the owner to accept it, and the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |

@@ -2,7 +2,7 @@ import { da } from './da';
 import { en, type Copy } from './en';
 
 export type Locale = 'en' | 'da';
-export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies' | 'switchJira';
+export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies' | 'switchJira' | 'switchAzureDevOps';
 
 const copy: Record<Locale, Copy> = { en, da };
 
@@ -18,6 +18,7 @@ const paths: Record<Locale, Record<Page, string>> = {
     subprocessors: '/subprocessors',
     cookies: '/cookies',
     switchJira: '/switch/jira',
+    switchAzureDevOps: '/switch/azure-devops',
   },
   da: {
     home: '/da',
@@ -29,6 +30,7 @@ const paths: Record<Locale, Record<Page, string>> = {
     subprocessors: '/da/underdatabehandlere',
     cookies: '/da/cookies',
     switchJira: '/da/skift/jira',
+    switchAzureDevOps: '/da/skift/azure-devops',
   },
 };
 

@@ -1,15 +1,19 @@
 ---
 // A /switch/<source> page (tasks 024–027, prototype 01 Checklist): what comes across, what changes, three steps.
 import { appUrl, t, type Locale } from '../i18n';
+import type { Copy } from '../i18n/en';
 
 interface Props {
   locale: Locale;
-  source: 'jira';
+  /** A key of switch.sources in the copy. */
+  source: keyof Copy['switch']['sources'];
 }
 
 const { locale, source } = Astro.props;
 const c = t(locale).switch;
 const s = c.sources[source];
+// Only some sources have an end-of-support date to beat.
+const deadline = 'deadline' in s ? s.deadline : undefined;
 ---
 
 <div class="wrap sw">
@@ -24,11 +28,11 @@ const s = c.sources[source];
   </header>
 
   {
-    s.deadline && (
+    deadline && (
       <aside class="sw-deadline">
-        <span class="chip">{s.deadline.date}</span>
+        <span class="chip">{deadline.date}</span>
         <p>
-          <b>{s.deadline.title}</b> {s.deadline.body}
+          <b>{deadline.title}</b> {deadline.body}
         </p>
       </aside>
     )
@@ -42,7 +46,7 @@ const s = c.sources[source];
           s.comes.map((x) => (
             <li>
               <svg class="ok" aria-hidden="true"><use href="#i-check"></use></svg>
-              <span><b>{x.t}</b>{x.d}</span>
+              <span><b>{x.t}</b><span>{x.d}</span></span>
             </li>
           ))
         }
@@ -55,7 +59,7 @@ const s = c.sources[source];
           s.changes.map((x) => (
             <li>
               <span class="ch" aria-hidden="true">→</span>
-              <span><b>{x.t}</b>{x.d}</span>
+              <span><b>{x.t}</b><span>{x.d}</span></span>
             </li>
           ))
         }

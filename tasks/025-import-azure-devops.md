@@ -29,7 +29,8 @@ impediments and CMMI's change requests, risks and reviews keep a label, test art
 (`data-vss-mention`) and `#4567` references are rewritten, and keys and aliases come from the pipeline. The fold choice
 is 023's. Per item, the mapping's `backlogWithoutSprint` makes "New" with no sprint Backlog, and its `urgentValues`
 makes a Severity "1 - Critical" item Urgent. `kupro import azure-devops --url <collection> --local` is in (built
-with 024's). Not done: the site page (waits on the wizard).
+with 024's). The site page is in: `/switch/azure-devops` and `/da/skift/azure-devops` on 024's `Switch.astro`,
+linked from the footer's Switch from column.
 
 Recorded fixtures need the sandbox (a manual step). Until then the fake stands in for them: replace or check it
 against a recording when one exists. Server-side connectors only reach public addresses (`PublicAddresses`, checked
