@@ -220,8 +220,9 @@ public sealed class ImportDescription
 
     private string? Display(JsonElement value, SourceField? field) => value.ValueKind switch
     {
-        JsonValueKind.String when field?.Kind == FieldKind.User && value.GetString() is { } id => _people.GetValueOrDefault(id, id),
         JsonValueKind.Null or JsonValueKind.Undefined => null,
+        // One person or several (Trello's card members): each by name.
+        _ when field?.Kind == FieldKind.User => string.Join(", ", Strings(value).Select(id => _people.GetValueOrDefault(id, id))),
         _ => string.Join(", ", Strings(value)),
     };
 

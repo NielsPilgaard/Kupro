@@ -56,7 +56,7 @@ public sealed class TrelloConnectorTests
         fields["Go-live"].Kind.ShouldBe(FieldKind.Date);
         fields["Approved"].Kind.ShouldBe(FieldKind.Select);
         fields["Notes"].Kind.ShouldBe(FieldKind.Text);
-        fields["Members"].Kind.ShouldBe(FieldKind.MultiSelect);
+        fields["Members"].Kind.ShouldBe(FieldKind.User);
 
         s.Trello.Requests.ShouldContain(r => r.Contains("/labels?", StringComparison.Ordinal) && r.Contains("limit=1000", StringComparison.Ordinal));
     }
@@ -273,6 +273,20 @@ public sealed class TrelloConnectorTests
         (await connector.DescribeAsync(Ct)).Projects.Count.ShouldBe(2);
 
         waits.ShouldBe([TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3)]);
+    }
+
+    [Fact]
+    public async Task The_default_mapping_leaves_checklist_items_in_the_card_task_list()
+    {
+        var stream = new MemoryStream();
+        await Connect(new Sample().Trello).WriteSnapshotAsync(stream, new ReadScope(), null, includeFiles: false, TimeProvider.System, Ct);
+        stream.Position = 0;
+        await using var snapshot = await SnapshotReader.OpenAsync(stream, Ct);
+
+        var mapping = Kupro.Api.Features.Imports.ImportMappingDefaults.Propose(snapshot.Header, []);
+
+        mapping.Scope.SkipTypes.ShouldContain(TrelloConnector.CheckItemType);
+        mapping.Types[TrelloConnector.CheckItemType].Checklist.ShouldBeFalse("ticked back in, they are Tasks, not a second task list");
     }
 
     [Fact]

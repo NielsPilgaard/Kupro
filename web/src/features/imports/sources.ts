@@ -27,6 +27,8 @@ export interface SourceInfo {
   url?: 'required' | 'optional';
   email?: boolean;
   local?: boolean;
+  /** The token comes from the source's authorize page for Kupro's own key (Trello). */
+  authorize?: boolean;
   wip?: boolean;
 }
 
@@ -37,7 +39,7 @@ export const sources: SourceInfo[] = [
   { kind: 'snapshot', mark: FileArchive, file: '.zip,application/zip' },
   { kind: 'kupro', mark: PackageOpen, file: '.zip,application/zip' },
   { kind: 'linear', mark: linear },
-  { kind: 'trello', mark: trello },
+  { kind: 'trello', mark: trello, authorize: true },
   { kind: 'github', mark: github, url: 'optional' },
   { kind: 'monday', mark: monday },
   { kind: 'youtrack', mark: youtrack, url: 'required' },

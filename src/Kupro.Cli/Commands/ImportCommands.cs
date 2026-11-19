@@ -39,8 +39,8 @@ internal static class ImportCommands
                      FromSource(SourceKinds.YouTrack, "YouTrack Cloud or self-hosted", "--url: the address you open (https://acme.youtrack.cloud). Token: a permanent token."),
                      FromSource(SourceKinds.Monday, "Monday", "Token: a personal API token."),
                      FromSource(SourceKinds.Linear, "Linear", "Token: a personal API key."),
-                     FromSource(SourceKinds.Trello, "Trello", "Token: a Trello token; --key: your Trello API key."),
-                     Create(), List(), Show(), Upload(), Source(), Csv(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), Conflicts(), Undo(), Finish(),
+                     FromSource(SourceKinds.Trello, "Trello", "Token: open the link from `kupro import trello-authorize` and copy the token Trello shows."),
+                     Create(), List(), Show(), Upload(), Source(), Csv(), Mapping(), Plan(), Run(), Runs(), Report(), Sync(), Token(), TrelloAuthorize(), Conflicts(), Undo(), Finish(),
                  })
         {
             import.Subcommands.Add(command);
@@ -71,7 +71,7 @@ internal static class ImportCommands
     private static Command FromSource(string kind, string name, string access)
     {
         var url = new Option<string?>("--url") { Description = "The source's address." };
-        var key = new Option<string?>("--key") { Description = "Your Trello API key (--local only; a key is not a secret, the token is)." };
+        var key = new Option<string?>("--key") { Description = "With --local: your own Trello API key, if the token is for it. Left out, Kupro's key, the one `kupro import trello-authorize` gives a token for." };
         var local = new Option<bool>("--local") { Description = "Read the source from this machine and upload a snapshot. The token stays here." };
         var projects = new Option<string[]>("--project") { Description = "With --local: a project key or ID to read (repeat it); all projects if left out.", AllowMultipleArgumentsPerToken = true };
         var into = new Option<Guid?>("--import") { Description = "With --local: upload to this import (a re-run) instead of creating one." };
@@ -108,7 +108,13 @@ internal static class ImportCommands
 
             var transport = Cli.Runtime.Value?.SourceTransport;
             using var http = new HttpClient(transport ?? new SocketsHttpHandler(), disposeHandler: transport is null);
-            var connector = Connector(kind, name, http, c.Get(url), c.Get(key), token);
+            var trelloKey = c.Get(key);
+            if (kind == SourceKinds.Trello && trelloKey is null)
+            {
+                trelloKey = (await (await c.InWorkspaceAsync(ct)).Imports.TrelloAuthorize.GetAsync(cancellationToken: ct))?.Key;
+            }
+
+            var connector = Connector(kind, name, http, c.Get(url), trelloKey, token);
             var wanted = c.Get(projects) ?? [];
             var file = c.Get(output) ?? new FileInfo(Path.Combine(Path.GetTempPath(), $"kupro-{kind}-{Guid.NewGuid():N}.zip"));
             try
@@ -180,7 +186,7 @@ internal static class ImportCommands
             SourceKinds.Linear => new LinearConnector(http, token),
             SourceKinds.Monday => new MondayConnector(http, token),
             SourceKinds.YouTrack => new YouTrackConnector(http, Url(), token),
-            SourceKinds.Trello => new TrelloConnector(http, key ?? throw new CliException("Give your Trello API key with --key."), token),
+            SourceKinds.Trello => new TrelloConnector(http, key ?? throw new CliException("This server has no Trello key: give your own with --key."), token),
             _ => throw new CliException($"Kupro can't read {name} from here."),
         };
     }
@@ -345,6 +351,14 @@ internal static class ImportCommands
             await c.Out.DoneAsync(i!, $"Auto-sync is {(i!.AutoSync == true ? "on" : "off")}.");
         });
     }
+
+    private static Command TrelloAuthorize() =>
+        new ApiCommand("trello-authorize", "Trello's page to let Kupro read your boards. Open it, allow access, and import with the token it shows.", "getTrelloAuthorizeLink")
+            .Handle(async (c, ct) =>
+            {
+                var link = await (await c.InWorkspaceAsync(ct)).Imports.TrelloAuthorize.GetAsync(cancellationToken: ct);
+                await c.Out.ItemAsync(link!, ("Open", link!.Url));
+            });
 
     private static Command Token()
     {

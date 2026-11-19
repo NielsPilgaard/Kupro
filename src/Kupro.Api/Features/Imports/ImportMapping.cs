@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Kupro.Api.Features.Issues;
 using Kupro.Import.Csv;
 using Kupro.Import.Snapshot;
+using Kupro.Import.Trello;
 
 namespace Kupro.Api.Features.Imports;
 
@@ -142,7 +143,28 @@ public static class ImportMappingDefaults
             SourceKinds.GitHub => GitHub(header, mapping),
             SourceKinds.YouTrack => YouTrack(header, mapping),
             SourceKinds.Monday => Monday(header, mapping),
+            SourceKinds.Trello => Trello(header, mapping),
             _ => mapping,
+        };
+    }
+
+    /// <summary>
+    /// Trello (task 026): a checklist item with its own member or due date is already a line in its card's task list,
+    /// with that member and date, so it is left out by default. Ticked back in, it becomes a Task under the card.
+    /// </summary>
+    private static ImportMapping Trello(SnapshotHeader header, ImportMapping mapping)
+    {
+        if (header.ItemTypes.All(t => t.Id != TrelloConnector.CheckItemType))
+        {
+            return mapping;
+        }
+
+        var types = mapping.Types.ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal);
+        types[TrelloConnector.CheckItemType] = new TypeTarget(IssueType.Task);
+        return mapping with
+        {
+            Types = types,
+            Scope = mapping.Scope with { SkipTypes = [.. mapping.Scope.SkipTypes, TrelloConnector.CheckItemType] },
         };
     }
 

@@ -16,9 +16,24 @@ public sealed record CreateImportRequest(
     [Url, MaxLength(2048)] string? BaseUrl = null,
     [MaxLength(4096)] string? Token = null);
 
+/// <param name="Url">Trello's authorize page. It shows a read-only token to paste into the import.</param>
+/// <param name="Key">Kupro's Trello API key, the one that token belongs to. Not a secret; it is in the link too.</param>
+public sealed record TrelloAuthorizeLink(string Url, string Key);
+
 /// <summary>Creating an import and what it holds of the source: its token, its auto-sync, its description (ADR-019 Source access).</summary>
 public sealed partial class ImportService
 {
+    /// <summary>
+    /// Where a Trello token for Kupro's API key comes from (ADR-019 Source access). Trello shows the token on its own
+    /// page for the person to paste; there is no redirect to Kupro. Read only, and no expiry, so hourly sync outlasts a
+    /// long migration. Finish deletes Kupro's copy; like a PAT, the person revokes it in Trello.
+    /// </summary>
+    public IssueResult<TrelloAuthorizeLink> TrelloAuthorizeLink() =>
+        sources.TrelloKey is { } key
+            ? new TrelloAuthorizeLink(
+                "https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=Kupro&key=" + Uri.EscapeDataString(key), key)
+            : new IssueError("imports_unavailable", "This server has no Trello API key. Import Trello with `kupro import trello --local` instead.");
+
     public async Task<IssueResult<WorkspaceImport>> CreateAsync(CreateImportRequest request, CancellationToken ct)
     {
         if (request.Token is not null && TokenError(request.SourceKind) is { } error)
