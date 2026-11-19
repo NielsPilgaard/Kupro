@@ -2,7 +2,7 @@ import { da } from './da';
 import { en, type Copy } from './en';
 
 export type Locale = 'en' | 'da';
-export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies' | 'switchJira' | 'switchAzureDevOps';
+export type Page = 'home' | 'pricing' | 'news' | 'privacy' | 'terms' | 'dpa' | 'subprocessors' | 'cookies' | 'switchJira' | 'switchAzureDevOps' | 'switchLinear' | 'switchTrello';
 
 const copy: Record<Locale, Copy> = { en, da };
 
@@ -19,6 +19,8 @@ const paths: Record<Locale, Record<Page, string>> = {
     cookies: '/cookies',
     switchJira: '/switch/jira',
     switchAzureDevOps: '/switch/azure-devops',
+    switchLinear: '/switch/linear',
+    switchTrello: '/switch/trello',
   },
   da: {
     home: '/da',
@@ -31,6 +33,8 @@ const paths: Record<Locale, Record<Page, string>> = {
     cookies: '/da/cookies',
     switchJira: '/da/skift/jira',
     switchAzureDevOps: '/da/skift/azure-devops',
+    switchLinear: '/da/skift/linear',
+    switchTrello: '/da/skift/trello',
   },
 };
 

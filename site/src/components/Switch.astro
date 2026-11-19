@@ -79,7 +79,7 @@ const deadline = 'deadline' in s ? s.deadline : undefined;
         ))
       }
     </ol>
-    <p class="sw-local">{c.local.replace('{source}', s.name)}</p>
+    <p class="sw-local">{('cloud' in s ? c.localCloud : c.local).replace('{source}', s.name)}</p>
     <pre><code>{s.command}</code></pre>
   </section>
 </div>

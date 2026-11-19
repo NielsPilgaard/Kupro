@@ -15,6 +15,10 @@ export const en = {
     switchJiraDescription: 'Import your Jira Cloud or Data Center projects into Kupro with their history, sprints and keys. Rehearse first, switch when ready.',
     switchAzureDevOpsTitle: 'Switch from Azure DevOps · Kupro',
     switchAzureDevOpsDescription: 'Import your Azure DevOps Services or Server boards into Kupro with their history, iterations and IDs. Rehearse first, switch when ready.',
+    switchLinearTitle: 'Switch from Linear · Kupro',
+    switchLinearDescription: 'Import your Linear teams into Kupro with their keys, cycles and history. Rehearse first, switch when ready.',
+    switchTrelloTitle: 'Switch from Trello · Kupro',
+    switchTrelloDescription: 'Import your Trello boards into Kupro with their cards, checklists, comments and history. Rehearse first, switch when ready.',
     notFoundTitle: 'Page not found · Kupro',
     /** Line under the headline on the social card (scripts/brand-images.ts), and the card's alt text. */
     ogDetail: 'Every task, bug and plan in one place. Quick to use, hosted in the EU.',
@@ -218,6 +222,8 @@ export const en = {
     how: 'How it works',
     /** {source} is the source's name. */
     local: '{source} behind a VPN? Run the import on your own machine; the token never leaves it. Put the token in KUPRO_IMPORT_TOKEN first. A local import doesn’t sync, so run it again just before you switch:',
+    /** For a source that is only in the cloud: no VPN, but the token can still stay on your machine. */
+    localCloud: 'Rather keep the {source} token on your own machine? Run the import there; it uploads only the snapshot. Put the token in KUPRO_IMPORT_TOKEN first. A local import doesn’t sync, so run it again just before you switch:',
     sources: {
       jira: {
         name: 'Jira',
@@ -278,6 +284,60 @@ export const en = {
           { t: 'Import, then switch when ready', d: 'A connected import syncs every hour, so the team can keep working in Azure DevOps. Press Finish migration on the day you move.' },
         ],
         command: 'kupro import azure-devops --url https://devops.example.com/DefaultCollection --local',
+      },
+      linear: {
+        name: 'Linear',
+        cloud: true,
+        eyebrow: 'Switch from Linear',
+        title: 'Bring your Linear teams. Keep the keys and the history.',
+        sub: 'Kupro imports teams, projects, issues, cycles, comments and files from Linear. Rehearse it on real data, keep working in Linear, and switch on the day that suits you.',
+        comes: [
+          { t: 'Teams and keys', d: 'Each team becomes a Kupro project and keeps its key, so ENG-123 stays ENG-123.' },
+          { t: 'Projects, issues and sub-issues', d: 'A Linear project becomes an Epic and its issues Tasks. An issue with sub-issues becomes a Feature with Tasks under it.' },
+          { t: 'Workflow states and priorities', d: 'Each state maps by its type: triage and backlog to Backlog, started to In Progress, and so on. Urgent, High, Medium and Low stay as they are.' },
+          { t: 'Cycles', d: 'Cycles become sprints and keep their dates.' },
+          { t: 'Comments and files', d: 'Descriptions and comments are Markdown already. Files pasted into them are copied into Kupro.' },
+          { t: 'History', d: 'State, assignee, cycle and priority changes show with the original person and time.' },
+          { t: 'Labels and relations', d: 'Labels stay labels, a grouped one as Group/Label. Blocks, related and duplicate links come along.' },
+        ],
+        changes: [
+          { t: 'One workflow', d: 'Backlog, Todo, In Progress, In Review, Done, Canceled. Each team’s states map into these.' },
+          { t: 'Hours, not points', d: 'Linear estimates in points. You choose how many hours a point is, or import without estimates.' },
+          { t: 'Flat comments', d: 'Replies come across as comments in time order.' },
+          { t: 'Issues only', d: 'Project updates, documents and customer requests stay in Linear.' },
+        ],
+        steps: [
+          { t: 'Make an API key', d: 'A personal API key from Security & access in your Linear settings.' },
+          { t: 'Rehearse', d: 'In Kupro, open Import from… and pick Linear. Paste the key, check the mapping, and see a dry run before anything is written.' },
+          { t: 'Import, then switch when ready', d: 'A connected import syncs every hour, so the team can keep working in Linear. Press Finish migration on the day you move.' },
+        ],
+        command: 'kupro import linear --local',
+      },
+      trello: {
+        name: 'Trello',
+        cloud: true,
+        eyebrow: 'Switch from Trello',
+        title: 'Bring your Trello boards. Keep every card and comment.',
+        sub: 'Kupro imports boards, cards, checklists, comments and attachments from Trello. Rehearse it on real data, keep working in Trello, and switch on the day that suits you.',
+        comes: [
+          { t: 'Boards and card numbers', d: 'Each board becomes a Kupro project with a key you pick, and card 42 keeps its number.' },
+          { t: 'Lists', d: 'Each list becomes a status. Lists named like To do, Doing, Review or Done are placed for you; you place the rest.' },
+          { t: 'Labels, members and dates', d: 'Labels stay labels. A card’s first member becomes its assignee, matched to your team or kept as a placeholder; the others are listed on the issue. Start and due dates come along.' },
+          { t: 'Checklists', d: 'Checklists stay checklists in the card’s description.' },
+          { t: 'Comments and attachments', d: 'Comments keep their author and time. Uploaded files are copied into Kupro; link attachments stay links.' },
+          { t: 'History', d: 'Moves between lists and changes to members and due dates show with the original person and time.' },
+        ],
+        changes: [
+          { t: 'One workflow', d: 'Backlog, Todo, In Progress, In Review, Done, Canceled. Your lists map into these.' },
+          { t: 'Epics and Features', d: 'Cards become Tasks. Group them under Epics and Features in Kupro to plan delivery.' },
+          { t: 'No Power-Ups', d: 'Custom Fields values stay readable in a details block on each issue. Automations stay in Trello.' },
+        ],
+        steps: [
+          { t: 'Let Kupro read your boards', d: 'In Kupro, open Import from… and pick Trello. Follow Get a token from Trello, allow read access, and copy the token Trello shows.' },
+          { t: 'Rehearse', d: 'Paste the token, check how your lists map, and see a dry run before anything is written.' },
+          { t: 'Import, then switch when ready', d: 'A connected import syncs every hour, so the team can keep working in Trello. Press Finish migration on the day you move.' },
+        ],
+        command: 'kupro import trello --local',
       },
     },
   },
