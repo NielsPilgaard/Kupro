@@ -21,6 +21,7 @@ description: >-
 - Same tokens (`web/src/styles/tokens.css`) and fonts as the app ([design-guide.md](../design-guide.md)); no third-party requests.
 - Own container (`site`, nginx) on the apex domain; the app moves to `app.<domain>`. Aspire runs it locally ([ADR-012](ADR-012-aspire.md)).
 - Story order: meeting agent first, then fast and easy to use, then the delivery plan, then agents (CLI/MCP), then EU.
+- Agent-ready: every page has a Markdown twin (`Accept: text/markdown` or `.md`), plus `/llms.txt` and `/.well-known/mcp.json`; robots.txt allows search, agents and training.
 - News page (`/news`, `/da/nyheder`) from `site/src/changelog.ts`; a weekly workflow (`changelog.yml`) has Claude draft each entry from the week's `feat` commits as a PR for review.
 
 ## Status
@@ -54,6 +55,11 @@ search engines must read and that should load instantly on a phone. The public p
 - **Landing story**: lead with the meeting agent (the newest, most demo-able feature, privacy first), then speed and
   ease of use ("every action under half a second", keyboard first), then the delivery plan, then agent parity, then
   the EU vendor list and pricing.
+- **Agent-ready**: agents read the site as well as people. After the build, `site/integrations/agents.mjs` turns each
+  page's `<main>` into a Markdown twin (`pricing.html` → `pricing.md`) and writes `/llms.txt` and
+  `/.well-known/mcp.json` (the app's `/mcp`). nginx serves the twin when `Accept` names `text/markdown`, with
+  `Vary: Accept` and a `Link: rel="alternate"` header; `<head>` has the same link. robots.txt carries
+  `Content-Signal: search=yes, ai-input=yes, ai-train=yes`: the more agents know Kupro, the better.
 
 ## Consequences
 
@@ -96,6 +102,9 @@ search engines must read and that should load instantly on a phone. The public p
   root so the site can import `web/src/styles/tokens.css`.
 - **IMP-003**: The look book stays in `docs/design/public-pages/` as the design record; the site is the source of
   truth for the live copy.
+- **IMP-004**: The Markdown is generated from the built HTML (turndown), so it can't drift from the page. nginx picks
+  it with a regex on `Accept`, not full q-value ranking; browsers never send `text/markdown`. Check a change with
+  [agentready.md/tools](https://agentready.md/tools) and `curl -sI -H 'Accept: text/markdown' <url>`.
 
 ## Related Decisions
 

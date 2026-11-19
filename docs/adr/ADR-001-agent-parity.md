@@ -83,6 +83,10 @@ without a check. Agents also need things humans don't: machine-readable output, 
   byte-identical across instances: text repeated in every tool's schema belongs in the server instructions, and the
   filter strips `"default": null` and `null` types, since an optional parameter already says it can be left out. Clients
   on the 2025-11-25 protocol ignore the field.
+- **IMP-005**: Discovery on the app origin, anonymous: `/.well-known/mcp.json` (MCP server card with every tool) and
+  `/llms.txt` (how to connect, tokens, the tool list), built from the registered tools by `DiscoveryController`, plus
+  `/openapi/v1.json`. They are not API operations, so they stay out of OpenAPI and the parity test. The public site has
+  its own ([ADR-017](ADR-017-public-site.md)).
 
 ## Related Decisions
 

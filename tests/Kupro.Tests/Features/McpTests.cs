@@ -451,6 +451,25 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     [Fact]
+    public async Task Agents_discover_the_server_without_signing_in()
+    {
+        using var client = Factory.CreateClient();
+        await using var mcp = await ConnectAsync();
+        var tools = (await mcp.ListToolsAsync(cancellationToken: Ct)).Select(t => t.Name).Order(StringComparer.Ordinal).ToList();
+
+        var card = JsonElement.Parse(await client.GetStringAsync("/.well-known/mcp.json", Ct));
+        card.GetProperty("endpoint").GetString().ShouldEndWith("/mcp");
+        card.GetProperty("authentication").GetProperty("protectedResourceMetadata").GetString().ShouldEndWith("/.well-known/oauth-protected-resource");
+        card.GetProperty("tools").EnumerateArray().Select(t => t.GetProperty("name").GetString()).ShouldBe(tools);
+
+        var llms = await client.GetAsync("/llms.txt", Ct);
+        llms.Content.Headers.ContentType!.MediaType.ShouldBe("text/markdown");
+        var text = await llms.Content.ReadAsStringAsync(Ct);
+        text.ShouldStartWith("# Kupro");
+        text.ShouldContain($"- `{tools[0]}`: ");
+    }
+
+    [Fact]
     public async Task Agent_runs_a_meeting_and_reviews_its_proposals_through_mcp()
     {
         await using var mcp = await ConnectAsync();

@@ -69,7 +69,9 @@ public sealed partial class ImportCommitTests
         var conflict = (await ConflictsAsync()).Single();
         conflict.Field.ShouldBe(ImportedField.Priority);
         conflict.State.ShouldBe(ImportConflictState.Open);
-        JsonSerializer.Deserialize<ImportRunReport>(run.Report!, JsonSerializerOptions.Web)!.Conflicts.Samples.Single().Key.ShouldBe("WEB-1");
+        var report = JsonSerializer.Deserialize<ImportRunReport>(run.Report!, JsonSerializerOptions.Web)!;
+        report.Conflicts.Samples.Single().Key.ShouldBe("WEB-1");
+        report.Projects.ShouldBe([new ImportProjectSummary("WEB", Imported: 1, Reparented: 0, Conflicts: 1)]);
 
         await WithDbAsync(async db =>
         {
@@ -224,6 +226,18 @@ public sealed partial class ImportCommitTests
         var child = await IssueAsync("WEB-3");
         child.Parent!.Key.ShouldBe("WEB-1");
         child.Relations.ShouldContain(r => r.Type == RelationKind.Relates && r.Issue.Key == "WEB-2");
+    }
+
+    [Fact]
+    public async Task A_delta_without_a_moved_child_does_not_count_it_as_reparented_again()
+    {
+        var import = await ImportedAsync(Source(Item("e", key: "WEB-1", type: "epic"), Item("t", key: "WEB-2", type: "task", parent: "e")));
+        await RerunAsync(import, Source(Item("n", key: "WEB-3", type: "task", parent: "t")), cursor: "since");
+        await StoreAsync(import, Source(Item("x", key: "WEB-4")), false, "since");
+
+        (await DryRunAsync(import)).Reparented.Count.ShouldBe(0);
+        var run = await RunAsync(import, ImportRunKind.Commit);
+        JsonSerializer.Deserialize<ImportRunReport>(run.Report!, JsonSerializerOptions.Web)!.Projects.Single().Reparented.ShouldBe(0);
     }
 
     [Fact]

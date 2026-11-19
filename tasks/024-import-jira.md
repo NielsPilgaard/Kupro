@@ -50,9 +50,20 @@ The connector is in: `Kupro.Import/Jira` (`JiraConnector`, client, reading), reg
   `--local` it is `import create jira`. The same command exists for azure-devops, linear and trello. Each `--local`
   run reads everything in scope (no delta cursor), and the upload replaces the import's file.
 
-Not done: the People step's account type and the report's per-project summary (wizard), and the site page (waits on
-the wizard). Recorded fixtures and the live
-run need a Cloud sandbox and a Data Center instance (a manual step); until then the fake stands in for them.
+- Wizard extras are in. The People step marks app accounts "Service account" and defaults them to Skip (built with
+  023's wizard). A commit's report has `projects` (`ImportProjectSummary`: per Kupro project, issues imported so far,
+  re-parented by this run's fit, conflicts open), shown on the wizard's finished screen, in the import page's run
+  report and by `kupro import report`. It applies to every source, not only Jira.
+
+- The site page is in: `/switch/jira` and `/da/skift/jira`, linked from the footer. It is a page type shared by every
+  `/switch/<source>` page (024–027), picked from three prototypes in [prototypes/switch/](../prototypes/switch/index.html):
+  **01 Checklist** (owner, 2026-11-17; head, Data Center deadline banner, "what comes across" and "what changes"
+  boxes, three numbered steps, the `--local` line). `site/src/components/Switch.astro` serves every source; a source
+  adds its copy under `switch.sources` in `site/src/i18n/{en,da}.ts`, a page id in `site/src/i18n/index.ts`, its id
+  in `Props.source` in `Switch.astro`, and two page files.
+
+Not done: recorded fixtures and the live run need a Cloud sandbox and a Data Center instance (a manual step); until
+then the fake stands in for them. The changelog criterion is also open (see Acceptance criteria).
 
 ## Scope
 

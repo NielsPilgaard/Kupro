@@ -45,6 +45,8 @@ public sealed partial class ImportCommitTests
         var commit = await RunAsync(import, ImportRunKind.Commit);
         commit.State.ShouldBe(ImportRunState.Succeeded, commit.Error);
         Counts(commit).Issues.ShouldBe(plan.Create.Count);
+        JsonSerializer.Deserialize<ImportRunReport>(commit.Report!, JsonSerializerOptions.Web)!.Projects
+            .ShouldBe([new ImportProjectSummary("WEB", plan.Create.Count, counts.Reparented, 0)]);
 
         var sourceParents = source.Records.OfType<SourceItem>().ToDictionary(i => i.Key!, i => i.Parent is null
             ? null

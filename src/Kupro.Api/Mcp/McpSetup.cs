@@ -14,7 +14,7 @@ public static class McpSetup
 {
     public const string Path = "/mcp";
 
-    private const string Instructions =
+    internal const string Instructions =
         "Kupro is an issue tracker. Work happens in a workspace; issues live in projects and are addressed by key " +
         "(KUP-12). Types: epic > feature > task. States: backlog, todo, inProgress, inReview, done, canceled. " +
         "Effort is in hours. Start with get_context; use search_issues before creating duplicates. " +
@@ -130,6 +130,6 @@ public static class McpSetup
 
     public static void MapKuproMcp(this WebApplication app) => app.MapMcp(Path).RequireAuthorization();
 
-    private static string Version =>
+    internal static string Version =>
         typeof(McpSetup).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 }

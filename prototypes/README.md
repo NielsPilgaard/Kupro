@@ -23,6 +23,7 @@ purpose: 'Explains what the prototypes folder is, how it is organised, and where
 | Folder | Feature | Task |
 |---|---|---|
 | [import/](import/index.html) | Import from other trackers: ten directions | [Task 023](../tasks/023-import-framework.md) |
+| [switch/](switch/index.html) | Public-site `/switch/<source>` pages: three directions | [Task 024](../tasks/024-import-jira.md) |
 
 ## Conventions
 

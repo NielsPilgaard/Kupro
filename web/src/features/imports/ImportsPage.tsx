@@ -29,7 +29,7 @@ import { Button } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
 import { useDate, useDateTime, useRelativeTime } from '../../lib/format';
 import { PlaceholderRow } from '../members/MembersPage';
-import { Chip, Phases, SourceMark, Sparkline, TableCard, WarnLine } from './parts';
+import { Chip, Phases, ProjectSummary, SourceMark, Sparkline, TableCard, WarnLine } from './parts';
 import { control, useSourceName } from './sources';
 import { phaseOf, runPhases, sparkBars } from './wizard';
 
@@ -303,6 +303,7 @@ function RunReport({ workspace, importId, runId }: { workspace: string; importId
           <span className="text-mute">{data.report.deletedInSource.samples.map((s) => s.key ?? s.title).join(', ')}</span>
         </WarnLine>
       )}
+      {data.report?.projects && <ProjectSummary projects={data.report.projects} />}
     </div>
   );
 }

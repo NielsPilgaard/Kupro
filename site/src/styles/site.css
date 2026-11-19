@@ -1063,6 +1063,153 @@ tr:last-child td {
   font-size: 15px;
 }
 
+/* ---------- switch from <source> ---------- */
+.sw .p-head .acts {
+  margin-top: 8px;
+}
+
+.sw-deadline {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel));
+  border-radius: var(--r2);
+  padding: 14px 18px;
+  margin-bottom: 28px;
+}
+
+.sw-deadline .chip {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+  white-space: nowrap;
+}
+
+.sw-deadline p {
+  flex: 1;
+  min-width: 0;
+  color: var(--mute);
+}
+
+.sw-deadline b {
+  color: var(--ink);
+}
+
+.sw-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 20px;
+  padding-bottom: clamp(44px, 6vw, 72px);
+}
+
+.sw-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  padding: 22px;
+}
+
+.sw-box h2 {
+  font: 700 22px / 1.2 var(--font-display);
+  margin-bottom: 14px;
+}
+
+.sw-box ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.sw-box li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 15px;
+  color: var(--mute);
+}
+
+.sw-box li b {
+  display: block;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.sw-box .ok {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  color: var(--ok);
+}
+
+.sw-box .ch {
+  color: var(--prog);
+  font-weight: 700;
+}
+
+.sw-steps {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  counter-reset: step;
+}
+
+.sw-steps li {
+  counter-increment: step;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--mute);
+  font-size: 15px;
+}
+
+.sw-steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--acc);
+  color: var(--on-acc);
+  font: 700 15px var(--font-display);
+  margin-bottom: 8px;
+}
+
+.sw-steps b {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.sw-local {
+  margin: 24px 0 8px;
+  color: var(--mute);
+}
+
+.sw pre {
+  margin: 0;
+  background: var(--side);
+  color: var(--side-ink);
+  padding: 14px 16px;
+  border-radius: var(--r2);
+  overflow-x: auto;
+  font: 14px var(--font-mono);
+}
+
+@media (max-width: 860px) {
+  .sw-cols,
+  .sw-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- legal ---------- */
 .legal {
   padding-block: 40px 80px;

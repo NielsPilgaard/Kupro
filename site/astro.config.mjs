@@ -1,7 +1,9 @@
 // Public website (ADR-017): static HTML, English at /, Danish at /da/.
 import { defineConfig } from 'astro/config';
+import agents from './integrations/agents.mjs';
 
 export default defineConfig({
+  integrations: [agents({ appUrl: process.env.PUBLIC_APP_URL ?? 'http://localhost:5180' })],
   // Canonical and hreflang URLs; set per environment once the domain is chosen (deploy runbook).
   site: process.env.SITE_URL ?? 'http://localhost:4321',
   output: 'static',

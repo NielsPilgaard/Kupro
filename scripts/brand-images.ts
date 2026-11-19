@@ -56,12 +56,29 @@ const card = (title: string, detail: string) =>
       `main{position:absolute;left:80px;top:72px;bottom:72px;width:62%;display:flex;flex-direction:column}` +
       `.lockup{display:flex;align-items:center;gap:18px;font:700 50px Display;letter-spacing:-.01em}` +
       `.lockup svg{width:64px;height:64px}` +
-      `h1{margin-top:auto;font:700 74px/1.04 Display;letter-spacing:-.02em;text-wrap:balance}` +
-      `p{margin-top:28px;font:500 30px/1.35 Ui;color:${MUTE}}` +
+      `h1{margin-top:auto;font:700 64px/1.04 Display;letter-spacing:-.02em;text-wrap:balance}` +
+      `p{margin-top:28px;font:500 30px/1.35 Ui;color:${MUTE};text-wrap:balance}` +
       `.plan{position:absolute;right:-60px;top:50%;width:34%;height:248px;transform:translateY(-50%)}` +
       `.plan i{position:absolute;height:44px;border-radius:22px;background:${INK}}` +
       `.plan i:nth-child(1){top:0}.plan i:nth-child(2){top:68px}.plan i:nth-child(3){top:136px}.plan i:nth-child(4){top:204px}` +
       `.plan .acc{background:${VERDIGRIS}}.plan .dim{opacity:.5}.plan i:nth-child(4){opacity:.18}`,
+  );
+
+/** LinkedIn cover: headline and detail centred, plan bars off the right. The page logo overlaps the bottom-left and
+ *  mobile crops the sides, so nothing sits in the left quarter. */
+const banner = (title: string, detail: string) =>
+  page(
+    `<main><h1>${title}</h1><p>${detail}</p></main>` +
+      `<div class="plan"><i style="left:0;width:62%"></i><i class="acc" style="left:22%;width:78%"></i>` +
+      `<i class="dim" style="left:8%;width:44%"></i></div>`,
+    `body{background:${KALK};color:${INK};font-family:Ui;position:relative;overflow:hidden}` +
+      `main{position:absolute;left:25%;right:24%;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center}` +
+      `h1{font:700 30px/1.1 Display;letter-spacing:-.02em;text-wrap:balance}` +
+      `p{margin-top:10px;font:500 17px/1.35 Ui;color:${MUTE}}` +
+      `.plan{position:absolute;right:-40px;top:50%;width:18%;height:96px;transform:translateY(-50%)}` +
+      `.plan i{position:absolute;height:24px;border-radius:12px;background:${INK}}` +
+      `.plan i:nth-child(1){top:0}.plan i:nth-child(2){top:36px}.plan i:nth-child(3){top:72px}` +
+      `.plan .acc{background:${VERDIGRIS}}.plan .dim{opacity:.5}`,
   );
 
 /** ICO holding PNG images (supported by every browser that still asks for /favicon.ico). */
@@ -84,8 +101,8 @@ const ico = (pngs: { size: number; png: Buffer }[]) => {
 };
 
 const browser = await chromium.launch();
-const render = async (html: string, width: number, height = width) => {
-  const tab = await browser.newPage({ viewport: { width, height } });
+const render = async (html: string, width: number, height = width, deviceScaleFactor = 1) => {
+  const tab = await browser.newPage({ viewport: { width, height }, deviceScaleFactor });
   await tab.setContent(html);
   await tab.evaluate(() => document.fonts.ready);
   const png = await tab.screenshot({ omitBackground: true });
@@ -119,5 +136,7 @@ write('site/public/og-image.png', await render(card(en.hero.title, en.meta.ogDet
 write('site/public/og-image-da.png', await render(card(da.hero.title, da.meta.ogDetail), 1200, 630));
 // GitHub → Settings → Social preview (uploaded by hand); speaks to contributors, so the product tagline.
 write('docs/images/social-preview.png', await render(card('Plan the year. Ship the week.', 'Open-source issue tracker and planner your agents can use too.'), 1280, 640));
+// LinkedIn company page → Edit page → Cover image (uploaded by hand; 1128×191 at 2× so it stays sharp).
+write('docs/images/linkedin-banner.png', await render(banner(en.hero.title, en.meta.ogDetail), 1128, 191, 2));
 
 await browser.close();

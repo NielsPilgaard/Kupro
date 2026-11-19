@@ -120,6 +120,9 @@ public static class ImportPlanner
     {
         var fit = read.Fit;
         var created = read.New.Select(r => r.Id).ToList();
+
+        // Only items in this snapshot move; one rebuilt from an earlier run already sits under its fitted parent.
+        List<string> reparented = [.. fit.Reparented.Where(read.KeptIds.Contains)];
         var (comments, attachments, bytes, unknownSize, changes) = await CountHistoryAsync(snapshot, fit, history, ct);
 
         var bottom = fit.FourLevels ? HierarchyFit.Run(read.Kept, FoldEnd.Bottom) : null;
@@ -127,7 +130,7 @@ public static class ImportPlanner
         var branch = bottom is null ? [] : HierarchySampler.Pick(read.Kept, bottom, read.KeptIds);
 
         var samples = await SampleAsync(
-            snapshot, [created, read.Skipped, fit.Reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], read.ToReview, fit.Cycles, keysTaken], branch, ct);
+            snapshot, [created, read.Skipped, reparented, fit.Promoted, [.. fit.Checklists.Select(c => c.Item)], read.ToReview, fit.Cycles, keysTaken], branch, ct);
         PlanCount Count(IReadOnlyList<string> ids) =>
             new(ids.Count, [.. ids.Take(MaxSamples).Where(samples.ContainsKey).Select(id => new PlanSample(id, samples[id].Key, samples[id].Title))]);
 
@@ -139,7 +142,7 @@ public static class ImportPlanner
             // Which imported items change takes a re-run's comparison against the workspace; ImportCommit adds it.
             Update = PlanCount.None,
             SkippedByScope = Count(read.Skipped),
-            Reparented = Count(fit.Reparented),
+            Reparented = Count(reparented),
             Promoted = Count(fit.Promoted),
             FoldedChecklists = Count([.. fit.Checklists.Select(c => c.Item)]),
             StatusesToReview = Count(read.ToReview),

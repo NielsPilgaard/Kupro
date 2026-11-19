@@ -1,6 +1,7 @@
 import { PackageOpen } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ImportProjectSummary } from '../../api/gen/types.gen';
 import { sourceOf } from './sources';
 import type { SparkBar } from './wizard';
 
@@ -137,3 +138,33 @@ export function TableCard({ children }: { children: ReactNode }) {
   );
 }
 
+
+/** A commit's report per project: issues imported so far, re-parented by the fit, conflicts open. */
+export function ProjectSummary({ projects }: { projects: ImportProjectSummary[] }) {
+  const { t, i18n } = useTranslation();
+  const number = new Intl.NumberFormat(i18n.language);
+  if (projects.length === 0) return null;
+  const cell = 'text-right font-mono tabular-nums';
+  return (
+    <TableCard>
+      <thead>
+        <tr>
+          <th>{t('importRuns.perProject.project')}</th>
+          <th className="text-right!">{t('importRuns.perProject.imported')}</th>
+          <th className="text-right!">{t('importRuns.perProject.reparented')}</th>
+          <th className="text-right!">{t('importRuns.perProject.conflicts')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {projects.map((p) => (
+          <tr key={p.project}>
+            <td className="font-mono">{p.project}</td>
+            <td className={cell}>{number.format(p.imported)}</td>
+            <td className={cell}>{number.format(p.reparented)}</td>
+            <td className={`${cell} ${p.conflicts ? 'text-bad' : ''}`}>{number.format(p.conflicts)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </TableCard>
+  );
+}
