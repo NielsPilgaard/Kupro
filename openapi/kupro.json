@@ -8029,6 +8029,13 @@
               "type": "string"
             },
             "description": "Source types left out entirely, such as Azure DevOps test plans and cases."
+          },
+          "board": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A board whose status, sprint and effort fields refine the items (a GitHub project); null uses none."
           }
         },
         "description": "What to read and keep. Empty IReadOnlyList&lt;string&gt; ImportScope.Projects means every project."
@@ -9981,6 +9988,35 @@
         },
         "description": "Where the data came from. string SnapshotSource.Kind is one of SourceKinds."
       },
+      "SourceBoard": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The account that owns it (a GitHub organisation or user)."
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A board whose fields refine the items it holds (a GitHub project), for the owner to pick as the read's board."
+      },
       "SourceCapacity": {
         "required": [
           "from",
@@ -10038,6 +10074,13 @@
             "items": {
               "$ref": "#/components/schemas/SourceField"
             }
+          },
+          "boards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceBoard"
+            },
+            "description": "Boards the owner may take statuses, sprints and effort from: GitHub Projects (v2)."
           }
         },
         "description": "What the wizard needs before the owner picks a scope and maps anything (connector Describe)."
@@ -10209,6 +10252,13 @@
               "null",
               "string"
             ]
+          },
+          "board": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when the status comes from a board (SourceBoard); it applies only when that board is picked."
           }
         }
       },

@@ -355,14 +355,15 @@ export const da: Copy = {
           { t: 'Kommentarer og henvisninger', d: 'Kommentarer beholder forfatter og tid. #89 og owner/repo#89 i teksten peger bagefter ind i Kupro.' },
           { t: 'Historik', d: 'Lukning, genåbning, ansvarlige, nye titler, milepæle og labels vises med den oprindelige person og tid.' },
           { t: 'Labels og afhængigheder', d: 'Labels forbliver labels. Blocked by-afhængigheder bliver til blokerer-relationer.' },
+          { t: 'Et GitHub-projekt', d: 'Vælg ét projekt: dets Status bestemmer tilstanden for åbne issues, dets Iteration bliver til sprints, og et talfelt som Estimate, Points eller Size bliver til estimatet.' },
         ],
         changes: [
           { t: 'Ét workflow', d: 'Backlog, Klar, I gang, Til review, Færdig, Annulleret i stedet for åben og lukket.' },
           { t: 'Én ansvarlig', d: 'Den første ansvarlige bliver ansvarlig. Alle ansvarliges GitHub-login står i en detaljeblok på opgaven.' },
-          { t: 'Kun issues', d: 'Pull requests, Discussions og Actions bliver i GitHub. Felter fra GitHub Projects følger ikke med endnu.' },
+          { t: 'Kun issues', d: 'Pull requests, Discussions og Actions bliver i GitHub. Fra et GitHub-projekt følger kun Status, Iteration og estimatet med.' },
         ],
         steps: [
-          { t: 'Lav et token', d: 'Et fine-grained personligt adgangstoken med læseadgang til Issues og Metadata på de repositories, I vil have med, og til Issue Types i organisationen, så bugs og features beholder deres type.' },
+          { t: 'Lav et token', d: 'Et fine-grained personligt adgangstoken med læseadgang til Issues og Metadata på de repositories, I vil have med, og til Issue Types i organisationen, så bugs og features beholder deres type. Til et GitHub-projekt skal tokenet også have læseadgang til Projects i organisationen; et projekt på en personlig konto kræver et klassisk token med read:project.' },
           { t: 'Prøv det først', d: 'Åbn Importer fra… i Kupro, og vælg GitHub Issues. Indsæt tokenet (og jeres servers adresse til GitHub Enterprise), tjek oversættelsen, og se en prøvekørsel, før noget bliver skrevet.' },
           { t: 'Importér, og skift når I er klar', d: 'En forbundet import synkroniserer hver time, så teamet kan arbejde videre i GitHub. Tryk Afslut migrering den dag, I flytter.' },
         ],

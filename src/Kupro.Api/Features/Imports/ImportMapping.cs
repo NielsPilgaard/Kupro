@@ -44,6 +44,9 @@ public sealed record ImportScope
 
     /// <summary>Source types left out entirely, such as Azure DevOps test plans and cases.</summary>
     public IReadOnlyList<string> SkipTypes { get; init; } = [];
+
+    /// <summary>A board whose status, sprint and effort fields refine the items (a GitHub project); null uses none.</summary>
+    public string? Board { get; init; }
 }
 
 /// <summary>

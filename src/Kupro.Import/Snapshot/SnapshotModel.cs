@@ -45,6 +45,21 @@ public sealed record SourceDescription
     public IReadOnlyList<SourceItemType> ItemTypes { get; set; } = [];
     public IReadOnlyList<SourceStatus> Statuses { get; set; } = [];
     public IReadOnlyList<SourceField> Fields { get; set; } = [];
+
+    /// <summary>Boards the owner may take statuses, sprints and effort from: GitHub Projects (v2).</summary>
+    public IReadOnlyList<SourceBoard> Boards { get; set; } = [];
+}
+
+/// <summary>A board whose fields refine the items it holds (a GitHub project), for the owner to pick as the read's board.</summary>
+public sealed record SourceBoard
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+
+    /// <summary>The account that owns it (a GitHub organisation or user).</summary>
+    public string? Owner { get; init; }
+
+    public string? Url { get; init; }
 }
 
 /// <summary><c>snapshot.json</c>: the reference data and counts. Items and history are in the NDJSON parts.</summary>
@@ -144,6 +159,9 @@ public sealed record SourceStatus
     public string? ItemType { get; init; }
 
     public string? Project { get; init; }
+
+    /// <summary>Set when the status comes from a board (<see cref="SourceBoard"/>); it applies only when that board is picked.</summary>
+    public string? Board { get; init; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<FieldKind>))]
@@ -339,4 +357,7 @@ public sealed record ReadScope
 
     /// <summary>Skip items resolved before this time (the "closed items older than N months" filter).</summary>
     public DateTimeOffset? ResolvedAfter { get; init; }
+
+    /// <summary>A <see cref="SourceBoard"/> whose status, sprint and effort fields refine the items; null reads none.</summary>
+    public string? Board { get; init; }
 }

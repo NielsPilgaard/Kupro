@@ -73,10 +73,11 @@ public sealed class ImportSources
 
     public static string? WithOverlap(string? cursor) => DeltaCursor.WithOverlap(cursor, Overlap);
 
-    /// <summary>What the connector reads: the mapping's projects, and closed items no older than its cutoff.</summary>
+    /// <summary>What the connector reads: the mapping's projects and board, and closed items no older than its cutoff.</summary>
     public static ReadScope Scope(ImportMapping mapping, DateTimeOffset now) => new()
     {
         Projects = mapping.Scope.Projects,
         ResolvedAfter = mapping.Scope.ClosedOlderThanMonths is { } months ? now.AddMonths(-months) : null,
+        Board = mapping.Scope.Board,
     };
 }

@@ -44,9 +44,19 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
 - References in text: `#89` resolves within the item's own repository, `owner/repo#89` across repositories
   (`ImportReferences`, `ImportCommitTests.GitHub`).
 
-Not done: Projects (v2) fields (Status, Iteration, a number field; the owner picks the project in the import screen,
-the wizard, task 023), and the recorded fixtures and live run (a sandbox, a manual step). The site page is in:
-`/switch/github` and `/da/skift/github`; it says Projects fields don't come across yet, so update it with them.
+- Projects (v2) boards (`GitHubBoards`, GraphQL at `/graphql`, on a server `/api/graphql`): Describe lists each
+  repository owner's projects as `Boards`, with each one's Status options as statuses scoped to it (`SourceStatus.Board`;
+  the wizard shows only the picked board's, and a snapshot keeps only those). The owner picks one in the wizard's
+  Projects step (`ImportScope.Board`) or with `kupro import github --local --board <title|ID>`. Its Status option is an
+  open issue's status (a closed issue keeps how it closed), its first Iteration field gives sprints (completed ones
+  closed) and the item's sprint, and a number field named Estimate, Points or Size (else the only number field) gives
+  points. A delta also reads the issues whose board item changed since the cursor. An owner whose projects the token
+  may not read has none; a picked board the token can't read fails the read with what token it needs.
+
+Not done: the recorded fixtures and live run (a sandbox, a manual step). Board limits: other project fields stay
+behind, the owner can't pick the number field (Monday's column mapping may make that generic), and an issue taken off
+the board keeps its last board status until it changes in GitHub. The site page is in: `/switch/github` and
+`/da/skift/github`.
 Known cost: a delta still reads the repository-wide event list, and a repository's issues are held in memory while
 its sub-issue parents are worked out.
 

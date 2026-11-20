@@ -41,6 +41,9 @@ public static class SourceConnectorExtensions
     {
         var description = await connector.DescribeAsync(ct);
         var scope = scopeFor(description);
+
+        // Statuses of boards not picked never occur in the read, so the snapshot leaves them out.
+        description = description with { Statuses = [.. description.Statuses.Where(s => s.Board is null || s.Board == scope.Board)] };
         await using var writer = new SnapshotWriter(output, description) { Partial = cursor is not null };
         var missing = 0;
         await foreach (var record in connector.ReadAsync(scope, cursor, ct))

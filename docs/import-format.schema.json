@@ -99,7 +99,8 @@
         "name": { "type": "string" },
         "category": { "type": ["string", "null"], "description": "The source's own status category." },
         "itemType": { "type": ["string", "null"] },
-        "project": { "type": ["string", "null"] }
+        "project": { "type": ["string", "null"] },
+        "board": { "type": ["string", "null"], "description": "Set when the status comes from a board the read took fields from (a GitHub project)." }
       },
       "required": ["id", "name"]
     },

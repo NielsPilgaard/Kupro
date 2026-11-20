@@ -75,6 +75,7 @@ internal static class ImportCommands
         var local = new Option<bool>("--local") { Description = "Read the source from this machine and upload a snapshot. The token stays here." };
         var projects = new Option<string[]>("--project") { Description = "With --local: a project key or ID to read (repeat it); all projects if left out.", AllowMultipleArgumentsPerToken = true };
         var into = new Option<Guid?>("--import") { Description = "With --local: upload to this import (a re-run) instead of creating one." };
+        var board = new Option<string?>("--board") { Description = "With --local: a GitHub project (v2), by title or ID, whose Status, Iteration and estimate refine the issues. Give it again on every re-run." };
         var output = new Option<FileInfo?>("--out") { Description = "With --local: write the snapshot ZIP here and stop, to look at it before `kupro import snapshot`." };
         var command = new ApiCommand(kind, $"Import from {name}. The token comes from stdin or {TokenVariable}. {access}", "createImport", "uploadImportSource")
         {
@@ -90,14 +91,19 @@ internal static class ImportCommands
             command.Options.Add(key);
         }
 
+        if (kind == SourceKinds.GitHub)
+        {
+            command.Options.Add(board);
+        }
+
         return command.Handle(async (c, ct) =>
         {
             var token = await TokenAsync(ct) ?? throw new CliException($"Pipe the {name} token in, or set {TokenVariable}.");
             if (!c.Get(local))
             {
-                if (c.Get(into) is not null || c.Get(output) is not null || c.Get(projects) is { Length: > 0 })
+                if (c.Get(into) is not null || c.Get(output) is not null || c.Get(projects) is { Length: > 0 } || c.Get(board) is not null)
                 {
-                    throw new CliException("--project, --import and --out go with --local. Without it, Kupro reads the source itself: pick projects with `kupro import mapping`.");
+                    throw new CliException("--project, --board, --import and --out go with --local. Without it, Kupro reads the source itself: pick them with `kupro import mapping`.");
                 }
 
                 var created = await (await c.InWorkspaceAsync(ct)).Imports.PostAsync(
@@ -122,7 +128,7 @@ internal static class ImportCommands
                 int missing;
                 await using (var zip = file.Create())
                 {
-                    missing = await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted), cursor: null, includeFiles: true, TimeProvider.System, ct);
+                    missing = await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted, c.Get(board)), cursor: null, includeFiles: true, TimeProvider.System, ct);
                 }
 
                 if (missing > 0)
@@ -191,12 +197,25 @@ internal static class ImportCommands
         };
     }
 
-    /// <summary>The projects asked for, by key or ID; a name the source doesn't have is an error, not an empty read.</summary>
-    private static ReadScope Scope(SnapshotDescription description, IReadOnlyList<string> wanted)
+    /// <summary>
+    /// The projects asked for, by key or ID, and the board by title or ID; a name the source doesn't have is an error,
+    /// not an empty read.
+    /// </summary>
+    private static ReadScope Scope(SnapshotDescription description, IReadOnlyList<string> wanted, string? board)
     {
         var ids = wanted.Select(w => description.Projects.FirstOrDefault(p => p.Id == w || string.Equals(p.Key, w, StringComparison.OrdinalIgnoreCase))?.Id
             ?? throw new CliException($"The source has no project {w}. It has: {string.Join(", ", description.Projects.Select(p => p.Key ?? p.Id))}.")).ToList();
-        return new ReadScope { Projects = ids };
+        if (board is null)
+        {
+            return new ReadScope { Projects = ids };
+        }
+
+        var boards = description.Boards.Where(b => b.Id == board || string.Equals(b.Name, board, StringComparison.OrdinalIgnoreCase)).ToList();
+        return boards.Count == 1
+            ? new ReadScope { Projects = ids, Board = boards[0].Id }
+            : throw new CliException(description.Boards.Count == 0
+                ? "This token sees no GitHub projects (v2). An organisation's need Projects (read) on it, a user's a classic token with read:project."
+                : $"{(boards.Count == 0 ? "No" : "More than one")} GitHub project is called {board}. Give one of: {string.Join(", ", description.Boards.Select(b => $"{b.Id} ({b.Owner}: {b.Name})"))}.");
     }
 
     private static Command Create()

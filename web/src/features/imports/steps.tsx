@@ -78,6 +78,7 @@ export function ProjectsStep({ mapping, update, description, projects }: StepPro
   };
   const setTarget = (id: string, value: { key: string; name: string; existing?: boolean }) =>
     update((m) => ({ ...m, projects: { ...m.projects, [id]: value } }));
+  const boards = description.boards ?? [];
 
   return (
     <>
@@ -146,6 +147,24 @@ export function ProjectsStep({ mapping, update, description, projects }: StepPro
           })}
         </tbody>
       </TableCard>
+      {boards.length > 0 && (
+        <label className="mt-4 flex flex-col gap-1">
+          <span className="text-sm font-semibold">{t('importWizard.boardLabel')}</span>
+          <select
+            className={`${control} max-w-md`}
+            value={mapping.scope?.board ?? ''}
+            onChange={(e) => update((m) => ({ ...m, scope: { ...m.scope, board: e.target.value || null } }))}
+          >
+            <option value="">{t('importWizard.boardNone')}</option>
+            {boards.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.owner ? `${b.owner}: ${b.name}` : b.name}
+              </option>
+            ))}
+          </select>
+          <small className="text-sm text-mute">{t('importWizard.boardHint')}</small>
+        </label>
+      )}
     </>
   );
 }
@@ -395,6 +414,8 @@ export function StatesStep({ mapping, update, description }: StepProps) {
   const set = (id: string, state: IssueState) =>
     update((m) => ({ ...m, states: { ...m.states, [id]: state }, statusesToReview: (m.statusesToReview ?? []).filter((x) => x !== id) }));
   const typeName = (id?: string | null) => (id ? (description.itemTypes?.find((x) => x.id === id)?.name ?? '') : '');
+  // A board's statuses count only when it is picked; an uploaded snapshot lists no boards and kept only the picked one's.
+  const onBoard = (board?: string | null) => !board || !description.boards?.length || board === mapping.scope?.board;
 
   return (
     <>
@@ -408,7 +429,7 @@ export function StatesStep({ mapping, update, description }: StepProps) {
           </tr>
         </thead>
         <tbody>
-          {(description.statuses ?? []).map((s) => {
+          {(description.statuses ?? []).filter((s) => onBoard(s.board)).map((s) => {
             const value = mapping.states?.[s.id] ?? 'todo';
             return (
               <tr key={s.id}>

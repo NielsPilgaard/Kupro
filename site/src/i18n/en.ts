@@ -358,14 +358,15 @@ export const en = {
           { t: 'Comments and references', d: 'Comments keep their author and time. #89 and owner/repo#89 in the text point inside Kupro.' },
           { t: 'History', d: 'Closing, reopening, assignees, renames, milestones and labels show with the original person and time.' },
           { t: 'Labels and dependencies', d: 'Labels stay labels. Blocked-by dependencies become blocks relations.' },
+          { t: 'A GitHub project', d: 'Pick one project: its Status sets the state of open issues, its Iteration becomes sprints, and a number field such as Estimate, Points or Size becomes the estimate.' },
         ],
         changes: [
           { t: 'One workflow', d: 'Backlog, Todo, In Progress, In Review, Done, Canceled, in place of open and closed.' },
           { t: 'One assignee', d: 'The first assignee is the assignee. Every assignee’s GitHub login is listed in a details block on the issue.' },
-          { t: 'Issues only', d: 'Pull requests, Discussions and Actions stay in GitHub. Fields from GitHub Projects don’t come across yet.' },
+          { t: 'Issues only', d: 'Pull requests, Discussions and Actions stay in GitHub. From a GitHub project only Status, Iteration and the estimate come across.' },
         ],
         steps: [
-          { t: 'Make a token', d: 'A fine-grained personal access token with read access to Issues and Metadata on the repositories you want, and to Issue Types on the organization so bugs and features keep their type.' },
+          { t: 'Make a token', d: 'A fine-grained personal access token with read access to Issues and Metadata on the repositories you want, and to Issue Types on the organization so bugs and features keep their type. For a GitHub project, add Projects (read) on the organization; a project on a personal account needs a classic token with read:project.' },
           { t: 'Rehearse', d: 'In Kupro, open Import from… and pick GitHub Issues. Paste the token (and your server’s address for GitHub Enterprise), check the mapping, and see a dry run before anything is written.' },
           { t: 'Import, then switch when ready', d: 'A connected import syncs every hour, so the team can keep working in GitHub. Press Finish migration on the day you move.' },
         ],
