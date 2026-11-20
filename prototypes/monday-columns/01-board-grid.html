@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monday columns · 01 Board grid · Kupro prototype</title>
+<style>:root {
+  color-scheme: light;
+  --bg: #f2f4f3; --panel: #ffffff; --sunk: #e7ecea; --line: #d3dbd8; --ink: #16201d; --mute: #56655f;
+  --acc: #2c7a6a; --acc-ink: #246859; --on-acc: #ffffff; --side: #1c2a26; --side-ink: #cfe0da;
+  --prog: #b5651f; --rev: #6553a8; --ok: #3f8a3c; --warn: #a9801a; --bad: #b3393b;
+  --proj-verdigris: #2c7a6a; --proj-copper: #b5651f; --proj-plum: #6553a8; --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a; --proj-brick: #b3393b; --proj-slate: #56708a; --proj-fjord: #2f6f9f;
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+  --r1: 5px; --r2: 7px; --row: 34px; --nav-item: 28px; --topbar: 48px; --control: 30px; --sidebar: 212px;
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1); --dur-1: 120ms; --dur-2: 160ms;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514; --panel: #161f1d; --sunk: #0b100f; --line: #25322e; --ink: #e2ece8; --mute: #8fa29b;
+  --acc: #5bb8a3; --acc-ink: #6cc4af; --on-acc: #08130f; --side: #0b100f; --side-ink: #b7cac3;
+  --prog: #e08e52; --rev: #a194e6; --ok: #78c36f; --warn: #e3bc55; --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3; --proj-copper: #e08e52; --proj-plum: #a194e6; --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55; --proj-brick: #ee6e6e; --proj-slate: #93a9c0; --proj-fjord: #6faedc;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+h1 { font-family: var(--font-display); font-size: 20px; line-height: 26px; margin: 0 0 4px; }
+h2 { font-size: 14px; margin: 0; }
+.bar { display: flex; gap: 12px; align-items: center; padding: 8px 16px; background: var(--side); color: var(--side-ink); font-size: 12px; }
+.bar a { color: var(--side-ink); }
+.bar button { margin-left: auto; background: none; border: 1px solid var(--side-ink); border-radius: var(--r1); padding: 2px 8px; cursor: pointer; }
+main { max-width: 920px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+.lede { color: var(--mute); margin: 0; max-width: 640px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; height: var(--row); }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); font-weight: 600; background: var(--sunk); }
+tr:last-child td { border-bottom: 0; }
+select { height: var(--control); border: 1px solid var(--line); border-radius: var(--r1); background: var(--panel); padding: 0 6px; max-width: 100%; }
+.mute { color: var(--mute); } .sm { font-size: 12px; }
+.chip { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute); }
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+.chip.ok { color: var(--ok); border-color: var(--ok); }
+.btn { height: var(--control); border-radius: var(--r1); border: 1px solid var(--line); background: var(--panel); padding: 0 10px; cursor: pointer; }
+.btn.link { border: 0; background: none; color: var(--acc-ink); padding: 0; height: auto; text-decoration: underline; }
+.note { border-left: 3px solid var(--acc); background: var(--sunk); padding: 8px 12px; border-radius: var(--r1); }
+.grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; align-items: center; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--mute); }
+.steps b { color: var(--ink); }
+.row { display: flex; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+<div class="bar"><a href="index.html">Monday column mapping</a><span>01 · Board grid</span><button onclick="theme()">Theme</button></div>
+<main>
+<div class="steps">Source › <b>Projects</b> › Hierarchy › Types › States › People › Fields › Effort › Review</div>
+
+<div><h1>Which columns hold what</h1>
+<p class="lede">Each Monday board has its own columns. Kupro picked one per role; change any that are wrong. Columns you don't pick here become fields.</p></div>
+<div class="card"><table id="grid"></table></div>
+<div class="note sm" id="states"></div>
+
+</main>
+<script>
+const roles = [
+  ['status', 'Status', 'status'], ['people', 'Assignee', 'people'], ['timeline', 'Start and due', 'timeline'],
+  ['date', 'Due (no timeline)', 'date'], ['estimate', 'Estimate (hours)', 'numbers'], ['points', 'Points', 'numbers'],
+];
+const boards = [
+  { id: 'b1', name: 'Product roadmap', items: 214, cols: [
+    { id: 'status', t: 'Status', type: 'status', labels: ['Working on it', 'Stuck', 'Done'] },
+    { id: 'priority', t: 'Priority', type: 'status', labels: ['High', 'Medium', 'Low'] },
+    { id: 'person', t: 'Owner', type: 'people' }, { id: 'reviewers', t: 'Reviewers', type: 'people' },
+    { id: 'timeline', t: 'Timeline', type: 'timeline' }, { id: 'date', t: 'Launch date', type: 'date' },
+    { id: 'numbers', t: 'Effort', type: 'numbers' }, { id: 'numbers2', t: 'Budget', type: 'numbers' } ],
+    pick: { status: 'status', people: 'person', timeline: 'timeline', date: 'date', estimate: '', points: 'numbers' } },
+  { id: 'b2', name: 'Bugs', items: 488, cols: [
+    { id: 'stage', t: 'Stage', type: 'status', labels: ['New', 'Fixing', 'In QA', 'Closed'] },
+    { id: 'status', t: 'Severity', type: 'status', labels: ['Critical', 'Major', 'Minor'] },
+    { id: 'person', t: 'Developer', type: 'people' }, { id: 'date', t: 'Due', type: 'date' },
+    { id: 'numbers', t: 'Hours', type: 'numbers' } ],
+    pick: { status: 'stage', people: 'person', timeline: '', date: 'date', estimate: 'numbers', points: '' },
+    guessed: { status: 'status' } },
+  { id: 'b3', name: 'Marketing', items: 61, cols: [
+    { id: 'status', t: 'Status', type: 'status', labels: ['Planned', 'Working on it', 'Done'] },
+    { id: 'person', t: 'Owner', type: 'people' }, { id: 'date', t: 'Publish', type: 'date' } ],
+    pick: { status: 'status', people: 'person', timeline: '', date: 'date', estimate: '', points: '' } },
+];
+function options(board, type, value) {
+  const cols = board.cols.filter(c => c.type === type);
+  return '<option value="">None</option>' + cols.map(c => `<option value="${c.id}"${c.id === value ? ' selected' : ''}>${c.t}</option>`).join('');
+}
+function col(board, id) { return board.cols.find(c => c.id === id); }
+function theme() { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; }
+
+function render() {
+  const head = '<tr><th>Board</th>' + roles.map(r => `<th>${r[1]}</th>`).join('') + '</tr>';
+  const rows = boards.map(b => '<tr><td><b>' + b.name + '</b><div class="sm mute">' + b.items + ' items</div></td>' +
+    roles.map(r => `<td><select aria-label="${r[1]} on ${b.name}" onchange="boards.find(x=>x.id==='${b.id}').pick['${r[0]}']=this.value;render()">${options(b, r[2], b.pick[r[0]])}</select></td>`).join('') + '</tr>').join('');
+  document.getElementById('grid').innerHTML = head + rows;
+  const labels = [...new Set(boards.flatMap(b => col(b, b.pick.status)?.labels ?? []))];
+  document.getElementById('states').innerHTML = '<b>States step will list</b> the labels of the picked status columns only: ' + labels.join(', ') + '.';
+}
+render();
+</script>
+</body>
+</html>

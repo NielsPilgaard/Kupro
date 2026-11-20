@@ -42,7 +42,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 ## What an agent can pick up
 
 Checked 2026-11-20. The build order above is not the same as what is buildable. **Pick up next**: 027's Monday
-column mapping (`notes/handoff-027.md`). Then 034: draft ADR-021 (Proposed)
+column mapping, once the owner picks a direction in `prototypes/monday-columns/` (`notes/handoff-027.md`). Meanwhile 034: draft ADR-021 (Proposed)
 from the task's "Decisions for the ADR"; the owner accepts it before prototypes and code. Every other open row waits
 on a person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what

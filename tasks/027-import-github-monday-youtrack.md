@@ -92,6 +92,10 @@ Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registe
   items of type `group` with the board's items under them, and every item carries its group title in the `group`
   field: the default maps groups to Epics; skipping the type and adding `group` to the label fields makes them labels.
   Subitems are items of type `subitem` under their item (a checklist by default), with their own board's status.
+- Column mapping in the wizard: three directions in [prototypes/monday-columns/](../prototypes/monday-columns/index.html)
+  (board grid, column list per board, by role across boards); no pick yet, so no `web/` code. Open question with it:
+  when the owner picks another status column, the States step must list that column's labels, so Describe would list
+  every status column's labels scoped to board and column (as GitHub boards scope theirs), not only the first one's.
 - Until the wizard maps columns, the connector picks per board: the first status column is the status (labels Monday
   marks done have category `done`), the first people column the assignee, a timeline the start and due dates (the
   first date column the due date when it's empty), a numbers column named for an estimate or hours the estimate, one
