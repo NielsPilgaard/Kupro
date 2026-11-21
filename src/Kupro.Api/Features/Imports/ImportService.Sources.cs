@@ -32,7 +32,7 @@ public sealed partial class ImportService
         sources.TrelloKey is { } key
             ? new TrelloAuthorizeLink(
                 "https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=Kupro&key=" + Uri.EscapeDataString(key), key)
-            : new IssueError("imports_unavailable", "This server has no Trello API key. Import Trello with `kupro import trello --local` instead.");
+            : new IssueError("imports_unavailable", "This server has no Trello API key. Import Trello with `kupro import trello --local --key <your-trello-key>` instead.");
 
     public async Task<IssueResult<WorkspaceImport>> CreateAsync(CreateImportRequest request, CancellationToken ct)
     {
