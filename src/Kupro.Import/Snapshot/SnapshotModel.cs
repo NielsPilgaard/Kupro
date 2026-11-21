@@ -48,6 +48,77 @@ public sealed record SourceDescription
 
     /// <summary>Boards the owner may take statuses, sprints and effort from: GitHub Projects (v2).</summary>
     public IReadOnlyList<SourceBoard> Boards { get; set; } = [];
+
+    /// <summary>
+    /// A board's columns, for the wizard's Columns step (Monday): which column is each item's status, assignee, dates
+    /// and effort. Not part of a snapshot, which is read with the picks already made.
+    /// </summary>
+    public IReadOnlyList<SourceColumn> Columns { get; set; } = [];
+}
+
+/// <summary>A column of a project (a Monday board), with the roles it can fill and the field it is otherwise.</summary>
+public sealed record SourceColumn
+{
+    public required string Project { get; init; }
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+
+    /// <summary>The <see cref="ColumnRoles"/> it can fill; empty for a column that is only ever a field.</summary>
+    public IReadOnlyList<string> Roles { get; set; } = [];
+
+    /// <summary>The role the connector gave it, when the owner picks none.</summary>
+    public string? Role { get; init; }
+
+    /// <summary>
+    /// Set on the column given its <c>Role</c> when another column could fill it too and their titles don't say
+    /// which: the wizard asks the owner.
+    /// </summary>
+    public bool Ask { get; init; }
+
+    /// <summary>A status column's labels, which are <see cref="SourceStatus"/> IDs.</summary>
+    public IReadOnlyList<string> Labels { get; set; } = [];
+
+    /// <summary>The <see cref="SourceField"/> it becomes when it fills no role; null for one that never is a field.</summary>
+    public string? Field { get; init; }
+}
+
+/// <summary>What a <see cref="SourceColumn"/> can be for an item, and which column is each on a project.</summary>
+public static class ColumnRoles
+{
+    public const string Status = "status";
+    public const string People = "people";
+
+    /// <summary>A start and due date.</summary>
+    public const string Timeline = "timeline";
+
+    /// <summary>The due date when the timeline is empty.</summary>
+    public const string Date = "date";
+
+    /// <summary>Hours.</summary>
+    public const string Estimate = "estimate";
+
+    public const string Points = "points";
+
+    /// <summary>The column filling each role on a project: the owner's pick ("" for none), else the connector's.</summary>
+    public static Dictionary<string, string> Picked(
+        IEnumerable<SourceColumn> columns, string project, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> picks)
+    {
+        var mine = columns.Where(c => c.Project == project).ToList();
+        var roles = mine.Where(c => c.Role is not null).ToDictionary(c => c.Role!, c => c.Id, StringComparer.Ordinal);
+        foreach (var (role, column) in picks.GetValueOrDefault(project) ?? new Dictionary<string, string>())
+        {
+            if (column.Length == 0)
+            {
+                roles.Remove(role);
+            }
+            else
+            {
+                roles[role] = column;
+            }
+        }
+
+        return roles;
+    }
 }
 
 /// <summary>A board whose fields refine the items it holds (a GitHub project), for the owner to pick as the read's board.</summary>
@@ -107,6 +178,9 @@ public sealed record SourceProject
 
     /// <summary>The source's process or template name (ADO "Agile", "Scrum"), for default mappings.</summary>
     public string? Process { get; init; }
+
+    /// <summary>Archived in the source: read only when the owner names it.</summary>
+    public bool Archived { get; init; }
 
     /// <summary>Headcount steps for the delivery plan, when the source has them (a Kupro export does).</summary>
     public IReadOnlyList<SourceCapacity>? Capacity { get; init; }
@@ -360,4 +434,11 @@ public sealed record ReadScope
 
     /// <summary>A <see cref="SourceBoard"/> whose status, sprint and effort fields refine the items; null reads none.</summary>
     public string? Board { get; init; }
+
+    /// <summary>
+    /// Per project, the column the owner picked for a <see cref="ColumnRoles"/> role ("" for none); a role left out
+    /// keeps the connector's pick.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Columns { get; init; } =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>();
 }

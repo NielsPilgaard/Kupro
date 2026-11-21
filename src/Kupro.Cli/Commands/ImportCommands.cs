@@ -77,6 +77,11 @@ internal static class ImportCommands
         var projects = new Option<string[]>("--project") { Description = "With --local: a project key or ID to read (repeat it); all projects if left out.", AllowMultipleArgumentsPerToken = true };
         var into = new Option<Guid?>("--import") { Description = "With --local: upload to this import (a re-run) instead of creating one." };
         var board = new Option<string?>("--board") { Description = "With --local: a GitHub project (v2), by title or ID, whose Status, Iteration and estimate refine the issues. Give it again on every re-run." };
+        var columns = new Option<string[]>("--column")
+        {
+            Description = "With --local: which Monday column fills a role on a board, as board:role=column (by title or ID; repeat it). "
+                + "Roles: status, people, timeline, date, estimate, points; leave the column out for none. Give them again on every re-run.",
+        };
         var output = new Option<FileInfo?>("--out") { Description = "With --local: write the snapshot ZIP here and stop, to look at it before `kupro import snapshot`." };
         var command = new ApiCommand(kind, $"Import from {name}. The token comes from stdin or {TokenVariable}. {access}", "createImport", "uploadImportSource")
         {
@@ -97,14 +102,20 @@ internal static class ImportCommands
             command.Options.Add(board);
         }
 
+        if (kind == SourceKinds.Monday)
+        {
+            command.Options.Add(columns);
+        }
+
         return command.Handle(async (c, ct) =>
         {
             var token = await TokenAsync(ct) ?? throw new CliException($"Pipe the {name} token in, or set {TokenVariable}.");
             if (!c.Get(local))
             {
-                if (c.Get(into) is not null || c.Get(output) is not null || c.Get(projects) is { Length: > 0 } || c.Get(board) is not null)
+                if (c.Get(into) is not null || c.Get(output) is not null || c.Get(projects) is { Length: > 0 } || c.Get(board) is not null
+                    || c.Get(columns) is { Length: > 0 })
                 {
-                    throw new CliException("--project, --board, --import and --out go with --local. Without it, Kupro reads the source itself: pick them with `kupro import mapping`.");
+                    throw new CliException("--project, --board, --column, --import and --out go with --local. Without it, Kupro reads the source itself: pick them with `kupro import mapping`.");
                 }
 
                 var created = await (await c.InWorkspaceAsync(ct)).Imports.PostAsync(
@@ -137,7 +148,7 @@ internal static class ImportCommands
                 int missing;
                 await using (var zip = file.Create())
                 {
-                    missing = await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted, c.Get(board)), cursor: null, includeFiles: true, TimeProvider.System, ct);
+                    missing = await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted, c.Get(board), c.Get(columns) ?? []), cursor: null, includeFiles: true, TimeProvider.System, ct);
                 }
 
                 if (missing > 0)
@@ -210,21 +221,74 @@ internal static class ImportCommands
     /// The projects asked for, by key or ID, and the board by title or ID; a name the source doesn't have is an error,
     /// not an empty read.
     /// </summary>
-    private static ReadScope Scope(SnapshotDescription description, IReadOnlyList<string> wanted, string? board)
+    private static ReadScope Scope(SnapshotDescription description, IReadOnlyList<string> wanted, string? board, IReadOnlyList<string> columns)
     {
         var ids = wanted.Select(w => description.Projects.FirstOrDefault(p => p.Id == w || string.Equals(p.Key, w, StringComparison.OrdinalIgnoreCase))?.Id
             ?? throw new CliException($"The source has no project {w}. It has: {string.Join(", ", description.Projects.Select(p => p.Key ?? p.Id))}.")).ToList();
+        var picks = Columns(description, ids, columns);
         if (board is null)
         {
-            return new ReadScope { Projects = ids };
+            return new ReadScope { Projects = ids, Columns = picks };
         }
 
         var boards = description.Boards.Where(b => b.Id == board || string.Equals(b.Name, board, StringComparison.OrdinalIgnoreCase)).ToList();
         return boards.Count == 1
-            ? new ReadScope { Projects = ids, Board = boards[0].Id }
+            ? new ReadScope { Projects = ids, Board = boards[0].Id, Columns = picks }
             : throw new CliException(description.Boards.Count == 0
                 ? "This token sees no GitHub projects (v2). An organisation's need Projects (read) on it, a user's a classic token with read:project."
                 : $"{(boards.Count == 0 ? "No" : "More than one")} GitHub project is called {board}. Give one of: {string.Join(", ", description.Boards.Select(b => $"{b.Id} ({b.Owner}: {b.Name})"))}.");
+    }
+
+    /// <summary>
+    /// The <c>--column</c> picks, by board and column title or ID. A board in the read where Kupro would ask which
+    /// column fills a role, and no pick says, is an error: the wizard doesn't go on without an answer either.
+    /// </summary>
+    private static Dictionary<string, IReadOnlyDictionary<string, string>> Columns(SnapshotDescription description, IReadOnlyList<string> projects, IReadOnlyList<string> picks)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        foreach (var pick in picks)
+        {
+            var equals = pick.IndexOf('=', StringComparison.Ordinal);
+            var colon = equals < 0 ? -1 : pick.LastIndexOf(':', equals);
+            if (colon <= 0)
+            {
+                throw new CliException($"--column {pick}: write it as board:role=column, such as \"Bugs:status=Stage\".");
+            }
+
+            var (boardName, role, columnName) = (pick[..colon].Trim(), pick[(colon + 1)..equals].Trim(), pick[(equals + 1)..].Trim());
+            var project = description.Projects.FirstOrDefault(p => p.Id == boardName || string.Equals(p.Name, boardName, StringComparison.OrdinalIgnoreCase))
+                ?? throw new CliException($"--column {pick}: there is no board {boardName}.");
+            var fits = description.Columns.Where(c => c.Project == project.Id && c.Roles.Contains(role)).ToList();
+            if (fits.Count == 0)
+            {
+                throw new CliException($"--column {pick}: {project.Name} has no column that can be its {role}. Roles: status, people, timeline, date, estimate, points.");
+            }
+
+            var named = fits.Where(c => c.Id == columnName).ToList() is [_] byId ? byId : fits.Where(c => string.Equals(c.Name, columnName, StringComparison.OrdinalIgnoreCase)).ToList();
+            var column = columnName.Length == 0
+                ? ""
+                : named switch
+                {
+                    [var one] => one.Id,
+                    [] => throw new CliException($"--column {pick}: {project.Name}'s {role} can be {string.Join(", ", fits.Select(c => c.Name))}."),
+                    _ => throw new CliException($"--column {pick}: {project.Name} has {named.Count} columns named {columnName}: give its ID ({string.Join(", ", named.Select(c => c.Id))})."),
+                };
+            (result.TryGetValue(project.Id, out var roles) ? roles : result[project.Id] = new(StringComparer.Ordinal))[role] = column;
+        }
+
+        var read = projects.Count > 0 ? projects.ToHashSet() : [.. description.Projects.Where(p => !p.Archived).Select(p => p.Id)];
+        var open = description.Columns.Where(c => c.Ask && c.Role is { } role && read.Contains(c.Project) && result.GetValueOrDefault(c.Project)?.ContainsKey(role) != true).ToList();
+        if (open.Count > 0)
+        {
+            throw new CliException(string.Join(" ", open.Select(c =>
+            {
+                var board = description.Projects.First(p => p.Id == c.Project).Name;
+                var choices = description.Columns.Where(o => o.Project == c.Project && o.Roles.Contains(c.Role!)).Select(o => o.Name);
+                return $"{board} has more than one column that could be its {c.Role} ({string.Join(", ", choices)}): say which with --column \"{board}:{c.Role}={c.Name}\".";
+            })));
+        }
+
+        return result.ToDictionary(r => r.Key, r => (IReadOnlyDictionary<string, string>)r.Value, StringComparer.Ordinal);
     }
 
     private static Command Create()

@@ -382,7 +382,7 @@ export const en = {
           { t: 'Boards and groups', d: 'Each board becomes a Kupro project. Groups become Epics with their items under them, or labels if you prefer.' },
           { t: 'Items and subitems', d: 'Items become Tasks and get Kupro numbers; the Monday item URL still opens them. Subitems become a checklist on their item.' },
           { t: 'Status', d: 'Labels Monday marks as done are Done, Working on it and Stuck are In Progress, and you place the rest.' },
-          { t: 'People, dates and estimates', d: 'The people column is the assignee, a timeline the start and due dates, and a number column for hours or points the estimate.' },
+          { t: 'People, dates and estimates', d: 'The people column is the assignee, a timeline the start and due dates, and a number column for hours or points the estimate. Where a board has two columns that could be the status or the assignee, the import asks you which.' },
           { t: 'Updates and files', d: 'Updates and their replies become comments. Files are copied into Kupro.' },
           { t: 'History', d: 'Status, assignee and name changes from the board’s activity log show with the original person and time.' },
           { t: 'Tags and other columns', d: 'Tags and dropdowns become labels. Other columns stay readable in a details block on each issue.' },

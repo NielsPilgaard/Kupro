@@ -379,7 +379,7 @@ export const da: Copy = {
           { t: 'Boards og grupper', d: 'Hvert board bliver et projekt i Kupro. Grupper bliver Epics med deres items under sig, eller labels, hvis I hellere vil det.' },
           { t: 'Items og subitems', d: 'Items bliver Tasks og får Kupro-numre; adressen på Monday-itemet åbner dem stadig. Subitems bliver en tjekliste på deres item.' },
           { t: 'Status', d: 'Labels, som Monday markerer som færdige, bliver Færdig; Working on it og Stuck bliver I gang, og resten placerer I selv.' },
-          { t: 'Personer, datoer og estimater', d: 'Personkolonnen bliver ansvarlig, en tidslinje bliver start- og forfaldsdato, og en talkolonne med timer eller point bliver estimatet.' },
+          { t: 'Personer, datoer og estimater', d: 'Personkolonnen bliver ansvarlig, en tidslinje bliver start- og forfaldsdato, og en talkolonne med timer eller point bliver estimatet. Har en tavle to kolonner, der kunne være status eller ansvarlig, spørger importen dig, hvilken det er.' },
           { t: 'Opdateringer og filer', d: 'Opdateringer og svar på dem bliver kommentarer. Filer kopieres til Kupro.' },
           { t: 'Historik', d: 'Ændringer af status, ansvarlig og navn fra boardets aktivitetslog vises med den oprindelige person og tid.' },
           { t: 'Tags og andre kolonner', d: 'Tags og dropdowns bliver labels. Andre kolonner kan stadig læses i en detaljeblok på hver opgave.' },

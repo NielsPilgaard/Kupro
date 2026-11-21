@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import type { ImportMapping, ImportPlan, ImportRunResponse, MemberResponse } from '../../api/gen/types.gen';
-import { blockerOf, delta, effortNeeded, formatBytes, matchOf, mergeProposal, openDecisions, phaseOf, sparkBars, stepsFor } from './wizard';
+import type { ImportMapping, ImportPlan, ImportRunResponse, MemberResponse, SourceDescription } from '../../api/gen/types.gen';
+import {
+  blockerOf,
+  columnFilter,
+  delta,
+  effortNeeded,
+  formatBytes,
+  matchOf,
+  mergeProposal,
+  openDecisions,
+  openQuestions,
+  phaseOf,
+  pickedColumns,
+  sparkBars,
+  stepsFor,
+} from './wizard';
 
 const count = (n: number) => ({ count: n, samples: [] });
 const plan = (over: Partial<ImportPlan> = {}): ImportPlan => ({
@@ -120,5 +134,48 @@ describe('import wizard helpers', () => {
     expect(merged.states).toEqual({ Open: 'todo', Weird: 'inProgress' });
     expect(merged.statusesToReview).toEqual(['New']);
     expect(merged.hoursPerPoint).toBe(6);
+  });
+});
+
+describe('board columns', () => {
+  // Bugs: Severity and Workflow both fit the status, so Kupro asks; Hours is the estimate by name.
+  const description: SourceDescription = {
+    source: { kind: 'monday' },
+    projects: [{ id: 'b', name: 'Bugs' }, { id: 'w', name: 'Website' }, { id: 'o', name: 'Old', archived: true }],
+    statuses: [{ id: '(none)', name: 'No status' }, { id: 'Critical', name: 'Critical' }, { id: 'New', name: 'New' }],
+    fields: [{ id: 'severity:select', name: 'Severity', kind: 'select' }, { id: 'workflow:select', name: 'Workflow', kind: 'select' }, { id: 'notes:text', name: 'Notes', kind: 'text' }],
+    columns: [
+      { project: 'b', id: 'severity', name: 'Severity', roles: ['status'], role: 'status', ask: true, labels: ['Critical'], field: 'severity:select' },
+      { project: 'b', id: 'workflow', name: 'Workflow', roles: ['status'], labels: ['New'], field: 'workflow:select' },
+      { project: 'b', id: 'hours', name: 'Hours', roles: ['estimate', 'points'], role: 'estimate' },
+      { project: 'o', id: 'stage', name: 'Stage', roles: ['status'], role: 'status', ask: true },
+    ],
+  };
+  const answered = (column: string): ImportMapping => ({ scope: { columns: { b: { status: column } } } });
+
+  it('shows Columns only for a source with board columns', () => {
+    expect(stepsFor(plan(), description)).toContain('columns');
+    expect(stepsFor(plan(), { ...description, columns: [] })).not.toContain('columns');
+  });
+
+  it('waits on Columns until every question on a board in scope is answered', () => {
+    const ctx = { connected: true, decided: none, description };
+    expect(openQuestions(description, {}).map((c) => c.id)).toEqual(['severity']);
+    expect(openQuestions(description, { scope: { projects: ['o'] } }).map((c) => c.id)).toEqual(['stage']);
+    expect(blockerOf('columns', { ...ctx, mapping: {} })).toBe('columns');
+    expect(blockerOf('columns', { ...ctx, mapping: answered('workflow') })).toBeNull();
+    expect(blockerOf('columns', { ...ctx, mapping: answered('') })).toBeNull();
+    expect(blockerOf('columns', { ...ctx, mapping: { scope: { projects: ['w'] } } })).toBeNull();
+  });
+
+  it("lists only the picked status column's labels, and no field for a column filling a role", () => {
+    const guessed = columnFilter(description, {});
+    expect(['(none)', 'Critical', 'New'].filter(guessed.status)).toEqual(['(none)', 'Critical']);
+    expect(['severity:select', 'workflow:select', 'notes:text'].filter(guessed.field)).toEqual(['workflow:select', 'notes:text']);
+
+    const picked = columnFilter(description, answered('workflow'));
+    expect(['(none)', 'Critical', 'New'].filter(picked.status)).toEqual(['(none)', 'New']);
+    expect(['severity:select', 'workflow:select'].filter(picked.field)).toEqual(['severity:select']);
+    expect(pickedColumns(description, answered(''), 'b')).toEqual({ estimate: 'hours' });
   });
 });
