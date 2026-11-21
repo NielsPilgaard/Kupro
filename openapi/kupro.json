@@ -8029,6 +8029,23 @@
               "type": "string"
             },
             "description": "Source types left out entirely, such as Azure DevOps test plans and cases."
+          },
+          "board": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A board whose status, sprint and effort fields refine the items (a GitHub project); null uses none."
+          },
+          "columns": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "description": "Per project, the column the owner picked for a role (status, people, timeline, date, estimate, points; \"\" for\nnone), from the Columns step (Monday). A role left out keeps the connector's pick."
           }
         },
         "description": "What to read and keep. Empty IReadOnlyList&lt;string&gt; ImportScope.Projects means every project."
@@ -9981,6 +9998,35 @@
         },
         "description": "Where the data came from. string SnapshotSource.Kind is one of SourceKinds."
       },
+      "SourceBoard": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The account that owns it (a GitHub organisation or user)."
+          },
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A board whose fields refine the items it holds (a GitHub project), for the owner to pick as the read's board."
+      },
       "SourceCapacity": {
         "required": [
           "from",
@@ -9999,6 +10045,58 @@
           }
         },
         "description": "People on a project from a month on, until the next step."
+      },
+      "SourceColumn": {
+        "required": [
+          "project",
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ColumnRoles it can fill; empty for a column that is only ever a field."
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The role the connector gave it, when the owner picks none."
+          },
+          "ask": {
+            "type": "boolean",
+            "description": "Set on the column given its `Role` when another column could fill it too and their titles don't say\nwhich: the wizard asks the owner."
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "A status column's labels, which are SourceStatus IDs."
+          },
+          "field": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The SourceField it becomes when it fills no role; null for one that never is a field."
+          }
+        },
+        "description": "A column of a project (a Monday board), with the roles it can fill and the field it is otherwise."
       },
       "SourceDescription": {
         "required": [
@@ -10038,6 +10136,20 @@
             "items": {
               "$ref": "#/components/schemas/SourceField"
             }
+          },
+          "boards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceBoard"
+            },
+            "description": "Boards the owner may take statuses, sprints and effort from: GitHub Projects (v2)."
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceColumn"
+            },
+            "description": "A board's columns, for the wizard's Columns step (Monday): which column is each item's status, assignee, dates\nand effort. Not part of a snapshot, which is read with the picks already made."
           }
         },
         "description": "What the wizard needs before the owner picks a scope and maps anything (connector Describe)."
@@ -10164,6 +10276,10 @@
             ],
             "description": "The source's process or template name (ADO \"Agile\", \"Scrum\"), for default mappings."
           },
+          "archived": {
+            "type": "boolean",
+            "description": "Archived in the source: read only when the owner names it."
+          },
           "capacity": {
             "type": [
               "null",
@@ -10209,6 +10325,13 @@
               "null",
               "string"
             ]
+          },
+          "board": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Set when the status comes from a board (SourceBoard); it applies only when that board is picked."
           }
         }
       },

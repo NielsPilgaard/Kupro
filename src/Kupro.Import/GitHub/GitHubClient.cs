@@ -2,13 +2,15 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 
 namespace Kupro.Import.GitHub;
 
 /// <summary>
 /// HTTP for GitHub's REST API (task 027 Access): github.com, or GitHub Enterprise Server under <c>/api/v3</c>. Pages
-/// follow the <c>Link</c> header. The primary rate limit (403 or 429 with <c>x-ratelimit-remaining: 0</c>) waits until
+/// follow the <c>Link</c> header. GraphQL (Projects (v2) only) is at <c>/graphql</c>, on a server <c>/api/graphql</c>. The primary rate limit (403 or 429 with <c>x-ratelimit-remaining: 0</c>) waits until
 /// <c>x-ratelimit-reset</c>; a secondary limit waits its <c>Retry-After</c>.
 /// </summary>
 internal sealed class GitHubClient
@@ -24,27 +26,46 @@ internal sealed class GitHubClient
         _http = http;
         _throttle = new SourceThrottle(time);
         Api = api;
+        GraphQL = new Uri(api, api.AbsolutePath.EndsWith("/api/v3/", StringComparison.OrdinalIgnoreCase) ? "../graphql" : "graphql");
         _auth = new AuthenticationHeaderValue("Bearer", token.Trim());
     }
 
     /// <summary>The API root, ending in a slash: <c>https://api.github.com/</c> or <c>https://ghe.example/api/v3/</c>.</summary>
     public Uri Api { get; }
 
+    public Uri GraphQL { get; }
+
     /// <summary>Waits between requests; replaced in tests so throttling doesn't sleep.</summary>
     public Func<TimeSpan, CancellationToken, Task> Delay { get => _throttle.Delay; set => _throttle.Delay = value; }
 
     public async Task<T> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
     {
-        using var response = await SendAsync(new Uri(Api, path), ct);
+        using var response = await SendAsync(new Uri(Api, path), null, ct);
         EnsureSuccess(response, path);
         return await response.Content.ReadFromJsonAsync(type, ct) ?? throw Failure(response.StatusCode, path);
+    }
+
+    /// <summary>
+    /// A GraphQL query: <c>data</c>, and <c>errors</c> (empty when none). GitHub answers with what it could read and an
+    /// error per part it couldn't (a project the token may not see), so the caller judges the errors.
+    /// </summary>
+    public async Task<(JsonObject Data, JsonArray Errors)> QueryAsync(string query, JsonObject variables, CancellationToken ct)
+    {
+        var body = new JsonObject { ["query"] = query, ["variables"] = variables }.ToJsonString();
+        using var response = await SendAsync(GraphQL, body, ct);
+        EnsureSuccess(response, "graphql");
+        var parsed = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct)) as JsonObject;
+        var errors = parsed?["errors"] as JsonArray ?? [];
+        return parsed?["data"] is JsonObject data
+            ? (data, errors)
+            : throw new SourceAccessException($"GitHub refused a query: {errors.Select(e => (string?)e?["message"]).FirstOrDefault() ?? "no data"}");
     }
 
     /// <summary>Like <see cref="GetAsync{T}"/>, but null when the resource doesn't exist or isn't readable.</summary>
     public async Task<T?> TryGetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
         where T : class
     {
-        using var response = await SendAsync(new Uri(Api, path), ct);
+        using var response = await SendAsync(new Uri(Api, path), null, ct);
         if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden or HttpStatusCode.Gone)
         {
             return null;
@@ -73,7 +94,7 @@ internal sealed class GitHubClient
         while (url is not null)
         {
             List<T> page;
-            using (var response = await SendAsync(url, ct))
+            using (var response = await SendAsync(url, null, ct))
             {
                 if (missingIsEmpty && response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden or HttpStatusCode.Gone)
                 {
@@ -117,29 +138,41 @@ internal sealed class GitHubClient
         return null;
     }
 
-    private Task<HttpResponseMessage> SendAsync(Uri url, CancellationToken ct) =>
+    /// <summary>A GET, or a POST of <paramref name="graphql"/> when given.</summary>
+    private Task<HttpResponseMessage> SendAsync(Uri url, string? graphql, CancellationToken ct) =>
         _throttle.SendAsync(_http, () =>
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var request = graphql is null
+                ? new HttpRequestMessage(HttpMethod.Get, url)
+                : new HttpRequestMessage(HttpMethod.Post, url) { Content = new StringContent(graphql, Encoding.UTF8, "application/json") };
             request.Headers.Authorization = _auth;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("Kupro-Import", "1"));
             request.Headers.Add("X-GitHub-Api-Version", ApiVersion);
             return request;
         }, async (response, attempt) =>
-            await RateLimitedAsync(response, ct) is { } until ? until - _throttle.Now
+            await RateLimitedAsync(response, graphql is not null, ct) is { } until ? until - _throttle.Now
             : response.StatusCode is HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable ? SourceThrottle.Backoff(attempt)
             : null, ct);
 
     /// <summary>When to try again, if the response is a rate limit; null otherwise.</summary>
-    private async Task<DateTimeOffset?> RateLimitedAsync(HttpResponseMessage response, CancellationToken ct)
+    private async Task<DateTimeOffset?> RateLimitedAsync(HttpResponseMessage response, bool graphql, CancellationToken ct)
     {
+        var now = _throttle.Now;
+        if (graphql && response.StatusCode == HttpStatusCode.OK)
+        {
+            // GraphQL answers its primary limit with 200 and a RATE_LIMITED error.
+            return SourceThrottle.Header(response, "x-ratelimit-remaining") == "0"
+                && (await response.Content.ReadAsStringAsync(ct)).Contains("\"RATE_LIMITED\"", StringComparison.Ordinal)
+                ? Reset(response, now)
+                : null;
+        }
+
         if (response.StatusCode is not (HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests))
         {
             return null;
         }
 
-        var now = _throttle.Now;
         if (response.Headers.RetryAfter is { } retry)
         {
             return now + (retry.Delta ?? (retry.Date - now) ?? TimeSpan.FromMinutes(1));
@@ -147,9 +180,7 @@ internal sealed class GitHubClient
 
         if (SourceThrottle.Header(response, "x-ratelimit-remaining") == "0")
         {
-            return long.TryParse(SourceThrottle.Header(response, "x-ratelimit-reset"), NumberStyles.None, CultureInfo.InvariantCulture, out var reset)
-                ? DateTimeOffset.FromUnixTimeSeconds(reset).AddSeconds(1)
-                : now.AddMinutes(1);
+            return Reset(response, now);
         }
 
         // A 429 without headers is still a limit, and so is a 403 that says so (a secondary limit: wait a minute);
@@ -162,6 +193,11 @@ internal sealed class GitHubClient
         var body = await response.Content.ReadAsStringAsync(ct);
         return body.Contains("secondary rate limit", StringComparison.OrdinalIgnoreCase) ? now.AddMinutes(1) : null;
     }
+
+    private static DateTimeOffset Reset(HttpResponseMessage response, DateTimeOffset now) =>
+        long.TryParse(SourceThrottle.Header(response, "x-ratelimit-reset"), NumberStyles.None, CultureInfo.InvariantCulture, out var reset)
+            ? DateTimeOffset.FromUnixTimeSeconds(reset).AddSeconds(1)
+            : now.AddMinutes(1);
 
     private static void EnsureSuccess(HttpResponseMessage response, string path)
     {

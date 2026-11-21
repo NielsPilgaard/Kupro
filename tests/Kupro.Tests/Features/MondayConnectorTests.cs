@@ -28,9 +28,68 @@ public sealed class MondayConnectorTests
         description.Projects.Select(p => (p.Id, p.Name)).ShouldBe([("10", "Website"), ("11", "Old")], "a subitems board is not a project");
         description.Statuses.Select(s => (s.Id, s.Category)).ShouldBe(
             [(MondayConnector.NoStatus, null), ("Working on it", null), ("Done", "done"), ("Stuck", null), ("Open", null), ("Closed", "done")]);
-        description.Fields.Select(f => (f.Id, f.Kind)).ShouldBe(
-            [(MondayConnector.GroupField, FieldKind.Select), ("budget:number", FieldKind.Number), ("notes:text", FieldKind.Text)]);
+        SourceConnectorExtensions.Picked(description, new ReadScope()).Fields.Select(f => (f.Id, f.Kind)).ShouldBe(
+            [(MondayConnector.GroupField, FieldKind.Select), ("budget:number", FieldKind.Number), ("notes:text", FieldKind.Text)],
+            "columns filling a role are fields only once another column fills it");
         description.People.Select(p => (p.Id, p.Name)).ShouldBe([("5", "Sofie Larsen"), ("6", "Jonas Holm")]);
+        description.Columns.Where(c => c.Project == "10" && c.Role is not null).Select(c => (c.Id, c.Role, c.Ask)).ShouldBe(
+        [
+            ("status", ColumnRoles.Status, false), ("person", ColumnRoles.People, false), ("timeline", ColumnRoles.Timeline, false),
+            ("date4", ColumnRoles.Date, false), ("estimate", ColumnRoles.Estimate, false),
+        ]);
+        description.Columns.Single(c => c.Id == "numbers2" && c.Project == "10").ShouldSatisfyAllConditions(
+            c => c.Roles.ShouldBe([ColumnRoles.Estimate, ColumnRoles.Points]), c => c.Role.ShouldBeNull(), c => c.Field.ShouldBe("budget:number"));
+    }
+
+    [Fact]
+    public async Task Describe_asks_where_two_columns_fit_a_role_and_neither_is_named_for_it()
+    {
+        var description = await Connect(WithBugs(Sample())).DescribeAsync(Ct);
+        var bugs = description.Columns.Where(c => c.Project == "14").ToDictionary(c => c.Id);
+
+        bugs["severity"].ShouldSatisfyAllConditions(c => c.Role.ShouldBe(ColumnRoles.Status), c => c.Ask.ShouldBeTrue(), c => c.Labels.ShouldBe(["Critical", "Minor"]));
+        bugs["workflow"].ShouldSatisfyAllConditions(c => c.Role.ShouldBeNull(), c => c.Roles.ShouldBe([ColumnRoles.Status]), c => c.Labels.ShouldBe(["New", "Fixed"]));
+        bugs["developer"].ShouldSatisfyAllConditions(c => c.Role.ShouldBe(ColumnRoles.People), c => c.Ask.ShouldBeTrue());
+        bugs["hours"].ShouldSatisfyAllConditions(c => c.Role.ShouldBe(ColumnRoles.Estimate), c => c.Ask.ShouldBeFalse("named for it"));
+        bugs.Values.ShouldNotContain(c => c.Role == ColumnRoles.Points, "named for both, a column fills one role");
+        description.Projects.Single(p => p.Id == "11").Archived.ShouldBeTrue();
+        description.Statuses.Single(s => s.Id == "Fixed").Category.ShouldBe("done", "every status column's labels are listed");
+    }
+
+    [Fact]
+    public async Task Picked_columns_fill_the_roles_and_the_ones_they_replace_become_fields()
+    {
+        var scope = new ReadScope
+        {
+            Projects = ["14"],
+            Columns = new Dictionary<string, IReadOnlyDictionary<string, string>> { ["14"] = new Dictionary<string, string> { ["status"] = "workflow", ["people"] = "tester", ["estimate"] = "" } },
+        };
+        var stream = new MemoryStream();
+        await Connect(WithBugs(Sample())).WriteSnapshotAsync(stream, scope, null, includeFiles: false, TimeProvider.System, Ct);
+        stream.Position = 0;
+        await using var snapshot = await SnapshotReader.OpenAsync(stream, Ct);
+        var bug = await snapshot.ReadItemsAsync(Ct).SingleAsync(i => i.Id == "140", Ct);
+
+        bug.Status.ShouldBe("Fixed");
+        bug.Resolved.ShouldNotBeNull("Workflow marks Fixed done");
+        bug.Assignee.ShouldBe("6");
+        bug.EstimateSeconds.ShouldBeNull("no column for the estimate");
+        bug.Fields["severity:select"].GetString().ShouldBe("Critical");
+        bug.Fields["developer:text"].GetString().ShouldBe("Sofie Larsen");
+        bug.Fields["effort (hours):number"].GetDecimal().ShouldBe(2);
+        snapshot.Header.Statuses.Select(s => s.Id).ShouldContain("New");
+        snapshot.Header.Statuses.Select(s => s.Id).ShouldNotContain("Critical", "a status column not picked gives no statuses");
+        snapshot.Header.Fields.Select(f => f.Id).ShouldContain("severity:select");
+        snapshot.Header.Fields.Select(f => f.Id).ShouldNotContain("workflow:select");
+    }
+
+    [Fact]
+    public async Task A_pick_of_a_column_that_cant_fill_the_role_fails_the_read()
+    {
+        var scope = new ReadScope { Columns = new Dictionary<string, IReadOnlyDictionary<string, string>> { ["14"] = new Dictionary<string, string> { ["status"] = "hours" } } };
+
+        (await Should.ThrowAsync<SourceAccessException>(() => Connect(WithBugs(Sample())).ReadAsync(scope, null, Ct).ToListAsync(Ct).AsTask()))
+            .Message.ShouldContain("Pick its columns again");
     }
 
     [Fact]
@@ -170,6 +229,49 @@ public sealed class MondayConnectorTests
         new() { ["id"] = id, ["type"] = type, ["text"] = text, ["value"] = value };
 
     private static string At(DateTimeOffset at) => at.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Adds Bugs (14): two status columns and two people columns, none named for its role, so Kupro asks; #140 is
+    /// Critical and Fixed, for Sofie and tested by Jonas, 2 hours.
+    /// </summary>
+    internal static FakeMonday WithBugs(FakeMonday monday)
+    {
+        monday.Boards.Add(new JsonObject
+        {
+            ["id"] = "14",
+            ["name"] = "Bugs",
+            ["state"] = "active",
+            ["type"] = "board",
+            ["columns"] = new JsonArray(
+                Column("name", "Name", "name"),
+                Column("severity", "Severity", "status", """{"labels":{"0":"Critical","1":"Minor"}}"""),
+                Column("workflow", "Workflow", "status", """{"labels":{"0":"New","1":"Fixed"},"done_colors":[1]}"""),
+                Column("developer", "Developer", "people"),
+                Column("tester", "Tester", "people"),
+                Column("hours", "Effort (hours)", "numbers")),
+            ["groups"] = new JsonArray(new JsonObject { ["id"] = "inbox", ["title"] = "Inbox" }),
+        });
+        monday.Items["14"] =
+        [
+            new JsonObject
+            {
+                ["id"] = "140",
+                ["name"] = "Login loops",
+                ["created_at"] = At(T0),
+                ["updated_at"] = At(T0.AddDays(1)),
+                ["state"] = "active",
+                ["creator_id"] = "5",
+                ["group"] = new JsonObject { ["id"] = "inbox" },
+                ["column_values"] = new JsonArray(
+                    Value("severity", "status", "Critical", """{"index":0}"""),
+                    Value("workflow", "status", "Fixed", """{"index":1}"""),
+                    Value("developer", "people", "Sofie Larsen", """{"personsAndTeams":[{"id":5,"kind":"person"}]}"""),
+                    Value("tester", "people", "Jonas Holm", """{"personsAndTeams":[{"id":6,"kind":"person"}]}"""),
+                    Value("hours", "numbers", "2", "\"2\"")),
+            },
+        ];
+        return monday;
+    }
 
     /// <summary>
     /// Website (10): groups "This week" and "Later"; #100 in progress with every mapped column, an update with a reply,

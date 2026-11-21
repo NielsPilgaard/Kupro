@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   CsvColumns,
@@ -21,7 +21,7 @@ import { useHours } from '../../lib/format';
 import { states } from '../../lib/issues';
 import { Chip, OkLine, SourceMark, TableCard, WarnLine } from './parts';
 import { control, useSourceName } from './sources';
-import { formatBytes, matchOf, peopleCounts, type Decisions, type StepId } from './wizard';
+import { columnFilter, columnRoles, formatBytes, matchOf, openQuestions, peopleCounts, pickedColumns, type ColumnRole, type Decisions, type StepId } from './wizard';
 
 export interface StepProps {
   mapping: ImportMapping;
@@ -78,6 +78,7 @@ export function ProjectsStep({ mapping, update, description, projects }: StepPro
   };
   const setTarget = (id: string, value: { key: string; name: string; existing?: boolean }) =>
     update((m) => ({ ...m, projects: { ...m.projects, [id]: value } }));
+  const boards = description.boards ?? [];
 
   return (
     <>
@@ -146,11 +147,125 @@ export function ProjectsStep({ mapping, update, description, projects }: StepPro
           })}
         </tbody>
       </TableCard>
+      {boards.length > 0 && (
+        <label className="mt-4 flex flex-col gap-1">
+          <span className="text-sm font-semibold">{t('importWizard.boardLabel')}</span>
+          <select
+            className={`${control} max-w-md`}
+            value={mapping.scope?.board ?? ''}
+            onChange={(e) => update((m) => ({ ...m, scope: { ...m.scope, board: e.target.value || null } }))}
+          >
+            <option value="">{t('importWizard.boardNone')}</option>
+            {boards.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.owner ? `${b.owner}: ${b.name}` : b.name}
+              </option>
+            ))}
+          </select>
+          <small className="text-sm text-mute">{t('importWizard.boardHint')}</small>
+        </label>
+      )}
     </>
   );
 }
 
 /** Source levels, highest first, each with the type names the source ranks there. */
+/**
+ * Which board column is each item's state, assignee, dates and effort (Monday; prototype monday-columns/03): one
+ * sentence per board, a plain question where Kupro can't tell, and the full choice behind Change.
+ */
+export function ColumnsStep({ mapping, update, description }: StepProps) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const scope = mapping.scope?.projects ?? [];
+  const all = description.columns ?? [];
+  const boards = (description.projects ?? []).filter((p) => (scope.length === 0 ? !p.archived : scope.includes(p.id)) && all.some((c) => c.project === p.id && c.roles?.length));
+  const questions = openQuestions(description, mapping);
+  const pick = (project: string, role: ColumnRole, column: string) =>
+    update((m) => ({ ...m, scope: { ...m.scope, columns: { ...m.scope?.columns, [project]: { ...m.scope?.columns?.[project], [role]: column } } } }));
+
+  return (
+    <>
+      <StepHead title={t('importWizard.columnsTitle')} lede={questions.length ? t('importWizard.columnsLedeAsk') : t('importWizard.columnsLedeClear')} />
+      {boards.map((b) => {
+        const columns = all.filter((c) => c.project === b.id);
+        const picked = pickedColumns(description, mapping, b.id);
+        const asks = questions.filter((q) => q.project === b.id);
+        const name = (id?: string) => columns.find((c) => c.id === id)?.name;
+        const fits = (role: ColumnRole) => columns.filter((c) => c.roles?.includes(role));
+        const roleName = (role: ColumnRole) => t(`importWizard.role.${role === 'date' && picked.timeline ? 'dateFallback' : role}`);
+        const said = columnRoles.filter((r) => picked[r] && !asks.some((q) => q.role === r));
+        const rest = columns.filter((c) => c.field && !Object.values(picked).includes(c.id));
+        return (
+          <section key={b.id} aria-labelledby={`board-${b.id}`} className="flex flex-col gap-2.5 rounded-r2 border border-line bg-panel px-3.5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id={`board-${b.id}`} className="font-semibold">
+                {b.name}
+              </h2>
+              {asks.length ? <Chip tone="warn">{t('importWizard.columnsQuestions', { count: asks.length })}</Chip> : <Chip tone="ok">{t('importWizard.columnsClear')}</Chip>}
+              <button type="button" className="ml-auto text-sm text-acc-ink underline underline-offset-3" aria-expanded={!!open[b.id]} onClick={() => setOpen((o) => ({ ...o, [b.id]: !o[b.id] }))}>
+                {open[b.id] ? t('importWizard.columnsDone') : t('importWizard.columnsChange')}
+              </button>
+            </div>
+            {asks.map((q) => {
+              const role = q.role as ColumnRole;
+              const choices = fits(role);
+              return (
+                <fieldset key={role} className="flex flex-col gap-2 rounded-r2 border border-warn px-3 py-2.5">
+                  <legend className="px-1 font-semibold">{t(`importWizard.ask.${role as 'status' | 'people' | 'timeline' | 'date'}`, { board: b.name, count: choices.length })}</legend>
+                  {[...choices.map((c) => ({ id: c.id, name: c.name, labels: c.labels ?? [] })), { id: '', name: t('importWizard.columnNone'), labels: [] }].map((c) => (
+                    <label key={c.id} className="flex cursor-pointer items-start gap-2 rounded-r1 border border-line px-2 py-1.5">
+                      <input type="radio" className="mt-0.5" name={`${b.id}-${role}`} onChange={() => pick(b.id, role, c.id)} />
+                      <span className="flex flex-col">
+                        <span className="font-semibold">{c.name}</span>
+                        {c.labels.length > 0 && <span className="text-sm text-mute">{c.labels.join(', ')}</span>}
+                      </span>
+                    </label>
+                  ))}
+                  <span className="text-sm text-mute">{t('importWizard.askRest')}</span>
+                </fieldset>
+              );
+            })}
+            {said.length > 0 ? (
+              <p className="flex flex-wrap gap-x-3.5 gap-y-1 text-sm">
+                {said.map((r) => (
+                  <span key={r}>
+                    <span className="font-semibold">{name(picked[r])}</span> → {roleName(r)}
+                  </span>
+                ))}
+              </p>
+            ) : (
+              asks.length === 0 && <p className="text-sm text-mute">{t('importWizard.columnsNothing')}</p>
+            )}
+            {open[b.id] && (
+              <dl className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-1.5 text-sm">
+                {columnRoles
+                  .filter((r) => fits(r).length > 0)
+                  .map((r) => (
+                    <Fragment key={r}>
+                      <dt className="text-mute">{roleName(r)}</dt>
+                      <dd>
+                        <select className={`${control} max-w-72`} value={picked[r] ?? ''} aria-label={t('importWizard.columnOn', { role: roleName(r), board: b.name })} onChange={(e) => pick(b.id, r, e.target.value)}>
+                          <option value="">{t('importWizard.columnNoneOption')}</option>
+                          {fits(r).map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.labels?.length ? `${c.name} (${c.labels.slice(0, 3).join(', ')})` : c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </dd>
+                    </Fragment>
+                  ))}
+              </dl>
+            )}
+            {rest.length > 0 && <span className="text-sm text-mute">{t('importWizard.columnsRest', { list: rest.map((c) => c.name).join(', ') })}</span>}
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
 function levels(description: SourceDescription) {
   const byLevel = new Map<number, string[]>();
   for (const type of description.itemTypes ?? []) {
@@ -395,6 +510,9 @@ export function StatesStep({ mapping, update, description }: StepProps) {
   const set = (id: string, state: IssueState) =>
     update((m) => ({ ...m, states: { ...m.states, [id]: state }, statusesToReview: (m.statusesToReview ?? []).filter((x) => x !== id) }));
   const typeName = (id?: string | null) => (id ? (description.itemTypes?.find((x) => x.id === id)?.name ?? '') : '');
+  // A board's statuses count only when it is picked; an uploaded snapshot lists no boards and kept only the picked one's.
+  const onBoard = (board?: string | null) => !board || !description.boards?.length || board === mapping.scope?.board;
+  const shown = columnFilter(description, mapping);
 
   return (
     <>
@@ -408,7 +526,7 @@ export function StatesStep({ mapping, update, description }: StepProps) {
           </tr>
         </thead>
         <tbody>
-          {(description.statuses ?? []).map((s) => {
+          {(description.statuses ?? []).filter((s) => onBoard(s.board) && shown.status(s.id)).map((s) => {
             const value = mapping.states?.[s.id] ?? 'todo';
             return (
               <tr key={s.id}>
@@ -503,7 +621,8 @@ export function PeopleStep({ mapping, update, description, members }: StepProps)
 export function FieldsStep({ mapping, update, description }: StepProps) {
   const { t } = useTranslation();
   const labelFields = mapping.labelFields ?? [];
-  const fields = description.fields ?? [];
+  const shown = columnFilter(description, mapping);
+  const fields = (description.fields ?? []).filter((f) => shown.field(f.id));
   const toggle = (id: string, on: boolean) =>
     update((m) => ({ ...m, labelFields: on ? [...(m.labelFields ?? []), id] : (m.labelFields ?? []).filter((x) => x !== id) }));
 

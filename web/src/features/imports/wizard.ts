@@ -1,12 +1,59 @@
-import type { ImportMapping, ImportPlan, ImportRunResponse, MemberResponse, PersonTarget, SourcePerson } from '../../api/gen/types.gen';
+import type { ImportMapping, ImportPlan, ImportRunResponse, MemberResponse, PersonTarget, SourceColumn, SourceDescription, SourcePerson } from '../../api/gen/types.gen';
 
 /** The guided steps of a new import (task 023, prototype 11). Hierarchy shows only for four-level sources. */
-export type StepId = 'source' | 'projects' | 'hierarchy' | 'types' | 'states' | 'people' | 'fields' | 'effort' | 'review';
+export type StepId = 'source' | 'projects' | 'columns' | 'hierarchy' | 'types' | 'states' | 'people' | 'fields' | 'effort' | 'review';
 
-const allSteps: StepId[] = ['source', 'projects', 'hierarchy', 'types', 'states', 'people', 'fields', 'effort', 'review'];
+const allSteps: StepId[] = ['source', 'projects', 'columns', 'hierarchy', 'types', 'states', 'people', 'fields', 'effort', 'review'];
 
-export function stepsFor(plan: ImportPlan | undefined): StepId[] {
-  return plan?.fourLevels ? allSteps : allSteps.filter((s) => s !== 'hierarchy');
+export function stepsFor(plan: ImportPlan | undefined, description?: SourceDescription): StepId[] {
+  const columns = description?.columns?.some((c) => c.roles?.length);
+  return allSteps.filter((s) => (s !== 'hierarchy' || plan?.fourLevels) && (s !== 'columns' || columns));
+}
+
+/** The roles a board column can fill, in the order the Columns step lists them. */
+export const columnRoles = ['status', 'people', 'timeline', 'date', 'estimate', 'points'] as const;
+export type ColumnRole = (typeof columnRoles)[number];
+
+/** The column filling each role on a board: the owner's pick ("" for none), else the connector's. */
+export function pickedColumns(description: SourceDescription | undefined, mapping: ImportMapping | undefined, project: string) {
+  const roles: Partial<Record<ColumnRole, string>> = {};
+  for (const c of description?.columns ?? []) if (c.project === project && c.role) roles[c.role as ColumnRole] = c.id;
+  for (const [role, column] of Object.entries(mapping?.scope?.columns?.[project] ?? {})) {
+    if (column) roles[role as ColumnRole] = column;
+    else delete roles[role as ColumnRole];
+  }
+  return roles;
+}
+
+/** The boards the read covers: the picked ones, or all but archived ones. */
+function boardsInScope(description: SourceDescription | undefined, mapping: ImportMapping | undefined) {
+  const scope = mapping?.scope?.projects ?? [];
+  return (description?.projects ?? []).filter((p) => (scope.length === 0 ? !p.archived : scope.includes(p.id)));
+}
+
+/** Columns Kupro wasn't sure of, on boards in scope, that the owner hasn't answered for yet. */
+export function openQuestions(description: SourceDescription | undefined, mapping: ImportMapping | undefined): SourceColumn[] {
+  const boards = new Set(boardsInScope(description, mapping).map((p) => p.id));
+  return (description?.columns ?? []).filter((c) => c.ask && c.role && boards.has(c.project) && mapping?.scope?.columns?.[c.project]?.[c.role] === undefined);
+}
+
+/**
+ * Which statuses and fields the picked columns give, as the snapshot keeps them: a status column not picked gives no
+ * statuses, and a column filling a role is no field. Sources without columns keep everything.
+ */
+export function columnFilter(description: SourceDescription | undefined, mapping: ImportMapping | undefined) {
+  const columns = description?.columns ?? [];
+  const picked = new Map<string, Partial<Record<ColumnRole, string>>>();
+  for (const c of columns) if (!picked.has(c.project)) picked.set(c.project, pickedColumns(description, mapping, c.project));
+  const isPicked = (c: SourceColumn) => Object.values(picked.get(c.project) ?? {}).includes(c.id);
+  const listed = new Set(columns.flatMap((c) => c.labels ?? []));
+  const labels = new Set(columns.filter((c) => picked.get(c.project)?.status === c.id).flatMap((c) => c.labels ?? []));
+  const columnFields = new Set(columns.flatMap((c) => (c.field ? [c.field] : [])));
+  const fields = new Set(columns.flatMap((c) => (c.field && !isPicked(c) ? [c.field] : [])));
+  return {
+    status: (id: string) => !listed.has(id) || labels.has(id),
+    field: (id: string) => !columnFields.has(id) || fields.has(id),
+  };
 }
 
 /** Choices with no default: the owner makes them in this session, or made them before the first run. */
@@ -15,7 +62,7 @@ export interface Decisions {
   effort: boolean;
 }
 
-export type Blocker = 'source' | 'fold' | 'effort' | 'projectKeys' | 'projectsMissing';
+export type Blocker = 'source' | 'fold' | 'effort' | 'projectKeys' | 'projectsMissing' | 'columns';
 
 /**
  * A re-proposal after a CSV's columns change, laid over the owner's draft: values the new columns bring (types,
@@ -51,7 +98,7 @@ export function effortNeeded(mapping: ImportMapping | undefined) {
 /** Why a step can't be left yet, or null. The footer shows it next to the disabled primary. */
 export function blockerOf(
   step: StepId,
-  ctx: { connected: boolean; mapping?: ImportMapping; plan?: ImportPlan; decided: Decisions },
+  ctx: { connected: boolean; mapping?: ImportMapping; plan?: ImportPlan; decided: Decisions; description?: SourceDescription },
 ): Blocker | null {
   switch (step) {
     case 'source':
@@ -60,6 +107,8 @@ export function blockerOf(
       if (ctx.plan?.projectKeysTaken?.length) return 'projectKeys';
       if (ctx.plan?.projectsMissing?.length) return 'projectsMissing';
       return null;
+    case 'columns':
+      return openQuestions(ctx.description, ctx.mapping).length ? 'columns' : null;
     case 'hierarchy':
       return ctx.decided.fold ? null : 'fold';
     case 'effort':

@@ -665,6 +665,7 @@
     "steps": {
       "source": "Source",
       "projects": "Projects",
+      "columns": "Columns",
       "hierarchy": "Hierarchy",
       "types": "Types",
       "states": "States",
@@ -676,6 +677,7 @@
     "hints": {
       "source": "Connect, then Kupro reads projects and types",
       "projects": "What to import and the key each project gets",
+      "columns": "Which column is the state, assignee, dates and effort",
       "hierarchy": "A team choice: which end of the four levels folds",
       "types": "Each source type to a Kupro type",
       "states": "Each source state to a Kupro state",
@@ -705,7 +707,8 @@
       "fold": "Pick one of the two options to continue. There is no default.",
       "effort": "Enter hours per story point, or import those items without effort.",
       "projectKeys": "Key {{keys}} is taken. Pick another key or import into that project.",
-      "projectsMissing": "Project {{keys}} no longer exists. Pick another one."
+      "projectsMissing": "Project {{keys}} no longer exists. Pick another one.",
+      "columns": "Answer the questions about columns to continue."
     },
     "sourceTitle": "Where is your work now?",
     "sourceLede": "Pick a source and connect. The next steps map it, with a live dry run on the right.",
@@ -784,6 +787,38 @@
     "projectsTitle": "Projects",
     "projectsLede": "Pick what to import and the key each project gets. Item numbers stay where the source has them.",
     "newProject": "New project",
+    "boardLabel": "Status, sprints and estimates from a GitHub project",
+    "boardNone": "None",
+    "boardHint": "Its Status sets the state of open issues, its Iteration becomes sprints, and a number field such as Estimate, Points or Size becomes the estimate. A project on a personal account needs a classic token with read:project.",
+    "columnsTitle": "Columns",
+    "columnsLedeAsk": "Kupro guessed which column is each item's state, assignee, dates and effort. Where it can't tell, it asks below: answer to go on.",
+    "columnsLedeClear": "Kupro picked which column is each item's state, assignee, dates and effort. Check each board, and change anything that looks wrong.",
+    "columnsQuestions_one": "{{count}} question",
+    "columnsQuestions_other": "{{count}} questions",
+    "columnsClear": "Clear",
+    "columnsChange": "Change",
+    "columnsDone": "Done",
+    "columnsNothing": "No column gives the state, assignee, dates or effort: items come across with their name, group and fields.",
+    "columnsRest": "Other columns become fields: {{list}}.",
+    "columnNone": "None of them",
+    "columnNoneOption": "No column",
+    "columnOn": "{{role}} on {{board}}",
+    "askRest": "The ones you don’t pick become fields.",
+    "ask": {
+      "status": "{{board}} has {{count}} status columns. Which one says how far an item has come?",
+      "people": "{{board}} has {{count}} people columns. Which one says who does the item?",
+      "timeline": "{{board}} has {{count}} timelines. Which one holds the start and due dates?",
+      "date": "{{board}} has {{count}} date columns. Which one is the due date?"
+    },
+    "role": {
+      "status": "State",
+      "people": "Assignee",
+      "timeline": "Start and due dates",
+      "date": "Due date",
+      "dateFallback": "Due date, when the timeline is empty",
+      "estimate": "Estimate (hours)",
+      "points": "Points"
+    },
     "importProject": "Import {{name}}",
     "intoFor": "Where {{name}} goes",
     "keyFor": "Key for {{name}}",
@@ -888,6 +923,7 @@
     "skipToReview": "Skip to review",
     "decision": {
       "projects": "Projects: a key or a target needs another look",
+      "columns": "Columns: which column is which",
       "hierarchy": "Hierarchy: which end folds",
       "effort": "Effort: hours per story point"
     },

@@ -41,6 +41,10 @@ public static class SourceConnectorExtensions
     {
         var description = await connector.DescribeAsync(ct);
         var scope = scopeFor(description);
+
+        // Statuses of boards not picked never occur in the read, so the snapshot leaves them out.
+        description = description with { Statuses = [.. description.Statuses.Where(s => s.Board is null || s.Board == scope.Board)] };
+        description = Picked(description, scope);
         await using var writer = new SnapshotWriter(output, description) { Partial = cursor is not null };
         var missing = 0;
         await foreach (var record in connector.ReadAsync(scope, cursor, ct))
@@ -73,5 +77,33 @@ public static class SourceConnectorExtensions
 
         await writer.CompleteAsync(time.GetUtcNow(), ct);
         return missing;
+    }
+
+    /// <summary>
+    /// The description as the picked columns read it: a status column not picked gives no statuses, and a column
+    /// that fills a role on every board is no field.
+    /// </summary>
+    internal static SourceDescription Picked(SourceDescription description, ReadScope scope)
+    {
+        if (description.Columns.Count == 0)
+        {
+            return description;
+        }
+
+        var picked = description.Columns.GroupBy(c => c.Project)
+            .SelectMany(g => ColumnRoles.Picked(g, g.Key, scope.Columns).Select(r => (Project: g.Key, Role: r.Key, Column: r.Value)))
+            .ToList();
+        var roles = picked.Select(p => (p.Project, p.Column)).ToHashSet();
+        var statusColumns = picked.Where(p => p.Role == ColumnRoles.Status).Select(p => (p.Project, p.Column)).ToHashSet();
+        var labels = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
+        var listed = description.Columns.SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
+        var fields = description.Columns.Where(c => c.Field is not null && !roles.Contains((c.Project, c.Id))).Select(c => c.Field!).ToHashSet(StringComparer.Ordinal);
+        var columnFields = description.Columns.Select(c => c.Field).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        return description with
+        {
+            Statuses = [.. description.Statuses.Where(s => !listed.Contains(s.Id) || labels.Contains(s.Id))],
+            Fields = [.. description.Fields.Where(f => !columnFields.Contains(f.Id) || fields.Contains(f.Id))],
+            Columns = [],
+        };
     }
 }

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monday columns · 01 Preview an item · Kupro prototype</title>
+<style>:root {
+  color-scheme: light;
+  --bg: #f2f4f3; --panel: #ffffff; --sunk: #e7ecea; --line: #d3dbd8; --ink: #16201d; --mute: #56655f;
+  --acc: #2c7a6a; --acc-ink: #246859; --on-acc: #ffffff; --side: #1c2a26; --side-ink: #cfe0da;
+  --prog: #b5651f; --rev: #6553a8; --ok: #3f8a3c; --warn: #a9801a; --bad: #b3393b;
+  --proj-verdigris: #2c7a6a; --proj-copper: #b5651f; --proj-plum: #6553a8; --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a; --proj-brick: #b3393b; --proj-slate: #56708a; --proj-fjord: #2f6f9f;
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+  --r1: 5px; --r2: 7px; --row: 34px; --nav-item: 28px; --topbar: 48px; --control: 30px; --sidebar: 212px;
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1); --dur-1: 120ms; --dur-2: 160ms;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514; --panel: #161f1d; --sunk: #0b100f; --line: #25322e; --ink: #e2ece8; --mute: #8fa29b;
+  --acc: #5bb8a3; --acc-ink: #6cc4af; --on-acc: #08130f; --side: #0b100f; --side-ink: #b7cac3;
+  --prog: #e08e52; --rev: #a194e6; --ok: #78c36f; --warn: #e3bc55; --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3; --proj-copper: #e08e52; --proj-plum: #a194e6; --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55; --proj-brick: #ee6e6e; --proj-slate: #93a9c0; --proj-fjord: #6faedc;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acc-ink); outline-offset: 1px; }
+h1 { font-family: var(--font-display); font-size: 20px; line-height: 26px; margin: 0 0 4px; }
+h2 { font-size: 14px; margin: 0; }
+.bar { display: flex; gap: 12px; align-items: center; padding: 8px 16px; background: var(--side); color: var(--side-ink); font-size: 12px; }
+.bar a { color: var(--side-ink); }
+.bar button { margin-left: auto; background: none; border: 1px solid var(--side-ink); border-radius: var(--r1); padding: 2px 8px; cursor: pointer; }
+main { max-width: 920px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+.lede { color: var(--mute); margin: 0; max-width: 640px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; height: var(--row); }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); font-weight: 600; background: var(--sunk); }
+tr:last-child td { border-bottom: 0; }
+select { height: var(--control); border: 1px solid var(--line); border-radius: var(--r1); background: var(--panel); padding: 0 6px; max-width: 100%; }
+.mute { color: var(--mute); } .sm { font-size: 12px; }
+.chip { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute); }
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+.chip.ok { color: var(--ok); border-color: var(--ok); }
+.btn { height: var(--control); border-radius: var(--r1); border: 1px solid var(--line); background: var(--panel); padding: 0 10px; cursor: pointer; }
+.btn.link { border: 0; background: none; color: var(--acc-ink); padding: 0; height: auto; text-decoration: underline; }
+.note { border-left: 3px solid var(--acc); background: var(--sunk); padding: 8px 12px; border-radius: var(--r1); }
+.grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; align-items: center; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--mute); }
+.steps b { color: var(--ink); }
+.row { display: flex; gap: 8px; align-items: center; }
+
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 6px 10px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--mute); }
+.tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--acc); font-weight: 600; }
+.pad { padding: 12px 14px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; align-items: center; margin: 10px 0 0; }
+.kv dt { color: var(--mute); } .kv dd { margin: 0; }
+.hl { background: var(--sel); border-radius: var(--r1); padding: 0 4px; }
+.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--sunk); color: var(--ink); border: 1px solid var(--line); margin-left: 6px; }
+.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+.title { font-weight: 600; font-size: 14px; }
+.q { border: 1px solid var(--warn); border-radius: var(--r2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.q label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r1); background: var(--panel); }
+.sentence { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.foot { display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+.btn.primary { background: var(--acc); color: var(--on-acc); border-color: var(--acc); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+thead tr.pick th { background: var(--panel); text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="bar"><a href="index.html">Monday column mapping</a><span>01 · Preview an item</span><button onclick="theme()">Theme</button></div>
+<main>
+<div class="steps">Source › Projects › <b>Columns</b> › Hierarchy › Types › States › People › Fields › Effort › Review</div>
+
+<div><h1>Check how your boards come across</h1>
+<p class="lede">Here is an item from each board, on Monday and as it will look in Kupro. If a Kupro value is wrong, pick the Monday column it should come from. What you pick applies to every item on the board.</p></div>
+<div id="app"></div>
+
+</main>
+<script>
+// Kupro fields a Monday column can fill, and which column types fit each.
+const targets = [
+  ['state', 'State', ['status']], ['assignee', 'Assignee', ['people']], ['start', 'Start', ['timeline', 'date']],
+  ['due', 'Due', ['timeline', 'date']], ['estimate', 'Estimate (hours)', ['numbers']], ['points', 'Points', ['numbers']],
+];
+const typeName = { status: 'status', people: 'people', timeline: 'timeline', date: 'date', numbers: 'numbers', text: 'text' };
+const boards = [
+  { id: 'b1', name: 'Product roadmap', items: 214,
+    cols: [
+      { id: 'status', t: 'Status', type: 'status', labels: ['Working on it', 'Stuck', 'Done'] },
+      { id: 'priority', t: 'Priority', type: 'status', labels: ['High', 'Medium', 'Low'] },
+      { id: 'person', t: 'Owner', type: 'people' }, { id: 'reviewers', t: 'Reviewers', type: 'people' },
+      { id: 'timeline', t: 'Timeline', type: 'timeline' }, { id: 'launch', t: 'Launch date', type: 'date' },
+      { id: 'effort', t: 'Effort', type: 'numbers' }, { id: 'budget', t: 'Budget', type: 'numbers' } ],
+    rows: [
+      { name: 'Self-serve onboarding', v: { status: 'Working on it', priority: 'High', person: 'Ida Holm', reviewers: 'Jonas Berg', timeline: '3 Mar – 28 Mar', launch: '2 Apr', effort: '8', budget: '12000' } },
+      { name: 'Export to CSV', v: { status: 'Done', priority: 'Medium', person: 'Jonas Berg', timeline: '10 Feb – 21 Feb', effort: '3', budget: '2500' } },
+      { name: 'Dark mode', v: { status: 'Stuck', priority: 'Low', person: 'Sara Lund', reviewers: 'Ida Holm', timeline: '1 Apr – 30 Apr', effort: '5', budget: '4500' } } ],
+    pick: { state: 'status', assignee: 'person', start: 'timeline', due: 'timeline', estimate: '', points: 'effort' } },
+  { id: 'b2', name: 'Bugs', items: 488,
+    cols: [
+      { id: 'severity', t: 'Severity', type: 'status', labels: ['Critical', 'Major', 'Minor'] },
+      { id: 'stage', t: 'Stage', type: 'status', labels: ['New', 'Fixing', 'In QA', 'Closed'] },
+      { id: 'person', t: 'Developer', type: 'people' }, { id: 'due', t: 'Due', type: 'date' },
+      { id: 'hours', t: 'Hours', type: 'numbers' } ],
+    rows: [
+      { name: 'Login loops on Safari', v: { severity: 'Critical', stage: 'Fixing', person: 'Sara Lund', due: '14 Mar', hours: '6' } },
+      { name: 'Typo on pricing page', v: { severity: 'Minor', stage: 'Closed', person: 'Jonas Berg', hours: '0.5' } },
+      { name: 'Export drops last row', v: { severity: 'Major', stage: 'In QA', person: 'Ida Holm', due: '20 Mar', hours: '3' } } ],
+    pick: { state: 'severity', assignee: 'person', start: '', due: 'due', estimate: 'hours', points: '' },
+    // Two status columns: Kupro took the first one, so it asks.
+    unsure: 'state' },
+  { id: 'b3', name: 'Marketing', items: 61,
+    cols: [
+      { id: 'status', t: 'Status', type: 'status', labels: ['Planned', 'Working on it', 'Done'] },
+      { id: 'person', t: 'Owner', type: 'people' }, { id: 'publish', t: 'Publish', type: 'date' },
+      { id: 'channel', t: 'Channel', type: 'text' } ],
+    rows: [
+      { name: 'Spring newsletter', v: { status: 'Planned', person: 'Ida Holm', publish: '1 Apr', channel: 'Email' } },
+      { name: 'Launch post', v: { status: 'Working on it', person: 'Sara Lund', publish: '3 Apr', channel: 'Blog' } },
+      { name: 'Webinar', v: { status: 'Done', person: 'Jonas Berg', publish: '12 Feb', channel: 'Video' } } ],
+    pick: { state: 'status', assignee: 'person', start: '', due: 'publish', estimate: '', points: '' } },
+];
+let cur = 0;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function col(b, id) { return b.cols.find(c => c.id === id); }
+function target(key) { return targets.find(t => t[0] === key); }
+// A column's value as a Kupro field reads it: a timeline gives its start or its end.
+function val(b, row, colId, key) {
+  const c = col(b, colId), v = row.v[colId];
+  if (!c || v == null || v === '') return '';
+  if (c.type === 'timeline') { const [s, e] = v.split(' – '); return key === 'start' ? s : e; }
+  return v;
+}
+// What a column looks like, for a dropdown: its labels, or values from the first rows.
+function sample(b, c) {
+  const vals = c.labels || b.rows.map(r => r.v[c.id]).filter(Boolean);
+  return vals.slice(0, 3).join(', ');
+}
+function tagsOf(b, colId) { return targets.filter(t => b.pick[t[0]] === colId).map(t => t[1]); }
+function rest(b) { return b.cols.filter(c => !tagsOf(b, c.id).length); }
+function statesNote(b) {
+  const c = col(b, b.pick.state);
+  return c ? 'The States step will ask about: <b>' + c.labels.join(', ') + '</b> (from ' + esc(c.t) + ').'
+           : 'No column gives the state: every item starts in the first state.';
+}
+function restNote(b) {
+  const r = rest(b);
+  return r.length ? 'The other columns (' + r.map(c => esc(c.t)).join(', ') + ') go to the Fields step.' : 'Every column is used.';
+}
+function tabs(render) {
+  return '<div class="tabs" role="tablist">' + boards.map((b, i) =>
+    `<button role="tab" aria-selected="${i === cur}" onclick="cur=${i};${render}()">${esc(b.name)}${b.unsure ? ' <span class="chip warn">check</span>' : ''}</button>`).join('') + '</div>';
+}
+function theme() { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; }
+
+let item = 0;
+function render() {
+  const b = boards[cur]; if (item >= b.rows.length) item = 0; const row = b.rows[item];
+  const monday = b.cols.map(c => {
+    const tags = tagsOf(b, c.id);
+    return `<dt>${esc(c.t)}</dt><dd>${row.v[c.id] ? esc(row.v[c.id]) : '<span class="mute">empty</span>'}${tags.map(t => `<span class="tag">→ ${t}</span>`).join('')}</dd>`;
+  }).join('');
+  const kupro = targets.map(([key, label, types]) => {
+    const fits = b.cols.filter(c => types.includes(c.type));
+    const v = val(b, row, b.pick[key], key);
+    const sel = `<select aria-label="Where ${label} comes from" onchange="boards[cur].pick['${key}']=this.value;if(boards[cur].unsure==='${key}')boards[cur].unsure=null;render()">
+      <option value="">No column</option>${fits.map(c => `<option value="${c.id}"${c.id === b.pick[key] ? ' selected' : ''}>${esc(c.t)}${c.type === 'timeline' ? (key === 'start' ? ' (start)' : ' (end)') : ''}</option>`).join('')}</select>`;
+    const flag = b.unsure === key ? ' <span class="chip warn">Is this right?</span>' : '';
+    return `<dt>${label}</dt><dd><div class="row"><b style="min-width:9ch">${v ? esc(v) : '<span class="mute">—</span>'}</b><span class="sm mute">from</span>${fits.length ? sel : '<span class="sm mute">no ' + types.map(t => typeName[t]).join(' or ') + ' column</span>'}${flag}</div></dd>`;
+  }).join('');
+  const warn = b.unsure ? `<div class="note sm">${esc(b.name)} has two status columns. Kupro took the first, ${esc(col(b, b.pick.state).t)}, for State. If another one says how far an item has come, pick it below.</div>` : '';
+  document.getElementById('app').innerHTML = tabs('render') + `
+    ${warn}
+    <div class="pair" style="margin-top:12px">
+      <section class="card pad"><h2>On Monday</h2><div class="title" style="margin-top:8px">${esc(row.name)}</div><dl class="kv">${monday}</dl></section>
+      <section class="card pad"><h2>In Kupro</h2><div class="title" style="margin-top:8px">${esc(row.name)}</div><dl class="kv">${kupro}</dl></section>
+    </div>
+    <div class="pager sm" style="margin-top:8px"><span class="mute">Item ${item + 1} of ${b.rows.length} shown (${b.items} on the board)</span>
+      <button class="btn" onclick="item=(item+${b.rows.length - 1})%${b.rows.length};render()" aria-label="Previous item">‹</button>
+      <button class="btn" onclick="item=(item+1)%${b.rows.length};render()" aria-label="Next item">›</button></div>
+    <div class="note sm" style="margin-top:12px">${statesNote(b)}<br>${restNote(b)}</div>`;
+}
+render();
+</script>
+</body>
+</html>
