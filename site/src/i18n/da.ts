@@ -399,7 +399,7 @@ export const da: Copy = {
         name: 'YouTrack',
         eyebrow: 'Skift fra YouTrack',
         title: 'Tag jeres YouTrack-projekter med. Nøgler og historik følger med.',
-        sub: 'Kupro importerer fra YouTrack Cloud og selvhostet YouTrack: opgaver, sprints, kommentarer, filer og hver feltændring. Prøv det på rigtige data, arbejd videre i YouTrack imens, og skift den dag, det passer jer.',
+        sub: 'Kupro importerer fra YouTrack Cloud og selvhostet YouTrack: opgaver, sprints, kommentarer, filer og ændringer i felter og titler. Prøv det på rigtige data, arbejd videre i YouTrack imens, og skift den dag, det passer jer.',
         comes: [
           { t: 'Projekter og nøgler', d: 'PROJ-123 forbliver PROJ-123.' },
           { t: 'Typer og subtasks', d: 'Hver type bliver til Epic, Feature eller Task; bugs beholder en bug-label. Subtask-links bliver hierarkiet.' },

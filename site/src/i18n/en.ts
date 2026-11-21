@@ -402,7 +402,7 @@ export const en = {
         name: 'YouTrack',
         eyebrow: 'Switch from YouTrack',
         title: 'Bring your YouTrack projects. Keep the keys and the history.',
-        sub: 'Kupro imports from YouTrack Cloud and self-hosted YouTrack: issues, sprints, comments, files and every field change. Rehearse it on real data, keep working in YouTrack, and switch on the day that suits you.',
+        sub: 'Kupro imports from YouTrack Cloud and self-hosted YouTrack: issues, sprints, comments, files, and changes to fields and titles. Rehearse it on real data, keep working in YouTrack, and switch on the day that suits you.',
         comes: [
           { t: 'Projects and keys', d: 'PROJ-123 stays PROJ-123.' },
           { t: 'Types and subtasks', d: 'Each type maps to Epic, Feature or Task; bugs keep a bug label. Subtask links become the hierarchy.' },

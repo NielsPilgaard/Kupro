@@ -9,6 +9,7 @@ using Kupro.Import.Linear;
 using Kupro.Import.Monday;
 using Kupro.Import.Trello;
 using Kupro.Import.YouTrack;
+using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
 using ReadScope = Kupro.Import.Snapshot.ReadScope;
 using SnapshotDescription = Kupro.Import.Snapshot.SourceDescription;
@@ -111,7 +112,15 @@ internal static class ImportCommands
             var trelloKey = c.Get(key);
             if (kind == SourceKinds.Trello && trelloKey is null)
             {
-                trelloKey = (await (await c.InWorkspaceAsync(ct)).Imports.TrelloAuthorize.GetAsync(cancellationToken: ct))?.Key;
+                var imports = (await c.InWorkspaceAsync(ct)).Imports;
+                try
+                {
+                    trelloKey = (await imports.TrelloAuthorize.GetAsync(cancellationToken: ct))?.Key;
+                }
+                catch (ApiException e) when (e.ResponseStatusCode == 503)
+                {
+                    throw new CliException("This server has no Trello key: give your own with --key.");
+                }
             }
 
             var connector = Connector(kind, name, http, c.Get(url), trelloKey, token);

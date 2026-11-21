@@ -57,9 +57,8 @@ pasted into Markdown as attachments. Issues come 50 a page with their history, r
   off MCP like the other token steps) returns Trello's read-only, non-expiring authorize page for Kupro's key, and the
   wizard links to it under the token field. It also returns the key, so `kupro import trello --local` uses Kupro's
   key when `--key` is left out and the same token works. Kupro's API key is a manual step; without it the endpoint
-  answers 503. Finish deletes Kupro's copy of the token; revoking it at Trello is the person's (the wizard says so).
-  Revoking it for them needs the token in a URL path (`DELETE /1/tokens/{token}`), which HTTP logs and traces would
-  record, so it waits on redacting those.
+  answers 503. Finish deletes Kupro's copy of the token; the wizard tells the person to revoke it at Trello
+  ([ADR-019](../docs/adr/ADR-019-import.md#source-access) says why Kupro doesn't).
 - Done: the site page, `/switch/trello` and `/da/skift/trello`.
 
 A comment edited after the cursor keeps its action date, so only a full run picks up the edit. Attachments not on
