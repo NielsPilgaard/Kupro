@@ -41,10 +41,10 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-19. The build order above is not the same as what is buildable. **Pick up next**: 027's GitHub
-Projects (v2) fields (then drop "don't come across yet" from the GitHub switch page) and Monday's column mapping. Then 034: draft ADR-021 (Proposed)
-from the task's "Decisions for the ADR"; the owner accepts it before prototypes and code. Every other open row waits
-on a person.
+Checked 2026-11-21. The build order above is not the same as what is buildable. **Pick up next**: nothing is
+buildable without a person. PR #43 (027's GitHub Projects boards and Monday column mapping) waits on review, and
+ADR-021 (Proposed) waits on the owner's acceptance and its open questions. Once accepted, 034's prototypes in
+`prototypes/time/`. Every other open row waits on a person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
 
@@ -57,7 +57,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 023 | Built, web wizard and Hierarchy trees included. Left: three official product marks (manual) and the production run | The owner for the marks; 013 Done for the run |
 | 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras, Trello's authorize link and all four site pages done. Left: recorded fixtures and the close (sandbox accounts, manual steps) | The sandboxes |
 | 027 | GitHub, YouTrack and Monday done, site pages included. Left: GitHub's Projects (v2) fields and Monday's column mapping | Nothing for those; the sandboxes for the close |
-| 034 | Spec written; needs ADR-021 and a legal check of the Danish rules | Nothing for the ADR draft; the owner to accept it, and the legal check (manual step) before claiming compliance |
+| 034 | Spec written; ADR-021 drafted (Proposed) | The owner to accept ADR-021 (OQ-1 to OQ-5), and the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed

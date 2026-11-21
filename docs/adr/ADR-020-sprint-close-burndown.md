@@ -146,6 +146,7 @@ per-person velocity, no ranking, no per-person capacity ([ADR-008](ADR-008-work-
 - [ADR-001](ADR-001-agent-parity.md) — review, close and burndown on REST, CLI and MCP
 - [ADR-010](ADR-010-performance-budget.md) — burndown and review reads stay inside the budget
 - [ADR-019](ADR-019-import.md) — imported sprints and the ledger
+- [ADR-021](ADR-021-time-registration.md) — logged time doesn't feed the ledger
 
 ## References
 

@@ -200,3 +200,4 @@ workspace leaving the agent on all day must not cost more than it pays.
 - [ADR-009](ADR-009-multi-tenancy.md) — workspace as tenant and billing unit
 - [ADR-015](ADR-015-meeting-agent-vendors.md) — the speech and LLM vendors the AI budget pays for
 - [ADR-019](ADR-019-import.md) — placeholder members from imports
+- [ADR-021](ADR-021-time-registration.md) — time registration is included in the seat
