@@ -57,6 +57,26 @@ select { height: var(--control); border: 1px solid var(--line); border-radius: v
 .steps { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--mute); }
 .steps b { color: var(--ink); }
 .row { display: flex; gap: 8px; align-items: center; }
+
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 6px 10px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--mute); }
+.tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--acc); font-weight: 600; }
+.pad { padding: 12px 14px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; align-items: center; margin: 10px 0 0; }
+.kv dt { color: var(--mute); } .kv dd { margin: 0; }
+.hl { background: var(--sel); border-radius: var(--r1); padding: 0 4px; }
+.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--sunk); color: var(--ink); border: 1px solid var(--line); margin-left: 6px; }
+.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+.title { font-weight: 600; font-size: 14px; }
+.q { border: 1px solid var(--warn); border-radius: var(--r2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.q label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r1); background: var(--panel); }
+.sentence { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.foot { display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+.btn.primary { background: var(--acc); color: var(--on-acc); border-color: var(--acc); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+thead tr.pick th { background: var(--panel); text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink); }
 </style>
 </head>
 <body>
@@ -65,45 +85,90 @@ select { height: var(--control); border: 1px solid var(--line); border-radius: v
 <div class="steps">Source › <b>Projects</b> › Hierarchy › Types › States › People › Fields › Effort › Review</div>
 
 <div><h1>Monday column mapping</h1>
-<p class="lede">The Monday connector picks one column per role on each board (status, assignee, dates, estimate, points). These directions let the owner change those picks in the wizard. Same three sample boards in each.</p></div>
+<p class="lede">Kupro guesses which Monday column is each item's state, assignee, dates and estimate. This new wizard step, after Projects, lets the owner fix a wrong guess. Every direction uses the same three boards: Product roadmap (clear), Bugs (two status columns; Kupro guessed Severity, but Stage is the progress) and Marketing (clear).</p></div>
 <div class="card"><table>
-<tr><th>#</th><th>Direction</th><th>Idea</th></tr>
-<tr><td>01</td><td><a href="01-board-grid.html">Board grid</a></td><td>Boards as rows, roles as columns, a select in each cell. Compact; all boards at once.</td></tr>
-<tr><td>02</td><td><a href="02-column-list.html">Column list per board</a></td><td>One board at a time, every column listed with what it becomes. Nothing hidden; slower with many boards.</td></tr>
-<tr><td>03</td><td><a href="03-by-role.html">By role, across boards</a></td><td>Pick a column title per role once for all boards; per-board results shown as chips.</td></tr>
+<tr><th>Direction</th><th>Idea</th></tr>
+<tr><td><a href="01-preview-item.html">01 Preview an item</a></td><td>One real item per board, on Monday and as the Kupro issue it becomes. Each Kupro value says which column it came from, and that is where you change it.</td></tr>
+<tr><td><a href="02-label-columns.html">02 Label the columns</a></td><td>The board's first rows as a table, like a spreadsheet import: under each column header, pick what it becomes.</td></tr>
+<tr><td><a href="03-ask-when-unsure.html">03 Ask only when unsure</a></td><td>One sentence per board says what each column becomes. Where Kupro isn't sure, it asks a plain question with the columns' values as answers. Next waits for the answers.</td></tr>
 </table></div>
 
 </main>
 <script>
-const roles = [
-  ['status', 'Status', 'status'], ['people', 'Assignee', 'people'], ['timeline', 'Start and due', 'timeline'],
-  ['date', 'Due (no timeline)', 'date'], ['estimate', 'Estimate (hours)', 'numbers'], ['points', 'Points', 'numbers'],
+// Kupro fields a Monday column can fill, and which column types fit each.
+const targets = [
+  ['state', 'State', ['status']], ['assignee', 'Assignee', ['people']], ['start', 'Start', ['timeline', 'date']],
+  ['due', 'Due', ['timeline', 'date']], ['estimate', 'Estimate (hours)', ['numbers']], ['points', 'Points', ['numbers']],
 ];
+const typeName = { status: 'status', people: 'people', timeline: 'timeline', date: 'date', numbers: 'numbers', text: 'text' };
 const boards = [
-  { id: 'b1', name: 'Product roadmap', items: 214, cols: [
-    { id: 'status', t: 'Status', type: 'status', labels: ['Working on it', 'Stuck', 'Done'] },
-    { id: 'priority', t: 'Priority', type: 'status', labels: ['High', 'Medium', 'Low'] },
-    { id: 'person', t: 'Owner', type: 'people' }, { id: 'reviewers', t: 'Reviewers', type: 'people' },
-    { id: 'timeline', t: 'Timeline', type: 'timeline' }, { id: 'date', t: 'Launch date', type: 'date' },
-    { id: 'numbers', t: 'Effort', type: 'numbers' }, { id: 'numbers2', t: 'Budget', type: 'numbers' } ],
-    pick: { status: 'status', people: 'person', timeline: 'timeline', date: 'date', estimate: '', points: 'numbers' } },
-  { id: 'b2', name: 'Bugs', items: 488, cols: [
-    { id: 'stage', t: 'Stage', type: 'status', labels: ['New', 'Fixing', 'In QA', 'Closed'] },
-    { id: 'status', t: 'Severity', type: 'status', labels: ['Critical', 'Major', 'Minor'] },
-    { id: 'person', t: 'Developer', type: 'people' }, { id: 'date', t: 'Due', type: 'date' },
-    { id: 'numbers', t: 'Hours', type: 'numbers' } ],
-    pick: { status: 'stage', people: 'person', timeline: '', date: 'date', estimate: 'numbers', points: '' },
-    guessed: { status: 'status' } },
-  { id: 'b3', name: 'Marketing', items: 61, cols: [
-    { id: 'status', t: 'Status', type: 'status', labels: ['Planned', 'Working on it', 'Done'] },
-    { id: 'person', t: 'Owner', type: 'people' }, { id: 'date', t: 'Publish', type: 'date' } ],
-    pick: { status: 'status', people: 'person', timeline: '', date: 'date', estimate: '', points: '' } },
+  { id: 'b1', name: 'Product roadmap', items: 214,
+    cols: [
+      { id: 'status', t: 'Status', type: 'status', labels: ['Working on it', 'Stuck', 'Done'] },
+      { id: 'priority', t: 'Priority', type: 'status', labels: ['High', 'Medium', 'Low'] },
+      { id: 'person', t: 'Owner', type: 'people' }, { id: 'reviewers', t: 'Reviewers', type: 'people' },
+      { id: 'timeline', t: 'Timeline', type: 'timeline' }, { id: 'launch', t: 'Launch date', type: 'date' },
+      { id: 'effort', t: 'Effort', type: 'numbers' }, { id: 'budget', t: 'Budget', type: 'numbers' } ],
+    rows: [
+      { name: 'Self-serve onboarding', v: { status: 'Working on it', priority: 'High', person: 'Ida Holm', reviewers: 'Jonas Berg', timeline: '3 Mar – 28 Mar', launch: '2 Apr', effort: '8', budget: '12000' } },
+      { name: 'Export to CSV', v: { status: 'Done', priority: 'Medium', person: 'Jonas Berg', timeline: '10 Feb – 21 Feb', effort: '3', budget: '2500' } },
+      { name: 'Dark mode', v: { status: 'Stuck', priority: 'Low', person: 'Sara Lund', reviewers: 'Ida Holm', timeline: '1 Apr – 30 Apr', effort: '5', budget: '4500' } } ],
+    pick: { state: 'status', assignee: 'person', start: 'timeline', due: 'timeline', estimate: '', points: 'effort' } },
+  { id: 'b2', name: 'Bugs', items: 488,
+    cols: [
+      { id: 'severity', t: 'Severity', type: 'status', labels: ['Critical', 'Major', 'Minor'] },
+      { id: 'stage', t: 'Stage', type: 'status', labels: ['New', 'Fixing', 'In QA', 'Closed'] },
+      { id: 'person', t: 'Developer', type: 'people' }, { id: 'due', t: 'Due', type: 'date' },
+      { id: 'hours', t: 'Hours', type: 'numbers' } ],
+    rows: [
+      { name: 'Login loops on Safari', v: { severity: 'Critical', stage: 'Fixing', person: 'Sara Lund', due: '14 Mar', hours: '6' } },
+      { name: 'Typo on pricing page', v: { severity: 'Minor', stage: 'Closed', person: 'Jonas Berg', hours: '0.5' } },
+      { name: 'Export drops last row', v: { severity: 'Major', stage: 'In QA', person: 'Ida Holm', due: '20 Mar', hours: '3' } } ],
+    pick: { state: 'severity', assignee: 'person', start: '', due: 'due', estimate: 'hours', points: '' },
+    // Two status columns: Kupro took the first one, so it asks.
+    unsure: 'state' },
+  { id: 'b3', name: 'Marketing', items: 61,
+    cols: [
+      { id: 'status', t: 'Status', type: 'status', labels: ['Planned', 'Working on it', 'Done'] },
+      { id: 'person', t: 'Owner', type: 'people' }, { id: 'publish', t: 'Publish', type: 'date' },
+      { id: 'channel', t: 'Channel', type: 'text' } ],
+    rows: [
+      { name: 'Spring newsletter', v: { status: 'Planned', person: 'Ida Holm', publish: '1 Apr', channel: 'Email' } },
+      { name: 'Launch post', v: { status: 'Working on it', person: 'Sara Lund', publish: '3 Apr', channel: 'Blog' } },
+      { name: 'Webinar', v: { status: 'Done', person: 'Jonas Berg', publish: '12 Feb', channel: 'Video' } } ],
+    pick: { state: 'status', assignee: 'person', start: '', due: 'publish', estimate: '', points: '' } },
 ];
-function options(board, type, value) {
-  const cols = board.cols.filter(c => c.type === type);
-  return '<option value="">None</option>' + cols.map(c => `<option value="${c.id}"${c.id === value ? ' selected' : ''}>${c.t}</option>`).join('');
+let cur = 0;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function col(b, id) { return b.cols.find(c => c.id === id); }
+function target(key) { return targets.find(t => t[0] === key); }
+// A column's value as a Kupro field reads it: a timeline gives its start or its end.
+function val(b, row, colId, key) {
+  const c = col(b, colId), v = row.v[colId];
+  if (!c || v == null || v === '') return '';
+  if (c.type === 'timeline') { const [s, e] = v.split(' – '); return key === 'start' ? s : e; }
+  return v;
 }
-function col(board, id) { return board.cols.find(c => c.id === id); }
+// What a column looks like, for a dropdown: its labels, or values from the first rows.
+function sample(b, c) {
+  const vals = c.labels || b.rows.map(r => r.v[c.id]).filter(Boolean);
+  return vals.slice(0, 3).join(', ');
+}
+function tagsOf(b, colId) { return targets.filter(t => b.pick[t[0]] === colId).map(t => t[1]); }
+function rest(b) { return b.cols.filter(c => !tagsOf(b, c.id).length); }
+function statesNote(b) {
+  const c = col(b, b.pick.state);
+  return c ? 'The States step will ask about: <b>' + c.labels.join(', ') + '</b> (from ' + esc(c.t) + ').'
+           : 'No column gives the state: every item starts in the first state.';
+}
+function restNote(b) {
+  const r = rest(b);
+  return r.length ? 'The other columns (' + r.map(c => esc(c.t)).join(', ') + ') go to the Fields step.' : 'Every column is used.';
+}
+function tabs(render) {
+  return '<div class="tabs" role="tablist">' + boards.map((b, i) =>
+    `<button role="tab" aria-selected="${i === cur}" onclick="cur=${i};${render}()">${esc(b.name)}${b.unsure ? ' <span class="chip warn">check</span>' : ''}</button>`).join('') + '</div>';
+}
 function theme() { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; }
 </script>
 </body>
