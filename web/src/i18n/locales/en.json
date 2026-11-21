@@ -716,6 +716,9 @@
     "emailHint": "Jira Cloud: the email of the account the API token belongs to. Data Center: leave empty and paste a personal access token.",
     "tokenHint": "Read access is enough. Kupro encrypts it and deletes it when you finish the migration.",
     "behindVpn": "Behind a VPN or firewall: run kupro import {{kind}} --local and upload the snapshot.",
+    "trelloAuthorize": "Get a token from Trello",
+    "trelloAuthorizeHint": "Allow read access, then paste the token Trello shows. Once you finish the migration, you can revoke it in Trello.",
+    "trelloNoKey": "This server isn't set up to read Trello. Run kupro import trello --local --key <your Trello API key> and upload the snapshot.",
     "drop": {
       "csv": "Drop a .csv file here or",
       "snapshot": "Drop a snapshot .zip here or",

@@ -40,35 +40,46 @@ pasted into Markdown as attachments. Issues come 50 a page with their history, r
 `updatedAt` on projects, issues and comments. The client waits out `RATELIMITED` (`Retry-After`, else the
 `X-RateLimit-*` resets) and stops before the hourly requests run out.
 
-**Next** for Trello, each waits on a slice of [task 023](023-import-framework.md):
+**Trello** with 023's pipeline in place:
 
-- Default list mapping by name, archived cards to Canceled or skipped, the epic source and checklist items to Tasks
-  need 023's mapping model. Promoted items are also still in the description's task list; the pipeline drops those
-  lines or keeps them.
+- Done: lists map by name through the shared defaults (`ImportMappingDefaults.ProposeState`: to do, doing, review,
+  done); other lists are left to review. Cards keep `idShort` under the owner's key.
+- Done: checklist items with their own member or due date are skipped by default (`ImportMappingDefaults.Trello`),
+  since they are already lines in the card's task list. Ticked back in, they become Tasks under the card, and their
+  lines stay in the task list too.
+- Done: a card's other members (`members`, a user field) show by name in the details block.
+- Open: archived cards to Canceled or skipped (today the `archived` field only), and the epic source (a label or list).
 - Label colours need a place in the snapshot (an optional `labels` list in the header); today a colour-only label
   comes as its colour name and a named label's colour is not read across.
 - `@username` mentions and card links (`trello.com/c/…`) need its `MarkupConverter`.
-- Keys (`idShort` under the owner's key) and card URL aliases need its pipeline.
-- The authorize link and token storage need the wizard; Kupro's API key is a manual step.
-- The site page needs the wizard. (`kupro import trello --local --key <api-key>` is in, built with 024's.)
+- Check: card URL aliases (`trello.com/c/…`).
+- Done: the authorize link. `GET imports/trello-authorize` (`getTrelloAuthorizeLink`, `kupro import trello-authorize`,
+  off MCP like the other token steps) returns Trello's read-only, non-expiring authorize page for Kupro's key, and the
+  wizard links to it under the token field. It also returns the key, so `kupro import trello --local` uses Kupro's
+  key when `--key` is left out and the same token works. Kupro's API key is a manual step; without it the endpoint
+  answers 503. Finish deletes Kupro's copy of the token; the wizard tells the person to revoke it at Trello
+  ([ADR-019](../docs/adr/ADR-019-import.md#source-access) says why Kupro doesn't).
+- Done: the site page, `/switch/trello` and `/da/skift/trello`.
 
 A comment edited after the cursor keeps its action date, so only a full run picks up the edit. Attachments not on
 Trello are fetched without credentials: in the API that needs the same private-address guard (SSRF) as task 025's base
 URL. Recorded fixtures need a Trello sandbox board (a manual step); until then the fake stands in for them.
 
-**Next** for Linear, each also waits on a slice of [task 023](023-import-framework.md):
+**Linear** with 023's pipeline in place:
 
-- Default mappings need 023's mapping model: state types to states (with the "review" hint), priority names, Linear
-  projects to Epics (and a home team for one that spans teams; today it goes under the first team in scope), issues
-  with sub-issues to Features through Hierarchy fit, initiatives to labels, and the points factor.
+- Done through the shared defaults: state types to states (with the "review" hint), priority names, Linear projects
+  to Epics, issues with sub-issues promoted to Features by Hierarchy fit, and the points factor in the Effort step.
+  Team keys are kept (`ENG-123`).
+- Open: a home team for a project that spans teams (today it goes under the first team in scope), and initiatives to
+  labels (today a field).
 - Reply threads need a place in the snapshot (an optional `parent` on comments). Kupro's comments are flat, so today a
   reply is a comment in time order and loses what it answers.
 - Mentions and issue URLs (`linear.app/<org>/issue/ENG-123`) need its `MarkupConverter`. Pasted files are attachments
   already, so inline images can point at the copies.
-- Keys (`ENG-123`, and the new key after a move to another team) and aliases need its pipeline.
+- Check: the new key after a move to another team as an alias.
 - Project history, milestone changes in issue history and project updates are not read yet.
-- Key storage and the "where to get it" step need the wizard, and so does the site page. (`kupro import linear
-  --local` is in, built with 024's.)
+- Done: the site page, `/switch/linear` and `/da/skift/linear`, with the "where to get it" step. (`kupro import
+  linear --local` is in, built with 024's.)
 
 Recorded fixtures need a Linear sandbox workspace (a manual step); until then the fake stands in for them. Files
 outside Linear are fetched without credentials, so the API needs the same private-address guard as Trello's.

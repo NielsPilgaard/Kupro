@@ -39,8 +39,12 @@ public sealed class ImportSources
         {
             // Trello pairs Kupro's own API key with the token the user authorized (ADR-019 Source access).
             Register(SourceKinds.Trello, (_, token) => new TrelloConnector(Client(), key, token, clock));
+            TrelloKey = key;
         }
     }
+
+    /// <summary>Kupro's Trello API key; null when the server has none and Trello is imported from snapshots only.</summary>
+    public string? TrelloKey { get; }
 
     public void Register(string kind, Func<WorkspaceImport, string, ISourceConnector> create) => _connectors[kind] = create;
 

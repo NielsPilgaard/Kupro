@@ -1,0 +1,11 @@
+---
+import Switch from '../../components/Switch.astro';
+import Base from '../../layouts/Base.astro';
+import { t } from '../../i18n';
+
+const c = t('en');
+---
+
+<Base locale="en" page="switchTrello" title={c.meta.switchTrelloTitle} description={c.meta.switchTrelloDescription}>
+  <Switch locale="en" source="trello" />
+</Base>

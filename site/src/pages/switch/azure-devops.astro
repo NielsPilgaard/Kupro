@@ -1,0 +1,11 @@
+---
+import Switch from '../../components/Switch.astro';
+import Base from '../../layouts/Base.astro';
+import { t } from '../../i18n';
+
+const c = t('en');
+---
+
+<Base locale="en" page="switchAzureDevOps" title={c.meta.switchAzureDevOpsTitle} description={c.meta.switchAzureDevOpsDescription}>
+  <Switch locale="en" source="azureDevOps" />
+</Base>

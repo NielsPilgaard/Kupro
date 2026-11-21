@@ -13,6 +13,7 @@ import {
   getImportOptions,
   getImportQueryKey,
   getImportRunOptions,
+  getTrelloAuthorizeLinkOptions,
   listImportRunsOptions,
   listImportsQueryKey,
   listMembersOptions,
@@ -301,7 +302,7 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
     ) : importId ? (
       <SourceUpload kind={kindNow} busy={busy} onFile={(f) => void reupload(f)} />
     ) : (
-      <SourcePicker kind={kind} onKind={setKind} form={form} onForm={setForm} />
+      <SourcePicker workspace={workspace} kind={kind} onKind={setKind} form={form} onForm={setForm} />
     );
   } else if (stepProps) {
     const Step = { projects: ProjectsStep, hierarchy: HierarchyStep, types: TypesStep, states: StatesStep, people: PeopleStep, fields: FieldsStep, effort: EffortStep, review: ReviewStep }[step];
@@ -621,11 +622,13 @@ function Rail(props: {
 
 /** Source cards (product marks; WIP ones blocked) and the connect form or drop zone for the picked one. */
 function SourcePicker({
+  workspace,
   kind,
   onKind,
   form,
   onForm,
 }: {
+  workspace: string;
   kind: string;
   onKind(k: string): void;
   form: { url: string; email: string; token: string; file: File | null };
@@ -670,14 +673,14 @@ function SourcePicker({
         {source.file ? (
           <DropZone kind={kind} accept={source.file} file={form.file} onFile={(file) => onForm({ ...form, file })} />
         ) : (
-          <ConnectForm source={source} form={form} onForm={onForm} />
+          <ConnectForm workspace={workspace} source={source} form={form} onForm={onForm} />
         )}
       </div>
     </>
   );
 }
 
-function ConnectForm({ source, form, onForm }: { source: SourceInfo; form: { url: string; email: string; token: string; file: File | null }; onForm(f: typeof form): void }) {
+function ConnectForm({ workspace, source, form, onForm }: { workspace: string; source: SourceInfo; form: { url: string; email: string; token: string; file: File | null }; onForm(f: typeof form): void }) {
   const { t } = useTranslation();
   const field = 'flex flex-col gap-1';
   return (
@@ -701,8 +704,25 @@ function ConnectForm({ source, form, onForm }: { source: SourceInfo; form: { url
         <input className={control} type="password" autoComplete="off" value={form.token} onChange={(e) => onForm({ ...form, token: e.target.value })} />
         <small className="text-sm text-mute">{t('importWizard.tokenHint')}</small>
       </label>
+      {source.authorize && <TrelloAuthorize workspace={workspace} />}
       {source.local && <span className="text-sm text-mute">{t('importWizard.behindVpn', { kind: source.kind })}</span>}
     </>
+  );
+}
+
+/** Trello tokens belong to Kupro's API key, so the token comes from Trello's authorize page (ADR-019 Source access). */
+function TrelloAuthorize({ workspace }: { workspace: string }) {
+  const { t } = useTranslation();
+  const { data, isError } = useQuery({ ...getTrelloAuthorizeLinkOptions({ path: { workspace } }), staleTime: Infinity, retry: false });
+  if (isError) return <span className="text-sm text-mute">{t('importWizard.trelloNoKey')}</span>;
+  if (!data) return null;
+  return (
+    <span className="text-sm text-mute">
+      <a className="text-acc-ink underline" href={data.url} target="_blank" rel="noreferrer">
+        {t('importWizard.trelloAuthorize')}
+      </a>{' '}
+      {t('importWizard.trelloAuthorizeHint')}
+    </span>
   );
 }
 

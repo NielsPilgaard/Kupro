@@ -76,6 +76,9 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
 - Tokens are encrypted with ASP.NET Data Protection and deleted on Finish, on Undo, or after 90 days without a run.
   Keys live in their own Object Storage bucket with their own S3 user, not in Postgres, so a database dump or SQL
   injection alone can't decrypt the tokens. Losing the keys only means pasting the tokens again.
+- **Revoking at the source** is the person's job, as with a PAT; Kupro only deletes its copy. Trello's revoke call
+  (`DELETE /1/tokens/{token}`) puts the token in the URL path, which HTTP logs and traces record, so Kupro doesn't
+  call it until those are redacted.
 - **Rejected token** (expired or revoked PAT mid-migration): the run fails with "token rejected", auto-sync pauses and
   the owner is emailed. The owner pastes a new token on the import; the next run continues from the saved cursor.
 - **Behind a VPN**: `kupro import <source> --local` runs the same connector on the user's machine and uploads the

@@ -36,6 +36,13 @@ public sealed class ImportsController(ImportService imports) : ControllerBase
     [ProducesResponseType<IReadOnlyList<ImportResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ImportResponse>>> List(CancellationToken ct) => Ok(await imports.ListAsync(ct));
 
+    /// <summary>Trello's authorize link for Kupro's API key. Open it, allow read access, and paste the token Trello shows.</summary>
+    [HttpGet("trello-authorize", Name = "getTrelloAuthorizeLink")]
+    [NoAgentSurface(AgentSurface.Mcp, NotOnMcp)]
+    [ProducesResponseType<TrelloAuthorizeLink>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
+    public ActionResult<TrelloAuthorizeLink> TrelloAuthorize() => this.ToResult(imports.TrelloAuthorizeLink());
+
     [HttpGet("{id:guid}", Name = "getImport")]
     [NoAgentSurface(AgentSurface.Mcp, "The `imports` tool's list returns every import with its latest run.")]
     [ProducesResponseType<ImportResponse>(StatusCodes.Status200OK)]

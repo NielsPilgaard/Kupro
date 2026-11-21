@@ -3964,6 +3964,47 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/imports/trello-authorize": {
+      "get": {
+        "tags": [
+          "Imports"
+        ],
+        "summary": "Trello's authorize link for Kupro's API key. Open it, allow read access, and paste the token Trello shows.",
+        "operationId": "getTrelloAuthorizeLink",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrelloAuthorizeLink"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspace}/imports/{id}": {
       "get": {
         "tags": [
@@ -10658,6 +10699,23 @@
           "at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "TrelloAuthorizeLink": {
+        "required": [
+          "url",
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Trello's authorize page. It shows a read-only token to paste into the import."
+          },
+          "key": {
+            "type": "string",
+            "description": "Kupro's Trello API key, the one that token belongs to. Not a secret; it is in the link too."
           }
         }
       },

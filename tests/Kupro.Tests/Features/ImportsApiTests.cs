@@ -82,6 +82,23 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
     }
 
     [Fact]
+    public async Task Trello_authorize_link_carries_kupros_key_and_asks_read_only()
+    {
+        var (owner, workspace, _) = await NewWorkspaceAsync("TrelloLink");
+        var url = $"/api/v1/workspaces/{workspace.Slug}/imports/trello-authorize";
+        await ShouldBeProblemAsync(await owner.GetAsync(url, Ct), HttpStatusCode.ServiceUnavailable, "imports_unavailable");
+
+        await using var withKey = Factory.WithWebHostBuilder(b => b.UseSetting("Imports:TrelloKey", "k&y"));
+        using var bearer = withKey.CreateClient();
+        bearer.DefaultRequestHeaders.Authorization = owner.DefaultRequestHeaders.Authorization;
+        var link = await ReadAsync<TrelloAuthorizeLink>(await bearer.GetAsync(url, Ct));
+        link.Url.ShouldStartWith("https://trello.com/1/authorize?");
+        link.Url.ShouldContain("scope=read&");
+        link.Url.ShouldEndWith("key=k%26y");
+        link.Key.ShouldBe("k&y");
+    }
+
+    [Fact]
     public async Task Without_key_storage_a_token_import_answers_503()
     {
         var (owner, workspace, _) = await NewWorkspaceAsync("NoKeys");

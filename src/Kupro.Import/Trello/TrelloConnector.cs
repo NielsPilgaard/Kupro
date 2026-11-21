@@ -317,7 +317,7 @@ public sealed class TrelloConnector : ISourceConnector
                 [
                     new SourceField { Id = ArchivedField, Name = "Archived", Kind = FieldKind.Select, Options = ["true"] },
                     new SourceField { Id = DueCompleteField, Name = "Due complete", Kind = FieldKind.Select, Options = ["true"] },
-                    new SourceField { Id = MembersField, Name = "Members", Kind = FieldKind.MultiSelect },
+                    new SourceField { Id = MembersField, Name = "Members", Kind = FieldKind.User },
                     .. Fields.Values.Select(f => new SourceField
                     {
                         Id = f.Id,

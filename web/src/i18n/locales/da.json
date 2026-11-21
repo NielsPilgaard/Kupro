@@ -716,6 +716,9 @@
     "emailHint": "Jira Cloud: e-mailen på kontoen, som API-tokenet hører til. Data Center: lad feltet være tomt, og indsæt et personligt adgangstoken.",
     "tokenHint": "Læseadgang er nok. Kupro krypterer det og sletter det, når I afslutter migreringen.",
     "behindVpn": "Bag en VPN eller firewall: kør kupro import {{kind}} --local, og upload snapshottet.",
+    "trelloAuthorize": "Hent et token fra Trello",
+    "trelloAuthorizeHint": "Giv læseadgang, og indsæt det token, Trello viser. Når I har afsluttet migreringen, kan I tilbagekalde det i Trello.",
+    "trelloNoKey": "Serveren er ikke sat op til at læse Trello. Kør kupro import trello --local --key <din Trello API-nøgle>, og upload snapshottet.",
     "drop": {
       "csv": "Træk en .csv-fil hertil eller",
       "snapshot": "Træk et snapshot (.zip) hertil eller",
