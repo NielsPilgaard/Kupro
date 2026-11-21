@@ -43,7 +43,8 @@ As we read it, to be checked:
 
 ## Decisions for the ADR
 
-Write `ADR-021: Time registration` before any code. Proposed answers; the ADR decides.
+Drafted as [ADR-021](../docs/adr/ADR-021-time-registration.md) (Proposed, 2026-11-21), which decides; this list is the
+input it started from.
 
 1. **Scope**: move "Time tracking" from Out to In in [product.md](../docs/product.md)'s v1 table, linking the ADR.
    Update ADR-020 ALT-003's reason, and task 024's out-of-scope line on worklogs.
