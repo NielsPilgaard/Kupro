@@ -18,8 +18,8 @@ description: >-
 
 ## TL;DR
 
-- **Model**: a time entry = member, date, minutes, issue, optional note. Every entry is on a work item (task, bug,
-  epic and so on). A day's working time is the sum of its entries.
+- **Model**: a time entry = member, date, minutes, issue, optional note. Every entry is on a work item (an epic,
+  feature or task, bugs included). A day's working time is the sum of its entries.
 - **Access**: off by default per workspace. A member sees and edits only their own; Owners see and export everyone's.
 - **Records**: entries on a Done or Canceled issue are locked; every change kept (who, when, old and new); kept 5
   years, also after the member leaves.
@@ -116,9 +116,10 @@ Owner sees this history per member, and a member sees the history of their own e
 
 ### Workspace setting
 
-`time_registration` is off by default and an Owner turns it on ("Simple", product principle 3). Off, nothing about
-time shows in the app and new entries are refused (`time_registration_off`). Turning it off after use keeps the data:
-members can still read their own entries, Owners can still export, and the retention above still applies.
+`time_registration` is off by default and an Owner turns it on ("Simple", product principle 3). Off, the issue panel,
+the Log time action and the week view are hidden, and new entries are refused (`time_registration_off`). Turning it
+off after use keeps the data: My time stays visible read-only for members who have entries, Owners can still export,
+and the retention above still applies.
 
 ### Price
 
@@ -132,7 +133,7 @@ Included in the seat price ([ADR-013](ADR-013-seats-billing.md)). No add-on.
   merge into one `relations` tool (`action: relate | unrelate`), and a new `time` tool takes the freed place
   (`action: log | edit | delete | week`), because the week view and editing a past entry don't fit an issue tool
   (ALT-007). `get_issue` gains the caller's time on the issue (an Owner's call gets the total). The budget stays at
-  20. This departs from task 034's "actions on an existing tool".
+  20.
 - Not on MCP, an opt-out in the parity test: the export and the Owners' list of everyone's entries (personal data in
   bulk).
 
@@ -225,7 +226,7 @@ has only a completed-work total per item, which stays in the details block.
   the switch pages' "No time tracking" line.
 - **IMP-003**: The lock is checked in the feature service from the issue's current state, not stored on the entry.
 - **IMP-004**: A test holds the latency budget for a week's timesheet with a year of entries for 50 members.
-- **IMP-005**: Danish term "tidsregistrering", added to the [branding.md](../branding.md) glossary.
+- **IMP-005**: Danish term "tidsregistrering", to add to the [branding.md](../branding.md) glossary.
 
 ## Related Decisions
 

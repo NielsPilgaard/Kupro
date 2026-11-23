@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 Log where you work · Time registration prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+/* Large monitors (Tailwind 3xl, 1920 px): wider, roomier sidebar. */
+@media (min-width: 120rem) {
+  :root {
+    --sidebar: 252px;
+    --nav-item: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}
+
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.proto span{flex:1}.proto button,.proto select{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer}
+.proto select option{color:var(--ink);background:var(--panel)}
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:calc(100vh - 28px)}
+.side{background:var(--side);color:var(--side-ink);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.side .ws{font:600 15px var(--font-display);padding:6px 10px 14px}
+.side button{all:unset;cursor:pointer;height:var(--nav-item);padding:0 10px;border-radius:var(--r1);display:flex;align-items:center;gap:8px}
+.side button[aria-current=true]{background:var(--side-sel);font-weight:600}
+.side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:14px 10px 4px}
+main{padding:20px 28px;min-width:0}
+h1{font:600 22px var(--font-display);margin:0 0 4px}
+h2{font:600 16px var(--font-display);margin:0 0 8px}
+.sub{color:var(--mute);margin:0 0 16px}
+.btn{height:var(--control);padding:0 12px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--acc-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.mute{color:var(--mute)}
+.mono{font-family:var(--font-mono)}
+.key{font:12px var(--font-mono);color:var(--mute)}
+kbd{font:11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--mute)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.prog{background:color-mix(in srgb,var(--prog) 15%,transparent);color:var(--prog)}
+.chip.lock{background:var(--sunk);color:var(--mute)}
+input.f,select.f,textarea.f{height:var(--control);border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);padding:0 8px}
+textarea.f{height:auto;padding:6px 8px}
+input.f:focus,select.f:focus,textarea.f:focus,.btn:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.screen{display:none}.screen.on{display:block}
+.issue{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start}
+.props{display:grid;gap:10px}
+.props dt{font-size:12px;color:var(--mute)}.props dd{margin:0}
+.timebox{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.big{font:600 20px var(--font-display)}
+.share{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:13px;margin-top:8px}
+.lockline{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mute);background:var(--sunk);border-radius:var(--r1);padding:8px 10px;margin-top:8px}
+.pop{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:5}
+.pop.on{display:flex}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow-float);width:min(460px,calc(100vw - 32px));padding:18px}
+.dlg .fld{display:grid;gap:4px;margin-bottom:12px}
+.dlg label{font-size:12px;color:var(--mute)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r1);overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:4px 10px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--sel);color:var(--acc-ink);font-weight:600}
+.hint{font-size:12px;color:var(--mute)}
+.err{font-size:12px;color:var(--bad)}
+table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.t th,.t td{padding:0 10px;height:var(--row);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.t th{font-size:12px;color:var(--mute);font-weight:500;background:var(--sunk)}
+.t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.t tr:last-child td{border-bottom:0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--side);color:var(--side-ink);padding:8px 14px;border-radius:var(--r1);display:none;z-index:9}
+.switch{width:38px;height:22px;border-radius:99px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--panel);transition:left var(--dur-1) var(--ease)}
+.switch[aria-checked=true]{background:var(--acc)}.switch[aria-checked=true]::after{left:19px}
+.note{font-size:13px;color:var(--mute);max-width:640px}
+@media (max-width:760px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;padding:6px}.side .ws,.side .grp{display:none}main{padding:16px}.issue{grid-template-columns:1fr}}
+
+.tip{margin-bottom:14px;font-size:13px}
+.day{margin-bottom:10px}
+.day summary{display:flex;gap:10px;align-items:center;cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:0 12px;height:40px}
+.day[open] summary{border-radius:var(--r2) var(--r2) 0 0}
+.day summary::-webkit-details-marker{display:none}
+.day .tot{font:600 14px var(--font-mono)}
+.day .empty{color:var(--warn);font-size:12px}
+.day ul{list-style:none;margin:0;padding:0 12px;background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 var(--r2) var(--r2)}
+.day li{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;min-height:var(--row);border-top:1px solid var(--line)}
+.day li:first-child{border-top:0}
+.day li .dur{font:13px var(--font-mono);text-align:right}
+.pal .dlg{padding:0;overflow:hidden}.pal input{width:100%;border:0;border-bottom:1px solid var(--line);height:46px;padding:0 16px;font:15px var(--font-mono);background:var(--panel)}
+.pal input:focus{outline:none}
+.pal ul{list-style:none;margin:0;padding:6px}.pal li{padding:8px 10px;border-radius:var(--r1)}.pal li.on{background:var(--sel)}
+</style>
+</head>
+<body>
+<div class="proto"><span>PROTOTYPE · Time registration · 03 Log where you work</span>
+<label>Viewing as <select onchange="setRole(this.value)"><option value="member">Mette (Member)</option><option value="owner">Mette (Owner)</option></select></label>
+<a href="index.html" style="color:inherit">All directions</a><button type="button" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">Theme</button></div>
+<div class="app">
+<nav class="side" aria-label="Main">
+<div class="ws">Fjordbyg</div>
+<button data-go="issue" onclick="go('issue')">Issues</button>
+<button data-go="mytime" onclick="go('mytime')">My time</button>
+<button data-go="team" data-owner style="display:none" onclick="go('team')">Team time</button>
+<div class="grp">Workspace</div>
+<button data-go="settings" data-owner style="display:none" onclick="go('settings')">Settings</button>
+</nav>
+<main>
+<section class="screen" id="issue">
+<div class="row" style="margin-bottom:12px"><span class="hint">Try:</span><button class="btn" onclick="pickIssue('KUP-142')">KUP-142 (In Progress)</button><button class="btn" onclick="pickIssue('KUP-138')">KUP-138 (Done, locked)</button></div>
+<div class="issue">
+<div class="card"><div class="key" id="iKey"></div><h1 id="iTitle"></h1>
+<p class="mute">Paying with MobilePay on iOS 18 returns to a blank page. Repro steps and logs in the comments.</p>
+<h2 style="margin-top:20px">Your time on this issue</h2>
+<table class="t"><tbody id="iMine"></tbody></table></div>
+<aside class="card"><dl class="props"><dt>State</dt><dd id="iState"></dd><dt>Type</dt><dd id="iType"></dd><dt>Assignee</dt><dd>Mette Holm</dd><dt>Effort</dt><dd>5</dd></dl>
+<div class="timebox" id="iTime"></div></aside>
+</div>
+</section>
+<section class="screen" id="mytime"><div class="row"><div><h1>My time</h1><p class="sub">Week 48 · 23–29 November 2026 · <span id="wTot"></span></p></div><span class="sp"></span>
+<button class="btn" title="Previous week">‹</button><button class="btn">This week</button><button class="btn pri" onclick="openLog()">Log time <kbd>T</kbd></button></div>
+<div class="card tip"><b>Log time from anywhere:</b> press <kbd>T</kbd> on an issue, or <kbd>Ctrl</kbd> <kbd>K</kbd> and type <span class="mono">log 1h30 KUP-142</span>. This page is your week, for checking and fixing.</div>
+<div id="wDays"></div></section>
+<section class="screen" id="team">
+<div class="row"><div><h1>Team time</h1><p class="sub">Week 48, 23–29 November 2026. Each person's day total; open a person for their entries and history.</p></div><span class="sp"></span><button class="btn pri" onclick="openExport()">Export…</button></div>
+<table class="t"><thead><tr><th>Person</th><th class="n">Mon 23</th><th class="n">Tue 24</th><th class="n">Wed 25</th><th class="n">Thu 26</th><th class="n">Fri 27</th><th class="n">Sat 28</th><th class="n">Sun 29</th><th class="n">Week</th></tr></thead><tbody id="teamBody"></tbody></table>
+<p class="note">Only Owners see this page. Owners read and export, but don't edit anyone's time. People who have left stay here for 5 years.</p>
+</section>
+<section class="screen" id="settings">
+<h1>Settings</h1><p class="sub">Workspace · Fjordbyg</p>
+<div class="card" style="max-width:640px"><div class="row"><div style="flex:1"><h2 style="margin:0">Time registration</h2>
+<p class="note" style="margin:4px 0 0">Members log the time they spend on issues. Danish employers must record working time; this is where your team does it. Off by default.</p></div>
+<button class="switch" role="switch" aria-checked="true" aria-label="Time registration" onclick="toggleOn(this)"></button></div>
+<ul class="note"><li>Each person sees only their own time. Owners see everyone's and export it.</li><li>Time on a Done or Canceled issue is locked until the issue is reopened.</li><li>Records are kept for 5 years, also after someone leaves, and also if you turn this off.</li></ul></div>
+</section>
+</main>
+</div>
+<div class="pop" id="log" onclick="if(event.target===this)closeLog()"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="logH">
+<h2 id="logH">Log time</h2>
+<div class="fld"><label for="lIssue">Issue</label><select class="f" id="lIssue"></select></div>
+<div class="row" style="align-items:flex-start">
+<div class="fld" style="flex:1"><label for="lDur">Time spent</label><input class="f" id="lDur" placeholder="1h30, 90m or 1,5" autocomplete="off"><span class="err" id="lErr"></span></div>
+<div class="fld"><label>Day</label><div class="seg" id="lDay"><button data-d="1" aria-pressed="false" onclick="logDay=1;$$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay))">Tue</button><button data-d="2" aria-pressed="false" onclick="logDay=2;$$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay))">Wed</button><button data-d="3" aria-pressed="false" onclick="logDay=3;$$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay))">Today</button></div></div></div>
+<div class="fld"><label for="lNote">Note (optional)</label><input class="f" id="lNote"></div>
+<div class="row"><span class="hint"><kbd>Enter</kbd> to log, <kbd>Esc</kbd> to close</span><span class="sp"></span><button class="btn" onclick="closeLog()">Cancel</button><button class="btn pri" onclick="saveLog()">Log time</button></div>
+</div></div>
+<div class="pop" id="exp" onclick="if(event.target===this)this.classList.remove('on')"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="expH">
+<h2 id="expH">Export time</h2>
+<div class="fld"><label>People</label><select class="f"><option>Everyone (5, including 1 who has left)</option><option>Jonas Berg</option><option>Sara Lund</option></select></div>
+<div class="row"><div class="fld" style="flex:1"><label>From</label><input class="f" type="date" value="2026-11-01"></div><div class="fld" style="flex:1"><label>To</label><input class="f" type="date" value="2026-11-30"></div></div>
+<div class="fld"><label>Format</label><div class="seg"><button aria-pressed="true">CSV</button><button aria-pressed="false">JSON</button></div></div>
+<p class="hint">One row per entry: date, person, minutes, issue key, issue title, note. Corrections for people who have left are notes in the file.</p>
+<div class="row"><span class="sp"></span><button class="btn" onclick="$('#exp').classList.remove('on')">Cancel</button><button class="btn pri" onclick="doExport()">Download</button></div>
+</div></div>
+<div class="pop pal" id="pal" onclick="if(event.target===this)this.classList.remove('on')"><div class="dlg" role="dialog" aria-modal="true" aria-label="Command palette">
+<input id="palIn" placeholder="Type a command…" autocomplete="off" oninput="palUpd()" onkeydown="if(event.key==='Enter'){event.preventDefault();palGo()}">
+<ul id="palList"></ul></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const DAYS=['Mon 23','Tue 24','Wed 25','Thu 26','Fri 27','Sat 28','Sun 29'];
+const TODAY=3; // Thursday 26 November 2026
+const ISSUES={
+ 'KUP-142':{t:'Checkout fails for MobilePay on iOS',type:'Task · bug',state:'In Progress'},
+ 'KUP-120':{t:'Payments v2',type:'Epic',state:'In Progress'},
+ 'KUP-138':{t:'Invoice PDF layout',type:'Task',state:'Done'},
+ 'KUP-9':{t:'Meetings and planning',type:'Task',state:'Todo'},
+ 'KUP-150':{t:'Support rota, week 48',type:'Task',state:'In Progress'},
+ 'KUP-147':{t:'Refund webhook retries',type:'Feature',state:'In Review'}};
+const locked=k=>['Done','Canceled'].includes(ISSUES[k].state);
+let E=[ // your entries this week
+ {id:1,k:'KUP-142',d:0,m:240,n:'Reproduced on iPhone 15'},
+ {id:2,k:'KUP-9',d:0,m:60,n:'Planning'},
+ {id:3,k:'KUP-138',d:0,m:150,n:''},
+ {id:4,k:'KUP-142',d:1,m:330,n:'Fix + test'},
+ {id:5,k:'KUP-9',d:1,m:30,n:'Standup'},
+ {id:6,k:'KUP-138',d:1,m:90,n:'Review fixes'},
+ {id:7,k:'KUP-147',d:2,m:270,n:''},
+ {id:8,k:'KUP-150',d:2,m:180,n:'Two tickets'},
+ {id:9,k:'KUP-9',d:2,m:30,n:'Standup'},
+ {id:10,k:'KUP-9',d:3,m:30,n:'Standup'},
+ {id:11,k:'KUP-142',d:3,m:120,n:''}];
+let nextId=20;
+const OTHERS={'KUP-142':[['Jonas Berg',300],['Sara Lund',90]],'KUP-138':[['Jonas Berg',120]],'KUP-120':[],'KUP-9':[['Jonas Berg',150],['Sara Lund',120],['Ali Haddad',120]],'KUP-150':[['Ali Haddad',240]],'KUP-147':[['Sara Lund',360]]};
+let role='member';
+function fmt(m){if(!m)return '';const h=Math.floor(m/60),r=m%60;return h&&r?h+'h '+r+'m':h?h+'h':r+'m'}
+function parse(s){s=(s||'').trim().toLowerCase().replace(',','.');if(!s)return 0;let m;
+ if(m=s.match(/^(\d+(?:\.\d+)?)\s*h?$/))return Math.round(parseFloat(m[1])*60);
+ if(m=s.match(/^(\d+)\s*m$/))return +m[1];
+ if(m=s.match(/^(\d+)\s*h\s*(\d+)\s*m?$/))return +m[1]*60+ +m[2];
+ if(m=s.match(/^(\d+):(\d{2})$/))return +m[1]*60+ +m[2];
+ return NaN}
+const dayTotal=d=>E.filter(e=>e.d===d).reduce((a,e)=>a+e.m,0);
+const mine=k=>E.filter(e=>e.k===k).reduce((a,e)=>a+e.m,0);
+function toast(t){const x=$('#toast');x.textContent=t;x.style.display='block';clearTimeout(x._t);x._t=setTimeout(()=>x.style.display='none',2200)}
+function go(id){$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('.side button[data-go]').forEach(b=>b.setAttribute('aria-current',b.dataset.go===id));render()}
+function setRole(r){role=r;$$('[data-owner]').forEach(x=>x.style.display=r==='owner'?'':'none');if(r!=='owner'&&($('#team').classList.contains('on')||$('#settings').classList.contains('on')))go('mytime');render()}
+// Issue screen (shared)
+let cur='KUP-142';
+function renderIssue(){const i=ISSUES[cur];$('#iKey').textContent=cur;$('#iTitle').textContent=i.t;$('#iState').innerHTML=`<span class="chip ${locked(cur)?'ok':'prog'}">${i.state}</span>`;$('#iType').textContent=i.type;
+ const my=mine(cur);let h=`<div class="hint">Your time</div><div class="big">${fmt(my)||'0m'}</div>`;
+ if(role==='owner'){const o=OTHERS[cur]||[];const tot=my+o.reduce((a,x)=>a+x[1],0);h=`<div class="hint">Total on this issue</div><div class="big">${fmt(tot)||'0m'}</div><div class="share">${my?`<span>Mette Holm (you)</span><span class="mono">${fmt(my)}</span>`:''}${o.map(x=>`<span>${x[0]}</span><span class="mono">${fmt(x[1])}</span>`).join('')}</div>`}
+ else h+=`<div class="hint">Only you and the workspace Owners see your time.</div>`;
+ if(locked(cur))h+=`<div class="lockline"><span aria-hidden="true">🔒</span><span>Time is locked because the issue is ${i.state}. Reopen the issue to change it.</span></div>`;
+ else h+=`<div class="row" style="margin-top:10px"><button class="btn" onclick="openLog('${cur}')">Log time</button><span class="key"><kbd>T</kbd></span></div>`;
+ $('#iTime').innerHTML=h;
+ $('#iMine').innerHTML=E.filter(e=>e.k===cur).sort((a,b)=>b.d-a.d).map(e=>`<tr><td>${DAYS[e.d]} Nov</td><td class="n mono">${fmt(e.m)}</td><td class="mute">${e.n||''}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">No time logged by you yet.</td></tr>'}
+function pickIssue(k){cur=k;renderIssue()}
+// Log dialog (shared)
+let logKey=null,logDay=TODAY;
+function openLog(k,d){logKey=k||null;logDay=d??TODAY;const p=$('#log');p.classList.add('on');
+ $('#lIssue').innerHTML=Object.keys(ISSUES).map(x=>`<option value="${x}" ${locked(x)?'disabled':''} ${x===logKey?'selected':''}>${x} ${ISSUES[x].t}${locked(x)?' (locked, '+ISSUES[x].state+')':''}</option>`).join('');
+ if(!logKey)$('#lIssue').value='KUP-142';
+ $$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay));
+ $('#lDur').value='';$('#lNote').value='';$('#lErr').textContent='';setTimeout(()=>$('#lDur').focus(),0)}
+function closeLog(){$('#log').classList.remove('on')}
+function saveLog(){const m=parse($('#lDur').value);const k=$('#lIssue').value;
+ if(!m||isNaN(m)||m>1440){$('#lErr').textContent='Write a duration like 1h30, 90m or 1,5.';return}
+ if(dayTotal(logDay)+m>1440){$('#lErr').textContent='That day would pass 24 hours.';return}
+ E.push({id:nextId++,k,d:logDay,m,n:$('#lNote').value});closeLog();toast(`Logged ${fmt(m)} on ${k}, ${DAYS[logDay]} Nov`);render()}
+// Team screen (Owner, shared)
+const TEAM=[['Mette Holm',null],['Jonas Berg',[450,480,420,465,0,0,0]],['Sara Lund',[420,0,450,480,0,0,0]],['Ali Haddad',[300,360,240,0,0,0,0]],['Freja Nørgaard (left 31 Oct)',[0,0,0,0,0,0,0]]];
+function renderTeam(){$('#teamBody').innerHTML=TEAM.map(([n,v])=>{v=v||DAYS.map((_,d)=>dayTotal(d));const s=v.reduce((a,b)=>a+b,0);return `<tr><td>${n}</td>${v.map((m,d)=>`<td class="n mono ${d>4?'mute':''}">${fmt(m)||'–'}</td>`).join('')}<td class="n mono"><b>${fmt(s)||'–'}</b></td></tr>`}).join('')}
+function openExport(){$('#exp').classList.add('on')}
+function doExport(){$('#exp').classList.remove('on');toast('kupro-time-2026-11.csv downloaded (prototype)')}
+// Settings (shared)
+function toggleOn(b){const on=b.getAttribute('aria-checked')!=='true';b.setAttribute('aria-checked',on);toast(on?'Time registration is on for Fjordbyg':'Time registration is off. Records are kept.')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$$('.pop').forEach(p=>p.classList.remove('on'))}
+ if(e.key==='Enter'&&$('#log').classList.contains('on')&&e.target.tagName!=='TEXTAREA'){e.preventDefault();saveLog()}
+ if(e.key.toLowerCase()==='t'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&!$('.pop.on')&&$('#issue').classList.contains('on')&&!locked(cur)){e.preventDefault();openLog(cur)}});
+
+
+function renderMine(){$('#wTot').textContent=fmt(E.reduce((a,e)=>a+e.m,0))+' this week';
+ $('#wDays').innerHTML=DAYS.map((n,d)=>d>TODAY?'':(()=>{const es=E.filter(e=>e.d===d);const t=dayTotal(d);
+  return `<details class="day" ${d===TODAY?'open':''}><summary><b>${d===TODAY?'Today':n+' Nov'}</b><span class="sp"></span>${!t&&d<5?'<span class="empty">Nothing logged</span>':''}<span class="tot">${fmt(t)||'0m'}</span></summary>
+  <ul>${es.map(e=>{const lk=locked(e.k);return `<li><span class="dur">${fmt(e.m)}</span><span><span class="key">${e.k}</span> ${ISSUES[e.k].t}${e.n?' <span class="mute">· '+e.n+'</span>':''}</span><span>${lk?'<span class="chip lock">🔒 '+ISSUES[e.k].state+'</span>':`<button class="btn ghost" onclick="edit(${e.id})">Edit</button><button class="btn ghost" onclick="del(${e.id})">Delete</button>`}</span></li>`}).join('')}
+  <li><span></span><span><button class="btn ghost" onclick="openLog(null,${d})">+ Log time on ${d===TODAY?'today':n}</button></span><span></span></li></ul></details>`})()).reverse().join('')}
+function del(id){E=E.filter(e=>e.id!==id);toast('Deleted. The change is kept in the history.');render()}
+function edit(id){const e=E.find(e=>e.id===id);const v=prompt('Time spent',fmt(e.m));if(v===null)return;const m=parse(v);
+ if(!m||isNaN(m)||m>1440)return toast('Write a duration like 1h30, 90m or 1,5');
+ if(dayTotal(e.d)-e.m+m>1440)return toast('That day would pass 24 hours');e.m=m;toast('Saved. The old value is kept in the history.');render()}
+function palUpd(){const s=$('#palIn').value.trim();const m=s.match(/^log\s+(\S+)\s*([A-Za-z]+-\d+)?\s*(.*)$/i);let h;
+ if(m){const min=parse(m[1]),k=(m[2]||(($('#issue').classList.contains('on'))?cur:'')).toUpperCase();
+  h=!min||isNaN(min)?'<li>Log time: write a duration, like <span class="mono">log 1h30 KUP-142</span></li>':!ISSUES[k]?`<li>Log ${fmt(min)} on… add an issue key</li>`:locked(k)?`<li>${k} is ${ISSUES[k].state}: reopen it to log time</li>`:`<li class="on">Log <b>${fmt(min)}</b> on <span class="key">${k}</span> ${ISSUES[k].t}, today${m[3]?' · '+m[3]:''} <kbd>Enter</kbd></li>`}
+ else h='<li class="on">Log time… <span class="mono mute">log 1h30 KUP-142 note</span></li><li>Open My time</li><li>Go to KUP-142</li>';
+ $('#palList').innerHTML=h}
+function palGo(){const s=$('#palIn').value.trim();const m=s.match(/^log\s+(\S+)\s*([A-Za-z]+-\d+)?\s*(.*)$/i);
+ if(!m){$('#palIn').value='log ';palUpd();return}
+ const min=parse(m[1]),k=(m[2]||($('#issue').classList.contains('on')?cur:'')).toUpperCase();
+ if(!min||isNaN(min)||!ISSUES[k]||locked(k))return;
+ if(dayTotal(TODAY)+min>1440)return toast('Today would pass 24 hours');
+ E.push({id:nextId++,k,d:TODAY,m:min,n:m[3]});$('#pal').classList.remove('on');toast(`Logged ${fmt(min)} on ${k}, today`);render()}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#pal').classList.add('on');$('#palIn').value='';palUpd();$('#palIn').focus()}
+ if(e.key.toLowerCase()==='t'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&!$('.pop.on')&&$('#mytime').classList.contains('on')){e.preventDefault();openLog()}});
+
+function render(){renderIssue();renderTeam();renderMine()}
+go('mytime');
+</script>
+</body>
+</html>

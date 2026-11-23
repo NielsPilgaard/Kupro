@@ -85,7 +85,7 @@ then the fake stands in for them. The changelog criterion is also open (see Acce
 - Hierarchy: `parent` (Cloud, and sub-tasks everywhere); `Epic Link` custom field on DC and old Cloud data.
 - Changelog: Cloud `/rest/api/3/issue/{id}/changelog` (paged); DC `expand=changelog`. Change ID = history ID + item index.
 - Comments (paged), attachments (content URL with the same auth), issue links, worklogs (summed into the details block
-  only; time tracking is out of v1 scope, [product.md](../docs/product.md)).
+  until task 034 makes them time entries, [ADR-021](../docs/adr/ADR-021-time-registration.md)).
 - Sprints: the sprint field (by schema `com.pyxis.greenhopper.jira:gh-sprint`) plus Agile API
   `/rest/agile/1.0/sprint/{id}` for dates and state.
 - Versions: `/project/{id}/versions`; a version with `releaseDate` → milestone option.

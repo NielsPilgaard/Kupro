@@ -1,7 +1,7 @@
 ---
 title: 'Task 034: Time registration'
 description: >-
-  Let members log time, either per issue or for the day, so a Danish employer can meet the working-time registration
+  Let members log the time they spend on issues, so a Danish employer can meet the working-time registration
   duty (in force since 1 July 2024) inside Kupro, and teams leaving Jira or Azure DevOps keep their worklogs. One time
   entry model, a week timesheet, an owner's export, and full parity. It starts with an ADR, because it moves time
   tracking into v1 scope.
@@ -59,14 +59,16 @@ seat, and an MCP `time` tool in place of a merged `relations` tool.
 
 ### CLI and MCP
 
-- `kupro time log <duration> [KEY] [--date] [--note]` (`1h30m`, `90m`, `1.5h`), `kupro time week [--date]`,
-  `kupro time edit|delete <id>`, `kupro time export --from --to [--member] [--format csv|json]` (Owners).
+- `kupro time log <duration> <KEY> [--date] [--note]` (`1h30m`, `90m`, `1.5h`), `kupro time week [--date]`,
+  `kupro time edit|delete <id>`; Owners: `kupro time list --from --to [--member]` and
+  `kupro time export --from --to [--member] [--format csv|json]`.
 - MCP: a `time` tool (`log | edit | delete | week`) and `relate_issues`/`unrelate_issues` merged into `relations`
   (ADR-021); `get_issue` gains the caller's time. Export stays off MCP, an opt-out in the parity test.
 
 ### Web
 
-Prototypes first ([AGENTS.md](../AGENTS.md) rule 11), in `prototypes/time/`:
+Prototypes first ([AGENTS.md](../AGENTS.md) rule 11), in [prototypes/time/](../prototypes/time/index.html): 01 week grid,
+02 day journal, 03 log where you work. **Pick: waiting on the owner.** Each covers:
 
 - **Log time on an issue**: a field in the issue detail and a command palette action ("Log time", shortcut).
 - **Week timesheet**: rows per issue (add an issue to the week), columns per weekday, day totals, locked cells for
@@ -74,7 +76,7 @@ Prototypes first ([AGENTS.md](../AGENTS.md) rule 11), in `prototypes/time/`:
 - **Owner's export**: pick people and a period, download CSV.
 - **Settings**: turn it on for the workspace.
 
-EN and DA strings; the DA term is "tidsregistrering" ([branding.md](../docs/branding.md) glossary gets the entry).
+EN and DA strings; the DA term is "tidsregistrering" (add it to the [branding.md](../docs/branding.md) glossary).
 
 ### Import
 
