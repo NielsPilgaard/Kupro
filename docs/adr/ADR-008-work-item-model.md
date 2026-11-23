@@ -113,4 +113,4 @@ Supply per month = people × hours per week × weeks in month. No per-person cap
 - [ADR-013](ADR-013-seats-billing.md) — whether agent members count as seats
 - [ADR-019](ADR-019-import.md) — how imports from deeper or looser models fit this one
 - [ADR-020](ADR-020-sprint-close-burndown.md) — sprint close outcomes, split carry-over, burndown
-- [ADR-021](ADR-021-time-registration.md) — time logged on issues; effort stays the estimate
+- [ADR-021](ADR-021-time-registration.md) — time logged on issues; effort stays the estimate; Done and Canceled lock entries

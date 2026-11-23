@@ -112,7 +112,8 @@ per-person velocity, no ranking, no per-person capacity ([ADR-008](ADR-008-work-
 
 ### Original, remaining and completed effort fields
 
-- **ALT-003**: **Rejection Reason**: That is time tracking, out of v1 scope ([product.md](../product.md)).
+- **ALT-003**: **Rejection Reason**: Time spent is recorded as time entries, not effort fields
+  ([ADR-021](ADR-021-time-registration.md)).
 
 ### Rebuild burndown from the activity log
 

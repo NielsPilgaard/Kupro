@@ -152,5 +152,5 @@ then the fake stands in for them. The changelog criterion is also open (see Acce
 
 - Jira Service Management queues, SLAs and customer portals.
 - Jira Align, Confluence pages linked from issues (kept as links).
-- Worklogs as entries (time tracking is not in v1).
+- Worklogs as entries: they come with task 034 ([ADR-021](../docs/adr/ADR-021-time-registration.md)).
 - Atlassian OAuth 2.0 (3LO) "Connect" button.
