@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>01 Week grid · Time registration prototype</title>
+<title>01 Week grid (picked) · Time registration prototype</title>
 <style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
 
 :root {
@@ -203,17 +203,49 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 .cardi .mt{font:12px var(--font-mono);color:var(--mute);margin-top:4px}
 @media (max-width:760px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;padding:6px}.side .ws,.side .grp{display:none}main{padding:16px}.issue{grid-template-columns:1fr}}
 
-.grid td.c{padding:0;width:84px}.grid td.c input{width:100%;height:var(--row);border:0;background:transparent;text-align:right;padding:0 10px;font:13px var(--font-mono)}
+main:has(#mytime.on){max-width:1440px}
+.wk-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.wk-head h1{font-size:28px}.wk-head .sub{margin:0;font-size:15px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:14px 16px}
+.tile .l{font-size:13px;color:var(--mute)}.tile .v{font:600 26px var(--font-display);margin-top:2px}.tile .s{font-size:13px;color:var(--mute)}
+.tile.warn .v{color:var(--warn)}
+.gridwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2)}
+.grid{border-collapse:collapse;width:100%;font-size:15px;min-width:980px}
+.grid .c-iss{width:38%}.grid .c-we{width:6%}.grid .c-tot{width:9%}
+.grid th,.grid td{height:48px;padding:0 14px;border-bottom:1px solid var(--line);text-align:left}
+.grid thead th{height:56px;background:var(--sunk);font-weight:500;color:var(--mute);font-size:13px;position:sticky;top:0}
+.grid th.day span{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em}.grid th.day b{font:600 18px var(--font-display);color:var(--ink)}
+.grid th.today{background:color-mix(in srgb,var(--acc) 16%,var(--sunk))}.grid th.today b,.grid th.today span{color:var(--acc-ink)}
+.grid td.today{background:var(--sel)}
+.grid .we{color:var(--mute)}
+.grid .n{text-align:right;font-variant-numeric:tabular-nums}
+.grid tr.grp th{height:38px;background:var(--bg);font:600 13px var(--font-ui);color:var(--ink);text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--line)}
+.grid tr.grp th .sub{all:unset;float:right;font:500 13px var(--font-mono);color:var(--mute);text-transform:none;letter-spacing:0}
+.grid td.iss{white-space:normal;line-height:1.3}
+.grid td.iss .key{display:inline-block;min-width:64px}
+.grid td.iss .st{margin-left:6px}
+.grid td.c{padding:0;position:relative}
+.grid td.c input{width:100%;height:48px;border:0;background:transparent;text-align:right;padding:0 14px;font:15px var(--font-mono);color:var(--ink)}
+.grid td.c input::placeholder{color:var(--line)}
 .grid td.c input:focus{outline:2px solid var(--acc);outline-offset:-2px;background:var(--sel)}
-.grid td.c input:disabled{color:var(--mute)}
+.grid td.c input:disabled{color:var(--mute);cursor:not-allowed}
+.grid td.c.note::after{content:'';position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--prog)}
+.grid tr.r:hover td{background:color-mix(in srgb,var(--sunk) 50%,transparent)}
 .grid tr.lk td{background:var(--sunk)}
-.grid th.today{color:var(--acc-ink);font-weight:700}
-.grid tfoot td{font-weight:600;background:var(--sunk)}
-.gridwrap{overflow-x:auto}
+.grid td.tot{font:600 15px var(--font-mono)}
+.grid tfoot td{height:52px;font:600 15px var(--font-mono);background:var(--sunk);border-bottom:0}
+.grid tfoot td.iss{font:600 14px var(--font-ui)}
+.grid tfoot td.gap{color:var(--warn);font:500 12px var(--font-ui)}
+.below{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.below h2{font-size:15px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13px}.keys dd{margin:0;color:var(--mute)}
+.ent{list-style:none;margin:8px 0 12px;padding:0}.ent li{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.below{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="proto"><span>PROTOTYPE · Time registration · 01 Week grid</span>
+<div class="proto"><span>PROTOTYPE · Time registration · 01 Week grid (picked)</span>
 <label>Viewing as <select onchange="setRole(this.value)"><option value="member">Mette (Member)</option><option value="owner">Mette (Owner)</option></select></label>
 <a href="index.html" style="color:inherit">All directions</a><button type="button" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">Theme</button></div>
 <div class="app">
@@ -239,13 +271,22 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 </div>
 </section>
 <section class="screen" id="board"><h1>Board</h1><p class="sub">Payments · drag a card to Done or Canceled. If you have logged no time on it, Kupro asks for time in the same save; otherwise it moves straight away.</p><div class="board" id="bCols"></div></section>
-<section class="screen" id="mytime"><div class="row"><div><h1>My time</h1><p class="sub">Week 48 · 23–29 November 2026</p></div><span class="sp"></span>
-<button class="btn" title="Previous week">‹</button><button class="btn">This week</button><button class="btn" title="Next week" disabled>›</button></div>
-<div class="gridwrap"><table class="t grid"><thead><tr><th>Issue</th><th class="n">Mon 23</th><th class="n">Tue 24</th><th class="n">Wed 25</th><th class="n today">Thu 26</th><th class="n">Fri 27</th><th class="n">Sat 28</th><th class="n">Sun 29</th><th class="n">Week</th></tr></thead>
+<section class="screen" id="mytime"><div class="wk-head"><div><h1>My time</h1><p class="sub">Week 48 · Monday 23 to Sunday 29 November 2026</p></div><span class="sp"></span>
+<div class="row"><button class="btn">‹ Week 47</button><button class="btn">This week</button><button class="btn" disabled>Week 49 ›</button></div></div>
+<div class="tiles" id="gSum"></div>
+<div class="gridwrap"><table class="grid" aria-label="Time per issue and day">
+<colgroup><col class="c-iss"><col span="5"><col span="2" class="c-we"><col class="c-tot"></colgroup>
+<thead><tr><th class="iss">Issue</th><th class="n day"><span>Mon</span><b>23</b></th><th class="n day"><span>Tue</span><b>24</b></th><th class="n day"><span>Wed</span><b>25</b></th><th class="n day today"><span>Thu</span><b>26</b></th><th class="n day"><span>Fri</span><b>27</b></th><th class="n day we"><span>Sat</span><b>28</b></th><th class="n day we"><span>Sun</span><b>29</b></th><th class="n tot">Week</th></tr></thead>
 <tbody id="gBody"></tbody><tfoot id="gFoot"></tfoot></table></div>
-<div class="row" style="margin-top:10px"><select class="f" id="gAdd" aria-label="Add an issue to this week"></select><button class="btn" onclick="addRow()">Add row</button><span class="sp"></span>
-<span class="hint">Type in a cell: <kbd>1h30</kbd> <kbd>90m</kbd> <kbd>1,5</kbd>. <kbd>Tab</kbd> and arrows move. Empty a cell to delete.</span></div>
-<p class="note">Rows for Done or Canceled issues are locked. A cell's notes show on hover; add a note from the issue's Log time.</p></section>
+<div class="below">
+<section class="card" id="gCell" aria-live="polite"></section>
+<section class="card"><h2>Add an issue to this week</h2>
+<div class="row"><select class="f" id="gAdd" aria-label="Issue" style="flex:1"></select><button class="btn pri" onclick="addRow()">Add row</button></div>
+<h2 style="margin-top:18px">Keys</h2>
+<dl class="keys"><dt><kbd>1h30</kbd> <kbd>90m</kbd> <kbd>1,5</kbd> <kbd>2</kbd></dt><dd>Durations a cell takes</dd>
+<dt><kbd>Tab</kbd> <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></dt><dd>Move between cells</dd>
+<dt><kbd>Enter</kbd></dt><dd>Save the cell</dd><dt>Empty the cell</dt><dd>Delete that day's time</dd></dl></section>
+</div></section>
 <section class="screen" id="team">
 <div class="row"><div><h1>Team time</h1><p class="sub">Week 48, 23–29 November 2026. Each person's day total; open a person for their entries and history.</p></div><span class="sp"></span><button class="btn pri" onclick="openExport()">Export…</button></div>
 <table class="t"><thead><tr><th>Person</th><th class="n">Mon 23</th><th class="n">Tue 24</th><th class="n">Wed 25</th><th class="n">Thu 26</th><th class="n">Fri 27</th><th class="n">Sat 28</th><th class="n">Sun 29</th><th class="n">Week</th></tr></thead><tbody id="teamBody"></tbody></table>
@@ -359,29 +400,48 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$$('.pop').forEach(
  if(e.key.toLowerCase()==='t'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&!$('.pop.on')&&$('#issue').classList.contains('on')&&!locked(cur)){e.preventDefault();openLog(cur)}});
 
 
-let rows=['KUP-142','KUP-147','KUP-150','KUP-9','KUP-138'];
+const PROJ={'KUP-142':'Payments','KUP-147':'Payments','KUP-120':'Payments','KUP-138':'Payments','KUP-150':'Operations','KUP-9':'Operations'};
+let rows=['KUP-142','KUP-147','KUP-150','KUP-9','KUP-138'],selK='KUP-142',selD=TODAY;
+const cellM=(k,d)=>E.filter(e=>e.k===k&&e.d===d).reduce((a,e)=>a+e.m,0);
+function rowHtml(k){const lk=locked(k);
+ const cells=DAYS.map((_,d)=>{const es=E.filter(e=>e.k===k&&e.d===d);const m=es.reduce((a,e)=>a+e.m,0);const note=es.some(e=>e.n);
+  return `<td class="c${d===TODAY?' today':''}${note?' note':''}"><input aria-label="${k}, ${DAYS[d]} November" data-k="${k}" data-d="${d}" value="${fmt(m)}" placeholder="${lk||d>TODAY?'':'–'}" ${lk||d>TODAY?'disabled':''} onfocus="sel('${k}',${d})" onchange="cell(this)" onkeydown="nav(event,this)"></td>`}).join('');
+ return `<tr class="r ${lk?'lk':''}"><td class="iss"><span class="key">${k}</span> ${ISSUES[k].t}<span class="st chip ${lk?'lock':''}">${lk?'🔒 ':''}${ISSUES[k].state}</span></td>${cells}<td class="n tot">${fmt(mine(k))||'–'}</td></tr>`}
+function grp(name,ks){if(!ks.length)return '';const t=ks.reduce((a,k)=>a+mine(k),0);return `<tr class="grp"><th colspan="9">${name}<span class="sub">${fmt(t)||''}</span></th></tr>`+ks.map(rowHtml).join('')}
 function renderMine(){
- $('#gBody').innerHTML=rows.map(k=>{const lk=locked(k);let cells=DAYS.map((_,d)=>{const es=E.filter(e=>e.k===k&&e.d===d);const m=es.reduce((a,e)=>a+e.m,0);
-  return `<td class="c"><input aria-label="${k} ${DAYS[d]}" data-k="${k}" data-d="${d}" value="${fmt(m)}" title="${es.map(e=>e.n).filter(Boolean).join('; ')}" ${lk||d>TODAY?'disabled':''} onchange="cell(this)" onkeydown="nav(event,this)"></td>`}).join('');
-  return `<tr class="${lk?'lk':''}"><td><span class="key">${k}</span> ${ISSUES[k].t} ${lk?'<span class="chip lock">🔒 '+ISSUES[k].state+'</span>':''}</td>${cells}<td class="n mono">${fmt(mine(k))||'–'}</td></tr>`}).join('');
- const tot=DAYS.map((_,d)=>dayTotal(d));
- $('#gFoot').innerHTML=`<tr><td>Day total</td>${tot.map(m=>`<td class="n mono">${fmt(m)||'–'}</td>`).join('')}<td class="n mono">${fmt(tot.reduce((a,b)=>a+b,0))}</td></tr>`;
- $('#gAdd').innerHTML='<option value="">Add an issue…</option>'+Object.keys(ISSUES).filter(k=>!rows.includes(k)).map(k=>`<option value="${k}" ${locked(k)?'disabled':''}>${k} ${ISSUES[k].t}</option>`).join('')}
+ const open=rows.filter(k=>!locked(k)),closed=rows.filter(k=>locked(k));
+ const projs=[...new Set(open.map(k=>PROJ[k]))];
+ $('#gBody').innerHTML=projs.map(p=>grp(p,open.filter(k=>PROJ[k]===p))).join('')+grp('Done or Canceled · locked',closed);
+ const tot=DAYS.map((_,d)=>dayTotal(d)),wk=tot.reduce((a,b)=>a+b,0);
+ $('#gFoot').innerHTML=`<tr><td class="iss">Day total</td>${tot.map((m,d)=>m?`<td class="n${d===TODAY?' today':''}">${fmt(m)}</td>`:d<TODAY&&d<5?'<td class="n gap">Nothing</td>':'<td class="n we">–</td>').join('')}<td class="n">${fmt(wk)}</td></tr>`;
+ const gaps=[0,1,2,3].filter(d=>!dayTotal(d)).length;
+ $('#gSum').innerHTML=`<div class="tile"><div class="l">This week</div><div class="v">${fmt(wk)||'0m'}</div><div class="s">on ${new Set(E.map(e=>e.k)).size} issues</div></div>
+ <div class="tile"><div class="l">Today, Thursday</div><div class="v">${fmt(dayTotal(TODAY))||'0m'}</div><div class="s">${E.filter(e=>e.d===TODAY).length} entries</div></div>
+ <div class="tile ${gaps?'warn':''}"><div class="l">Weekdays so far with no time</div><div class="v">${gaps}</div><div class="s">${gaps?'Fill them in while you remember':'Every day so far has time'}</div></div>
+ <div class="tile"><div class="l">Locked</div><div class="v">${fmt(closed.reduce((a,k)=>a+mine(k),0))||'0m'}</div><div class="s">on Done or Canceled issues</div></div>`;
+ $('#gAdd').innerHTML='<option value="">Pick an issue…</option>'+Object.keys(ISSUES).filter(k=>!rows.includes(k)).map(k=>`<option value="${k}" ${locked(k)?'disabled':''}>${k} ${ISSUES[k].t}${locked(k)?' (locked)':''}</option>`).join('');
+ renderCell()}
+function sel(k,d){selK=k;selD=d;renderCell()}
+function renderCell(){const k=selK,d=selD,es=E.filter(e=>e.k===k&&e.d===d),lk=locked(k);
+ $('#gCell').innerHTML=`<h2><span class="key">${k}</span> ${ISSUES[k].t}</h2><div class="mute">${DAYS[d]} November · ${fmt(cellM(k,d))||'no time'}</div>
+ <ul class="ent">${es.map(e=>`<li><span class="mono" style="min-width:60px">${fmt(e.m)}</span><span class="mute">${e.n||'No note'}</span></li>`).join('')}</ul>
+ ${lk?'<div class="lockline"><span aria-hidden="true">🔒</span><span>Locked: the issue is '+ISSUES[k].state+'. Reopen it to change its time.</span></div>':es.length?`<label class="hint" for="gNote">Note for this day</label><div class="row"><input class="f" id="gNote" style="flex:1" value="${es.map(e=>e.n).filter(Boolean).join('; ')}" onchange="setNote(this.value)"></div>`:'<p class="hint">Type a duration in the cell, then add a note here.</p>'}`}
+function setNote(v){const es=E.filter(e=>e.k===selK&&e.d===selD);if(!es.length)return;es.forEach((e,i)=>e.n=i?'':v);toast('Note saved');renderMine()}
 function cell(i){const k=i.dataset.k,d=+i.dataset.d,m=parse(i.value);
  if(isNaN(m)||m>1440){toast('Write a duration like 1h30, 90m or 1,5');renderMine();return}
- const other=dayTotal(d)-E.filter(e=>e.k===k&&e.d===d).reduce((a,e)=>a+e.m,0);
+ const other=dayTotal(d)-cellM(k,d);
  if(other+m>1440){toast('That day would pass 24 hours');renderMine();return}
  const note=E.filter(e=>e.k===k&&e.d===d).map(e=>e.n).filter(Boolean).join('; ');
- E=E.filter(e=>!(e.k===k&&e.d===d));if(m)E.push({id:nextId++,k,d,m,n:note});renderIssue();renderTeam();
+ E=E.filter(e=>!(e.k===k&&e.d===d));if(m)E.push({id:nextId++,k,d,m,n:note});renderIssue();renderTeam();renderBoard();
  const f=document.activeElement;renderMine();if(f&&f.dataset&&f.dataset.k){const n=$(`input[data-k="${f.dataset.k}"][data-d="${f.dataset.d}"]`);n&&n.focus()}}
-function nav(e,i){const k=i.dataset.k,d=+i.dataset.d,r=rows.indexOf(k);let t;
- if(e.key==='ArrowDown')t=$(`input[data-k="${rows[r+1]}"][data-d="${d}"]`);
- if(e.key==='ArrowUp')t=$(`input[data-k="${rows[r-1]}"][data-d="${d}"]`);
+function nav(e,i){const k=i.dataset.k,d=+i.dataset.d;const ins=$$('#gBody input:not(:disabled)');const col=ins.filter(x=>+x.dataset.d===d);const r=col.indexOf(i);let t;
+ if(e.key==='ArrowDown')t=col[r+1];
+ if(e.key==='ArrowUp')t=col[r-1];
  if(e.key==='Enter'){i.blur();i.dispatchEvent(new Event('change'))}
- if(e.key==='ArrowRight'&&i.selectionStart===i.value.length)t=$(`input[data-k="${k}"][data-d="${d+1}"]`);
- if(e.key==='ArrowLeft'&&i.selectionStart===0)t=$(`input[data-k="${k}"][data-d="${d-1}"]`);
+ if(e.key==='ArrowRight'&&i.selectionStart===i.value.length)t=$(`input[data-k="${k}"][data-d="${d+1}"]:not(:disabled)`);
+ if(e.key==='ArrowLeft'&&i.selectionStart===0)t=$(`input[data-k="${k}"][data-d="${d-1}"]:not(:disabled)`);
  if(t){e.preventDefault();t.focus();t.select()}}
-function addRow(){const k=$('#gAdd').value;if(k){rows.splice(rows.length-1,0,k);renderMine()}}
+function addRow(){const k=$('#gAdd').value;if(k){rows.push(k);renderMine();const n=$(`input[data-k="${k}"][data-d="${TODAY}"]`);n&&n.focus()}}
 
 function render(){renderIssue();renderTeam();renderMine();renderBoard()}
 go('mytime');

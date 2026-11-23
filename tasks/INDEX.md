@@ -41,8 +41,8 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-23. The build order above is not the same as what is buildable. **Pick up next**: 034's prototypes
-in `prototypes/time/` are built and wait on the owner's pick; once picked, record it in task 034 and build the API.
+Checked 2026-11-23. The build order above is not the same as what is buildable. **Pick up next**: 034's API, CLI
+and MCP (ADR-021; prototype 01 picked, recorded in task 034), then its web UI.
 PR #43 (027's GitHub Projects boards and Monday column mapping) waits on review. Every other open row waits on a
 person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
@@ -57,7 +57,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 023 | Built, web wizard and Hierarchy trees included. Left: three official product marks (manual) and the production run | The owner for the marks; 013 Done for the run |
 | 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras, Trello's authorize link and all four site pages done. Left: recorded fixtures and the close (sandbox accounts, manual steps) | The sandboxes |
 | 027 | GitHub, YouTrack and Monday done, site pages included. Left: GitHub's Projects (v2) fields and Monday's column mapping | Nothing for those; the sandboxes for the close |
-| 034 | ADR-021 accepted; prototypes in `prototypes/time/` | The owner's prototype pick; the legal check (manual step) before claiming compliance |
+| 034 | ADR-021 accepted; prototype 01 (week grid) picked | Nothing for the build; the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed

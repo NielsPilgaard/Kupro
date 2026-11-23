@@ -70,7 +70,10 @@ seat, and an MCP `time` tool in place of a merged `relations` tool.
 ### Web
 
 Prototypes first ([AGENTS.md](../AGENTS.md) rule 11), in [prototypes/time/](../prototypes/time/index.html): 01 week grid,
-02 day journal, 03 log where you work. **Pick: waiting on the owner.** Each covers:
+02 day journal, 03 log where you work. **Picked (2026-11-23): 01 week grid**, revised on the owner's ask ("too small,
+not enough structure"): rows grouped by project with subtotals, locked issues in their own group, summary tiles
+(week, today, weekdays with no time, locked), today's column highlighted, a panel for the selected cell's notes, and
+48 px rows. The issue panel, Log time dialog, board, Team time and Settings are shared by all three. Each covers:
 
 - **Log time on an issue**: a field in the issue detail and a command palette action ("Log time", shortcut).
   Setting the state to Done or Canceled, in the issue or by dragging on the board, asks "Log time and mark Done" in
