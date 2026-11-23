@@ -241,6 +241,13 @@ main:has(#mytime.on){max-width:1440px}
 .below h2{font-size:15px}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13px}.keys dd{margin:0;color:var(--mute)}
 .ent{list-style:none;margin:8px 0 12px;padding:0}.ent li{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+.grid th.day,.grid td.c,.grid tfoot td.n{border-left:1px solid var(--line)}
+.grid th.tot,.grid td.tot,.grid tfoot td.wk{border-left:2px solid color-mix(in srgb,var(--ink) 22%,var(--line))}
+.grid th.day.mon,.grid td.c.mon,.grid tfoot td.mon{border-left:2px solid color-mix(in srgb,var(--ink) 22%,var(--line))}
+.grid th.day.sat,.grid td.c.sat,.grid tfoot td.sat{border-left:2px solid color-mix(in srgb,var(--ink) 22%,var(--line))}
+.grid td.c.we,.grid tfoot td.we{background:color-mix(in srgb,var(--sunk) 55%,transparent)}
+.grid th.day{text-align:center}.grid tfoot td.n{text-align:right}
+.grid td.tot,.grid th.tot,.grid tfoot td.wk{background:color-mix(in srgb,var(--sunk) 70%,transparent)}
 @media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.below{grid-template-columns:1fr}}
 </style>
 </head>
@@ -276,7 +283,7 @@ main:has(#mytime.on){max-width:1440px}
 <div class="tiles" id="gSum"></div>
 <div class="gridwrap"><table class="grid" aria-label="Time per issue and day">
 <colgroup><col class="c-iss"><col span="5"><col span="2" class="c-we"><col class="c-tot"></colgroup>
-<thead><tr><th class="iss">Issue</th><th class="n day"><span>Mon</span><b>23</b></th><th class="n day"><span>Tue</span><b>24</b></th><th class="n day"><span>Wed</span><b>25</b></th><th class="n day today"><span>Thu</span><b>26</b></th><th class="n day"><span>Fri</span><b>27</b></th><th class="n day we"><span>Sat</span><b>28</b></th><th class="n day we"><span>Sun</span><b>29</b></th><th class="n tot">Week</th></tr></thead>
+<thead><tr><th class="iss">Issue</th><th class="n day mon"><span>Mon</span><b>23</b></th><th class="n day"><span>Tue</span><b>24</b></th><th class="n day"><span>Wed</span><b>25</b></th><th class="n day today"><span>Thu</span><b>26</b></th><th class="n day"><span>Fri</span><b>27</b></th><th class="n day sat we"><span>Sat</span><b>28</b></th><th class="n day we"><span>Sun</span><b>29</b></th><th class="n tot">Week</th></tr></thead>
 <tbody id="gBody"></tbody><tfoot id="gFoot"></tfoot></table></div>
 <div class="below">
 <section class="card" id="gCell" aria-live="polite"></section>
@@ -402,10 +409,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$$('.pop').forEach(
 
 const PROJ={'KUP-142':'Payments','KUP-147':'Payments','KUP-120':'Payments','KUP-138':'Payments','KUP-150':'Operations','KUP-9':'Operations'};
 let rows=['KUP-142','KUP-147','KUP-150','KUP-9','KUP-138'],selK='KUP-142',selD=TODAY;
+const dc=d=>(d===0?' mon':'')+(d===5?' sat':'')+(d>4?' we':'')+(d===TODAY?' today':'');
 const cellM=(k,d)=>E.filter(e=>e.k===k&&e.d===d).reduce((a,e)=>a+e.m,0);
 function rowHtml(k){const lk=locked(k);
  const cells=DAYS.map((_,d)=>{const es=E.filter(e=>e.k===k&&e.d===d);const m=es.reduce((a,e)=>a+e.m,0);const note=es.some(e=>e.n);
-  return `<td class="c${d===TODAY?' today':''}${note?' note':''}"><input aria-label="${k}, ${DAYS[d]} November" data-k="${k}" data-d="${d}" value="${fmt(m)}" placeholder="${lk||d>TODAY?'':'–'}" ${lk||d>TODAY?'disabled':''} onfocus="sel('${k}',${d})" onchange="cell(this)" onkeydown="nav(event,this)"></td>`}).join('');
+  return `<td class="c${dc(d)}${note?' note':''}"><input aria-label="${k}, ${DAYS[d]} November" data-k="${k}" data-d="${d}" value="${fmt(m)}" placeholder="${lk||d>TODAY?'':'–'}" ${lk||d>TODAY?'disabled':''} onfocus="sel('${k}',${d})" onchange="cell(this)" onkeydown="nav(event,this)"></td>`}).join('');
  return `<tr class="r ${lk?'lk':''}"><td class="iss"><span class="key">${k}</span> ${ISSUES[k].t}<span class="st chip ${lk?'lock':''}">${lk?'🔒 ':''}${ISSUES[k].state}</span></td>${cells}<td class="n tot">${fmt(mine(k))||'–'}</td></tr>`}
 function grp(name,ks){if(!ks.length)return '';const t=ks.reduce((a,k)=>a+mine(k),0);return `<tr class="grp"><th colspan="9">${name}<span class="sub">${fmt(t)||''}</span></th></tr>`+ks.map(rowHtml).join('')}
 function renderMine(){
@@ -413,7 +421,7 @@ function renderMine(){
  const projs=[...new Set(open.map(k=>PROJ[k]))];
  $('#gBody').innerHTML=projs.map(p=>grp(p,open.filter(k=>PROJ[k]===p))).join('')+grp('Done or Canceled · locked',closed);
  const tot=DAYS.map((_,d)=>dayTotal(d)),wk=tot.reduce((a,b)=>a+b,0);
- $('#gFoot').innerHTML=`<tr><td class="iss">Day total</td>${tot.map((m,d)=>m?`<td class="n${d===TODAY?' today':''}">${fmt(m)}</td>`:d<TODAY&&d<5?'<td class="n gap">Nothing</td>':'<td class="n we">–</td>').join('')}<td class="n">${fmt(wk)}</td></tr>`;
+ $('#gFoot').innerHTML=`<tr><td class="iss">Day total</td>${tot.map((m,d)=>m?`<td class="n${dc(d)}">${fmt(m)}</td>`:d<TODAY&&d<5?`<td class="n gap${dc(d)}">Nothing</td>`:`<td class="n${dc(d)}">–</td>`).join('')}<td class="n wk">${fmt(wk)}</td></tr>`;
  const gaps=[0,1,2,3].filter(d=>!dayTotal(d)).length;
  $('#gSum').innerHTML=`<div class="tile"><div class="l">This week</div><div class="v">${fmt(wk)||'0m'}</div><div class="s">on ${new Set(E.map(e=>e.k)).size} issues</div></div>
  <div class="tile"><div class="l">Today, Thursday</div><div class="v">${fmt(dayTotal(TODAY))||'0m'}</div><div class="s">${E.filter(e=>e.d===TODAY).length} entries</div></div>
