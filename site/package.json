@@ -13,12 +13,12 @@
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/hanken-grotesk": "^5.3.0",
     "@fontsource/fragment-mono": "^5.3.0",
-    "astro": "7.4.12"
+    "astro": "7.4.13"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
-    "@joplin/turndown-plugin-gfm": "1.0.68",
-    "turndown": "7.2.4",
+    "@joplin/turndown-plugin-gfm": "1.0.71",
+    "turndown": "7.2.5",
     "typescript": "~6.0.3"
   }
 }
