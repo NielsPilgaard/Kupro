@@ -98,6 +98,9 @@ approval flows stay out (task 034).
 - The lock starts once the state change is saved, not before. One save can set an issue to Done or Canceled and log
   time on it: both commit in one transaction, or neither does. Closing a work item never needs a reopen to log the
   last hours (Azure DevOps blocks this).
+- In the web app, setting an issue to Done or Canceled from the issue or by dragging it on the board asks for time in
+  that save when the person moving it has logged none on the issue. With time already logged, it moves straight
+  away.
 - Imports are exempt: entries imported on a closed issue are created locked.
 
 ### Reliability

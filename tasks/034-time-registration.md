@@ -73,7 +73,8 @@ Prototypes first ([AGENTS.md](../AGENTS.md) rule 11), in [prototypes/time/](../p
 02 day journal, 03 log where you work. **Pick: waiting on the owner.** Each covers:
 
 - **Log time on an issue**: a field in the issue detail and a command palette action ("Log time", shortcut).
-  Setting the state to Done or Canceled offers "Log time and mark Done" in the same dialog, saved together.
+  Setting the state to Done or Canceled, in the issue or by dragging on the board, asks "Log time and mark Done" in
+  one dialog, saved together, when the person has logged no time on the issue.
 - **Week timesheet**: rows per issue (add an issue to the week), columns per weekday, day totals, locked cells for
   resolved issues, keyboard entry.
 - **Owner's export**: pick people and a period, download CSV.

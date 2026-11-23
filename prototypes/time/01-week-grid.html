@@ -195,6 +195,12 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 .switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--panel);transition:left var(--dur-1) var(--ease)}
 .switch[aria-checked=true]{background:var(--acc)}.switch[aria-checked=true]::after{left:19px}
 .note{font-size:13px;color:var(--mute);max-width:640px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:10px;overflow-x:auto}
+.col{background:var(--sunk);border-radius:var(--r2);padding:8px;min-height:240px}
+.col.over{outline:2px dashed var(--acc);outline-offset:-2px}
+.col h3{font:600 12px var(--font-ui);color:var(--mute);margin:2px 4px 8px;text-transform:uppercase;letter-spacing:.05em}
+.cardi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r1);padding:8px;margin-bottom:6px;cursor:grab;font-size:13px}
+.cardi .mt{font:12px var(--font-mono);color:var(--mute);margin-top:4px}
 @media (max-width:760px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;padding:6px}.side .ws,.side .grp{display:none}main{padding:16px}.issue{grid-template-columns:1fr}}
 
 .grid td.c{padding:0;width:84px}.grid td.c input{width:100%;height:var(--row);border:0;background:transparent;text-align:right;padding:0 10px;font:13px var(--font-mono)}
@@ -213,6 +219,7 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 <div class="app">
 <nav class="side" aria-label="Main">
 <div class="ws">Fjordbyg</div>
+<button data-go="board" onclick="go('board')">Board</button>
 <button data-go="issue" onclick="go('issue')">Issues</button>
 <button data-go="mytime" onclick="go('mytime')">My time</button>
 <button data-go="team" data-owner style="display:none" onclick="go('team')">Team time</button>
@@ -231,6 +238,7 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 <div class="timebox" id="iTime"></div></aside>
 </div>
 </section>
+<section class="screen" id="board"><h1>Board</h1><p class="sub">Payments · drag a card to Done or Canceled. If you have logged no time on it, Kupro asks for time in the same save; otherwise it moves straight away.</p><div class="board" id="bCols"></div></section>
 <section class="screen" id="mytime"><div class="row"><div><h1>My time</h1><p class="sub">Week 48 · 23–29 November 2026</p></div><span class="sp"></span>
 <button class="btn" title="Previous week">‹</button><button class="btn">This week</button><button class="btn" title="Next week" disabled>›</button></div>
 <div class="gridwrap"><table class="t grid"><thead><tr><th>Issue</th><th class="n">Mon 23</th><th class="n">Tue 24</th><th class="n">Wed 25</th><th class="n today">Thu 26</th><th class="n">Fri 27</th><th class="n">Sat 28</th><th class="n">Sun 29</th><th class="n">Week</th></tr></thead>
@@ -331,7 +339,10 @@ function openLog(k,d,r){logKey=k||null;logDay=d??TODAY;resolve=r||null;const p=$
  $$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay));
  $('#lDur').value='';$('#lNote').value='';$('#lErr').textContent='';setTimeout(()=>$('#lDur').focus(),0)}
 function closeLog(){$('#log').classList.remove('on');if(resolve){resolve=null;renderIssue()}}
-function skipLog(){const s=resolve;resolve=null;$('#log').classList.remove('on');ISSUES[cur].state=s;toast(cur+' is '+s+'. Its time is now locked.');render()}
+function skipLog(){const s=resolve;resolve=null;$('#log').classList.remove('on');ISSUES[logKey].state=s;toast(logKey+' is '+s+'. Its time is now locked.');render()}
+const COLS=['Todo','In Progress','In Review','Done','Canceled'];
+function renderBoard(){$('#bCols').innerHTML=COLS.map(c=>`<div class="col" data-c="${c}" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="this.classList.remove('over');drop(event.dataTransfer.getData('text'),'${c}')"><h3>${c}</h3>${Object.keys(ISSUES).filter(k=>ISSUES[k].state===c).map(k=>`<div class="cardi" draggable="true" ondragstart="event.dataTransfer.setData('text','${k}')"><span class="key">${k}</span> ${ISSUES[k].t}<div class="mt">${mine(k)?'Your time '+fmt(mine(k)):'No time from you'}</div></div>`).join('')}</div>`).join('')}
+function drop(k,c){if(!ISSUES[k]||ISSUES[k].state===c)return;if((c==='Done'||c==='Canceled')&&!mine(k)){openLog(k,TODAY,c);return}ISSUES[k].state=c;toast(k+' is '+c+(c==='Done'||c==='Canceled'?'. Its time is now locked.':''));render()}
 function saveLog(){const m=parse($('#lDur').value);const k=$('#lIssue').value;
  if(!m||isNaN(m)||m>1440){$('#lErr').textContent='Write a duration like 1h30, 90m or 1,5.';return}
  if(dayTotal(logDay)+m>1440){$('#lErr').textContent='That day would pass 24 hours.';return}
@@ -372,7 +383,7 @@ function nav(e,i){const k=i.dataset.k,d=+i.dataset.d,r=rows.indexOf(k);let t;
  if(t){e.preventDefault();t.focus();t.select()}}
 function addRow(){const k=$('#gAdd').value;if(k){rows.splice(rows.length-1,0,k);renderMine()}}
 
-function render(){renderIssue();renderTeam();renderMine()}
+function render(){renderIssue();renderTeam();renderMine();renderBoard()}
 go('mytime');
 </script>
 </body>

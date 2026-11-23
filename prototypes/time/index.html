@@ -195,6 +195,12 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 .switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--panel);transition:left var(--dur-1) var(--ease)}
 .switch[aria-checked=true]{background:var(--acc)}.switch[aria-checked=true]::after{left:19px}
 .note{font-size:13px;color:var(--mute);max-width:640px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:10px;overflow-x:auto}
+.col{background:var(--sunk);border-radius:var(--r2);padding:8px;min-height:240px}
+.col.over{outline:2px dashed var(--acc);outline-offset:-2px}
+.col h3{font:600 12px var(--font-ui);color:var(--mute);margin:2px 4px 8px;text-transform:uppercase;letter-spacing:.05em}
+.cardi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r1);padding:8px;margin-bottom:6px;cursor:grab;font-size:13px}
+.cardi .mt{font:12px var(--font-mono);color:var(--mute);margin-top:4px}
 @media (max-width:760px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;padding:6px}.side .ws,.side .grp{display:none}main{padding:16px}.issue{grid-template-columns:1fr}}
 
 .wrap{max-width:980px;margin:0 auto;padding:28px 16px}
@@ -213,6 +219,7 @@ a.card{color:inherit;text-decoration:none}a.card:hover{border-color:var(--acc)}
 <li>Log time on KUP-142, then see it on My time.</li>
 <li>Open KUP-138 (Done): its time is locked.</li>
 <li>On KUP-142, set the state to Done: log the last hours and mark it Done in one save.</li>
+<li>On the Board, drag KUP-120 (no time from you) to Done: it asks for time. Drag KUP-147 (has time): it moves straight away.</li>
 <li>Viewing as Owner: the issue shows the total and each person's share; Team time and Export appear.</li>
 <li>Durations: <span class="mono">1h30</span>, <span class="mono">90m</span>, <span class="mono">1,5</span>, <span class="mono">2</span>.</li>
 </ul>
