@@ -10088,6 +10088,13 @@
             },
             "description": "A status column's labels, which are SourceStatus IDs."
           },
+          "done": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Of its IReadOnlyList&lt;string&gt; SourceColumn.Labels, the ones this column calls done."
+          },
           "field": {
             "type": [
               "null",

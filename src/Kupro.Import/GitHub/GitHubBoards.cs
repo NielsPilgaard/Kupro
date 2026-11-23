@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kupro.Import.Snapshot;
 
@@ -124,6 +125,12 @@ internal static class GitHubBoards
             throw Unreadable(board, errors);
         }
 
+        if (errors.Count > 0)
+        {
+            // A partial field list could miss the Estimate field and take another number as points.
+            throw Partial(board, errors);
+        }
+
         string? Named(string type, Func<string, bool> name) =>
             fields.Where(f => (string?)f["dataType"] == type && name((string?)f["name"] ?? "")).Select(f => (string?)f["id"]).FirstOrDefault();
         var numbers = fields.Count(f => (string?)f["dataType"] == "NUMBER");
@@ -158,12 +165,26 @@ internal static class GitHubBoards
         {
             (data, errors) = await client.QueryAsync(ItemsQuery, new JsonObject { ["board"] = board.Id, ["after"] = after }, ct);
             var page = data["node"]?["items"] as JsonObject ?? throw Unreadable(board, errors);
-            foreach (var node in page["nodes"]?.AsArray().OfType<JsonObject>() ?? [])
+            var nodes = page["nodes"] as JsonArray ?? [];
+            if (errors.FirstOrDefault(e => !InSkippedItem(e, nodes)) is { } error)
             {
-                // An archived item's values are stale; drafts and pull requests have no issue content.
-                if (node["isArchived"]?.GetValue<bool>() == true
-                    || node["content"]?["repository"]?["nameWithOwner"] is not JsonValue repo || node["content"]?["number"] is not JsonValue number)
+                // A dropped item or value list would import as no status, sprint or points without saying so.
+                throw Partial(board, [error!.DeepClone()]);
+            }
+
+            foreach (var node in nodes.OfType<JsonObject>())
+            {
+                // Drafts and pull requests have no issue content.
+                if (node["content"]?["repository"]?["nameWithOwner"] is not JsonValue repo || node["content"]?["number"] is not JsonValue number)
                 {
+                    continue;
+                }
+
+                if (node["isArchived"]?.GetValue<bool>() == true)
+                {
+                    // An archived item's values are stale: it has none, as a full read finds, and its time lets a
+                    // delta read the issue again to clear them.
+                    values[$"{(string)repo!}#{(int)number}"] = new BoardValue(null, null, null, node["updatedAt"]?.GetValue<DateTimeOffset>());
                     continue;
                 }
 
@@ -200,6 +221,22 @@ internal static class GitHubBoards
 
         return new BoardRead(sprints, values);
     }
+
+    /// <summary>
+    /// Whether a GraphQL error is inside an item the read takes no values from: an archived one, or one without issue
+    /// content (a draft, a pull request, an issue the token may not see). GitHub reports each part it couldn't read
+    /// at its path, such as <c>node.items.nodes.3.content</c>.
+    /// </summary>
+    private static bool InSkippedItem(JsonNode? error, JsonArray nodes) =>
+        error?["path"] is JsonArray path && path.Count > 4
+        && (string?)path[1] == "items" && (string?)path[2] == "nodes"
+        && path[3] is JsonValue index && index.GetValueKind() == JsonValueKind.Number
+        && index.GetValue<int>() is var i && i >= 0 && i < nodes.Count
+        && nodes[i] is JsonObject node
+        && (node["isArchived"]?.GetValue<bool>() == true || node["content"]?["number"] is null);
+
+    private static SourceAccessException Partial(SourceBoard board, JsonArray errors) =>
+        new($"GitHub answered only part of the project {board.Name} ({errors.Select(e => (string?)e?["message"]).FirstOrDefault() ?? "no reason given"}). Try the import again.");
 
     /// <summary>A board's option or iteration ID: those are unique within a field, not across boards.</summary>
     private static string ScopedId(string board, string id) => $"{board}:{id}";

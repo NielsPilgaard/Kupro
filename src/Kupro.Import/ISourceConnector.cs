@@ -96,12 +96,15 @@ public static class SourceConnectorExtensions
         var roles = picked.Select(p => (p.Project, p.Column)).ToHashSet();
         var statusColumns = picked.Where(p => p.Role == ColumnRoles.Status).Select(p => (p.Project, p.Column)).ToHashSet();
         var labels = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
+        var done = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Done).ToHashSet(StringComparer.Ordinal);
         var listed = description.Columns.SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
         var fields = description.Columns.Where(c => c.Field is not null && !roles.Contains((c.Project, c.Id))).Select(c => c.Field!).ToHashSet(StringComparer.Ordinal);
         var columnFields = description.Columns.Select(c => c.Field).OfType<string>().ToHashSet(StringComparer.Ordinal);
         return description with
         {
-            Statuses = [.. description.Statuses.Where(s => !listed.Contains(s.Id) || labels.Contains(s.Id))],
+            // A label is done when a picked status column calls it done, not one left out.
+            Statuses = [.. description.Statuses.Where(s => !listed.Contains(s.Id) || labels.Contains(s.Id))
+                .Select(s => listed.Contains(s.Id) ? s with { Category = done.Contains(s.Id) ? "done" : null } : s)],
             Fields = [.. description.Fields.Where(f => !columnFields.Contains(f.Id) || fields.Contains(f.Id))],
             Columns = [],
         };

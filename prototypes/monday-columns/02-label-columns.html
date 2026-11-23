@@ -168,7 +168,7 @@ function theme() { const r = document.documentElement; r.dataset.theme = r.datas
 
 // What a column can become, by its type.
 const choices = {
-  status: [['state', 'State']], people: [['assignee', 'Assignee']], timeline: [['start+due', 'Start and due']],
+  status: [['state', 'State']], people: [['assignee', 'Assignee']], timeline: [['start+due', 'Start and due'], ['start', 'Start'], ['due', 'Due']],
   date: [['start', 'Start'], ['due', 'Due']], numbers: [['estimate', 'Estimate (hours)'], ['points', 'Points']], text: [],
 };
 let moved = '';
@@ -197,7 +197,7 @@ function render() {
       <option value="">A field</option>${opts.map(([v, l]) => `<option value="${v}"${v === now ? ' selected' : ''}>${l}</option>`).join('')}</select>${flag}</th>`;
   }).join('') + '</tr>';
   const body = b.rows.map(r => '<tr><td><b>' + esc(r.name) + '</b></td>' + b.cols.map(c => `<td>${r.v[c.id] ? esc(r.v[c.id]) : '<span class="mute">—</span>'}</td>`).join('') + '</tr>').join('');
-  const warn = b.unsure ? `<div class="note sm">${esc(b.name)} has two status columns, and only one can be the State. Kupro took the first (${esc(col(b, b.pick.state).t)}). Set the one that says how far an item has come.</div>` : '';
+  const warn = b.unsure && b.pick.state ? `<div class="note sm">${esc(b.name)} has two status columns, and only one can be the State. Kupro took the first (${esc(col(b, b.pick.state).t)}). Set the one that says how far an item has come.</div>` : '';
   document.getElementById('app').innerHTML = tabs('render') + warn +
     `<div class="card" style="margin-top:12px"><table><thead>${head}${pick}</thead><tbody>${body}</tbody></table></div>
      ${moved ? `<div class="sm mute" role="status" style="margin-top:6px">${moved}</div>` : ''}

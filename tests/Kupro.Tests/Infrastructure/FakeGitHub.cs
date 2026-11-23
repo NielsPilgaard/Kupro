@@ -30,6 +30,12 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
     /// <summary>Projects (v2) boards by owner login: <c>id</c>, <c>title</c>, <c>fields</c> and <c>items</c> (see <see cref="AddBoard"/>).</summary>
     public Dictionary<string, List<JsonObject>> Boards { get; } = [];
 
+    /// <summary>Errors every board items page answers with alongside its data, as GitHub does for parts it couldn't read.</summary>
+    public List<JsonObject> ItemErrors { get; } = [];
+
+    /// <summary>The token's user, as <c>GET /user</c> answers; null answers 404.</summary>
+    public JsonObject? Viewer { get; set; }
+
     /// <summary>Owners whose boards the token may not read: GraphQL answers with a FORBIDDEN error for them.</summary>
     public HashSet<string> BoardsForbidden { get; } = [];
 
@@ -206,6 +212,7 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
         var parts = path.Split('/');
         return Task.FromResult(parts switch
         {
+            ["user"] => Viewer is { } viewer ? Json(viewer) : NotFound(),
             ["user", "repos"] => Page(Repos, url, query),
             ["orgs", var org, "issue-types"] => IssueTypes.TryGetValue(org, out var types) ? Page(types, url, query) : NotFound(),
             ["repos", var o, var r, "assignees"] => Page(List(Assignees, $"{o}/{r}"), url, query),
@@ -293,6 +300,14 @@ internal sealed class FakeGitHub(string api = "https://api.github.com/") : HttpM
             if (board is null)
             {
                 errors.Add(new JsonObject { ["type"] = "NOT_FOUND", ["message"] = $"Could not resolve to a node with the global id of '{variables["board"]}'" });
+            }
+
+            if (board is not null && query.Contains("items(", StringComparison.Ordinal))
+            {
+                foreach (var error in ItemErrors)
+                {
+                    errors.Add(error.DeepClone());
+                }
             }
 
             data = new JsonObject

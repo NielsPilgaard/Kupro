@@ -78,6 +78,9 @@ public sealed record SourceColumn
     /// <summary>A status column's labels, which are <see cref="SourceStatus"/> IDs.</summary>
     public IReadOnlyList<string> Labels { get; set; } = [];
 
+    /// <summary>Of its <see cref="Labels"/>, the ones this column calls done.</summary>
+    public IReadOnlyList<string> Done { get; set; } = [];
+
     /// <summary>The <see cref="SourceField"/> it becomes when it fills no role; null for one that never is a field.</summary>
     public string? Field { get; init; }
 }

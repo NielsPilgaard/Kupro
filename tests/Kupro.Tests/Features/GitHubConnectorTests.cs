@@ -241,6 +241,53 @@ public sealed class GitHubConnectorTests
     }
 
     [Fact]
+    public async Task A_delta_clears_the_board_values_of_an_item_archived_since_the_cursor()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo", "Done");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#3", "Done", "it2", 8, T0.AddDays(5), archived: true);
+
+        var records = await Connect(github).ReadAsync(new ReadScope { Projects = ["100"], Board = "PVT_1" }, T0.AddDays(3).ToString("O"), Ct).ToListAsync(Ct);
+
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#3").ShouldSatisfyAllConditions(
+            i => i.Status.ShouldNotStartWith("PVT_1:"), i => i.Sprint.ShouldBeNull(), i => i.Points.ShouldBeNull());
+    }
+
+    [Fact]
+    public async Task A_partial_board_answer_fails_the_read_unless_it_is_in_an_item_the_read_skips()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#5", "Todo", null, null, T0, archived: true);
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#1", "Todo", null, null, T0);
+        var scope = new ReadScope { Projects = ["100"], Board = "PVT_1" };
+        static JsonObject Error(int item) => new()
+        {
+            ["type"] = "MAX_NODE_LIMIT_EXCEEDED",
+            ["message"] = "Too many values",
+            ["path"] = new JsonArray("node", "items", "nodes", item, "fieldValues"),
+        };
+
+        github.ItemErrors.Add(Error(0));
+        var records = await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct);
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#1").Status.ShouldBe("PVT_1:todo", "the error is in the archived item");
+
+        github.ItemErrors[0] = Error(1);
+        (await Should.ThrowAsync<SourceAccessException>(async () => await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct)))
+            .Message.ShouldContain("only part of the project Roadmap");
+    }
+
+    [Fact]
+    public async Task Describe_lists_the_token_users_own_boards()
+    {
+        var github = WithBoard();
+        github.Viewer = FakeGitHub.User(9, "mia");
+        github.AddBoard("mia", "PVT_9", "Mine too", "Todo");
+
+        (await Connect(github).DescribeAsync(Ct)).Boards.Select(b => b.Id).ShouldContain("PVT_9", "mia owns no repository, but her board can hold acme's issues");
+    }
+
+    [Fact]
     public async Task Boards_are_extra_a_token_without_project_scope_still_describes_and_a_limit_waits()
     {
         var github = WithBoard();

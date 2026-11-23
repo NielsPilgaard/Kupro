@@ -184,10 +184,11 @@ function question(b) {
     <span class="sm mute">The one you don't pick becomes a field.</span></div>`;
 }
 function answer(id, c) { const b = boards.find(x => x.id === id); b.pick.state = c; b.unsure = null; render(); }
+function pickColumn(id, key, c) { const b = boards.find(x => x.id === id); b.pick[key] = c; if (b.unsure === key) b.unsure = null; render(); }
 function edit(b) {
   return '<dl class="kv">' + targets.map(([key, label, types]) => {
     const fits = b.cols.filter(c => types.includes(c.type));
-    return `<dt>${label}</dt><dd>${fits.length ? `<select aria-label="${label} on ${esc(b.name)}" onchange="boards.find(x=>x.id==='${b.id}').pick['${key}']=this.value;render()">
+    return `<dt>${label}</dt><dd>${fits.length ? `<select aria-label="${label} on ${esc(b.name)}" onchange="pickColumn('${b.id}','${key}',this.value)">
       <option value="">No column</option>${fits.map(c => `<option value="${c.id}"${c.id === b.pick[key] ? ' selected' : ''}>${esc(c.t)} (${esc(sample(b, c))})</option>`).join('')}</select>` : '<span class="sm mute">No ' + types.map(t => typeName[t]).join(' or ') + ' column on this board</span>'}</dd>`;
   }).join('') + '</dl>';
 }

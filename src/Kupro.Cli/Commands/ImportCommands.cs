@@ -143,12 +143,20 @@ internal static class ImportCommands
             var connector = Connector(kind, name, http, c.Get(url), trelloKey, token);
             var wanted = c.Get(projects) ?? [];
             var file = c.Get(output) ?? new FileInfo(Path.Combine(Path.GetTempPath(), $"kupro-{kind}-{Guid.NewGuid():N}.zip"));
+
+            // --out is written beside itself and moved over it once the read is done, so a failed read keeps an earlier snapshot.
+            var part = c.Get(output) is null ? file : new FileInfo($"{file.FullName}.{Guid.NewGuid():N}.part");
             try
             {
                 int missing;
-                await using (var zip = file.Create())
+                await using (var zip = part.Create())
                 {
                     missing = await connector.WriteSnapshotAsync(zip, d => Scope(d, wanted, c.Get(board), c.Get(columns) ?? []), cursor: null, includeFiles: true, TimeProvider.System, ct);
+                }
+
+                if (part != file)
+                {
+                    part.MoveTo(file.FullName, overwrite: true);
                 }
 
                 if (missing > 0)
@@ -158,18 +166,18 @@ internal static class ImportCommands
             }
             catch (SourceAccessException e)
             {
-                file.Delete();
+                part.Delete();
                 throw new CliException($"{name} refused the read: {e.Message}");
             }
             catch (HttpRequestException e)
             {
                 // Not Kupro: the source is what this machine couldn't reach.
-                file.Delete();
+                part.Delete();
                 throw new CliException($"Can't reach {name}: {e.Message}");
             }
             catch
             {
-                file.Delete();
+                part.Delete();
                 throw;
             }
 
@@ -256,8 +264,15 @@ internal static class ImportCommands
             }
 
             var (boardName, role, columnName) = (pick[..colon].Trim(), pick[(colon + 1)..equals].Trim(), pick[(equals + 1)..].Trim());
-            var project = description.Projects.FirstOrDefault(p => p.Id == boardName || string.Equals(p.Name, boardName, StringComparison.OrdinalIgnoreCase))
-                ?? throw new CliException($"--column {pick}: there is no board {boardName}.");
+            var boards = description.Projects.Where(p => p.Id == boardName).ToList() is [_] byBoardId
+                ? byBoardId
+                : description.Projects.Where(p => string.Equals(p.Name, boardName, StringComparison.OrdinalIgnoreCase)).ToList();
+            var project = boards switch
+            {
+                [var one] => one,
+                [] => throw new CliException($"--column {pick}: there is no board {boardName}."),
+                _ => throw new CliException($"--column {pick}: {boards.Count} boards are named {boardName}: give its ID ({string.Join(", ", boards.Select(p => p.Id))})."),
+            };
             var fits = description.Columns.Where(c => c.Project == project.Id && c.Roles.Contains(role)).ToList();
             if (fits.Count == 0)
             {

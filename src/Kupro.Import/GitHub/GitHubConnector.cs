@@ -406,7 +406,10 @@ public sealed class GitHubConnector : ISourceConnector
             }
         }
 
-        var (boards, boardStatuses) = await GitHubBoards.DescribeAsync(_client, repos.Select(r => r.Owner.Login).Distinct(StringComparer.OrdinalIgnoreCase), ct);
+        // The token's own boards can hold issues of repositories it reaches through an organisation.
+        var viewer = (await _client.TryGetAsync("user", GitHubJson.Default.GitHubUser, ct))?.Login;
+        var owners = repos.Select(r => r.Owner.Login).Append(viewer).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase);
+        var (boards, boardStatuses) = await GitHubBoards.DescribeAsync(_client, owners, ct);
 
         _catalog = new Catalog(repos, new SourceDescription
         {

@@ -84,6 +84,31 @@ public sealed class MondayConnectorTests
     }
 
     [Fact]
+    public async Task A_label_is_done_only_when_a_picked_status_column_says_so()
+    {
+        var monday = WithBugs(Sample());
+        // Severity shares Fixed with Workflow, but doesn't call it done.
+        monday.Boards.Single(b => (string?)b["id"] == "14")["columns"]![1] = Column("severity", "Severity", "status", """{"labels":{"0":"Critical","1":"Minor","2":"Fixed"}}""");
+
+        async Task<string?> FixedCategory(string column)
+        {
+            var scope = new ReadScope
+            {
+                Projects = ["14"],
+                Columns = new Dictionary<string, IReadOnlyDictionary<string, string>> { ["14"] = new Dictionary<string, string> { ["status"] = column } },
+            };
+            var stream = new MemoryStream();
+            await Connect(monday).WriteSnapshotAsync(stream, scope, null, includeFiles: false, TimeProvider.System, Ct);
+            stream.Position = 0;
+            await using var snapshot = await SnapshotReader.OpenAsync(stream, Ct);
+            return snapshot.Header.Statuses.Single(s => s.Id == "Fixed").Category;
+        }
+
+        (await FixedCategory("severity")).ShouldBeNull("Workflow, which calls it done, isn't picked");
+        (await FixedCategory("workflow")).ShouldBe("done");
+    }
+
+    [Fact]
     public async Task A_pick_of_a_column_that_cant_fill_the_role_fails_the_read()
     {
         var scope = new ReadScope { Columns = new Dictionary<string, IReadOnlyDictionary<string, string>> { ["14"] = new Dictionary<string, string> { ["status"] = "hours" } } };

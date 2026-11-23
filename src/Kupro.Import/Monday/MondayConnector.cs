@@ -517,6 +517,7 @@ public sealed class MondayConnector : ISourceConnector
                 Role = guessed.FirstOrDefault(r => r.Value == c.Id).Key,
                 Ask = guessed.Any(r => r.Value == c.Id && asked.Contains(r.Key)),
                 Labels = labels.GetValueOrDefault(c.Id) ?? [],
+                Done = [.. done.Where(d => d.Item1 == id && d.Item2 == c.Id).Select(d => d.Item3)],
                 Field = board.Eligible.ContainsKey(c.Id) ? fieldIds[(id, c.Id)] : null,
             }));
             return board.Picked(null);

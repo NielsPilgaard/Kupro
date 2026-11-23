@@ -161,11 +161,19 @@ internal sealed class GitHubClient
         var now = _throttle.Now;
         if (graphql && response.StatusCode == HttpStatusCode.OK)
         {
-            // GraphQL answers its primary limit with 200 and a RATE_LIMITED error.
-            return SourceThrottle.Header(response, "x-ratelimit-remaining") == "0"
-                && (await response.Content.ReadAsStringAsync(ct)).Contains("\"RATE_LIMITED\"", StringComparison.Ordinal)
-                ? Reset(response, now)
-                : null;
+            // GraphQL answers its primary limit, and can answer a secondary limit, with 200.
+            var content = await response.Content.ReadAsStringAsync(ct);
+            if (SourceThrottle.Header(response, "x-ratelimit-remaining") == "0" && content.Contains("\"RATE_LIMITED\"", StringComparison.Ordinal))
+            {
+                return Reset(response, now);
+            }
+
+            if (response.Headers.RetryAfter is { } wait)
+            {
+                return now + (wait.Delta ?? (wait.Date - now) ?? TimeSpan.FromMinutes(1));
+            }
+
+            return content.Contains("secondary rate limit", StringComparison.OrdinalIgnoreCase) ? now.AddMinutes(1) : null;
         }
 
         if (response.StatusCode is not (HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests))

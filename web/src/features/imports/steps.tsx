@@ -65,12 +65,15 @@ export function ProjectsStep({ mapping, update, description, projects }: StepPro
   const { t } = useTranslation();
   const scope = mapping.scope?.projects ?? [];
   const all = description.projects ?? [];
-  const inScope = (id: string) => scope.length === 0 || scope.includes(id);
+  // An empty scope means every board that isn't archived, as boardsInScope reads it.
+  const defaultIds = all.filter((p) => !p.archived).map((p) => p.id);
+  const inScope = (id: string) => (scope.length === 0 ? defaultIds.includes(id) : scope.includes(id));
   const toggle = (id: string, on: boolean) =>
     update((m) => {
       const current = all.map((p) => p.id).filter(inScope);
       const next = on ? [...current, id] : current.filter((x) => x !== id);
-      return { ...m, scope: { ...m.scope, projects: next.length === all.length ? [] : next } };
+      const isDefault = next.length === defaultIds.length && defaultIds.every((x) => next.includes(x));
+      return { ...m, scope: { ...m.scope, projects: isDefault ? [] : next } };
     });
   const target = (id: string) => {
     const p = all.find((x) => x.id === id)!;
