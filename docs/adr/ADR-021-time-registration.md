@@ -95,6 +95,9 @@ approval flows stay out (task 034).
 
 - An entry is locked while its issue is Done or Canceled: it can't be edited or deleted, and no entry can be added to
   that issue. Reopening the issue unlocks its entries, and the issue's activity log shows who reopened it.
+- The lock starts once the state change is saved, not before. One save can set an issue to Done or Canceled and log
+  time on it: both commit in one transaction, or neither does. Closing a work item never needs a reopen to log the
+  last hours (Azure DevOps blocks this).
 - Imports are exempt: entries imported on a closed issue are created locked.
 
 ### Reliability
@@ -224,7 +227,8 @@ has only a completed-work total per item, which stays in the details block.
   worklogs. With the MCP merge: ADR-001 IMP-003's tool list, the agent skill (`src/Kupro.Cli/Skill/kupro/SKILL.md`),
   `/llms.txt` and the MCP tests. When it ships: the privacy policy and DPA lines, the landing page and pricing FAQ, and
   the switch pages' "No time tracking" line.
-- **IMP-003**: The lock is checked in the feature service from the issue's current state, not stored on the entry.
+- **IMP-003**: The lock is checked in the feature service from the issue's saved state, not stored on the entry. The
+  close-and-log save is one request (log time with a target state), so the service applies both in one transaction.
 - **IMP-004**: A test holds the latency budget for a week's timesheet with a year of entries for 50 members.
 - **IMP-005**: Danish term "tidsregistrering", to add to the [branding.md](../branding.md) glossary.
 

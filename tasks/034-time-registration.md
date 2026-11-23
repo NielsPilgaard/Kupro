@@ -54,15 +54,17 @@ seat, and an MCP `time` tool in place of a merged `relations` tool.
   note.
 - Validation: an issue is required, minutes 1–1440 per entry, a day's total at most 24 h, date not later than today,
   and no add, edit or delete while the issue is Done or Canceled.
+- Close and log in one save: logging time takes an optional target state (Done or Canceled). The entry and the state
+  change commit in one transaction, and the lock applies after it (ADR-021 Locking).
 - Index `(workspace_id, member_id, date)`; a week's timesheet is one query ([ADR-010](../docs/adr/ADR-010-performance-budget.md)).
 - Activity: logging time on an issue is not an activity feed item (it would flood the feed).
 
 ### CLI and MCP
 
-- `kupro time log <duration> <KEY> [--date] [--note]` (`1h30m`, `90m`, `1.5h`), `kupro time week [--date]`,
+- `kupro time log <duration> <KEY> [--date] [--note] [--done|--canceled]` (`1h30m`, `90m`, `1.5h`), `kupro time week [--date]`,
   `kupro time edit|delete <id>`; Owners: `kupro time list --from --to [--member]` and
   `kupro time export --from --to [--member] [--format csv|json]`.
-- MCP: a `time` tool (`log | edit | delete | week`) and `relate_issues`/`unrelate_issues` merged into `relations`
+- MCP: a `time` tool (`log | edit | delete | week`; `log` takes an optional `state`) and `relate_issues`/`unrelate_issues` merged into `relations`
   (ADR-021); `get_issue` gains the caller's time. Export stays off MCP, an opt-out in the parity test.
 
 ### Web
@@ -71,6 +73,7 @@ Prototypes first ([AGENTS.md](../AGENTS.md) rule 11), in [prototypes/time/](../p
 02 day journal, 03 log where you work. **Pick: waiting on the owner.** Each covers:
 
 - **Log time on an issue**: a field in the issue detail and a command palette action ("Log time", shortcut).
+  Setting the state to Done or Canceled offers "Log time and mark Done" in the same dialog, saved together.
 - **Week timesheet**: rows per issue (add an issue to the week), columns per weekday, day totals, locked cells for
   resolved issues, keyboard entry.
 - **Owner's export**: pick people and a period, download CSV.
@@ -95,6 +98,7 @@ EN and DA strings; the DA term is "tidsregistrering" (add it to the [branding.md
 - [ ] Legal reading confirmed (manual step), and the ADR notes what the confirmation changed.
 - [ ] A member logs time on an issue in the web app, CLI and MCP, and sees it in their week.
 - [ ] Entries on a Done or Canceled issue can't be added, edited or deleted; reopening the issue unlocks them.
+- [ ] One save marks an issue Done and logs time on it, in the web app, CLI and MCP; if either fails, neither is saved.
 - [ ] An edit keeps the old value in the entry's history.
 - [ ] An Owner exports a month for all members as CSV; a Member can't.
 - [ ] Entries of a member who left are kept and still exported.
