@@ -286,6 +286,7 @@ table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px s
 
 <div class="toast" id="toast" role="status"></div>
 <script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const DAYS=['Mon 23','Tue 24','Wed 25','Thu 26','Fri 27','Sat 28','Sun 29'];
 const TODAY=3; // Thursday 26 November 2026
@@ -333,7 +334,7 @@ function renderIssue(){const i=ISSUES[cur];$('#iKey').textContent=cur;$('#iTitle
  if(locked(cur))h+=`<div class="lockline"><span aria-hidden="true">🔒</span><span>Time is locked because the issue is ${i.state}. Reopen the issue to change it.</span></div><div class="row" style="margin-top:8px"><button class="btn" onclick="setState('In Progress')">Reopen</button></div>`;
  else h+=`<div class="row" style="margin-top:10px"><button class="btn" onclick="openLog('${cur}')">Log time</button><span class="key"><kbd>T</kbd></span></div>`;
  $('#iTime').innerHTML=h;
- $('#iMine').innerHTML=E.filter(e=>e.k===cur).sort((a,b)=>b.d-a.d).map(e=>`<tr><td>${DAYS[e.d]} Nov</td><td class="n mono">${fmt(e.m)}</td><td class="mute">${e.n||''}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">No time logged by you yet.</td></tr>'}
+ $('#iMine').innerHTML=E.filter(e=>e.k===cur).sort((a,b)=>b.d-a.d).map(e=>`<tr><td>${DAYS[e.d]} Nov</td><td class="n mono">${fmt(e.m)}</td><td class="mute">${esc(e.n)}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">No time logged by you yet.</td></tr>'}
 function pickIssue(k){cur=k;renderIssue()}
 // Log dialog (shared)
 let logKey=null,logDay=TODAY,resolve=null;
@@ -370,8 +371,8 @@ function renderMine(){
  $('#jStrip').innerHTML=DAYS.map((n,d)=>{const m=dayTotal(d);return `<button role="tab" aria-selected="${d===sel}" ${d>TODAY?'disabled':''} onclick="sel=${d};renderMine()"><div class="d">${d===TODAY?'Today':n}</div><div class="m">${fmt(m)||'–'}</div><div class="bar"><i style="width:${m/Math.max(1,...DAYS.map((_,i)=>dayTotal(i)))*100}%"></i></div></button>`}).join('');
  $('#jDay').textContent=(sel===TODAY?'Today, ':'')+DAYS[sel]+' November';$('#jTot').textContent=fmt(dayTotal(sel))||'0m';
  const es=E.filter(e=>e.d===sel);
- $('#jList').innerHTML=es.map(e=>{const lk=locked(e.k);return `<li class="${lk?'lk':''}"><span class="dur">${fmt(e.m)}</span><span><span class="key">${e.k}</span> ${ISSUES[e.k].t}${e.n?` <span class="mute">· ${e.n}</span>`:''}</span><span>${lk?'<span class="chip lock" title="Reopen the issue to change it">🔒 '+ISSUES[e.k].state+'</span>':`<button class="btn ghost" onclick="edit(${e.id})">Edit</button><button class="btn ghost" onclick="del(${e.id})">Delete</button>`}</span></li>`}).join('')||'<li><span></span><span class="mute">Nothing logged on this day.</span><span></span></li>';
- $('#qHint').innerHTML=`Duration, issue key, then an optional note. Leave out the key to use the last issue: <span class="key">${last}</span>.`}
+ $('#jList').innerHTML=es.map(e=>{const lk=locked(e.k);return `<li class="${lk?'lk':''}"><span class="dur">${fmt(e.m)}</span><span><span class="key">${e.k}</span> ${ISSUES[e.k].t}${e.n?` <span class="mute">· ${esc(e.n)}</span>`:''}</span><span>${lk?'<span class="chip lock" title="Reopen the issue to change it">🔒 '+ISSUES[e.k].state+'</span>':`<button class="btn ghost" onclick="edit(${e.id})">Edit</button><button class="btn ghost" onclick="del(${e.id})">Delete</button>`}</span></li>`}).join('')||'<li><span></span><span class="mute">Nothing logged on this day.</span><span></span></li>';
+ $('#qHint').innerHTML=`Duration, issue key, then an optional note. Leave out the key to use the last issue: <span class="key">${esc(last)}</span>.`}
 function quick(){const s=$('#qIn').value.trim();const m=s.match(/^(\S+)\s*(?:([A-Za-z]+-\d+)\s*)?(.*)$/);if(!m)return;
  const min=parse(m[1]),k=(m[2]||last).toUpperCase();
  if(!min||isNaN(min))return toast('Start with a duration: 1h30, 90m or 1,5');

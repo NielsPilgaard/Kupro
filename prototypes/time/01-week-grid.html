@@ -328,6 +328,7 @@ main:has(#mytime.on){max-width:1440px}
 
 <div class="toast" id="toast" role="status"></div>
 <script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const DAYS=['Mon 23','Tue 24','Wed 25','Thu 26','Fri 27','Sat 28','Sun 29'];
 const TODAY=3; // Thursday 26 November 2026
@@ -375,7 +376,7 @@ function renderIssue(){const i=ISSUES[cur];$('#iKey').textContent=cur;$('#iTitle
  if(locked(cur))h+=`<div class="lockline"><span aria-hidden="true">🔒</span><span>Time is locked because the issue is ${i.state}. Reopen the issue to change it.</span></div><div class="row" style="margin-top:8px"><button class="btn" onclick="setState('In Progress')">Reopen</button></div>`;
  else h+=`<div class="row" style="margin-top:10px"><button class="btn" onclick="openLog('${cur}')">Log time</button><span class="key"><kbd>T</kbd></span></div>`;
  $('#iTime').innerHTML=h;
- $('#iMine').innerHTML=E.filter(e=>e.k===cur).sort((a,b)=>b.d-a.d).map(e=>`<tr><td>${DAYS[e.d]} Nov</td><td class="n mono">${fmt(e.m)}</td><td class="mute">${e.n||''}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">No time logged by you yet.</td></tr>'}
+ $('#iMine').innerHTML=E.filter(e=>e.k===cur).sort((a,b)=>b.d-a.d).map(e=>`<tr><td>${DAYS[e.d]} Nov</td><td class="n mono">${fmt(e.m)}</td><td class="mute">${esc(e.n)}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">No time logged by you yet.</td></tr>'}
 function pickIssue(k){cur=k;renderIssue()}
 // Log dialog (shared)
 let logKey=null,logDay=TODAY,resolve=null;
@@ -408,7 +409,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$$('.pop').forEach(
 
 
 const PROJ={'KUP-142':'Payments','KUP-147':'Payments','KUP-120':'Payments','KUP-138':'Payments','KUP-150':'Operations','KUP-9':'Operations'};
-let rows=['KUP-142','KUP-147','KUP-150','KUP-9','KUP-138'],selK='KUP-142',selD=TODAY;
+let refocus=null,rows=['KUP-142','KUP-147','KUP-150','KUP-9','KUP-138'],selK='KUP-142',selD=TODAY;
 const dc=d=>(d===0?' mon':'')+(d===5?' sat':'')+(d>4?' we':'')+(d===TODAY?' today':'');
 const cellM=(k,d)=>E.filter(e=>e.k===k&&e.d===d).reduce((a,e)=>a+e.m,0);
 function rowHtml(k){const lk=locked(k);
@@ -432,8 +433,8 @@ function renderMine(){
 function sel(k,d){selK=k;selD=d;renderCell()}
 function renderCell(){const k=selK,d=selD,es=E.filter(e=>e.k===k&&e.d===d),lk=locked(k);
  $('#gCell').innerHTML=`<h2><span class="key">${k}</span> ${ISSUES[k].t}</h2><div class="mute">${DAYS[d]} November · ${fmt(cellM(k,d))||'no time'}</div>
- <ul class="ent">${es.map(e=>`<li><span class="mono" style="min-width:60px">${fmt(e.m)}</span><span class="mute">${e.n||'No note'}</span></li>`).join('')}</ul>
- ${lk?'<div class="lockline"><span aria-hidden="true">🔒</span><span>Locked: the issue is '+ISSUES[k].state+'. Reopen it to change its time.</span></div>':es.length?`<label class="hint" for="gNote">Note for this day</label><div class="row"><input class="f" id="gNote" style="flex:1" value="${es.map(e=>e.n).filter(Boolean).join('; ')}" onchange="setNote(this.value)"></div>`:'<p class="hint">Type a duration in the cell, then add a note here.</p>'}`}
+ <ul class="ent">${es.map(e=>`<li><span class="mono" style="min-width:60px">${fmt(e.m)}</span><span class="mute">${e.n?esc(e.n):'No note'}</span></li>`).join('')}</ul>
+ ${lk?'<div class="lockline"><span aria-hidden="true">🔒</span><span>Locked: the issue is '+ISSUES[k].state+'. Reopen it to change its time.</span></div>':es.length?`<label class="hint" for="gNote">Note for this day</label><div class="row"><input class="f" id="gNote" style="flex:1" value="${esc(es.map(e=>e.n).filter(Boolean).join('; '))}" onchange="setNote(this.value)"></div>`:'<p class="hint">Type a duration in the cell, then add a note here.</p>'}`}
 function setNote(v){const es=E.filter(e=>e.k===selK&&e.d===selD);if(!es.length)return;es.forEach((e,i)=>e.n=i?'':v);toast('Note saved');renderMine()}
 function cell(i){const k=i.dataset.k,d=+i.dataset.d,m=parse(i.value);
  if(isNaN(m)||m>1440){toast('Write a duration like 1h30, 90m or 1,5');renderMine();return}
@@ -441,11 +442,11 @@ function cell(i){const k=i.dataset.k,d=+i.dataset.d,m=parse(i.value);
  if(other+m>1440){toast('That day would pass 24 hours');renderMine();return}
  const note=E.filter(e=>e.k===k&&e.d===d).map(e=>e.n).filter(Boolean).join('; ');
  E=E.filter(e=>!(e.k===k&&e.d===d));if(m)E.push({id:nextId++,k,d,m,n:note});renderIssue();renderTeam();renderBoard();
- const f=document.activeElement;renderMine();if(f&&f.dataset&&f.dataset.k){const n=$(`input[data-k="${f.dataset.k}"][data-d="${f.dataset.d}"]`);n&&n.focus()}}
+ const f=document.activeElement,to=refocus||(f&&f.dataset&&f.dataset.k?f.dataset:null);renderMine();if(to){const n=$(`input[data-k="${to.k}"][data-d="${to.d}"]`);n&&n.focus()}}
 function nav(e,i){const k=i.dataset.k,d=+i.dataset.d;const ins=$$('#gBody input:not(:disabled)');const col=ins.filter(x=>+x.dataset.d===d);const r=col.indexOf(i);let t;
  if(e.key==='ArrowDown')t=col[r+1];
  if(e.key==='ArrowUp')t=col[r-1];
- if(e.key==='Enter'){i.blur();i.dispatchEvent(new Event('change'))}
+ if(e.key==='Enter'){refocus={k,d};i.blur();i.dispatchEvent(new Event('change'));refocus=null}
  if(e.key==='ArrowRight'&&i.selectionStart===i.value.length)t=$(`input[data-k="${k}"][data-d="${d+1}"]:not(:disabled)`);
  if(e.key==='ArrowLeft'&&i.selectionStart===0)t=$(`input[data-k="${k}"][data-d="${d-1}"]:not(:disabled)`);
  if(t){e.preventDefault();t.focus();t.select()}}
