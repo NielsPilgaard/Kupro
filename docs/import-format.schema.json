@@ -56,6 +56,7 @@
         "name": { "type": "string" },
         "url": { "type": ["string", "null"] },
         "process": { "type": ["string", "null"], "description": "Process or template name, e.g. Azure DevOps Agile." },
+        "archived": { "type": "boolean", "description": "Archived in the source: read only when the owner names it." },
         "capacity": {
           "type": ["array", "null"],
           "description": "Headcount steps for the delivery plan; used for a project the import creates.",
@@ -99,7 +100,8 @@
         "name": { "type": "string" },
         "category": { "type": ["string", "null"], "description": "The source's own status category." },
         "itemType": { "type": ["string", "null"] },
-        "project": { "type": ["string", "null"] }
+        "project": { "type": ["string", "null"] },
+        "board": { "type": ["string", "null"], "description": "Set when the status comes from a board the read took fields from (a GitHub project)." }
       },
       "required": ["id", "name"]
     },

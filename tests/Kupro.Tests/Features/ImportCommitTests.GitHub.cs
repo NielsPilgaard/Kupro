@@ -7,13 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kupro.Tests.Features;
 
-/// <summary>A GitHub repository read by the server end to end (task 027): numbers kept, sub-issues fit, close reasons, aliases.</summary>
+/// <summary>
+/// A GitHub repository read by the server end to end (task 027): numbers kept, sub-issues fit, close reasons, aliases, and
+/// a Projects (v2) board's status, sprint and estimate.
+/// </summary>
 public sealed partial class ImportCommitTests
 {
     [Fact]
     public async Task A_github_import_keeps_issue_numbers_and_answers_to_owner_repo_references()
     {
-        var github = GitHubConnectorTests.Sample();
+        var github = GitHubConnectorTests.WithBoard();
         github.Issues["acme/api"].Single(i => (int)i["number"]! == 1)["body"] = "Pay twice: #2, acme/api#3";
         var connector = new GitHubConnector(new HttpClient(github), null, Infrastructure.FakeGitHub.Token);
         connector.Client.Delay = (_, _) => Task.CompletedTask;
@@ -22,7 +25,7 @@ public sealed partial class ImportCommitTests
         var created = await WithImportsAsync(s => s.CreateAsync(new CreateImportRequest(FakeKind, Token: "good"), Ct));
         var import = created.Value!.Id;
         var stream = new MemoryStream();
-        await connector.WriteSnapshotAsync(stream, new ReadScope { Projects = ["100"] }, null, includeFiles: false, TimeProvider.System, Ct);
+        await connector.WriteSnapshotAsync(stream, new ReadScope { Projects = ["100"], Board = "PVT_1" }, null, includeFiles: false, TimeProvider.System, Ct);
         stream.Position = 0;
         ImportMapping mapping;
         await using (var reader = await SnapshotReader.OpenAsync(stream, Ct))
@@ -30,7 +33,7 @@ public sealed partial class ImportCommitTests
             mapping = ImportMappingDefaults.Propose(reader.Header, []);
         }
 
-        mapping = mapping with { Scope = mapping.Scope with { Projects = ["100"] } };
+        mapping = mapping with { Scope = mapping.Scope with { Projects = ["100"], Board = "PVT_1" }, HoursPerPoint = 2 };
         await WithDbAsync(async db =>
             await db.WorkspaceImports.Where(i => i.Id == import).ExecuteUpdateAsync(s => s.SetProperty(i => i.Mapping, mapping.ToJson()), Ct));
 
@@ -41,6 +44,9 @@ public sealed partial class ImportCommitTests
         var feature = await IssueAsync("API-1");
         feature.Type.ShouldBe(IssueType.Feature);
         feature.Description!.ShouldStartWith("Pay twice: API-2, API-3");
+        feature.State.ShouldBe(IssueState.InProgress, "its board status");
+        feature.Effort.ShouldBe(10, "estimate 5 at 2 hours a point");
+        feature.SprintId.ShouldNotBeNull();
         var bug = await IssueAsync("API-2");
         bug.Title.ShouldBe("Pay twice fails");
         bug.Parent!.Key.ShouldBe("API-1");

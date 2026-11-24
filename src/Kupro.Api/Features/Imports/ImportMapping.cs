@@ -44,6 +44,16 @@ public sealed record ImportScope
 
     /// <summary>Source types left out entirely, such as Azure DevOps test plans and cases.</summary>
     public IReadOnlyList<string> SkipTypes { get; init; } = [];
+
+    /// <summary>A board whose status, sprint and effort fields refine the items (a GitHub project); null uses none.</summary>
+    public string? Board { get; init; }
+
+    /// <summary>
+    /// Per project, the column the owner picked for a role (status, people, timeline, date, estimate, points; "" for
+    /// none), from the Columns step (Monday). A role left out keeps the connector's pick.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Columns { get; init; } =
+        new Dictionary<string, IReadOnlyDictionary<string, string>>();
 }
 
 /// <summary>

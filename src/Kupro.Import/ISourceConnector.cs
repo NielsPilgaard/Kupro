@@ -41,6 +41,10 @@ public static class SourceConnectorExtensions
     {
         var description = await connector.DescribeAsync(ct);
         var scope = scopeFor(description);
+
+        // Statuses of boards not picked never occur in the read, so the snapshot leaves them out.
+        description = description with { Statuses = [.. description.Statuses.Where(s => s.Board is null || s.Board == scope.Board)] };
+        description = Picked(description, scope);
         await using var writer = new SnapshotWriter(output, description) { Partial = cursor is not null };
         var missing = 0;
         await foreach (var record in connector.ReadAsync(scope, cursor, ct))
@@ -73,5 +77,47 @@ public static class SourceConnectorExtensions
 
         await writer.CompleteAsync(time.GetUtcNow(), ct);
         return missing;
+    }
+
+    /// <summary>
+    /// The description as the picked columns read it: a status column not picked gives no statuses, and a column
+    /// that fills a role on every board is no field.
+    /// </summary>
+    internal static SourceDescription Picked(SourceDescription description, ReadScope scope)
+    {
+        if (description.Columns.Count == 0)
+        {
+            return description;
+        }
+
+        var picked = description.Columns.GroupBy(c => c.Project)
+            .SelectMany(g => ColumnRoles.Picked(g, g.Key, scope.Columns).Select(r => (Project: g.Key, Role: r.Key, Column: r.Value)))
+            .ToList();
+        var roles = picked.Select(p => (p.Project, p.Column)).ToHashSet();
+        // Only boards the read returns say what is done: the picked projects, or with none picked the active ones. A
+        // sub-item board is no project: it counts when its parent board is read, or always when the source names none.
+        var read = scope.Projects.Count > 0
+            ? scope.Projects.ToHashSet(StringComparer.Ordinal)
+            : description.Projects.Where(p => !p.Archived).Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var projects = description.Projects.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var parents = description.Columns.Where(c => c.Parent is not null).GroupBy(c => c.Project, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Parent!, StringComparer.Ordinal);
+        bool Reads(string project) => read.Contains(project)
+            || (!projects.Contains(project) && (!parents.TryGetValue(project, out var parent) || read.Contains(parent)));
+        var statusColumns = picked.Where(p => p.Role == ColumnRoles.Status && Reads(p.Project))
+            .Select(p => (p.Project, p.Column)).ToHashSet();
+        var labels = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
+        var done = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Done).ToHashSet(StringComparer.Ordinal);
+        var listed = description.Columns.SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
+        var fields = description.Columns.Where(c => c.Field is not null && !roles.Contains((c.Project, c.Id))).Select(c => c.Field!).ToHashSet(StringComparer.Ordinal);
+        var columnFields = description.Columns.Select(c => c.Field).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        return description with
+        {
+            // A label is done when a picked status column calls it done, not one left out.
+            Statuses = [.. description.Statuses.Where(s => !listed.Contains(s.Id) || labels.Contains(s.Id))
+                .Select(s => listed.Contains(s.Id) ? s with { Category = done.Contains(s.Id) ? "done" : null } : s)],
+            Fields = [.. description.Fields.Where(f => !columnFields.Contains(f.Id) || fields.Contains(f.Id))],
+            Columns = [],
+        };
     }
 }

@@ -183,6 +183,211 @@ public sealed class GitHubConnectorTests
         mapping.People["3"].Action.ShouldBe(PersonAction.Skip, "a bot");
     }
 
+    [Fact]
+    public async Task Describe_lists_project_boards_with_their_statuses_and_skips_owners_it_may_not_read()
+    {
+        var github = WithBoard();
+        github.BoardsForbidden.Add("sofie");
+
+        var description = await Connect(github).DescribeAsync(Ct);
+
+        description.Boards.Select(b => (b.Id, b.Name, b.Owner)).ShouldBe([("PVT_1", "Roadmap", "acme"), ("PVT_2", "Ideas", "acme")], "paged, and sofie's boards are hidden from the token");
+        description.Statuses.Where(s => s.Board == "PVT_1").Select(s => (s.Id, s.Name)).ShouldBe(
+            [("PVT_1:todo", "Todo"), ("PVT_1:in-progress", "In Progress"), ("PVT_1:done", "Done")]);
+    }
+
+    [Fact]
+    public async Task A_picked_board_refines_open_issues_with_its_status_sprint_and_estimate()
+    {
+        var github = WithBoard();
+        var scope = new ReadScope { Projects = ["100"], Board = "PVT_1" };
+
+        var records = await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct);
+        var items = records.OfType<SourceItem>().ToDictionary(i => i.Key!);
+
+        items["acme/api#1"].Status.ShouldBe("PVT_1:in-progress");
+        items["acme/api#1"].Sprint.ShouldBe("PVT_1:it2");
+        items["acme/api#1"].Points.ShouldBe(5, "the Estimate field, not Budget");
+        items["acme/api#2"].Status.ShouldBe(GitHubConnector.Closed, "a closed issue keeps how it closed");
+        items["acme/api#2"].Sprint.ShouldBe("PVT_1:it1");
+        items["acme/api#5"].Sprint.ShouldBeNull("archived on the board");
+        records.OfType<SourceSprint>().Select(s => (s.Id, s.Name, s.Start, s.End, s.Closed)).ShouldBe(
+        [
+            ("PVT_1:it2", "Sprint 2", new DateOnly(2025, 3, 15), new DateOnly(2025, 3, 28), false),
+            ("PVT_1:it1", "Sprint 1", new DateOnly(2025, 3, 1), new DateOnly(2025, 3, 14), true),
+        ]);
+
+        var stream = new MemoryStream();
+        await Connect(github).WriteSnapshotAsync(stream, scope, null, includeFiles: false, TimeProvider.System, Ct);
+        stream.Position = 0;
+        await using var snapshot = await SnapshotReader.OpenAsync(stream, Ct);
+        snapshot.Header.Statuses.Where(s => s.Board is not null).ShouldAllBe(s => s.Board == "PVT_1", "another board's statuses never occur");
+        var mapping = ImportMappingDefaults.Propose(snapshot.Header, []);
+        (mapping.States["PVT_1:todo"], mapping.States["PVT_1:in-progress"], mapping.States["PVT_1:done"]).ShouldBe((IssueState.Todo, IssueState.InProgress, IssueState.Done));
+
+        var unknown = await Should.ThrowAsync<SourceAccessException>(async () => await Connect(github).ReadAsync(scope with { Board = "PVT_9" }, null, Ct).ToListAsync(Ct));
+        unknown.Message.ShouldContain("no project PVT_9");
+    }
+
+    [Fact]
+    public async Task A_delta_reads_issues_whose_board_values_changed()
+    {
+        var github = WithBoard();
+
+        var records = await Connect(github).ReadAsync(new ReadScope { Projects = ["100"], Board = "PVT_1" }, T0.AddDays(3).ToString("O"), Ct).ToListAsync(Ct);
+
+        records.OfType<SourceItem>().Select(i => i.Key).ShouldBe(["acme/api#2", "acme/api#5", "acme/api#1"], ignoreOrder: true, "#1 moved on the board only");
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#1").Status.ShouldBe("PVT_1:in-progress");
+    }
+
+    [Fact]
+    public async Task A_delta_clears_the_board_values_of_an_item_archived_since_the_cursor()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo", "Done");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#3", "Done", "it2", 8, T0.AddDays(5), archived: true);
+
+        var records = await Connect(github).ReadAsync(new ReadScope { Projects = ["100"], Board = "PVT_1" }, T0.AddDays(3).ToString("O"), Ct).ToListAsync(Ct);
+
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#3").ShouldSatisfyAllConditions(
+            i => i.Status.ShouldNotStartWith("PVT_1:"), i => i.Sprint.ShouldBeNull(), i => i.Points.ShouldBeNull());
+    }
+
+    [Fact]
+    public async Task A_partial_board_answer_fails_the_read_unless_it_is_in_an_item_the_read_skips()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#5", "Todo", null, null, T0, archived: true);
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#1", "Todo", null, null, T0);
+        var scope = new ReadScope { Projects = ["100"], Board = "PVT_1" };
+        static JsonObject Error(int item) => new()
+        {
+            ["type"] = "MAX_NODE_LIMIT_EXCEEDED",
+            ["message"] = "Too many values",
+            ["path"] = new JsonArray("node", "items", "nodes", item, "fieldValues"),
+        };
+
+        github.ItemErrors.Add(Error(0));
+        var records = await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct);
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#1").Status.ShouldBe("PVT_1:todo", "the error is in the archived item");
+
+        github.ItemErrors[0] = Error(1);
+        (await Should.ThrowAsync<SourceAccessException>(async () => await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct)))
+            .Message.ShouldContain("only part of the project Roadmap");
+    }
+
+    [Fact]
+    public async Task Board_content_GitHub_refuses_is_skipped_but_content_it_failed_to_read_fails_the_read()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#1", "Todo", null, null, T0);
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#2", "Todo", null, null, T0);
+        roadmap["items"]![1]!["content"] = null;
+        var scope = new ReadScope { Projects = ["100"], Board = "PVT_1" };
+        static JsonObject Error(string type) => new()
+        {
+            ["type"] = type,
+            ["message"] = type,
+            ["path"] = new JsonArray("node", "items", "nodes", 1, "content"),
+        };
+
+        github.ItemErrors.Add(Error("FORBIDDEN"));
+        var records = await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct);
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#1").Status.ShouldBe("PVT_1:todo", "an issue the token may not see is skipped");
+
+        github.ItemErrors[0] = Error("SERVICE_UNAVAILABLE");
+        (await Should.ThrowAsync<SourceAccessException>(async () => await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct)))
+            .Message.ShouldContain("only part of the project Roadmap");
+    }
+
+    [Fact]
+    public async Task A_board_named_for_a_secondary_limit_is_no_limit()
+    {
+        var github = Sample();
+        github.AddBoard("acme", "PVT_1", "Secondary rate limit fixes", "Todo");
+        var waits = new List<TimeSpan>();
+        var connector = new GitHubConnector(new HttpClient(github), null, FakeGitHub.Token, new Clock { Now = T0 });
+        connector.Client.Delay = (wait, _) =>
+        {
+            waits.Add(wait);
+            return Task.CompletedTask;
+        };
+
+        (await connector.DescribeAsync(Ct)).Boards.Select(b => b.Name).ShouldContain("Secondary rate limit fixes");
+        waits.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Describe_lists_the_token_users_own_boards()
+    {
+        var github = WithBoard();
+        github.Viewer = FakeGitHub.User(9, "mia");
+        github.AddBoard("mia", "PVT_9", "Mine too", "Todo");
+
+        (await Connect(github).DescribeAsync(Ct)).Boards.Select(b => b.Id).ShouldContain("PVT_9", "mia owns no repository, but her board can hold acme's issues");
+    }
+
+    [Fact]
+    public async Task Boards_are_extra_a_token_without_project_scope_still_describes_and_a_limit_waits()
+    {
+        var github = WithBoard();
+        github.GraphQLScopeMissing = true;
+        var description = await Connect(github).DescribeAsync(Ct);
+        description.Boards.ShouldBeEmpty();
+        description.Projects.ShouldNotBeEmpty();
+
+        github.GraphQLScopeMissing = false;
+        github.GraphQLRateLimitOnce = true;
+        var waits = new List<TimeSpan>();
+        var clock = new Clock { Now = T0 };
+        var connector = new GitHubConnector(new HttpClient(github), null, FakeGitHub.Token, clock);
+        connector.Client.Delay = (wait, _) =>
+        {
+            waits.Add(wait);
+            clock.Now += wait;
+            return Task.CompletedTask;
+        };
+        (await connector.DescribeAsync(Ct)).Boards.Count.ShouldBe(3, "the limited query is asked again");
+        waits.ShouldHaveSingleItem().ShouldBeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task A_server_answers_graphql_under_api_and_a_deleted_board_says_so()
+    {
+        var github = new FakeGitHub("https://ghe.acme.example/api/v3/");
+        github.AddRepo(100, "acme", "api");
+        github.AddBoard("acme", "PVT_1", "Roadmap", "Todo");
+        var connector = new GitHubConnector(new HttpClient(github), "https://ghe.acme.example", FakeGitHub.Token);
+        connector.Client.Delay = (_, _) => Task.CompletedTask;
+
+        (await connector.DescribeAsync(Ct)).Boards.ShouldHaveSingleItem();
+        github.Requests.ShouldContain("/api/graphql");
+
+        github.Boards.Clear();
+        var error = await Should.ThrowAsync<SourceAccessException>(async () => await connector.ReadAsync(new ReadScope { Board = "PVT_1" }, null, Ct).ToListAsync(Ct));
+        error.Message.ShouldContain("no longer exists");
+        error.TokenRejected.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// <see cref="Sample"/> with acme's boards Roadmap (#1 In Progress in Sprint 2 with estimate 5, moved on day 5; #2 Todo
+    /// in Sprint 1; #5 archived) and Ideas, and a board of sofie's.
+    /// </summary>
+    internal static FakeGitHub WithBoard()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo", "In Progress", "Done");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#1", "In Progress", "it2", 5, T0.AddDays(5));
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#2", "Todo", "it1", 3, T0.AddDays(1));
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#3", null, null, null, T0);
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#5", "Done", "it2", 8, T0, archived: true);
+        github.AddBoard("acme", "PVT_2", "Ideas", "New");
+        github.AddBoard("sofie", "PVT_3", "Mine", "Todo");
+        return github;
+    }
+
     private sealed class Clock : TimeProvider
     {
         public DateTimeOffset Now { get; set; }
