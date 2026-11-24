@@ -66,7 +66,7 @@ approval flows stay out (task 034).
 | `member_id` | A human member: Owner, Member, or a placeholder from an import ([ADR-019](ADR-019-import.md)). Guests and agents have no entries. |
 | `issue_id` | Required. Any issue type ([ADR-008](ADR-008-work-item-model.md)). |
 | `date` | A calendar date, not a time. Not later than today in Europe/Copenhagen (as in ADR-020). |
-| `minutes` | 1–1440. Entries made in Kupro keep a member's day at 1440 or less (imports: see Import). |
+| `minutes` | At least 1. Entries made in Kupro are 1440 or less and keep a member's day at 1440 or less; imported entries have no upper limit (see Import). |
 | `note` | Optional plain text. |
 | `via` | The activity log's `Surface` (`web`, `cli`, `mcp`, `api`, `import`); the meeting agent doesn't log time. |
 | `created_at`, `updated_at` | |
@@ -117,8 +117,12 @@ Owner sees this history per member, and a member sees the history of their own e
   The privacy policy and the DPA say so (a manual step).
 - Deleting an issue is not possible in Kupro, so an entry never loses its issue. If issue deletion is added, an issue
   with time entries can't be deleted.
-- Kupro has no workspace deletion yet (ADR-016 NEG-004). When it gets one, deleting a workspace with time entries
-  first asks an Owner to export them, and the export page says why. Self-hosters keep their own records.
+- The 5 years bind Kupro only while the workspace exists. The retention duty is the employer's, and the export is
+  their copy: when a workspace is deleted, its entries and their history go with it, as the DPA says for the end of
+  processing. This covers the unpaid trial deletion in [ADR-013](ADR-013-seats-billing.md): the read-only and
+  deletion emails tell an Owner to export time entries first, and the export page says why.
+- Kupro has no deletion on request yet (ADR-016 NEG-004). When it gets one, deleting a workspace with time entries
+  first asks an Owner to export them. Self-hosters keep their own records.
 
 ### Workspace setting
 
@@ -151,8 +155,9 @@ has only a completed-work total per item, which stays in the details block.
 
 - A person mapped to a member or their own placeholder gets entries. Skipped users' worklogs (the shared placeholder,
   [ADR-019](ADR-019-import.md)) stay summed in the details block: one member must not hold several people's time.
-- Imported entries are kept as the source recorded them: the daily cap, the future-date check and the lock don't
-  apply, and the plan warns about days over 24 hours. The same holds when a placeholder is merged into a member and
+- Imported entries are kept as the source recorded them: the 1440-minute entry limit, the daily cap, the future-date
+  check and the lock don't apply, so a 40-hour Jira worklog stays one 2400-minute entry. The plan warns about days
+  over 24 hours. The same holds when a placeholder is merged into a member and
   its entries move.
 
 ## Resolved questions

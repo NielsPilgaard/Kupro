@@ -52,7 +52,7 @@ seat, and an MCP `time` tool in place of a merged `relations` tool.
   each person's share for Owners).
 - Owners: list and export (CSV and JSON) for one or all members and a date range: date, member, minutes, issue key,
   note.
-- Validation: an issue is required, minutes 1–1440 per entry, a day's total at most 24 h, date not later than today,
+- Validation: an issue is required, minutes 1–1440 per entry (imports exempt, ADR-021), a day's total at most 24 h, date not later than today,
   and no add, edit or delete while the issue is Done or Canceled.
 - Close and log in one save: logging time takes an optional target state (Done or Canceled). The entry and the state
   change commit in one transaction, and the lock applies after it (ADR-021 Locking).
@@ -78,7 +78,7 @@ not enough structure"): rows grouped by project with subtotals, locked issues in
 - **Log time on an issue**: a field in the issue detail and a command palette action ("Log time", shortcut).
   Setting the state to Done or Canceled, in the issue or by dragging on the board, asks "Log time and mark Done" in
   one dialog, saved together, when the person has logged no time on the issue.
-- **Week timesheet**: rows per issue (add an issue to the week), columns per weekday, day totals, locked cells for
+- **Week timesheet**: rows per issue (add an issue to the week), columns for all seven days, Monday to Sunday, day totals, locked cells for
   resolved issues, keyboard entry.
 - **Owner's export**: pick people and a period, download CSV.
 - **Settings**: turn it on for the workspace.
