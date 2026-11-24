@@ -94,7 +94,14 @@ public static class SourceConnectorExtensions
             .SelectMany(g => ColumnRoles.Picked(g, g.Key, scope.Columns).Select(r => (Project: g.Key, Role: r.Key, Column: r.Value)))
             .ToList();
         var roles = picked.Select(p => (p.Project, p.Column)).ToHashSet();
-        var statusColumns = picked.Where(p => p.Role == ColumnRoles.Status).Select(p => (p.Project, p.Column)).ToHashSet();
+        // Only boards the read returns say what is done: the picked projects, or with none picked the active ones. A
+        // sub-item board is no project, and which board's items it holds shows only in the read, so its columns stay.
+        var read = scope.Projects.Count > 0
+            ? scope.Projects.ToHashSet(StringComparer.Ordinal)
+            : description.Projects.Where(p => !p.Archived).Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var projects = description.Projects.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var statusColumns = picked.Where(p => p.Role == ColumnRoles.Status && (read.Contains(p.Project) || !projects.Contains(p.Project)))
+            .Select(p => (p.Project, p.Column)).ToHashSet();
         var labels = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);
         var done = description.Columns.Where(c => statusColumns.Contains((c.Project, c.Id))).SelectMany(c => c.Done).ToHashSet(StringComparer.Ordinal);
         var listed = description.Columns.SelectMany(c => c.Labels).ToHashSet(StringComparer.Ordinal);

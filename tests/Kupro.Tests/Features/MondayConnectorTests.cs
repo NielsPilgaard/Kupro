@@ -109,6 +109,29 @@ public sealed class MondayConnectorTests
     }
 
     [Fact]
+    public void A_label_is_done_only_when_a_board_the_read_returns_says_so()
+    {
+        static SourceColumn Status(string board, params string[] done) =>
+            new() { Project = board, Id = "status", Name = "Status", Roles = [ColumnRoles.Status], Role = ColumnRoles.Status, Labels = ["Fixed"], Done = done };
+        var description = new SourceDescription
+        {
+            Source = new SnapshotSource { Kind = SourceKinds.Monday },
+            Projects = [new SourceProject { Id = "1", Name = "Read" }, new SourceProject { Id = "2", Name = "Other" }, new SourceProject { Id = "3", Name = "Old", Archived = true }],
+            Statuses = [new SourceStatus { Id = "Fixed", Name = "Fixed", Category = "done" }],
+            Columns = [Status("1"), Status("2", "Fixed"), Status("3", "Fixed")],
+        };
+        string? Fixed(ReadScope scope) => SourceConnectorExtensions.Picked(description, scope).Statuses.Single().Category;
+
+        Fixed(new ReadScope { Projects = ["1"] }).ShouldBeNull("Other isn't read");
+        Fixed(new ReadScope { Projects = ["1", "2"] }).ShouldBe("done");
+        Fixed(new ReadScope()).ShouldBe("done", "every active board is read");
+        description = description with { Columns = [Status("1"), Status("3", "Fixed")] };
+        Fixed(new ReadScope()).ShouldBeNull("Old is archived, so not read");
+        description = description with { Columns = [Status("1"), Status("12", "Fixed")] };
+        Fixed(new ReadScope { Projects = ["1"] }).ShouldBe("done", "a sub-item board's columns stay");
+    }
+
+    [Fact]
     public async Task A_pick_of_a_column_that_cant_fill_the_role_fails_the_read()
     {
         var scope = new ReadScope { Columns = new Dictionary<string, IReadOnlyDictionary<string, string>> { ["14"] = new Dictionary<string, string> { ["status"] = "hours" } } };
