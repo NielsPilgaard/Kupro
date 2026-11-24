@@ -155,6 +155,18 @@ internal sealed class GitHubClient
             : response.StatusCode is HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable ? SourceThrottle.Backoff(attempt)
             : null, ct);
 
+    private static JsonNode? Parse(string content)
+    {
+        try
+        {
+            return JsonNode.Parse(content);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>When to try again, if the response is a rate limit; null otherwise.</summary>
     private async Task<DateTimeOffset?> RateLimitedAsync(HttpResponseMessage response, bool graphql, CancellationToken ct)
     {
@@ -162,8 +174,10 @@ internal sealed class GitHubClient
         if (graphql && response.StatusCode == HttpStatusCode.OK)
         {
             // GraphQL answers its primary limit, and can answer a secondary limit, with 200.
-            var content = await response.Content.ReadAsStringAsync(ct);
-            if (SourceThrottle.Header(response, "x-ratelimit-remaining") == "0" && content.Contains("\"RATE_LIMITED\"", StringComparison.Ordinal))
+            // Only the error parts: a project title that says "secondary rate limit" is data, not a limit.
+            var answer = Parse(await response.Content.ReadAsStringAsync(ct));
+            var errors = answer?["errors"] as JsonArray ?? [];
+            if (SourceThrottle.Header(response, "x-ratelimit-remaining") == "0" && errors.Any(e => (string?)e?["type"] == "RATE_LIMITED"))
             {
                 return Reset(response, now);
             }
@@ -173,7 +187,8 @@ internal sealed class GitHubClient
                 return now + (wait.Delta ?? (wait.Date - now) ?? TimeSpan.FromMinutes(1));
             }
 
-            return content.Contains("secondary rate limit", StringComparison.OrdinalIgnoreCase) ? now.AddMinutes(1) : null;
+            var messages = errors.Select(e => (string?)e?["message"]).Append(answer?["message"] is JsonValue m ? (string?)m : null);
+            return messages.Any(m => m?.Contains("secondary rate limit", StringComparison.OrdinalIgnoreCase) == true) ? now.AddMinutes(1) : null;
         }
 
         if (response.StatusCode is not (HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests))

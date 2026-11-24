@@ -233,7 +233,12 @@ internal static class GitHubBoards
         && path[3] is JsonValue index && index.GetValueKind() == JsonValueKind.Number
         && index.GetValue<int>() is var i && i >= 0 && i < nodes.Count
         && nodes[i] is JsonObject node
-        && (node["isArchived"]?.GetValue<bool>() == true || node["content"]?["number"] is null);
+        && (node["isArchived"]?.GetValue<bool>() == true
+            // Content read, but no issue: a draft or a pull request.
+            || node["content"] is JsonObject content && content["number"] is null
+            // Content refused: an issue the token may not see, which the REST read can't see either. Any other
+            // failure there (a limit, a timeout) leaves a part out, so it isn't skipped.
+            || node["content"] is null && (string?)path[4] == "content" && (string?)error["type"] is "FORBIDDEN" or "NOT_FOUND");
 
     private static SourceAccessException Partial(SourceBoard board, JsonArray errors) =>
         new($"GitHub answered only part of the project {board.Name} ({errors.Select(e => (string?)e?["message"]).FirstOrDefault() ?? "no reason given"}). Try the import again.");

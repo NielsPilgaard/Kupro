@@ -278,6 +278,48 @@ public sealed class GitHubConnectorTests
     }
 
     [Fact]
+    public async Task Board_content_GitHub_refuses_is_skipped_but_content_it_failed_to_read_fails_the_read()
+    {
+        var github = Sample();
+        var roadmap = github.AddBoard("acme", "PVT_1", "Roadmap", "Todo");
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#1", "Todo", null, null, T0);
+        FakeGitHub.AddBoardItem(roadmap, "acme/api#2", "Todo", null, null, T0);
+        roadmap["items"]![1]!["content"] = null;
+        var scope = new ReadScope { Projects = ["100"], Board = "PVT_1" };
+        static JsonObject Error(string type) => new()
+        {
+            ["type"] = type,
+            ["message"] = type,
+            ["path"] = new JsonArray("node", "items", "nodes", 1, "content"),
+        };
+
+        github.ItemErrors.Add(Error("FORBIDDEN"));
+        var records = await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct);
+        records.OfType<SourceItem>().Single(i => i.Key == "acme/api#1").Status.ShouldBe("PVT_1:todo", "an issue the token may not see is skipped");
+
+        github.ItemErrors[0] = Error("SERVICE_UNAVAILABLE");
+        (await Should.ThrowAsync<SourceAccessException>(async () => await Connect(github).ReadAsync(scope, null, Ct).ToListAsync(Ct)))
+            .Message.ShouldContain("only part of the project Roadmap");
+    }
+
+    [Fact]
+    public async Task A_board_named_for_a_secondary_limit_is_no_limit()
+    {
+        var github = Sample();
+        github.AddBoard("acme", "PVT_1", "Secondary rate limit fixes", "Todo");
+        var waits = new List<TimeSpan>();
+        var connector = new GitHubConnector(new HttpClient(github), null, FakeGitHub.Token, new Clock { Now = T0 });
+        connector.Client.Delay = (wait, _) =>
+        {
+            waits.Add(wait);
+            return Task.CompletedTask;
+        };
+
+        (await connector.DescribeAsync(Ct)).Boards.Select(b => b.Name).ShouldContain("Secondary rate limit fixes");
+        waits.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Describe_lists_the_token_users_own_boards()
     {
         var github = WithBoard();
