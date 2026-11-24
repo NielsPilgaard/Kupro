@@ -665,6 +665,7 @@
     "steps": {
       "source": "Kilde",
       "projects": "Projekter",
+      "columns": "Kolonner",
       "hierarchy": "Hierarki",
       "types": "Typer",
       "states": "Status",
@@ -676,6 +677,7 @@
     "hints": {
       "source": "Forbind, så læser Kupro projekter og typer",
       "projects": "Hvad der importeres, og hvilken nøgle hvert projekt får",
+      "columns": "Hvilken kolonne der er status, ansvarlig, datoer og estimat",
       "hierarchy": "Et valg for teamet: hvilken ende af de fire niveauer foldes",
       "types": "Hver type i kilden til en type i Kupro",
       "states": "Hver status i kilden til en status i Kupro",
@@ -705,7 +707,8 @@
       "fold": "Vælg en af de to muligheder for at fortsætte. Der er ingen standard.",
       "effort": "Angiv timer pr. story point, eller importer de opgaver uden estimat.",
       "projectKeys": "Nøglen {{keys}} er optaget. Vælg en anden nøgle, eller importer ind i det projekt.",
-      "projectsMissing": "Projektet {{keys}} findes ikke længere. Vælg et andet."
+      "projectsMissing": "Projektet {{keys}} findes ikke længere. Vælg et andet.",
+      "columns": "Svar på spørgsmålene om kolonner for at fortsætte."
     },
     "sourceTitle": "Hvor ligger jeres arbejde nu?",
     "sourceLede": "Vælg en kilde, og forbind. De næste trin mapper den, med en levende prøvekørsel til højre.",
@@ -784,6 +787,38 @@
     "projectsTitle": "Projekter",
     "projectsLede": "Vælg hvad der importeres, og hvilken nøgle hvert projekt får. Numrene bevares, hvor kilden har dem.",
     "newProject": "Nyt projekt",
+    "boardLabel": "Status, sprints og estimater fra et GitHub-projekt",
+    "boardNone": "Intet",
+    "boardHint": "Dets Status bestemmer tilstanden for åbne issues, dets Iteration bliver til sprints, og et talfelt som Estimate, Points eller Size bliver til estimatet. Et projekt på en personlig konto kræver et klassisk token med read:project.",
+    "columnsTitle": "Kolonner",
+    "columnsLedeAsk": "Kupro har gættet, hvilken kolonne der er hvert elements status, ansvarlige, datoer og estimat. Hvor den ikke kan se det, spørger den nedenfor: svar for at fortsætte.",
+    "columnsLedeClear": "Kupro har valgt, hvilken kolonne der er hvert elements status, ansvarlige, datoer og estimat. Tjek hver tavle, og ret det, der ser forkert ud.",
+    "columnsQuestions_one": "{{count}} spørgsmål",
+    "columnsQuestions_other": "{{count}} spørgsmål",
+    "columnsClear": "Klar",
+    "columnsChange": "Skift",
+    "columnsDone": "Færdig",
+    "columnsNothing": "Ingen kolonne giver status, ansvarlig, datoer eller estimat: elementerne kommer over med navn, gruppe og felter.",
+    "columnsRest": "De andre kolonner bliver til felter: {{list}}.",
+    "columnNone": "Ingen af dem",
+    "columnNoneOption": "Ingen kolonne",
+    "columnOn": "{{role}} på {{board}}",
+    "askRest": "Dem, du ikke vælger, bliver til felter.",
+    "ask": {
+      "status": "{{board}} har {{count}} statuskolonner. Hvilken viser, hvor langt et element er?",
+      "people": "{{board}} har {{count}} personkolonner. Hvilken viser, hvem der laver elementet?",
+      "timeline": "{{board}} har {{count}} tidslinjer. Hvilken har start- og forfaldsdatoen?",
+      "date": "{{board}} har {{count}} datokolonner. Hvilken er forfaldsdatoen?"
+    },
+    "role": {
+      "status": "Status",
+      "people": "Ansvarlig",
+      "timeline": "Start- og forfaldsdato",
+      "date": "Forfaldsdato",
+      "dateFallback": "Forfaldsdato, når tidslinjen er tom",
+      "estimate": "Estimat (timer)",
+      "points": "Point"
+    },
     "importProject": "Importer {{name}}",
     "intoFor": "Hvor {{name}} skal hen",
     "keyFor": "Nøgle til {{name}}",
@@ -888,6 +923,7 @@
     "skipToReview": "Spring til gennemse",
     "decision": {
       "projects": "Projekter: en nøgle eller et mål skal ses efter",
+      "columns": "Kolonner: hvilken kolonne er hvad",
       "hierarchy": "Hierarki: hvilken ende foldes",
       "effort": "Estimat: timer pr. story point"
     },

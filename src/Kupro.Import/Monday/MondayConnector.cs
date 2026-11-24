@@ -11,9 +11,10 @@ namespace Kupro.Import.Monday;
 /// Monday (task 027, ADR-019): boards as projects, groups as items of their own (Epics by default; the mapping can
 /// skip them or use the <see cref="GroupField"/> as labels), items with their subitems, updates and replies as
 /// comments, files, and the board's activity log as changes. Monday's columns have no fixed meaning, so per board the
-/// first status column is the status, the first people column the assignee, a timeline the dates (the first date column
-/// the due date when the timeline is empty), a numbers column named for an estimate or points the effort, and tags and dropdowns the labels.
-/// Every other column is a field. This class only reads.
+/// status column named so (else the first) is the status, likewise the people column the assignee, a timeline the dates
+/// (a date column the due date when the timeline is empty), a numbers column named for an estimate or points the
+/// effort, and tags and dropdowns the labels. The owner can pick other columns (<see cref="ReadScope.Columns"/>), and is
+/// asked where two columns fit and neither is named. Every other column is a field. This class only reads.
 /// </summary>
 public sealed class MondayConnector : ISourceConnector
 {
@@ -85,6 +86,7 @@ public sealed class MondayConnector : ISourceConnector
             ? catalog.Boards.Where(b => b.State == "active").ToList()
             : [.. scope.Projects.Select(id => catalog.Boards.FirstOrDefault(b => b.Id == id)
                 ?? throw new SourceAccessException($"Monday has no board {id} that this token can see.", HttpStatusCode.NotFound))];
+        boards = [.. boards.Select(b => b.Picked(scope.Columns.GetValueOrDefault(b.Id)))];
 
         foreach (var board in boards)
         {
@@ -199,7 +201,7 @@ public sealed class MondayConnector : ISourceConnector
         var status = Text(board.Status) ?? NoStatus;
         var created = Time(item["created_at"]) ?? catalog.ReadAt;
         var updated = Time(item["updated_at"]) ?? created;
-        resolved = board.Status is not null && catalog.Done.Contains(status) ? updated : null;
+        resolved = board.Status is not null && catalog.Done.Contains((board.Id, board.Status, status)) ? updated : null;
         var timeline = Value(board.Timeline);
         var fields = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         if (parent is null && (string?)item["group"]?["id"] is { } groupId && board.Groups.FirstOrDefault(g => g.Id == groupId) is { } group)
@@ -412,51 +414,99 @@ public sealed class MondayConnector : ISourceConnector
 
         var all = raw.Where(b => (string?)b["state"] != "deleted").ToList();
         var statuses = new Dictionary<string, SourceStatus>(StringComparer.Ordinal) { [NoStatus] = new() { Id = NoStatus, Name = "No status" } };
-        var done = new HashSet<string>(StringComparer.Ordinal);
+        var done = new HashSet<(string, string, string)>();
+        var described = new List<SourceColumn>();
         var fields = new Dictionary<string, SourceField>(StringComparer.Ordinal) { [GroupField] = new() { Id = GroupField, Name = "Group", Kind = FieldKind.Select } };
         var fieldIds = new Dictionary<(string, string), string>();
+
+        // A board's subitems column names its sub-item board, so that board's labels count only when its board is read.
+        var parents = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var parent in all.Where(x => (string?)x["type"] is null or "board"))
+        {
+            foreach (var column in parent["columns"]?.AsArray().OfType<JsonObject>().Where(x => (string?)x["type"] == "subtasks") ?? [])
+            {
+                if ((string?)column["settings_str"] is { } subtasks && JsonNode.Parse(subtasks) is JsonObject settings && settings["boardIds"] is JsonArray ids)
+                {
+                    foreach (var sub in ids.OfType<JsonNode>())
+                    {
+                        parents.TryAdd(sub.ToString(), (string)parent["id"]!);
+                    }
+                }
+            }
+        }
+
         Board Read(JsonObject b)
         {
             var id = (string)b["id"]!;
             var columns = b["columns"]?.AsArray().OfType<JsonObject>().Select(c => (Id: (string)c["id"]!, Title: (string?)c["title"] ?? "", Type: (string?)c["type"] ?? "", Settings: (string?)c["settings_str"])).ToList() ?? [];
             string? First(Func<(string Id, string Title, string Type, string? Settings), bool> where) => columns.FirstOrDefault(where).Id;
-            static bool Named(string title, params string[] hints) => hints.Any(h => title.Contains(h, StringComparison.OrdinalIgnoreCase));
+            static bool Named(string title, string[] hints) => hints.Any(h => title.Contains(h, StringComparison.OrdinalIgnoreCase));
 
+            // A role's column: the one named for it, else the first that fits. With two that fit and neither named,
+            // the owner is asked.
+            var asked = new HashSet<string>(StringComparer.Ordinal);
+            string? Guess(string role, string type, string[] hints)
+            {
+                if (First(c => c.Type == type && Named(c.Title, hints)) is { } named)
+                {
+                    return named;
+                }
+
+                if (columns.Count(c => c.Type == type) > 1)
+                {
+                    asked.Add(role);
+                }
+
+                return First(c => c.Type == type);
+            }
+
+            var estimate = First(c => c.Type == "numbers" && Named(c.Title, ["estimat", "hour", "time"]));
             var board = new Board(
                 id,
                 (string?)b["name"] ?? id,
                 (string?)b["state"] ?? "active",
                 [.. b["groups"]?.AsArray().OfType<JsonObject>().Select(g => new Group((string)g["id"]!, (string?)g["title"] ?? "")) ?? []],
-                Status: First(c => c.Type == "status"),
-                People: First(c => c.Type == "people"),
-                Timeline: First(c => c.Type == "timeline"),
-                Date: First(c => c.Type == "date"),
-                Estimate: First(c => c.Type == "numbers" && Named(c.Title, "estimat", "hour", "time")),
-                Points: First(c => c.Type == "numbers" && Named(c.Title, "point", "effort", "size")),
+                Status: Guess(ColumnRoles.Status, "status", ["status", "stage", "progress"]),
+                People: Guess(ColumnRoles.People, "people", ["owner", "assign", "person", "people"]),
+                Timeline: Guess(ColumnRoles.Timeline, "timeline", ["timeline"]),
+                Date: Guess(ColumnRoles.Date, "date", ["due", "deadline"]),
+                Estimate: estimate,
+                Points: First(c => c.Type == "numbers" && c.Id != estimate && Named(c.Title, ["point", "effort", "size"])),
                 Labels: [.. columns.Where(c => c.Type is "tags" or "dropdown").Select(c => c.Id)],
-                Fields: []);
-            if (board.Status is { } statusColumn && columns.First(c => c.Id == statusColumn).Settings is { } settings
-                && JsonNode.Parse(settings) is JsonObject s)
+                Fields: [],
+                Columns: columns.ToDictionary(c => c.Id, c => c.Type, StringComparer.Ordinal),
+                Eligible: []);
+            var labels = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (var column in columns.Where(c => c.Type == "status"))
             {
+                labels[column.Id] = [];
+                if (column.Settings is not { } settings || JsonNode.Parse(settings) is not JsonObject s)
+                {
+                    continue;
+                }
+
                 var doneIndexes = s["done_colors"]?.AsArray().Select(i => i?.ToString()).ToHashSet() ?? [];
                 foreach (var (index, label) in s["labels"]?.AsObject() ?? [])
                 {
                     if ((string?)label is { Length: > 0 } name)
                     {
+                        // Statuses are labels by name across boards: one column calling a label done makes it done.
                         var isDone = doneIndexes.Contains(index);
-                        statuses.TryAdd(name, new SourceStatus { Id = name, Name = name, Category = isDone ? "done" : null });
+                        if (!statuses.TryGetValue(name, out var known) || (isDone && known.Category is null))
+                        {
+                            statuses[name] = new SourceStatus { Id = name, Name = name, Category = isDone ? "done" : null };
+                        }
+
+                        labels[column.Id].Add(name);
                         if (isDone)
                         {
-                            done.Add(name);
+                            done.Add((id, column.Id, name));
                         }
                     }
                 }
             }
 
-            // The date column is the due date of an item whose timeline is empty, so it isn't a field too.
-            var used = new[] { board.Status, board.People, board.Timeline, board.Date, board.Estimate, board.Points }.Concat(board.Labels).ToHashSet();
-
-            foreach (var column in columns.Where(c => !used.Contains(c.Id) && !NotFields.Contains(c.Type) && !NotFields.Contains(c.Id)))
+            foreach (var column in columns.Where(c => !NotFields.Contains(c.Type) && !NotFields.Contains(c.Id) && !board.Labels.Contains(c.Id)))
             {
                 var kind = column.Type switch
                 {
@@ -466,14 +516,29 @@ public sealed class MondayConnector : ISourceConnector
                     _ => FieldKind.Text,
                 };
 
-                // Columns are per board: the same title and kind on two boards is one field.
+                // Columns are per board: the same title and kind on two boards is one field. A column filling a role is
+                // a field only once the owner picks another; the snapshot leaves out fields no column becomes.
                 var fieldId = $"{column.Title}:{kind}".ToLowerInvariant();
                 fields.TryAdd(fieldId, new SourceField { Id = fieldId, Name = column.Title, Kind = kind });
                 fieldIds[(id, column.Id)] = fieldId;
-                board.Fields[column.Id] = kind;
+                board.Eligible[column.Id] = kind;
             }
 
-            return board;
+            var guessed = board.Roles();
+            described.AddRange(columns.Where(c => board.Eligible.ContainsKey(c.Id) || Fits(c.Type).Length > 0).Select(c => new SourceColumn
+            {
+                Project = id,
+                Id = c.Id,
+                Name = c.Title,
+                Roles = Fits(c.Type),
+                Role = guessed.FirstOrDefault(r => r.Value == c.Id).Key,
+                Ask = guessed.Any(r => r.Value == c.Id && asked.Contains(r.Key)),
+                Labels = labels.GetValueOrDefault(c.Id) ?? [],
+                Done = [.. done.Where(d => d.Item1 == id && d.Item2 == c.Id).Select(d => d.Item3)],
+                Field = board.Eligible.ContainsKey(c.Id) ? fieldIds[(id, c.Id)] : null,
+                Parent = parents.GetValueOrDefault(id),
+            }));
+            return board.Picked(null);
         }
 
         var boardsRead = all.Where(b => (string?)b["type"] is null or "board").Select(Read).ToList();
@@ -499,7 +564,7 @@ public sealed class MondayConnector : ISourceConnector
         _catalog = new Catalog(web, _time.GetUtcNow(), boardsRead, subboardIds, done, fieldIds, new SourceDescription
         {
             Source = new SnapshotSource { Kind = SourceKinds.Monday, BaseUrl = web },
-            Projects = [.. boardsRead.Select(b => new SourceProject { Id = b.Id, Name = b.Name, Url = $"{web}/boards/{b.Id}" })],
+            Projects = [.. boardsRead.Select(b => new SourceProject { Id = b.Id, Name = b.Name, Url = $"{web}/boards/{b.Id}", Archived = b.State != "active" })],
             People = people,
             ItemTypes =
             [
@@ -509,17 +574,77 @@ public sealed class MondayConnector : ISourceConnector
             ],
             Statuses = [.. statuses.Values],
             Fields = [.. fields.Values],
+            Columns = described,
         });
         return _catalog;
     }
 
     private sealed record Group(string Id, string Title);
 
+    /// <summary>The roles a Monday column type can fill.</summary>
+    private static string[] Fits(string type) => type switch
+    {
+        "status" => [ColumnRoles.Status],
+        "people" => [ColumnRoles.People],
+        "timeline" => [ColumnRoles.Timeline],
+        "date" => [ColumnRoles.Date],
+        "numbers" => [ColumnRoles.Estimate, ColumnRoles.Points],
+        _ => [],
+    };
+
+    /// <param name="Columns">Every column's type, by ID.</param>
+    /// <param name="Eligible">The columns that can be fields; <see cref="Fields"/> are those of them filling no role.</param>
     private sealed record Board(
         string Id, string Name, string State, List<Group> Groups, string? Status, string? People, string? Timeline, string? Date,
-        string? Estimate, string? Points, List<string> Labels, Dictionary<string, FieldKind> Fields);
+        string? Estimate, string? Points, List<string> Labels, Dictionary<string, FieldKind> Fields,
+        Dictionary<string, string> Columns, Dictionary<string, FieldKind> Eligible)
+    {
+        public Dictionary<string, string> Roles() => new Dictionary<string, string?>
+        {
+            [ColumnRoles.Status] = Status,
+            [ColumnRoles.People] = People,
+            [ColumnRoles.Timeline] = Timeline,
+            [ColumnRoles.Date] = Date,
+            [ColumnRoles.Estimate] = Estimate,
+            [ColumnRoles.Points] = Points,
+        }.Where(r => r.Value is not null).ToDictionary(r => r.Key, r => r.Value!, StringComparer.Ordinal);
+
+        /// <summary>The board with the owner's column picks ("" for none) over the guesses, and its fields to match.</summary>
+        public Board Picked(IReadOnlyDictionary<string, string>? picks)
+        {
+            string? Pick(string role, string? guess)
+            {
+                if (picks is null || !picks.TryGetValue(role, out var column))
+                {
+                    return guess;
+                }
+
+                if (column.Length == 0)
+                {
+                    return null;
+                }
+
+                return Columns.TryGetValue(column, out var type) && Fits(type).Contains(role)
+                    ? column
+                    : throw new SourceAccessException(
+                        $"The Monday board {Name} has no column {column} that can be its {role}. Pick its columns again.", HttpStatusCode.NotFound);
+            }
+
+            var board = this with
+            {
+                Status = Pick(ColumnRoles.Status, Status),
+                People = Pick(ColumnRoles.People, People),
+                Timeline = Pick(ColumnRoles.Timeline, Timeline),
+                Date = Pick(ColumnRoles.Date, Date),
+                Estimate = Pick(ColumnRoles.Estimate, Estimate),
+                Points = Pick(ColumnRoles.Points, Points),
+            };
+            var roles = board.Roles().Values.ToHashSet(StringComparer.Ordinal);
+            return board with { Fields = Eligible.Where(e => !roles.Contains(e.Key)).ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal) };
+        }
+    }
 
     private sealed record Catalog(
-        string Web, DateTimeOffset ReadAt, List<Board> Boards, Dictionary<string, Board> Subboards, HashSet<string> Done,
+        string Web, DateTimeOffset ReadAt, List<Board> Boards, Dictionary<string, Board> Subboards, HashSet<(string Board, string Column, string Label)> Done,
         Dictionary<(string Board, string Column), string> FieldIds, SourceDescription Description);
 }

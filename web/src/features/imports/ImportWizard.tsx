@@ -31,6 +31,7 @@ import { useShortcuts } from '../../lib/shortcuts';
 import { Chip, OkLine, Phases, ProgressBar, ProjectSummary, SourceMark, WarnLine } from './parts';
 import { control, sourceOf, sources, useSourceName, type ConnectKind, type FileKind, type SourceInfo, type SourceKind, type UrlKind } from './sources';
 import {
+  ColumnsStep,
   CsvColumnsTable,
   EffortStep,
   FieldsStep,
@@ -105,10 +106,10 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
   };
   const connected = described.isSuccess;
   const plan = planner.plan;
-  const steps = stepsFor(plan);
+  const steps = stepsFor(plan, described.data);
   const step: StepId = wanted && steps.includes(wanted) ? wanted : connected ? 'projects' : 'source';
   const index = steps.indexOf(step);
-  const ctx = { connected, mapping, plan, decided };
+  const ctx = { connected, mapping, plan, decided, description: described.data };
   const open = openDecisions(steps, ctx);
   const blocker = blockerOf(step, ctx);
   const [nudge, setNudge] = useState(0);
@@ -305,7 +306,7 @@ function Wizard({ workspace, importId, step: wanted }: { workspace: string; impo
       <SourcePicker workspace={workspace} kind={kind} onKind={setKind} form={form} onForm={setForm} />
     );
   } else if (stepProps) {
-    const Step = { projects: ProjectsStep, hierarchy: HierarchyStep, types: TypesStep, states: StatesStep, people: PeopleStep, fields: FieldsStep, effort: EffortStep, review: ReviewStep }[step];
+    const Step = { projects: ProjectsStep, columns: ColumnsStep, hierarchy: HierarchyStep, types: TypesStep, states: StatesStep, people: PeopleStep, fields: FieldsStep, effort: EffortStep, review: ReviewStep }[step];
     view = <Step {...stepProps} />;
   } else {
     view = <p className="text-mute">{t('common.loading')}</p>;
@@ -581,7 +582,7 @@ function Rail(props: {
           <span className="text-sm font-semibold">{t('importRail.needsYou')}</span>
           {props.open.map((s) => (
             <button key={s} type="button" className="text-left text-sm underline decoration-line underline-offset-3" onClick={() => props.onGo(s)}>
-              {t(`importRail.decision.${s as 'projects' | 'hierarchy' | 'effort'}`)}
+              {t(`importRail.decision.${s as 'projects' | 'columns' | 'hierarchy' | 'effort'}`)}
             </button>
           ))}
         </div>

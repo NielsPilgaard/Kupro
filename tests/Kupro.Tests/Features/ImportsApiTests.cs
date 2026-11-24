@@ -258,6 +258,37 @@ public sealed class ImportsApiTests(PostgresFixture postgres, StorageFixture sto
         }
     }
 
+    [Fact]
+    public async Task The_cli_reads_monday_only_once_every_column_question_is_answered()
+    {
+        var (client, workspace, _) = await NewWorkspaceAsync("Columns");
+        var token = (await NewTokenAsync(client, new CreateApiTokenRequest("laptop", ApiTokenKind.Personal))).Secret;
+        var monday = MondayConnectorTests.WithBugs(MondayConnectorTests.Sample());
+        var zip = Path.Combine(Path.GetTempPath(), $"kupro-test-{Guid.NewGuid():N}.zip");
+        try
+        {
+            var (exit, _, error) = await CliAsync(token, workspace.Slug, FakeMonday.Token, monday, "import", "monday", "--local", "--out", zip);
+            exit.ShouldNotBe(0);
+            error.ShouldContain("Bugs has more than one column that could be its status (Severity, Workflow)");
+            error.ShouldContain("--column \"Bugs:people=Developer\"");
+
+            (exit, _, error) = await CliAsync(token, workspace.Slug, FakeMonday.Token, monday, "import", "monday", "--local", "--out", zip, "--column", "Bugs:status=Hours");
+            exit.ShouldNotBe(0);
+            error.ShouldContain("Bugs's status can be Severity, Workflow");
+
+            (exit, _, error) = await CliAsync(token, workspace.Slug, FakeMonday.Token, monday, "import", "monday", "--local", "--out", zip,
+                "--column", "bugs:status=workflow", "--column", "Bugs:people=Tester");
+            exit.ShouldBe(0, error);
+            await using var file = File.OpenRead(zip);
+            await using var snapshot = await SnapshotReader.OpenAsync(file, Ct);
+            (await snapshot.ReadItemsAsync(Ct).SingleAsync(i => i.Id == "140", Ct)).ShouldSatisfyAllConditions(i => i.Status.ShouldBe("Fixed"), i => i.Assignee.ShouldBe("6"));
+        }
+        finally
+        {
+            File.Delete(zip);
+        }
+    }
+
     private Task<(int Exit, string Output, string Error)> CliAsync(string token, string workspace, string? stdin, params string[] args) =>
         CliAsync(token, workspace, stdin, null, args);
 

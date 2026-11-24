@@ -8,8 +8,8 @@ namespace Kupro.Import.GitHub;
 
 /// <summary>
 /// GitHub Issues (task 027, ADR-019): repositories as projects, issues (pull requests skipped) with their org issue
-/// type, sub-issue parent, labels, milestone and assignees, comments, and issue events as changes. github.com, or GitHub
-/// Enterprise Server by its address. This class only reads; mapping onto Kupro is the pipeline's job.
+/// type, sub-issue parent, labels, milestone and assignees, comments, and issue events as changes; with a Projects (v2)
+/// board picked, its Status, Iteration and effort number refine them. github.com, or GitHub Enterprise Server by its address. This class only reads; mapping onto Kupro is the pipeline's job.
 /// </summary>
 public sealed class GitHubConnector : ISourceConnector
 {
@@ -89,6 +89,17 @@ public sealed class GitHubConnector : ISourceConnector
             : [.. scope.Projects.Select(id => catalog.Repos.FirstOrDefault(r => r.Id.ToString(CultureInfo.InvariantCulture) == id)
                 ?? throw new SourceAccessException($"GitHub has no repository {id} that this token can see.", HttpStatusCode.NotFound))];
 
+        BoardRead? board = null;
+        if (scope.Board is { } boardId)
+        {
+            board = await GitHubBoards.ReadAsync(_client, catalog.Description.Boards.FirstOrDefault(b => b.Id == boardId)
+                ?? throw new SourceAccessException($"GitHub has no project {boardId} that this token can see.", HttpStatusCode.NotFound), ct);
+            foreach (var sprint in board.Sprints)
+            {
+                yield return sprint;
+            }
+        }
+
         var people = new HashSet<long>();
         foreach (var repo in repos)
         {
@@ -124,6 +135,23 @@ public sealed class GitHubConnector : ISourceConnector
                 issues.Add(issue);
             }
 
+            // A board change doesn't touch the issue, so a delta also reads the issues whose board values changed.
+            if (since is not null && board is not null)
+            {
+                var read = issues.Select(i => i.Number).ToHashSet();
+                foreach (var (key, value) in board.Values)
+                {
+                    if (value.Updated >= since && key.StartsWith($"{repo.FullName}#", StringComparison.OrdinalIgnoreCase)
+                        && int.TryParse(key.AsSpan(repo.FullName.Length + 1), NumberStyles.None, CultureInfo.InvariantCulture, out var number) && read.Add(number)
+                        && await _client.TryGetAsync($"repos/{repo.FullName}/issues/{number}", GitHubJson.Default.GitHubIssue, ct) is { } issue
+                        && issue.PullRequest is not { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined }
+                        && !(scope.ResolvedAfter is { } after && issue.State == Closed && issue.ClosedAt < after))
+                    {
+                        issues.Add(issue);
+                    }
+                }
+            }
+
             var byNumber = issues.ToDictionary(i => i.Number);
             var parents = new Dictionary<long, long>();
             foreach (var parent in issues.Where(i => i.SubIssuesSummary?.Total > 0))
@@ -154,7 +182,8 @@ public sealed class GitHubConnector : ISourceConnector
                     yield return Person(person);
                 }
 
-                yield return Item(repo, issue, parents.TryGetValue(issue.Id, out var parentId) ? parentId : null);
+                yield return Item(repo, issue, parents.TryGetValue(issue.Id, out var parentId) ? parentId : null,
+                    board?.Values.GetValueOrDefault($"{repo.FullName}#{issue.Number}"));
 
                 // Asked for only when the issue says it has blockers: one call per blocked issue, not per issue.
                 if (issue.IssueDependenciesSummary?.TotalBlockedBy > 0)
@@ -221,13 +250,14 @@ public sealed class GitHubConnector : ISourceConnector
     public Task<Stream> FetchAttachmentAsync(SourceAttachment attachment, CancellationToken ct) =>
         throw new SourceAccessException("GitHub issues have no attachments to fetch; files stay links in the text.");
 
-    private SourceItem Item(GitHubRepo repo, GitHubIssue issue, long? parent) => new()
+    /// <summary>An issue as an item. Its board status applies while it is open: a closed issue keeps how it closed.</summary>
+    private SourceItem Item(GitHubRepo repo, GitHubIssue issue, long? parent, BoardValue? board) => new()
     {
         Id = Id(issue.Id),
         Key = $"{repo.FullName}#{issue.Number}",
         Project = repo.Id.ToString(CultureInfo.InvariantCulture),
         Type = issue.Type is { } type ? Id(type.Id) : PlainIssueType,
-        Status = Status(issue.State, issue.StateReason),
+        Status = issue.State != Closed && board?.Status is { } status ? status : Status(issue.State, issue.StateReason),
         Title = issue.Title,
         Description = string.IsNullOrWhiteSpace(issue.Body) ? null : issue.Body,
         DescriptionMarkup = MarkupKind.Markdown,
@@ -239,6 +269,8 @@ public sealed class GitHubConnector : ISourceConnector
             ? new Dictionary<string, JsonElement> { [AssigneesField] = FieldValue.Options([.. issue.Assignees.Select(a => a.Login)]) }
             : new Dictionary<string, JsonElement>(),
         Versions = issue.Milestone is { } milestone ? [Id(milestone.Id)] : [],
+        Sprint = board?.Sprint,
+        Points = board?.Points,
         Url = issue.HtmlUrl ?? $"{_web.AbsoluteUri.TrimEnd('/')}/{repo.FullName}/issues/{issue.Number}",
         Created = issue.CreatedAt,
         Updated = issue.UpdatedAt,
@@ -374,6 +406,11 @@ public sealed class GitHubConnector : ISourceConnector
             }
         }
 
+        // The token's own boards can hold issues of repositories it reaches through an organisation.
+        var viewer = (await _client.TryGetAsync("user", GitHubJson.Default.GitHubUser, ct))?.Login;
+        var owners = repos.Select(r => r.Owner.Login).Append(viewer).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase);
+        var (boards, boardStatuses) = await GitHubBoards.DescribeAsync(_client, owners, ct);
+
         _catalog = new Catalog(repos, new SourceDescription
         {
             Source = new SnapshotSource { Kind = SourceKinds.GitHub, BaseUrl = _web.AbsoluteUri.TrimEnd('/') },
@@ -387,8 +424,10 @@ public sealed class GitHubConnector : ISourceConnector
                 new SourceStatus { Id = Closed, Name = "Closed", Category = "completed" },
                 new SourceStatus { Id = NotPlanned, Name = "Closed as not planned", Category = "canceled" },
                 new SourceStatus { Id = Duplicate, Name = "Closed as duplicate", Category = "canceled" },
+                .. boardStatuses,
             ],
             Fields = [new SourceField { Id = AssigneesField, Name = "Assignees", Kind = FieldKind.MultiSelect }],
+            Boards = boards,
         });
         return _catalog;
     }

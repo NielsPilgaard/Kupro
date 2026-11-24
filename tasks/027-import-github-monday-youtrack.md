@@ -44,9 +44,19 @@ GitHub Issues is in: `Kupro.Import/GitHub` (`GitHubConnector`, client), register
 - References in text: `#89` resolves within the item's own repository, `owner/repo#89` across repositories
   (`ImportReferences`, `ImportCommitTests.GitHub`).
 
-Not done: Projects (v2) fields (Status, Iteration, a number field; the owner picks the project in the import screen,
-the wizard, task 023), and the recorded fixtures and live run (a sandbox, a manual step). The site page is in:
-`/switch/github` and `/da/skift/github`; it says Projects fields don't come across yet, so update it with them.
+- Projects (v2) boards (`GitHubBoards`, GraphQL at `/graphql`, on a server `/api/graphql`): Describe lists each
+  repository owner's projects as `Boards`, with each one's Status options as statuses scoped to it (`SourceStatus.Board`;
+  the wizard shows only the picked board's, and a snapshot keeps only those). The owner picks one in the wizard's
+  Projects step (`ImportScope.Board`) or with `kupro import github --local --board <title|ID>`. Its Status option is an
+  open issue's status (a closed issue keeps how it closed), its first Iteration field gives sprints (completed ones
+  closed) and the item's sprint, and a number field named Estimate, Points or Size (else the only number field) gives
+  points. A delta also reads the issues whose board item changed since the cursor. An owner whose projects the token
+  may not read has none; a picked board the token can't read fails the read with what token it needs.
+
+Not done: the recorded fixtures and live run (a sandbox, a manual step). Board limits: other project fields stay
+behind, the owner can't pick the number field (Monday's column mapping may make that generic), and an issue taken off
+the board keeps its last board status until it changes in GitHub. The site page is in: `/switch/github` and
+`/da/skift/github`.
 Known cost: a delta still reads the repository-wide event list, and a repository's issues are held in memory while
 its sub-issue parents are worked out.
 
@@ -82,10 +92,22 @@ Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registe
   items of type `group` with the board's items under them, and every item carries its group title in the `group`
   field: the default maps groups to Epics; skipping the type and adding `group` to the label fields makes them labels.
   Subitems are items of type `subitem` under their item (a checklist by default), with their own board's status.
-- Until the wizard maps columns, the connector picks per board: the first status column is the status (labels Monday
-  marks done have category `done`), the first people column the assignee, a timeline the start and due dates (the
-  first date column the due date when it's empty), a numbers column named for an estimate or hours the estimate, one
-  named for points, effort or size the points, and tags and dropdowns the labels. Other columns are fields by title.
+- Column mapping in the wizard: three directions in [prototypes/monday-columns/](../prototypes/monday-columns/index.html)
+  (preview an item, label the columns, ask only when unsure). **Picked 2026-11-21: 03, ask only when unsure.** The
+  owner must see how to go on and not miss anything: a Columns step after Projects, one sentence per board, a plain
+  question where Kupro isn't sure, and Next waits for the answers. Describe lists every status column's labels, and
+  the States step shows only the picked columns' ones.
+- The connector guesses per board: the status column named Status, Stage or Progress (else the first) is the status
+  (labels Monday marks done have category `done`), the people column named Owner, Assignee or Person (else the first)
+  the assignee, a timeline the start and due dates (a date column named Due or Deadline, else the first, the due date
+  when it's empty), a numbers column named for an estimate or hours the estimate, another named for points, effort or
+  size the points, and tags and dropdowns the labels. Other columns are fields by title.
+- Column mapping: Describe lists each board's columns (`SourceDescription.Columns`) with the roles they can fill, the
+  guess, every status column's labels, and `Ask` where two columns fit a role and neither is named for it. The owner's
+  picks are `ImportScope.Columns` (board → role → column, "" for none), read through `ReadScope.Columns`; the wizard's
+  Columns step (prototype 03) asks the open questions and Next waits for them, and the CLI takes
+  `--column board:role=column` and refuses a read while a question is open. A column taken off a role becomes a field;
+  the snapshot keeps only the picked status columns' labels and no field a column fills a role with.
 - Updates and their replies are HTML comments; files are attachments, fetched through a fresh signed URL. The board's
   activity log gives status, assignee and name changes for the items read (Monday keeps the log for a limited time).
   Complexity and rate-limit errors wait their `retry_in_seconds`. Items get new numbers; the item URL is the alias.
@@ -94,8 +116,8 @@ Monday is in: `Kupro.Import/Monday` (`MondayConnector`, GraphQL client), registe
   closed-items cutoff is left out with its subitems. An item with more than 100 updates has the rest paged in; a delta
   reads the activity log from the cursor.
 
-Not done for Monday: column mapping in the import screen (overrides the picks above; the wizard, task 023), and
-the recorded fixtures and live run (a sandbox, a manual step). Known cost: a delta still reads every item on the board. The site page is in: `/switch/monday` and
+Not done for Monday: the recorded fixtures and live run (a sandbox, a manual step); subitem boards keep the guess.
+A GitHub board's number field is still picked by name. Known cost: a delta still reads every item on the board. The site page is in: `/switch/monday` and
 `/da/skift/monday`.
 
 ## Scope
