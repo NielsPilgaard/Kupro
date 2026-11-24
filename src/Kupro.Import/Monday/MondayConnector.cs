@@ -418,6 +418,23 @@ public sealed class MondayConnector : ISourceConnector
         var described = new List<SourceColumn>();
         var fields = new Dictionary<string, SourceField>(StringComparer.Ordinal) { [GroupField] = new() { Id = GroupField, Name = "Group", Kind = FieldKind.Select } };
         var fieldIds = new Dictionary<(string, string), string>();
+
+        // A board's subitems column names its sub-item board, so that board's labels count only when its board is read.
+        var parents = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var parent in all.Where(x => (string?)x["type"] is null or "board"))
+        {
+            foreach (var column in parent["columns"]?.AsArray().OfType<JsonObject>().Where(x => (string?)x["type"] == "subtasks") ?? [])
+            {
+                if ((string?)column["settings_str"] is { } subtasks && JsonNode.Parse(subtasks) is JsonObject settings && settings["boardIds"] is JsonArray ids)
+                {
+                    foreach (var sub in ids.OfType<JsonNode>())
+                    {
+                        parents.TryAdd(sub.ToString(), (string)parent["id"]!);
+                    }
+                }
+            }
+        }
+
         Board Read(JsonObject b)
         {
             var id = (string)b["id"]!;
@@ -519,6 +536,7 @@ public sealed class MondayConnector : ISourceConnector
                 Labels = labels.GetValueOrDefault(c.Id) ?? [],
                 Done = [.. done.Where(d => d.Item1 == id && d.Item2 == c.Id).Select(d => d.Item3)],
                 Field = board.Eligible.ContainsKey(c.Id) ? fieldIds[(id, c.Id)] : null,
+                Parent = parents.GetValueOrDefault(id),
             }));
             return board.Picked(null);
         }

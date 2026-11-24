@@ -128,7 +128,22 @@ public sealed class MondayConnectorTests
         description = description with { Columns = [Status("1"), Status("3", "Fixed")] };
         Fixed(new ReadScope()).ShouldBeNull("Old is archived, so not read");
         description = description with { Columns = [Status("1"), Status("12", "Fixed")] };
-        Fixed(new ReadScope { Projects = ["1"] }).ShouldBe("done", "a sub-item board's columns stay");
+        Fixed(new ReadScope { Projects = ["1"] }).ShouldBe("done", "a sub-item board with no known parent stays");
+        description = description with { Columns = [Status("1"), Status("12", "Fixed") with { Parent = "1" }] };
+        Fixed(new ReadScope { Projects = ["1"] }).ShouldBe("done", "Read's sub-item board is read with it");
+        description = description with { Columns = [Status("1"), Status("22", "Fixed") with { Parent = "2" }] };
+        Fixed(new ReadScope { Projects = ["1"] }).ShouldBeNull("Other's sub-item board isn't read");
+        Fixed(new ReadScope { Projects = ["1", "2"] }).ShouldBe("done");
+    }
+
+    [Fact]
+    public async Task A_sub_item_board_knows_its_board_from_the_subitems_column()
+    {
+        var description = await Connect(Sample()).DescribeAsync(Ct);
+
+        description.Columns.Where(c => c.Project == "12").ShouldNotBeEmpty();
+        description.Columns.Where(c => c.Project == "12").ShouldAllBe(c => c.Parent == "10");
+        description.Columns.Where(c => c.Project == "10").ShouldAllBe(c => c.Parent == null);
     }
 
     [Fact]
@@ -344,7 +359,7 @@ public sealed class MondayConnectorTests
                 Column("numbers2", "Budget", "numbers"),
                 Column("tags", "Tags", "tags"),
                 Column("text", "Notes", "text"),
-                Column("subitems", "Subitems", "subtasks")),
+                Column("subitems", "Subitems", "subtasks", """{"allowMultipleItems":true,"boardIds":[12]}""")),
             ["groups"] = new JsonArray(new JsonObject { ["id"] = "topics", ["title"] = "This week" }, new JsonObject { ["id"] = "later", ["title"] = "Later" }),
         });
         monday.Boards.Add(new JsonObject { ["id"] = "11", ["name"] = "Old", ["state"] = "archived", ["type"] = "board", ["columns"] = new JsonArray(), ["groups"] = new JsonArray() });

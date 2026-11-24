@@ -83,6 +83,13 @@ public sealed record SourceColumn
 
     /// <summary>The <see cref="SourceField"/> it becomes when it fills no role; null for one that never is a field.</summary>
     public string? Field { get; init; }
+
+    /// <summary>
+    /// On a sub-item board, which is no project: the project whose items hold its subitems, when the source says.
+    /// Only the snapshot's own scoping uses it, so it stays out of the format and the API.
+    /// </summary>
+    [JsonIgnore]
+    public string? Parent { get; init; }
 }
 
 /// <summary>What a <see cref="SourceColumn"/> can be for an item, and which column is each on a project.</summary>
