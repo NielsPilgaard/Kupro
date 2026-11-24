@@ -159,6 +159,9 @@ has only a completed-work total per item, which stays in the details block.
   check and the lock don't apply, so a 40-hour Jira worklog stays one 2400-minute entry. The plan warns about days
   over 24 hours. The same holds when a placeholder is merged into a member and
   its entries move.
+- Jira records worklogs in seconds (`timeSpentSeconds`); YouTrack records minutes. A Jira worklog rounds to the
+  nearest whole minute, half a minute up, and one under 30 seconds becomes 1 minute, since an entry is at least 1.
+  Day and issue totals sum the rounded entries. Kupro keeps no seconds.
 
 ## Resolved questions
 

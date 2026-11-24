@@ -369,7 +369,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$$('.pop').forEach(
 function renderMine(){$('#wTot').textContent=fmt(E.reduce((a,e)=>a+e.m,0))+' this week';
  $('#wDays').innerHTML=DAYS.map((n,d)=>d>TODAY?'':(()=>{const es=E.filter(e=>e.d===d);const t=dayTotal(d);
   return `<details class="day" ${d===TODAY?'open':''}><summary><b>${d===TODAY?'Today':n+' Nov'}</b><span class="sp"></span>${!t&&d<5?'<span class="empty">Nothing logged</span>':''}<span class="tot">${fmt(t)||'0m'}</span></summary>
-  <ul>${es.map(e=>{const lk=locked(e.k);return `<li><span class="dur">${fmt(e.m)}</span><span><span class="key">${e.k}</span> ${ISSUES[e.k].t}${e.n?' <span class="mute">· '+esc(e.n)+'</span>':''}</span><span>${lk?'<span class="chip lock">🔒 '+ISSUES[e.k].state+'</span>':`<button class="btn ghost" onclick="edit(${e.id})">Edit</button><button class="btn ghost" onclick="del(${e.id})">Delete</button>`}</span></li>`}).join('')}
+  <ul>${es.map(e=>{const lk=locked(e.k);return `<li><span class="dur">${fmt(e.m)}</span><span><span class="key">${esc(e.k)}</span> ${ISSUES[e.k].t}${e.n?' <span class="mute">· '+esc(e.n)+'</span>':''}</span><span>${lk?'<span class="chip lock">🔒 '+ISSUES[e.k].state+'</span>':`<button class="btn ghost" onclick="edit(${e.id})">Edit</button><button class="btn ghost" onclick="del(${e.id})">Delete</button>`}</span></li>`}).join('')}
   <li><span></span><span><button class="btn ghost" onclick="openLog(null,${d})">+ Log time on ${d===TODAY?'today':n}</button></span><span></span></li></ul></details>`})()).reverse().join('')}
 function del(id){E=E.filter(e=>e.id!==id);toast('Deleted. The change is kept in the history.');render()}
 function edit(id){const e=E.find(e=>e.id===id);const v=prompt('Time spent',fmt(e.m));if(v===null)return;const m=parse(v);
@@ -377,7 +377,7 @@ function edit(id){const e=E.find(e=>e.id===id);const v=prompt('Time spent',fmt(e
  if(dayTotal(e.d)-e.m+m>1440)return toast('That day would pass 24 hours');e.m=m;toast('Saved. The old value is kept in the history.');render()}
 function palUpd(){const s=$('#palIn').value.trim();const m=s.match(/^log\s+(\S+)\s*([A-Za-z]+-\d+)?\s*(.*)$/i);let h;
  if(m){const min=parse(m[1]),k=(m[2]||(($('#issue').classList.contains('on'))?cur:'')).toUpperCase();
-  h=!min||isNaN(min)?'<li>Log time: write a duration, like <span class="mono">log 1h30 KUP-142</span></li>':!ISSUES[k]?`<li>Log ${fmt(min)} on… add an issue key</li>`:locked(k)?`<li>${k} is ${ISSUES[k].state}: reopen it to log time</li>`:`<li class="on">Log <b>${fmt(min)}</b> on <span class="key">${k}</span> ${ISSUES[k].t}, today${m[3]?' · '+esc(m[3]):''} <kbd>Enter</kbd></li>`}
+  h=!min||isNaN(min)?'<li>Log time: write a duration, like <span class="mono">log 1h30 KUP-142</span></li>':!ISSUES[k]?`<li>Log ${fmt(min)} on… add an issue key</li>`:locked(k)?`<li>${esc(k)} is ${ISSUES[k].state}: reopen it to log time</li>`:`<li class="on">Log <b>${fmt(min)}</b> on <span class="key">${esc(k)}</span> ${ISSUES[k].t}, today${m[3]?' · '+esc(m[3]):''} <kbd>Enter</kbd></li>`}
  else h='<li class="on">Log time… <span class="mono mute">log 1h30 KUP-142 note</span></li><li>Open My time</li><li>Go to KUP-142</li>';
  $('#palList').innerHTML=h}
 function palGo(){const s=$('#palIn').value.trim();const m=s.match(/^log\s+(\S+)\s*([A-Za-z]+-\d+)?\s*(.*)$/i);
