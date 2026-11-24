@@ -111,8 +111,8 @@ Owner sees this history per member, and a member sees the history of their own e
 
 ### Retention and privacy
 
-- Entries and their history are kept for 5 years after the day they record, also after the member is deactivated,
-  and are still exported. A nightly job deletes them after that, by the recorded day, not by when the row changed.
+- While the workspace exists, entries and their history are kept for 5 years after the day they record, also after
+  the member is deactivated, and are still exported. A nightly job deletes them after that, by the recorded day, not by when the row changed.
 - The legal basis is the employer's legal obligation, so an erasure request doesn't delete entries inside the 5 years.
   The privacy policy and the DPA say so (a manual step).
 - Deleting an issue is not possible in Kupro, so an entry never loses its issue. If issue deletion is added, an issue

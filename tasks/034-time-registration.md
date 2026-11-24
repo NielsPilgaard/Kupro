@@ -52,8 +52,9 @@ seat, and an MCP `time` tool in place of a merged `relations` tool.
   each person's share for Owners).
 - Owners: list and export (CSV and JSON) for one or all members and a date range: date, member, minutes, issue key,
   note.
-- Validation: an issue is required, minutes 1–1440 per entry (imports exempt, ADR-021), a day's total at most 24 h, date not later than today,
-  and no add, edit or delete while the issue is Done or Canceled.
+- Validation as in ADR-021 Model and Locking (imports per ADR-021 Import): an issue is required, minutes 1–1440 per
+  entry, a day's total at most 24 h, date not later than today, and no add, edit or delete while the issue is Done
+  or Canceled.
 - Close and log in one save: logging time takes an optional target state (Done or Canceled). The entry and the state
   change commit in one transaction, and the lock applies after it (ADR-021 Locking).
 - Index `(workspace_id, member_id, date)`; a week's timesheet is one query ([ADR-010](../docs/adr/ADR-010-performance-budget.md)).
