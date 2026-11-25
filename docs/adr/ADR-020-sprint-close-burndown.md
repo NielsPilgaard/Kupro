@@ -112,7 +112,8 @@ per-person velocity, no ranking, no per-person capacity ([ADR-008](ADR-008-work-
 
 ### Original, remaining and completed effort fields
 
-- **ALT-003**: **Rejection Reason**: That is time tracking, out of v1 scope ([product.md](../product.md)).
+- **ALT-003**: **Rejection Reason**: Time spent is recorded as time entries, not effort fields
+  ([ADR-021](ADR-021-time-registration.md)).
 
 ### Rebuild burndown from the activity log
 
@@ -146,6 +147,7 @@ per-person velocity, no ranking, no per-person capacity ([ADR-008](ADR-008-work-
 - [ADR-001](ADR-001-agent-parity.md) — review, close and burndown on REST, CLI and MCP
 - [ADR-010](ADR-010-performance-budget.md) — burndown and review reads stay inside the budget
 - [ADR-019](ADR-019-import.md) — imported sprints and the ledger
+- [ADR-021](ADR-021-time-registration.md) — logged time doesn't feed the ledger
 
 ## References
 

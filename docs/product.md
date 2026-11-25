@@ -43,7 +43,8 @@ and delivery dates over the year and shows whether the team you have can deliver
 |---|---|
 | Issues: types, hierarchy, fixed workflow, effort, assignee, priority, labels, dates, relations ([ADR-008](adr/ADR-008-work-item-model.md)) | Custom fields |
 | Markdown descriptions, images, links, comments, activity log | Custom workflows |
-| Sprints | Time tracking |
+| Sprints | Timers, payroll, absence |
+| Time registration on work items, off by default ([ADR-021](adr/ADR-021-time-registration.md)) | |
 | List, board, delivery plan views | Dashboards / reports |
 | Search, command palette, keyboard-first | Per-project permissions |
 | Web, REST API, CLI, MCP; one-line CLI install, `kupro install mcp` ([ADR-018](adr/ADR-018-cli-distribution.md)) | AI beyond the meeting agent (chat, summaries, voice control) |

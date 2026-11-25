@@ -29,3 +29,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | CLI distribution (install script, binaries in Object Storage), `kupro install mcp`, the Kupro agent skill | [ADR-018](ADR-018-cli-distribution.md) | Accepted |
 | Import from other trackers: re-runnable one-way import, snapshot format, mapping, placeholder members, key aliases, changelog replay | [ADR-019](ADR-019-import.md) | Accepted |
 | Sprint close outcomes, split carry-over, sprint ledger, burndown and sprint report | [ADR-020](ADR-020-sprint-close-burndown.md) | Accepted |
+| Time registration: time entries on work items, who sees what, lock on resolve, 5-year retention, export | [ADR-021](ADR-021-time-registration.md) | Accepted |

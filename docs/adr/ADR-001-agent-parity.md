@@ -94,3 +94,4 @@ without a check. Agents also need things humans don't: machine-readable output, 
 - [ADR-005](ADR-005-auth-keycloak.md) — tokens for CLI and MCP
 - [ADR-018](ADR-018-cli-distribution.md) — how the CLI is installed and MCP is set up
 - [ADR-019](ADR-019-import.md) — import surfaces, MCP read-only
+- [ADR-021](ADR-021-time-registration.md) — a `time` MCP tool in the budget, export kept off MCP

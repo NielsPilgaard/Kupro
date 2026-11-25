@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 Week grid (picked) · Time registration prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+/* Large monitors (Tailwind 3xl, 1920 px): wider, roomier sidebar. */
+@media (min-width: 120rem) {
+  :root {
+    --sidebar: 252px;
+    --nav-item: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}
+
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.proto span{flex:1}.proto button,.proto select{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer}
+.proto select option{color:var(--ink);background:var(--panel)}
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:calc(100vh - 28px)}
+.side{background:var(--side);color:var(--side-ink);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.side .ws{font:600 15px var(--font-display);padding:6px 10px 14px}
+.side button{all:unset;cursor:pointer;height:var(--nav-item);padding:0 10px;border-radius:var(--r1);display:flex;align-items:center;gap:8px}
+.side button[aria-current=true]{background:var(--side-sel);font-weight:600}
+.side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:14px 10px 4px}
+main{padding:20px 28px;min-width:0}
+h1{font:600 22px var(--font-display);margin:0 0 4px}
+h2{font:600 16px var(--font-display);margin:0 0 8px}
+.sub{color:var(--mute);margin:0 0 16px}
+.btn{height:var(--control);padding:0 12px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--acc-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.mute{color:var(--mute)}
+.mono{font-family:var(--font-mono)}
+.key{font:12px var(--font-mono);color:var(--mute)}
+kbd{font:11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--mute)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.prog{background:color-mix(in srgb,var(--prog) 15%,transparent);color:var(--prog)}
+.chip.lock{background:var(--sunk);color:var(--mute)}
+input.f,select.f,textarea.f{height:var(--control);border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);padding:0 8px}
+textarea.f{height:auto;padding:6px 8px}
+input.f:focus,select.f:focus,textarea.f:focus,.btn:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.screen{display:none}.screen.on{display:block}
+.issue{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start}
+.props{display:grid;gap:10px}
+.props dt{font-size:12px;color:var(--mute)}.props dd{margin:0}
+.timebox{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.big{font:600 20px var(--font-display)}
+.share{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:13px;margin-top:8px}
+.lockline{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mute);background:var(--sunk);border-radius:var(--r1);padding:8px 10px;margin-top:8px}
+.pop{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:5}
+.pop.on{display:flex}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow-float);width:min(460px,calc(100vw - 32px));padding:18px}
+.dlg .fld{display:grid;gap:4px;margin-bottom:12px}
+.dlg label{font-size:12px;color:var(--mute)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r1);overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:4px 10px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--sel);color:var(--acc-ink);font-weight:600}
+.hint{font-size:12px;color:var(--mute)}
+.err{font-size:12px;color:var(--bad)}
+table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.t th,.t td{padding:0 10px;height:var(--row);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.t th{font-size:12px;color:var(--mute);font-weight:500;background:var(--sunk)}
+.t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.t tr:last-child td{border-bottom:0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--side);color:var(--side-ink);padding:8px 14px;border-radius:var(--r1);display:none;z-index:9}
+.switch{width:38px;height:22px;border-radius:99px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--panel);transition:left var(--dur-1) var(--ease)}
+.switch[aria-checked=true]{background:var(--acc)}.switch[aria-checked=true]::after{left:19px}
+.note{font-size:13px;color:var(--mute);max-width:640px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:10px;overflow-x:auto}
+.col{background:var(--sunk);border-radius:var(--r2);padding:8px;min-height:240px}
+.col.over{outline:2px dashed var(--acc);outline-offset:-2px}
+.col h3{font:600 12px var(--font-ui);color:var(--mute);margin:2px 4px 8px;text-transform:uppercase;letter-spacing:.05em}
+.cardi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r1);padding:8px;margin-bottom:6px;cursor:grab;font-size:13px}
+.cardi .mt{font:12px var(--font-mono);color:var(--mute);margin-top:4px}
+@media (max-width:760px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;padding:6px}.side .ws,.side .grp{display:none}main{padding:16px}.issue{grid-template-columns:1fr}}
+
+main:has(#mytime.on){max-width:1440px}
+.wk-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.wk-head h1{font-size:28px}.wk-head .sub{margin:0;font-size:15px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:14px 16px}
+.tile .l{font-size:13px;color:var(--mute)}.tile .v{font:600 26px var(--font-display);margin-top:2px}.tile .s{font-size:13px;color:var(--mute)}
+.tile.warn .v{color:var(--warn)}
+.gridwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2)}
+.grid{border-collapse:collapse;width:100%;font-size:15px;min-width:980px}
+.grid .c-iss{width:38%}.grid .c-we{width:6%}.grid .c-tot{width:9%}
+.grid th,.grid td{height:48px;padding:0 14px;border-bottom:1px solid var(--line);text-align:left}
+.grid thead th{height:56px;background:var(--sunk);font-weight:500;color:var(--mute);font-size:13px;position:sticky;top:0}
+.grid th.day span{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em}.grid th.day b{font:600 18px var(--font-display);color:var(--ink)}
+.grid th.today{background:color-mix(in srgb,var(--acc) 16%,var(--sunk))}.grid th.today b,.grid th.today span{color:var(--acc-ink)}
+.grid td.today{background:var(--sel)}
+.grid .we{color:var(--mute)}
+.grid .n{text-align:right;font-variant-numeric:tabular-nums}
+.grid tr.grp th{height:38px;background:var(--bg);font:600 13px var(--font-ui);color:var(--ink);text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--line)}
+.grid tr.grp th .sub{all:unset;float:right;font:500 13px var(--font-mono);color:var(--mute);text-transform:none;letter-spacing:0}
+.grid td.iss{white-space:normal;line-height:1.3}
+.grid td.iss .key{display:inline-block;min-width:64px}
+.grid td.iss .st{margin-left:6px}
+.grid td.c{padding:0;position:relative}
+.grid td.c input{width:100%;height:48px;border:0;background:transparent;text-align:right;padding:0 14px;font:15px var(--font-mono);color:var(--ink)}
+.grid td.c input::placeholder{color:var(--line)}
+.grid td.c input:focus{outline:2px solid var(--acc);outline-offset:-2px;background:var(--sel)}
+.grid td.c input:disabled{color:var(--mute);cursor:not-allowed}
+.grid td.c.note::after{content:'';position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--prog)}
+.grid tr.r:hover td{background:color-mix(in srgb,var(--sunk) 50%,transparent)}
+.grid tr.lk td{background:var(--sunk)}
+.grid td.tot{font:600 15px var(--font-mono)}
+.grid tfoot td{height:52px;font:600 15px var(--font-mono);background:var(--sunk);border-bottom:0}
+.grid tfoot td.iss{font:600 14px var(--font-ui)}
+.grid tfoot td.gap{color:var(--warn);font:500 12px var(--font-ui)}
+.below{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.below h2{font-size:15px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13px}.keys dd{margin:0;color:var(--mute)}
+.ent{list-style:none;margin:8px 0 12px;padding:0}.ent li{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+.grid th.day,.grid td.c,.grid tfoot td.n{border-left:1px solid var(--line)}
+.grid th.tot,.grid td.tot,.grid tfoot td.wk{border-left:2px solid color-mix(in srgb,var(--ink) 22%,var(--line))}
+.grid th.day.mon,.grid td.c.mon,.grid tfoot td.mon{border-left:2px solid color-mix(in srgb,var(--ink) 22%,var(--line))}
+.grid th.day.sat,.grid td.c.sat,.grid tfoot td.sat{border-left:2px solid color-mix(in srgb,var(--ink) 22%,var(--line))}
+.grid td.c.we,.grid tfoot td.we{background:color-mix(in srgb,var(--sunk) 55%,transparent)}
+.grid th.day{text-align:center}.grid tfoot td.n{text-align:right}
+.grid td.tot,.grid th.tot,.grid tfoot td.wk{background:color-mix(in srgb,var(--sunk) 70%,transparent)}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.below{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="proto"><span>PROTOTYPE · Time registration · 01 Week grid (picked)</span>
+<label>Viewing as <select onchange="setRole(this.value)"><option value="member">Mette (Member)</option><option value="owner">Mette (Owner)</option></select></label>
+<a href="index.html" style="color:inherit">All directions</a><button type="button" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">Theme</button></div>
+<div class="app">
+<nav class="side" aria-label="Main">
+<div class="ws">Fjordbyg</div>
+<button data-go="board" onclick="go('board')">Board</button>
+<button data-go="issue" onclick="go('issue')">Issues</button>
+<button data-go="mytime" onclick="go('mytime')">My time</button>
+<button data-go="team" data-owner style="display:none" onclick="go('team')">Team time</button>
+<div class="grp">Workspace</div>
+<button data-go="settings" data-owner style="display:none" onclick="go('settings')">Settings</button>
+</nav>
+<main>
+<section class="screen" id="issue">
+<div class="row" style="margin-bottom:12px"><span class="hint">Try:</span><button class="btn" onclick="pickIssue('KUP-142')">KUP-142 (In Progress)</button><button class="btn" onclick="pickIssue('KUP-138')">KUP-138 (Done, locked)</button></div>
+<div class="issue">
+<div class="card"><div class="key" id="iKey"></div><h1 id="iTitle"></h1>
+<p class="mute">Paying with MobilePay on iOS 18 returns to a blank page. Repro steps and logs in the comments.</p>
+<h2 style="margin-top:20px">Your time on this issue</h2>
+<table class="t"><tbody id="iMine"></tbody></table></div>
+<aside class="card"><dl class="props"><dt>State</dt><dd id="iState"></dd><dt>Type</dt><dd id="iType"></dd><dt>Assignee</dt><dd>Mette Holm</dd><dt>Effort</dt><dd>5</dd></dl>
+<div class="timebox" id="iTime"></div></aside>
+</div>
+</section>
+<section class="screen" id="board"><h1>Board</h1><p class="sub">Payments · drag a card to Done or Canceled. If you have logged no time on it, Kupro asks for time in the same save; otherwise it moves straight away.</p><div class="board" id="bCols"></div></section>
+<section class="screen" id="mytime"><div class="wk-head"><div><h1>My time</h1><p class="sub">Week 48 · Monday 23 to Sunday 29 November 2026</p></div><span class="sp"></span>
+<div class="row"><button class="btn">‹ Week 47</button><button class="btn">This week</button><button class="btn" disabled>Week 49 ›</button></div></div>
+<div class="tiles" id="gSum"></div>
+<div class="gridwrap"><table class="grid" aria-label="Time per issue and day">
+<colgroup><col class="c-iss"><col span="5"><col span="2" class="c-we"><col class="c-tot"></colgroup>
+<thead><tr><th class="iss">Issue</th><th class="n day mon"><span>Mon</span><b>23</b></th><th class="n day"><span>Tue</span><b>24</b></th><th class="n day"><span>Wed</span><b>25</b></th><th class="n day today"><span>Thu</span><b>26</b></th><th class="n day"><span>Fri</span><b>27</b></th><th class="n day sat we"><span>Sat</span><b>28</b></th><th class="n day we"><span>Sun</span><b>29</b></th><th class="n tot">Week</th></tr></thead>
+<tbody id="gBody"></tbody><tfoot id="gFoot"></tfoot></table></div>
+<div class="below">
+<section class="card" id="gCell" aria-live="polite"></section>
+<section class="card"><h2>Add an issue to this week</h2>
+<div class="row"><select class="f" id="gAdd" aria-label="Issue" style="flex:1"></select><button class="btn pri" onclick="addRow()">Add row</button></div>
+<h2 style="margin-top:18px">Keys</h2>
+<dl class="keys"><dt><kbd>1h30</kbd> <kbd>90m</kbd> <kbd>1,5</kbd> <kbd>2</kbd></dt><dd>Durations a cell takes</dd>
+<dt><kbd>Tab</kbd> <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></dt><dd>Move between cells</dd>
+<dt><kbd>Enter</kbd></dt><dd>Save the cell</dd><dt>Empty the cell</dt><dd>Delete that day's time</dd></dl></section>
+</div></section>
+<section class="screen" id="team">
+<div class="row"><div><h1>Team time</h1><p class="sub">Week 48, 23–29 November 2026. Each person's day total; open a person for their entries and history.</p></div><span class="sp"></span><button class="btn pri" onclick="openExport()">Export…</button></div>
+<table class="t"><thead><tr><th>Person</th><th class="n">Mon 23</th><th class="n">Tue 24</th><th class="n">Wed 25</th><th class="n">Thu 26</th><th class="n">Fri 27</th><th class="n">Sat 28</th><th class="n">Sun 29</th><th class="n">Week</th></tr></thead><tbody id="teamBody"></tbody></table>
+<p class="note">Only Owners see this page. Owners read and export, but don't edit anyone's time. People who have left stay here for 5 years.</p>
+</section>
+<section class="screen" id="settings">
+<h1>Settings</h1><p class="sub">Workspace · Fjordbyg</p>
+<div class="card" style="max-width:640px"><div class="row"><div style="flex:1"><h2 style="margin:0">Time registration</h2>
+<p class="note" style="margin:4px 0 0">Members log the time they spend on issues. Danish employers must record working time; this is where your team does it. Off by default.</p></div>
+<button class="switch" role="switch" aria-checked="true" aria-label="Time registration" onclick="toggleOn(this)"></button></div>
+<ul class="note"><li>Each person sees only their own time. Owners see everyone's and export it.</li><li>Time on a Done or Canceled issue is locked until the issue is reopened.</li><li>Records are kept for 5 years, also after someone leaves, and also if you turn this off.</li></ul></div>
+</section>
+</main>
+</div>
+<div class="pop" id="log" onclick="if(event.target===this)closeLog()"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="logH">
+<h2 id="logH">Log time</h2>
+<div class="fld"><label for="lIssue">Issue</label><select class="f" id="lIssue"></select></div>
+<div class="row" style="align-items:flex-start">
+<div class="fld" style="flex:1"><label for="lDur">Time spent</label><input class="f" id="lDur" placeholder="1h30, 90m or 1,5" autocomplete="off"><span class="err" id="lErr"></span></div>
+<div class="fld"><label>Day</label><div class="seg" id="lDay"><button data-d="1" aria-pressed="false" onclick="logDay=1;$$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay))">Tue</button><button data-d="2" aria-pressed="false" onclick="logDay=2;$$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay))">Wed</button><button data-d="3" aria-pressed="false" onclick="logDay=3;$$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay))">Today</button></div></div></div>
+<div class="fld"><label for="lNote">Note (optional)</label><input class="f" id="lNote"></div>
+<div class="row"><span class="hint"><kbd>Enter</kbd> to log, <kbd>Esc</kbd> to close</span><span class="sp"></span><button class="btn" onclick="closeLog()">Cancel</button><button class="btn" id="lSkip" style="display:none" onclick="skipLog()"></button><button class="btn pri" id="lSave" onclick="saveLog()">Log time</button></div>
+</div></div>
+<div class="pop" id="exp" onclick="if(event.target===this)this.classList.remove('on')"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="expH">
+<h2 id="expH">Export time</h2>
+<div class="fld"><label>People</label><select class="f"><option>Everyone (5, including 1 who has left)</option><option>Jonas Berg</option><option>Sara Lund</option></select></div>
+<div class="row"><div class="fld" style="flex:1"><label>From</label><input class="f" type="date" value="2026-11-01"></div><div class="fld" style="flex:1"><label>To</label><input class="f" type="date" value="2026-11-30"></div></div>
+<div class="fld"><label>Format</label><div class="seg"><button aria-pressed="true">CSV</button><button aria-pressed="false">JSON</button></div></div>
+<p class="hint">One row per entry: date, person, minutes, issue key, issue title, note. Corrections for people who have left are notes in the file.</p>
+<div class="row"><span class="sp"></span><button class="btn" onclick="$('#exp').classList.remove('on')">Cancel</button><button class="btn pri" onclick="doExport()">Download</button></div>
+</div></div>
+
+<div class="toast" id="toast" role="status"></div>
+<script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const DAYS=['Mon 23','Tue 24','Wed 25','Thu 26','Fri 27','Sat 28','Sun 29'];
+const TODAY=3; // Thursday 26 November 2026
+const ISSUES={
+ 'KUP-142':{t:'Checkout fails for MobilePay on iOS',type:'Task · bug',state:'In Progress'},
+ 'KUP-120':{t:'Payments v2',type:'Epic',state:'In Progress'},
+ 'KUP-138':{t:'Invoice PDF layout',type:'Task',state:'Done'},
+ 'KUP-9':{t:'Meetings and planning',type:'Task',state:'Todo'},
+ 'KUP-150':{t:'Support rota, week 48',type:'Task',state:'In Progress'},
+ 'KUP-147':{t:'Refund webhook retries',type:'Feature',state:'In Review'}};
+const locked=k=>['Done','Canceled'].includes(ISSUES[k].state);
+let E=[ // your entries this week
+ {id:1,k:'KUP-142',d:0,m:240,n:'Reproduced on iPhone 15'},
+ {id:2,k:'KUP-9',d:0,m:60,n:'Planning'},
+ {id:3,k:'KUP-138',d:0,m:150,n:''},
+ {id:4,k:'KUP-142',d:1,m:330,n:'Fix + test'},
+ {id:5,k:'KUP-9',d:1,m:30,n:'Standup'},
+ {id:6,k:'KUP-138',d:1,m:90,n:'Review fixes'},
+ {id:7,k:'KUP-147',d:2,m:270,n:''},
+ {id:8,k:'KUP-150',d:2,m:180,n:'Two tickets'},
+ {id:9,k:'KUP-9',d:2,m:30,n:'Standup'},
+ {id:10,k:'KUP-9',d:3,m:30,n:'Standup'},
+ {id:11,k:'KUP-142',d:3,m:120,n:''}];
+let nextId=20;
+const OTHERS={'KUP-142':[['Jonas Berg',300],['Sara Lund',90]],'KUP-138':[['Jonas Berg',120]],'KUP-120':[],'KUP-9':[['Jonas Berg',150],['Sara Lund',120],['Ali Haddad',120]],'KUP-150':[['Ali Haddad',240]],'KUP-147':[['Sara Lund',360]]};
+let role='member';
+function fmt(m){if(!m)return '';const h=Math.floor(m/60),r=m%60;return h&&r?h+'h '+r+'m':h?h+'h':r+'m'}
+function parse(s){s=(s||'').trim().toLowerCase().replace(',','.');if(!s)return 0;let m;
+ if(m=s.match(/^(\d+(?:\.\d+)?)\s*h?$/))return Math.round(parseFloat(m[1])*60);
+ if(m=s.match(/^(\d+)\s*m$/))return +m[1];
+ if(m=s.match(/^(\d+)\s*h\s*(\d+)\s*m?$/))return +m[1]*60+ +m[2];
+ if(m=s.match(/^(\d+):(\d{2})$/))return +m[1]*60+ +m[2];
+ return NaN}
+const dayTotal=d=>E.filter(e=>e.d===d).reduce((a,e)=>a+e.m,0);
+const mine=k=>E.filter(e=>e.k===k).reduce((a,e)=>a+e.m,0);
+function toast(t){const x=$('#toast');x.textContent=t;x.style.display='block';clearTimeout(x._t);x._t=setTimeout(()=>x.style.display='none',2200)}
+function go(id){$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('.side button[data-go]').forEach(b=>b.setAttribute('aria-current',b.dataset.go===id));render()}
+function setRole(r){role=r;$$('[data-owner]').forEach(x=>x.style.display=r==='owner'?'':'none');if(r!=='owner'&&($('#team').classList.contains('on')||$('#settings').classList.contains('on')))go('mytime');render()}
+// Issue screen (shared)
+let cur='KUP-142';
+function renderIssue(){const i=ISSUES[cur];$('#iKey').textContent=cur;$('#iTitle').textContent=i.t;$('#iState').innerHTML=`<select class="f" aria-label="State" onchange="setState(this.value)">${['Todo','In Progress','In Review','Done','Canceled'].map(s=>`<option ${s===i.state?'selected':''}>${s}</option>`).join('')}</select>`;$('#iType').textContent=i.type;
+ const my=mine(cur);let h=`<div class="hint">Your time</div><div class="big">${fmt(my)||'0m'}</div>`;
+ if(role==='owner'){const o=OTHERS[cur]||[];const tot=my+o.reduce((a,x)=>a+x[1],0);h=`<div class="hint">Total on this issue</div><div class="big">${fmt(tot)||'0m'}</div><div class="share">${my?`<span>Mette Holm (you)</span><span class="mono">${fmt(my)}</span>`:''}${o.map(x=>`<span>${x[0]}</span><span class="mono">${fmt(x[1])}</span>`).join('')}</div>`}
+ else h+=`<div class="hint">Only you and the workspace Owners see your time.</div>`;
+ if(locked(cur))h+=`<div class="lockline"><span aria-hidden="true">🔒</span><span>Time is locked because the issue is ${i.state}. Reopen the issue to change it.</span></div><div class="row" style="margin-top:8px"><button class="btn" onclick="setState('In Progress')">Reopen</button></div>`;
+ else h+=`<div class="row" style="margin-top:10px"><button class="btn" onclick="openLog('${cur}')">Log time</button><span class="key"><kbd>T</kbd></span></div>`;
+ $('#iTime').innerHTML=h;
+ $('#iMine').innerHTML=E.filter(e=>e.k===cur).sort((a,b)=>b.d-a.d).map(e=>`<tr><td>${DAYS[e.d]} Nov</td><td class="n mono">${fmt(e.m)}</td><td class="mute">${esc(e.n)}</td></tr>`).join('')||'<tr><td class="mute" colspan="3">No time logged by you yet.</td></tr>'}
+function pickIssue(k){cur=k;renderIssue()}
+// Log dialog (shared)
+let logKey=null,logDay=TODAY,resolve=null;
+function setState(s){if(s==='Done'||s==='Canceled'){openLog(cur,TODAY,s);return}ISSUES[cur].state=s;toast(cur+' is '+s);render()}
+function openLog(k,d,r){logKey=k||null;logDay=d??TODAY;resolve=r||null;const p=$('#log');p.classList.add('on');
+ $('#logH').textContent=resolve?'Mark '+resolve:'Log time';$('#lSave').textContent=resolve?'Log time and mark '+resolve:'Log time';$('#lSkip').style.display=resolve?'':'none';$('#lSkip').textContent='Mark '+(resolve||'')+' without time';$('#lIssue').disabled=!!resolve;
+ $('#lIssue').innerHTML=Object.keys(ISSUES).map(x=>`<option value="${x}" ${locked(x)?'disabled':''} ${x===logKey?'selected':''}>${x} ${ISSUES[x].t}${locked(x)?' (locked, '+ISSUES[x].state+')':''}</option>`).join('');
+ if(!logKey)$('#lIssue').value='KUP-142';
+ $$('#lDay button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.d===logDay));
+ $('#lDur').value='';$('#lNote').value='';$('#lErr').textContent='';setTimeout(()=>$('#lDur').focus(),0)}
+function closeLog(){$('#log').classList.remove('on');if(resolve){resolve=null;renderIssue()}}
+function skipLog(){const s=resolve;resolve=null;$('#log').classList.remove('on');ISSUES[logKey].state=s;toast(logKey+' is '+s+'. Its time is now locked.');render()}
+const COLS=['Todo','In Progress','In Review','Done','Canceled'];
+function renderBoard(){$('#bCols').innerHTML=COLS.map(c=>`<div class="col" data-c="${c}" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="this.classList.remove('over');drop(event.dataTransfer.getData('text'),'${c}')"><h3>${c}</h3>${Object.keys(ISSUES).filter(k=>ISSUES[k].state===c).map(k=>`<div class="cardi" draggable="true" ondragstart="event.dataTransfer.setData('text','${k}')"><span class="key">${k}</span> ${ISSUES[k].t}<div class="mt">${mine(k)?'Your time '+fmt(mine(k)):'No time from you'}</div></div>`).join('')}</div>`).join('')}
+function drop(k,c){if(!ISSUES[k]||ISSUES[k].state===c)return;if((c==='Done'||c==='Canceled')&&!mine(k)){openLog(k,TODAY,c);return}ISSUES[k].state=c;toast(k+' is '+c+(c==='Done'||c==='Canceled'?'. Its time is now locked.':''));render()}
+function saveLog(){const m=parse($('#lDur').value);const k=$('#lIssue').value;
+ if(!m||isNaN(m)||m>1440){$('#lErr').textContent='Write a duration like 1h30, 90m or 1,5.';return}
+ if(dayTotal(logDay)+m>1440){$('#lErr').textContent='That day would pass 24 hours.';return}
+ E.push({id:nextId++,k,d:logDay,m,n:$('#lNote').value});const r=resolve;if(r)ISSUES[k].state=r;resolve=null;$('#log').classList.remove('on');toast(r?`Saved together: ${fmt(m)} logged and ${k} marked ${r}. Its time is now locked.`:`Logged ${fmt(m)} on ${k}, ${DAYS[logDay]} Nov`);render()}
+// Team screen (Owner, shared)
+const TEAM=[['Mette Holm',null],['Jonas Berg',[450,480,420,465,0,0,0]],['Sara Lund',[420,0,450,480,0,0,0]],['Ali Haddad',[300,360,240,0,0,0,0]],['Freja Nørgaard (left 31 Oct)',[0,0,0,0,0,0,0]]];
+function renderTeam(){$('#teamBody').innerHTML=TEAM.map(([n,v])=>{v=v||DAYS.map((_,d)=>dayTotal(d));const s=v.reduce((a,b)=>a+b,0);return `<tr><td>${n}</td>${v.map((m,d)=>`<td class="n mono ${d>4?'mute':''}">${fmt(m)||'–'}</td>`).join('')}<td class="n mono"><b>${fmt(s)||'–'}</b></td></tr>`}).join('')}
+function openExport(){$('#exp').classList.add('on')}
+function doExport(){$('#exp').classList.remove('on');toast('kupro-time-2026-11.csv downloaded (prototype)')}
+// Settings (shared)
+function toggleOn(b){const on=b.getAttribute('aria-checked')!=='true';b.setAttribute('aria-checked',on);toast(on?'Time registration is on for Fjordbyg':'Time registration is off. Records are kept.')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$$('.pop').forEach(p=>p.classList.remove('on'))}
+ if(e.key==='Enter'&&$('#log').classList.contains('on')&&e.target.tagName!=='TEXTAREA'){e.preventDefault();saveLog()}
+ if(e.key.toLowerCase()==='t'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&!$('.pop.on')&&$('#issue').classList.contains('on')&&!locked(cur)){e.preventDefault();openLog(cur)}});
+
+
+const PROJ={'KUP-142':'Payments','KUP-147':'Payments','KUP-120':'Payments','KUP-138':'Payments','KUP-150':'Operations','KUP-9':'Operations'};
+let refocus=null,rows=['KUP-142','KUP-147','KUP-150','KUP-9','KUP-138'],selK='KUP-142',selD=TODAY;
+const dc=d=>(d===0?' mon':'')+(d===5?' sat':'')+(d>4?' we':'')+(d===TODAY?' today':'');
+const cellM=(k,d)=>E.filter(e=>e.k===k&&e.d===d).reduce((a,e)=>a+e.m,0);
+function rowHtml(k){const lk=locked(k);
+ const cells=DAYS.map((_,d)=>{const es=E.filter(e=>e.k===k&&e.d===d);const m=es.reduce((a,e)=>a+e.m,0);const note=es.some(e=>e.n);
+  return `<td class="c${dc(d)}${note?' note':''}"><input aria-label="${k}, ${DAYS[d]} November" data-k="${k}" data-d="${d}" value="${fmt(m)}" placeholder="${lk||d>TODAY?'':'–'}" ${lk||d>TODAY?'disabled':''} onfocus="sel('${k}',${d})" onchange="cell(this)" onkeydown="nav(event,this)"></td>`}).join('');
+ return `<tr class="r ${lk?'lk':''}"><td class="iss"><span class="key">${k}</span> ${ISSUES[k].t}<span class="st chip ${lk?'lock':''}">${lk?'🔒 ':''}${ISSUES[k].state}</span></td>${cells}<td class="n tot">${fmt(mine(k))||'–'}</td></tr>`}
+function grp(name,ks){if(!ks.length)return '';const t=ks.reduce((a,k)=>a+mine(k),0);return `<tr class="grp"><th colspan="9">${name}<span class="sub">${fmt(t)||''}</span></th></tr>`+ks.map(rowHtml).join('')}
+function renderMine(){
+ const open=rows.filter(k=>!locked(k)),closed=rows.filter(k=>locked(k));
+ const projs=[...new Set(open.map(k=>PROJ[k]))];
+ $('#gBody').innerHTML=projs.map(p=>grp(p,open.filter(k=>PROJ[k]===p))).join('')+grp('Done or Canceled · locked',closed);
+ const tot=DAYS.map((_,d)=>dayTotal(d)),wk=tot.reduce((a,b)=>a+b,0);
+ $('#gFoot').innerHTML=`<tr><td class="iss">Day total</td>${tot.map((m,d)=>m?`<td class="n${dc(d)}">${fmt(m)}</td>`:d<TODAY&&d<5?`<td class="n gap${dc(d)}">Nothing</td>`:`<td class="n${dc(d)}">–</td>`).join('')}<td class="n wk">${fmt(wk)}</td></tr>`;
+ const gaps=[0,1,2,3].filter(d=>!dayTotal(d)).length;
+ $('#gSum').innerHTML=`<div class="tile"><div class="l">This week</div><div class="v">${fmt(wk)||'0m'}</div><div class="s">on ${new Set(E.map(e=>e.k)).size} issues</div></div>
+ <div class="tile"><div class="l">Today, Thursday</div><div class="v">${fmt(dayTotal(TODAY))||'0m'}</div><div class="s">${E.filter(e=>e.d===TODAY).length} entries</div></div>
+ <div class="tile ${gaps?'warn':''}"><div class="l">Weekdays so far with no time</div><div class="v">${gaps}</div><div class="s">${gaps?'Fill them in while you remember':'Every day so far has time'}</div></div>
+ <div class="tile"><div class="l">Locked</div><div class="v">${fmt(closed.reduce((a,k)=>a+mine(k),0))||'0m'}</div><div class="s">on Done or Canceled issues</div></div>`;
+ $('#gAdd').innerHTML='<option value="">Pick an issue…</option>'+Object.keys(ISSUES).filter(k=>!rows.includes(k)).map(k=>`<option value="${k}" ${locked(k)?'disabled':''}>${k} ${ISSUES[k].t}${locked(k)?' (locked)':''}</option>`).join('');
+ renderCell()}
+function sel(k,d){selK=k;selD=d;renderCell()}
+function renderCell(){const k=selK,d=selD,es=E.filter(e=>e.k===k&&e.d===d),lk=locked(k);
+ $('#gCell').innerHTML=`<h2><span class="key">${k}</span> ${ISSUES[k].t}</h2><div class="mute">${DAYS[d]} November · ${fmt(cellM(k,d))||'no time'}</div>
+ <ul class="ent">${es.map(e=>`<li><span class="mono" style="min-width:60px">${fmt(e.m)}</span><span class="mute">${e.n?esc(e.n):'No note'}</span></li>`).join('')}</ul>
+ ${lk?'<div class="lockline"><span aria-hidden="true">🔒</span><span>Locked: the issue is '+ISSUES[k].state+'. Reopen it to change its time.</span></div>':es.length?`<label class="hint" for="gNote">Note for this day</label><div class="row"><input class="f" id="gNote" style="flex:1" value="${esc(es.map(e=>e.n).filter(Boolean).join('; '))}" onchange="setNote(this.value)"></div>`:'<p class="hint">Type a duration in the cell, then add a note here.</p>'}`}
+function setNote(v){const es=E.filter(e=>e.k===selK&&e.d===selD);if(!es.length)return;es.forEach((e,i)=>e.n=i?'':v);toast('Note saved');renderMine()}
+function cell(i){const k=i.dataset.k,d=+i.dataset.d,m=parse(i.value);
+ if(isNaN(m)||m>1440){toast('Write a duration like 1h30, 90m or 1,5');renderMine();return}
+ const other=dayTotal(d)-cellM(k,d);
+ if(other+m>1440){toast('That day would pass 24 hours');renderMine();return}
+ const note=E.filter(e=>e.k===k&&e.d===d).map(e=>e.n).filter(Boolean).join('; ');
+ E=E.filter(e=>!(e.k===k&&e.d===d));if(m)E.push({id:nextId++,k,d,m,n:note});renderIssue();renderTeam();renderBoard();
+ const f=document.activeElement,to=refocus||(f&&f.dataset&&f.dataset.k?f.dataset:null);renderMine();if(to){const n=$(`input[data-k="${to.k}"][data-d="${to.d}"]`);n&&n.focus()}}
+function nav(e,i){const k=i.dataset.k,d=+i.dataset.d;const ins=$$('#gBody input:not(:disabled)');const col=ins.filter(x=>+x.dataset.d===d);const r=col.indexOf(i);let t;
+ if(e.key==='ArrowDown')t=col[r+1];
+ if(e.key==='ArrowUp')t=col[r-1];
+ if(e.key==='Enter'){refocus={k,d};i.blur();i.dispatchEvent(new Event('change'));refocus=null}
+ if(e.key==='ArrowRight'&&i.selectionStart===i.value.length)t=$(`input[data-k="${k}"][data-d="${d+1}"]:not(:disabled)`);
+ if(e.key==='ArrowLeft'&&i.selectionStart===0)t=$(`input[data-k="${k}"][data-d="${d-1}"]:not(:disabled)`);
+ if(t){e.preventDefault();t.focus();t.select()}}
+function addRow(){const k=$('#gAdd').value;if(k){rows.push(k);renderMine();const n=$(`input[data-k="${k}"][data-d="${TODAY}"]`);n&&n.focus()}}
+
+function render(){renderIssue();renderTeam();renderMine();renderBoard()}
+go('mytime');
+</script>
+</body>
+</html>

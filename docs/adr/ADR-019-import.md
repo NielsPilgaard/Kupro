@@ -271,6 +271,7 @@ Connectors live in a shared `Kupro.Import` library referenced by the API and the
 - [ADR-013](ADR-013-seats-billing.md) — placeholder member status, no seat
 - [ADR-006](ADR-006-eu-vendor-policy.md) — import sources are not vendors
 - [ADR-018](ADR-018-cli-distribution.md) — the AOT CLI that also runs connectors locally
+- [ADR-021](ADR-021-time-registration.md) — worklogs and work items become time entries when it is on
 
 ## References
 

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index · Time registration prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+/* Large monitors (Tailwind 3xl, 1920 px): wider, roomier sidebar. */
+@media (min-width: 120rem) {
+  :root {
+    --sidebar: 252px;
+    --nav-item: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}
+
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.proto span{flex:1}.proto button,.proto select{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer}
+.proto select option{color:var(--ink);background:var(--panel)}
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:calc(100vh - 28px)}
+.side{background:var(--side);color:var(--side-ink);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.side .ws{font:600 15px var(--font-display);padding:6px 10px 14px}
+.side button{all:unset;cursor:pointer;height:var(--nav-item);padding:0 10px;border-radius:var(--r1);display:flex;align-items:center;gap:8px}
+.side button[aria-current=true]{background:var(--side-sel);font-weight:600}
+.side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:14px 10px 4px}
+main{padding:20px 28px;min-width:0}
+h1{font:600 22px var(--font-display);margin:0 0 4px}
+h2{font:600 16px var(--font-display);margin:0 0 8px}
+.sub{color:var(--mute);margin:0 0 16px}
+.btn{height:var(--control);padding:0 12px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--acc-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.mute{color:var(--mute)}
+.mono{font-family:var(--font-mono)}
+.key{font:12px var(--font-mono);color:var(--mute)}
+kbd{font:11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--mute)}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.prog{background:color-mix(in srgb,var(--prog) 15%,transparent);color:var(--prog)}
+.chip.lock{background:var(--sunk);color:var(--mute)}
+input.f,select.f,textarea.f{height:var(--control);border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);padding:0 8px}
+textarea.f{height:auto;padding:6px 8px}
+input.f:focus,select.f:focus,textarea.f:focus,.btn:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.screen{display:none}.screen.on{display:block}
+.issue{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start}
+.props{display:grid;gap:10px}
+.props dt{font-size:12px;color:var(--mute)}.props dd{margin:0}
+.timebox{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.big{font:600 20px var(--font-display)}
+.share{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:13px;margin-top:8px}
+.lockline{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mute);background:var(--sunk);border-radius:var(--r1);padding:8px 10px;margin-top:8px}
+.pop{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:5}
+.pop.on{display:flex}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow-float);width:min(460px,calc(100vw - 32px));padding:18px}
+.dlg .fld{display:grid;gap:4px;margin-bottom:12px}
+.dlg label{font-size:12px;color:var(--mute)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r1);overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:4px 10px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--sel);color:var(--acc-ink);font-weight:600}
+.hint{font-size:12px;color:var(--mute)}
+.err{font-size:12px;color:var(--bad)}
+table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.t th,.t td{padding:0 10px;height:var(--row);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.t th{font-size:12px;color:var(--mute);font-weight:500;background:var(--sunk)}
+.t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.t tr:last-child td{border-bottom:0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--side);color:var(--side-ink);padding:8px 14px;border-radius:var(--r1);display:none;z-index:9}
+.switch{width:38px;height:22px;border-radius:99px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--panel);transition:left var(--dur-1) var(--ease)}
+.switch[aria-checked=true]{background:var(--acc)}.switch[aria-checked=true]::after{left:19px}
+.note{font-size:13px;color:var(--mute);max-width:640px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(160px,1fr));gap:10px;overflow-x:auto}
+.col{background:var(--sunk);border-radius:var(--r2);padding:8px;min-height:240px}
+.col.over{outline:2px dashed var(--acc);outline-offset:-2px}
+.col h3{font:600 12px var(--font-ui);color:var(--mute);margin:2px 4px 8px;text-transform:uppercase;letter-spacing:.05em}
+.cardi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r1);padding:8px;margin-bottom:6px;cursor:grab;font-size:13px}
+.cardi .mt{font:12px var(--font-mono);color:var(--mute);margin-top:4px}
+@media (max-width:760px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;padding:6px}.side .ws,.side .grp{display:none}main{padding:16px}.issue{grid-template-columns:1fr}}
+
+.wrap{max-width:980px;margin:0 auto;padding:28px 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+a.card{color:inherit;text-decoration:none}a.card:hover{border-color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="proto"><span>PROTOTYPE · Time registration (task 034) · Index</span><button type="button" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'">Theme</button></div>
+<div class="wrap">
+<h1>Time registration: three directions</h1>
+<p class="sub">Every entry is on an issue (ADR-021). The directions differ in how a member logs and reviews their week. The issue panel, the Log time dialog, Team time with the export (switch "Viewing as" to Owner) and Settings are the same in all three.</p>
+<div class="cards"><a class="card" href="01-week-grid.html"><span class="key">01</span><h2>Week grid (picked)</h2><p class="mute">The pick, revised: a week timesheet grouped by project, with a summary on top, today highlighted, days with nothing flagged, locked issues in their own group, and a panel for notes on the selected cell. Type durations straight into cells.</p></a><a class="card" href="02-day-journal.html"><span class="key">02</span><h2>Day journal</h2><p class="mute">A strip of the week's day totals, and one day's entries below. One line logs: "1h30 KUP-142 note". Best for logging as you go, a few times a day.</p></a><a class="card" href="03-log-where-you-work.html"><span class="key">03</span><h2>Log where you work</h2><p class="mute">Logging lives on the issue (T) and in the command palette ("log 1h30 KUP-142"). My time is a list of days to check and fix, with days that have nothing logged marked.</p></a></div>
+<h2 style="margin-top:28px">Try in each</h2>
+<ul class="note">
+<li>Log time on KUP-142, then see it on My time.</li>
+<li>Open KUP-138 (Done): its time is locked.</li>
+<li>On KUP-142, set the state to Done: log the last hours and mark it Done in one save.</li>
+<li>On the Board, drag KUP-120 (no time from you) to Done: it asks for time. Drag KUP-147 (has time): it moves straight away.</li>
+<li>Viewing as Owner: the issue shows the total and each person's share; Team time and Export appear.</li>
+<li>Durations: <span class="mono">1h30</span>, <span class="mono">90m</span>, <span class="mono">1,5</span>, <span class="mono">2</span>.</li>
+</ul>
+</div>
+</body>
+</html>

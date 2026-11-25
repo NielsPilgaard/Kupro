@@ -84,8 +84,8 @@ then the fake stands in for them. The changelog criterion is also open (see Acce
   DC `/rest/api/2/search` (`startAt`). Delta: `updated >= "-Nm"` (relative to the cursor), in key order.
 - Hierarchy: `parent` (Cloud, and sub-tasks everywhere); `Epic Link` custom field on DC and old Cloud data.
 - Changelog: Cloud `/rest/api/3/issue/{id}/changelog` (paged); DC `expand=changelog`. Change ID = history ID + item index.
-- Comments (paged), attachments (content URL with the same auth), issue links, worklogs (summed into the details block
-  only; time tracking is out of v1 scope, [product.md](../docs/product.md)).
+- Comments (paged), attachments (content URL with the same auth), issue links, worklogs (time entries or the details
+  block, as [ADR-021](../docs/adr/ADR-021-time-registration.md) Import says).
 - Sprints: the sprint field (by schema `com.pyxis.greenhopper.jira:gh-sprint`) plus Agile API
   `/rest/agile/1.0/sprint/{id}` for dates and state.
 - Versions: `/project/{id}/versions`; a version with `releaseDate` → milestone option.
@@ -152,5 +152,5 @@ then the fake stands in for them. The changelog criterion is also open (see Acce
 
 - Jira Service Management queues, SLAs and customer portals.
 - Jira Align, Confluence pages linked from issues (kept as links).
-- Worklogs as entries (time tracking is not in v1).
+- Worklogs as entries: they come with task 034 ([ADR-021](../docs/adr/ADR-021-time-registration.md)).
 - Atlassian OAuth 2.0 (3LO) "Connect" button.
