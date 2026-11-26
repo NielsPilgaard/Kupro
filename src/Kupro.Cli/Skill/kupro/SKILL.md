@@ -37,10 +37,10 @@ with `relations` (CLI: `kupro issue relate`, `kupro issue unrelate`). Comment wi
 ## Time
 
 When the workspace has time registration on, the `time` tool logs time on an issue for the person you act for (CLI:
-`kupro time log 1h30m KUP-12`). Time is always on an issue. To close the issue in the same save, pass `state: done`
-(CLI: `--done`). `time` with `action: week` shows the week's entries and day totals (CLI: `kupro time week`). Ask
-before you log time for the user: it is their working-time record. Time on a done or canceled issue is locked until the
-issue is reopened.
+`kupro time log <duration> <key>`, with a duration like 1h30m). Time is always on an issue. To close the issue in the
+same save, pass `state: done` (CLI: `--done`). `time` with `action: week` shows the week's entries and day totals (CLI:
+`kupro time week`). Ask before you log time for the user: it is their working-time record. Time on a done or canceled
+issue is locked until the issue is reopened.
 
 ## Sprints and the plan
 
