@@ -9,10 +9,11 @@ public sealed partial class TimeRetentionJob(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // First run after a few hours, not at startup: the database may still be migrating, and the cutoff moves by a
-        // day at a time, so a run every few hours keeps it at most hours late.
+        // First run shortly after startup, once migrations are done, so frequent deploys can't keep skipping it. The
+        // cutoff moves by a day at a time, so a run every few hours keeps it at most hours late.
+        await Task.Delay(TimeSpan.FromMinutes(10), clock, stoppingToken);
         using var timer = new PeriodicTimer(TimeSpan.FromHours(6), clock);
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        do
         {
             try
             {
@@ -30,6 +31,7 @@ public sealed partial class TimeRetentionJob(
                 LogFailed(logger, ex);
             }
         }
+        while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Deleted {Count} time entries older than {Years} years")]

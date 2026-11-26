@@ -107,8 +107,12 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         (await client.PatchAsJsonAsync(ws, new UpdateWorkspaceRequest(TimeRegistration: true), Json.Options, Ct)).EnsureSuccessStatusCode();
         var timed = await ReadAsync<IssueDetail>(await client.PostAsJsonAsync($"{ws}/issues", new CreateIssueRequest("WEB", "Timed"), Json.Options, Ct),
             HttpStatusCode.Created);
+        // Spread over unseeded past days, so retries never fill a day's 24 hours.
+        var oldest = TimeService.LocalDay(DateTimeOffset.UtcNow).AddDays(-400);
+        var posted = 0;
         results.Add(await MeasureAsync("POST {ws}/time", async () =>
-            (await client.PostAsJsonAsync($"{ws}/time", new LogTimeRequest(timed.Key, 1), Json.Options, Ct)).EnsureSuccessStatusCode()));
+            (await client.PostAsJsonAsync($"{ws}/time", new LogTimeRequest(timed.Key, 1, oldest.AddDays(-(posted++ % 365))), Json.Options, Ct))
+                .EnsureSuccessStatusCode()));
 
         // CI sets KUPRO_PERF_REPORT to $GITHUB_STEP_SUMMARY, so every run shows the numbers.
         if (Environment.GetEnvironmentVariable("KUPRO_PERF_REPORT") is { Length: > 0 } report)

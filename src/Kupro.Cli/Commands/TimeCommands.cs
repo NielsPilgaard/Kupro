@@ -62,11 +62,10 @@ internal static partial class TimeCommands
         var to = DateOption("--to", "Last day of a custom range (at most 93 days).");
         return new ApiCommand("week", "Your time for a week, Monday to Sunday: entries and day totals.", "listMyTime") { date, from, to }.Handle(async (c, ct) =>
         {
-            var day = c.Get(date) ?? DateOnly.FromDateTime(DateTime.Today);
-            var first = c.Get(from) ?? day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
-            var last = c.Get(to) ?? (c.Get(from) is null ? first.AddDays(6) : (DateOnly?)null);
+            // Without from, the server picks the week of `to` (default its today), so the week follows its calendar.
+            var last = c.Get(to) ?? (c.Get(from) is null ? c.Get(date) : null);
             var mine = await (await c.InWorkspaceAsync(ct)).Time.Mine.GetAsync(
-                r => (r.QueryParameters.From, r.QueryParameters.To) = (ToDate(first), ToDate(last)), ct);
+                r => (r.QueryParameters.From, r.QueryParameters.To) = (ToDate(c.Get(from)), ToDate(last)), ct);
             if (c.Out.Json)
             {
                 await c.Out.ItemAsync(mine!);
@@ -180,7 +179,12 @@ internal static partial class TimeCommands
             }
 
             using var reader = new StreamReader(body);
-            await c.Out.Writer.WriteAsync((await reader.ReadToEndAsync(ct)).AsMemory(), ct);
+            var buffer = new char[16 * 1024];
+            int read;
+            while ((read = await reader.ReadAsync(buffer, ct)) > 0)
+            {
+                await c.Out.Writer.WriteAsync(buffer.AsMemory(0, read), ct);
+            }
         });
     }
 

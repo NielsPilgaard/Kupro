@@ -35,6 +35,11 @@ public sealed class TimeService(
             return new IssueError("invalid_state", "Logging time can close the issue as done or canceled, nothing else.");
         }
 
+        if (MinutesError(request.Minutes) is { } minutesError)
+        {
+            return minutesError;
+        }
+
         var date = request.Date ?? Today;
         if (DateError(date) is { } dateError)
         {
@@ -97,6 +102,11 @@ public sealed class TimeService(
         if (request.Date is { } date && DateError(date) is { } dateError)
         {
             return dateError;
+        }
+
+        if (MinutesError(request.Minutes) is { } minutesError)
+        {
+            return minutesError;
         }
 
         var error = await InTransactionAsync(async db =>
@@ -242,7 +252,8 @@ public sealed class TimeService(
         }
 
         var person = await PersonAsync(db, ct);
-        var entry = await db.TimeEntries.SingleOrDefaultAsync(e => e.Id == id, ct);
+        // Locked, so a concurrent edit of the same entry waits and then checks the day it actually ends up on.
+        var entry = await db.TimeEntries.FromSql($"SELECT * FROM time_entries WHERE id = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
         return entry is null || (entry.MemberId != person && workspace.Role < WorkspaceRole.Owner) ? (null, EntryNotFound(id))
             : entry.MemberId != person ? (null, new IssueError("not_your_entry", "Only the person whose time it is can change an entry."))
             : (entry, null);
@@ -255,6 +266,14 @@ public sealed class TimeService(
     private static async Task<IssueError?> LockError(KuproDbContext db, Guid issueId, bool forUpdate, CancellationToken ct)
     {
         var workspaceId = db.CurrentWorkspaceId!.Value;
+        if (forUpdate)
+        {
+            // Closing reaches the sprint ledger next, which locks the sprint: take it first, as a sprint close does, so
+            // the two can't deadlock.
+            await db.Database.ExecuteSqlAsync(
+                $"SELECT 1 FROM sprints WHERE id = (SELECT sprint_id FROM issues WHERE workspace_id = {workspaceId} AND id = {issueId}) FOR SHARE", ct);
+        }
+
         var state = forUpdate
             ? await db.Database.SqlQuery<short>($"SELECT state AS \"Value\" FROM issues WHERE workspace_id = {workspaceId} AND id = {issueId} FOR NO KEY UPDATE").ToListAsync(ct)
             : await db.Database.SqlQuery<short>($"SELECT state AS \"Value\" FROM issues WHERE workspace_id = {workspaceId} AND id = {issueId} FOR SHARE").ToListAsync(ct);
@@ -280,6 +299,12 @@ public sealed class TimeService(
 
     private IssueError? DateError(DateOnly date) =>
         date > Today ? new IssueError("future_date", $"{date:yyyy-MM-dd} is in the future. Log time on today or earlier.") : null;
+
+    // REST checks the request's [Range]; MCP builds requests in code, so the service checks too.
+    private static IssueError? MinutesError(int? minutes) =>
+        minutes is < 1 or > TimeLimits.MinutesPerDay
+            ? new IssueError("validation", $"minutes must be 1 to {TimeLimits.MinutesPerDay}.")
+            : null;
 
     private static async Task<IssueError?> WritableError(KuproDbContext db, CancellationToken ct) =>
         await EnabledAsync(db, ct) ? null
@@ -327,6 +352,11 @@ public sealed class TimeService(
     public async Task<IssueResult<MyTime>> MineAsync(DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         var first = from ?? WeekStart(to ?? Today);
+        if ((from is null || to is null) && first.DayNumber > DateOnly.MaxValue.DayNumber - 6)
+        {
+            return new IssueError("invalid_range", "The range runs past 9999-12-31.");
+        }
+
         var last = from is not null && to is { } end ? end : first.AddDays(6);
         if (RangeError(first, last, TimeLimits.MaxListDays) is { } rangeError)
         {
@@ -533,13 +563,21 @@ public sealed class TimeService(
     {
         var cutoff = today.AddYears(-TimeLimits.RetentionYears);
 
-        // The job runs outside any workspace and deletes across all of them by date only.
-        var entries = await db.TimeEntries.IgnoreQueryFilters([KuproDbContext.TenantFilter])
-            .Where(e => e.Date < cutoff).ExecuteDeleteAsync(ct);
-        await db.TimeEntryChanges.IgnoreQueryFilters([KuproDbContext.TenantFilter])
-            .Where(c => (c.NewDate == null || c.NewDate < cutoff) && (c.OldDate == null || c.OldDate < cutoff))
-            .ExecuteDeleteAsync(ct);
-        return entries;
+        // One snapshot for both deletes, so an entry written mid-purge keeps its history; it goes on the next run. The
+        // execution strategy retries the whole purge on a serialization failure.
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
+
+            // The job runs outside any workspace and deletes across all of them by date only.
+            var entries = await db.TimeEntries.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+                .Where(e => e.Date < cutoff).ExecuteDeleteAsync(ct);
+            await db.TimeEntryChanges.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+                .Where(c => (c.NewDate == null || c.NewDate < cutoff) && (c.OldDate == null || c.OldDate < cutoff))
+                .ExecuteDeleteAsync(ct);
+            await tx.CommitAsync(ct);
+            return entries;
+        });
     }
 
     // ---------------------------------------------------------------- helpers

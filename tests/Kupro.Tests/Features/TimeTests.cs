@@ -20,6 +20,9 @@ public sealed class TimeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     private string Ws => $"/api/v1/workspaces/{_workspace.Slug}";
     private static DateOnly Today => TimeService.LocalDay(DateTimeOffset.UtcNow);
 
+    // A past day: a test that fills one can't be split by Copenhagen midnight between its requests.
+    private static DateOnly Yesterday => Today.AddDays(-1);
+
     public override async ValueTask InitializeAsync()
     {
         await base.InitializeAsync();
@@ -90,14 +93,14 @@ public sealed class TimeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     public async Task A_day_holds_at_most_24_hours_and_no_future_days()
     {
         await TurnOnAsync();
-        await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-1", 1000)), HttpStatusCode.Created);
+        await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-1", 1000, Yesterday)), HttpStatusCode.Created);
 
-        await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 500)), HttpStatusCode.Conflict, "day_full");
+        await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 500, Yesterday)), HttpStatusCode.Conflict, "day_full");
         await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 60, Today.AddDays(2))), HttpStatusCode.BadRequest, "future_date");
         await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 0)), HttpStatusCode.BadRequest, "validation");
         await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 60, State: IssueState.InProgress)), HttpStatusCode.BadRequest, "invalid_state");
         await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-99", 60)), HttpStatusCode.NotFound, "issue_not_found");
-        await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-2", 440)), HttpStatusCode.Created);
+        await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-2", 440, Yesterday)), HttpStatusCode.Created);
     }
 
     [Fact]
@@ -121,7 +124,7 @@ public sealed class TimeTests(PostgresFixture postgres) : ApiTestBase(postgres)
     public async Task One_save_logs_time_and_closes_the_issue_or_does_neither()
     {
         await TurnOnAsync();
-        var entry = await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-1", 45, State: IssueState.Done)),
+        var entry = await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-1", 45, Yesterday, State: IssueState.Done)),
             HttpStatusCode.Created);
         entry.Locked.ShouldBeTrue();
         entry.Issue.State.ShouldBe(IssueState.Done);
@@ -129,8 +132,8 @@ public sealed class TimeTests(PostgresFixture postgres) : ApiTestBase(postgres)
         feed.ShouldContain(i => i.Kind == FeedItemKind.Updated);
 
         // The day is full, so the entry fails, and the issue stays open.
-        await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-2", 1395)), HttpStatusCode.Created);
-        await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 60, State: IssueState.Canceled)), HttpStatusCode.Conflict, "day_full");
+        await ReadAsync<TimeEntryResponse>(await LogAsync(_owner, new LogTimeRequest("KUP-2", 1395, Yesterday)), HttpStatusCode.Created);
+        await ShouldBeProblemAsync(await LogAsync(_owner, new LogTimeRequest("KUP-2", 60, Yesterday, State: IssueState.Canceled)), HttpStatusCode.Conflict, "day_full");
         (await GetAsync<IssueDetail>(_owner, $"{Ws}/issues/KUP-2")).State.ShouldBe(IssueState.Backlog);
     }
 

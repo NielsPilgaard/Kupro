@@ -32,9 +32,10 @@ API, CLI and MCP are in (`Kupro.Api/Features/Time`, `kupro time`, the MCP `time`
 and YouTrack work items, the site lines, and the manual steps (legal check, privacy policy and DPA lines).
 
 - **Model**: `time_entries` and the append-only `time_entry_changes` (who, when, via, old and new date, minutes and
-  note). A deleted entry keeps its history. The workspace's `timeRegistration` flag (`PATCH` the workspace, `kupro
-  workspace update --time-registration true`) is off by default; off, writes answer `time_registration_off` and reads
-  still work.
+  note), per [ADR-021 Time entry](../docs/adr/ADR-021-time-registration.md#time-entry). The workspace's
+  `timeRegistration` flag (`PATCH` the workspace, `kupro workspace update --time-registration true`) follows
+  [ADR-021 Workspace setting](../docs/adr/ADR-021-time-registration.md#workspace-setting); off, writes answer
+  `time_registration_off`.
 - **REST**: `POST time` (`logTime`, optional `state` done or canceled closes the issue in the same transaction),
   `PATCH|DELETE time/{id}`, `GET time/mine` (a week by default, up to 93 days), `GET issues/{key}/time`, `GET
   time/changes` (own, or any member's for Owners). Owners only: `GET time/entries` (93 days) and `GET time/export`
@@ -43,13 +44,15 @@ and YouTrack work items, the site lines, and the manual steps (legal check, priv
 - **Locking**: checked from the issue's saved state inside the write's transaction, holding a row lock on the issue
   (`FOR SHARE`, or `FOR NO KEY UPDATE` when closing), so the issue can't close between the check and the save. The
   day's cap takes a per-person-and-day advisory lock.
-- **Agents**: an agent token's entry is its person's; the history names the agent. Guests and agents have no entries.
+- **Agents**: attribution per [ADR-021 Who sees what](../docs/adr/ADR-021-time-registration.md#who-sees-what);
+  `TimeService.PersonAsync` resolves an agent token to its person.
 - **CLI**: `kupro time log|week|edit|delete|issue|history|list|export`; durations `1h30m`, `90m`, `1.5h`, `1:30`.
 - **MCP**: `time` (`log | edit | delete | week`), `relations` (`relate | unrelate`) replaces `relate_issues` and
   `unrelate_issues`, and `get_issue` returns `time` when the setting is on. To keep `tools/list` under 19 KB the
   `workspace` parameter lost its per-tool description (ADR-001 IMP-003). `time/changes`, `time/entries` and
   `time/export` are MCP opt-outs.
-- **Retention**: `TimeRetentionJob` deletes entries and history older than 5 years by the recorded day, every 6 hours.
+- **Retention**: `TimeRetentionJob` applies [ADR-021 Retention and privacy](../docs/adr/ADR-021-time-registration.md#retention-and-privacy),
+  10 minutes after startup and then every 6 hours.
 - **Speed**: with a year of workday entries for 50 people, the week, an issue's time and the Owners' week list answer in
   under 8 ms p50, and logging in under 10 ms p50 (`PerfBudgetTests`).
 

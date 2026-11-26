@@ -36,6 +36,7 @@ public sealed class TimeController(TimeService time, IOptions<JsonOptions> json)
     [HttpPatch("time/{id:guid}", Name = "updateTimeEntry")]
     [WorkspaceRole(WorkspaceRole.Member)]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
