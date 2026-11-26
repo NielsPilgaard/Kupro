@@ -32,7 +32,15 @@ Create an epic and its children in one `create_issues` call, all-or-nothing. A c
 same call with `parent: "#0"`, where the number is that item's position. CLI: `kupro issue create-many --file`.
 
 Change issues with `update_issues` (CLI: `kupro issue update`, `kupro issue update-many`, `kupro issue close`). Link them
-with `relate_issues` (CLI: `kupro issue relate`). Comment with `comment` (CLI: `kupro issue comment`).
+with `relations` (CLI: `kupro issue relate`, `kupro issue unrelate`). Comment with `comment` (CLI: `kupro issue comment`).
+
+## Time
+
+When the workspace has time registration on, the `time` tool logs time on an issue for the person you act for (CLI:
+`kupro time log 1h30m KUP-12`). Time is always on an issue. To close the issue in the same save, pass `state: done`
+(CLI: `--done`). `time` with `action: week` shows the week's entries and day totals (CLI: `kupro time week`). Ask
+before you log time for the user: it is their working-time record. Time on a done or canceled issue is locked until the
+issue is reopened.
 
 ## Sprints and the plan
 

@@ -40,6 +40,9 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         tools.ShouldContain("create_issues");
         tools.ShouldContain("update_issues");
         tools.ShouldContain("get_context");
+        tools.ShouldContain("relations");
+        tools.ShouldContain("time");
+        tools.ShouldNotContain("relate_issues");
         tools.Count.ShouldBeLessThanOrEqualTo(20, "ADR-001 IMP-003: coarse tools; consolidate before adding more");
     }
 
@@ -291,7 +294,7 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
                 new { project = "MCP", title = "Blocked", type = "feature", effort = 10, startDate = "2027-02-01", dueDate = "2027-03-31" },
             },
         });
-        await CallAsync(mcp, "relate_issues", new() { ["key"] = "MCP-1", ["type"] = "blocks", ["target"] = "MCP-2" });
+        await CallAsync(mcp, "relations", new() { ["action"] = "relate", ["key"] = "MCP-1", ["type"] = "blocks", ["target"] = "MCP-2" });
         var horizon = new Dictionary<string, object?> { ["from"] = "2027-01-01", ["to"] = "2027-03-01" };
 
         var summary = await CallAsync(mcp, "get_plan", horizon);
@@ -485,6 +488,48 @@ public sealed class McpTests(PostgresFixture postgres) : ApiTestBase(postgres)
         var undone = await CallAsync(mcp, "review_proposals", new() { ["items"] = new[] { new { id, decision = "undo" } } });
         undone[0].GetProperty("proposal").GetProperty("status").GetString().ShouldBe("undone");
         (await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "MCP-1" } })).GetProperty("issues")[0].GetProperty("state").GetString().ShouldBe("backlog");
+    }
+
+    [Fact]
+    public async Task Agent_relates_and_unrelates_issues_with_one_tool()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new() { ["issues"] = new[] { new { project = "MCP", title = "One" }, new { project = "MCP", title = "Two" } } });
+
+        var relation = await CallAsync(mcp, "relations", new() { ["action"] = "relate", ["key"] = "MCP-1", ["type"] = "relates", ["target"] = "MCP-2" });
+        var removed = await TextAsync(mcp, "relations", new() { ["action"] = "unrelate", ["key"] = "MCP-1", ["relationId"] = relation.GetProperty("id").GetGuid() });
+
+        removed.ShouldBe("removed");
+        (await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "MCP-1" } })).GetProperty("issues")[0].GetProperty("relations").GetArrayLength().ShouldBe(0);
+        (await mcp.CallToolAsync("relations", new Dictionary<string, object?> { ["action"] = "relate", ["key"] = "MCP-1" }, cancellationToken: Ct))
+            .IsError.ShouldBe(true);
+    }
+
+    [Fact]
+    public async Task Agent_logs_time_for_its_person_and_closes_the_issue_in_the_same_call()
+    {
+        await using var mcp = await ConnectAsync();
+        await CallAsync(mcp, "create_issues", new() { ["issues"] = new[] { new { project = "MCP", title = "Timed" } } });
+        var off = await mcp.CallToolAsync("time", new Dictionary<string, object?> { ["action"] = "log", ["key"] = "MCP-1", ["minutes"] = 30 }, cancellationToken: Ct);
+        off.IsError.ShouldBe(true);
+        off.Content.OfType<TextContentBlock>().Single().Text.ShouldContain("time_registration_off");
+        var before = await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "MCP-1" } });
+        (before.TryGetProperty("time", out var none) && none.ValueKind != JsonValueKind.Null).ShouldBeFalse();
+
+        (await _owner.PatchAsJsonAsync($"/api/v1/workspaces/{_workspace}", new UpdateWorkspaceRequest(TimeRegistration: true), Json.Options, Ct))
+            .EnsureSuccessStatusCode();
+        var entry = await CallAsync(mcp, "time", new() { ["action"] = "log", ["key"] = "MCP-1", ["minutes"] = 90, ["note"] = "Pairing", ["state"] = "done" });
+
+        entry.GetProperty("locked").GetBoolean().ShouldBeTrue();
+        entry.GetProperty("member").GetProperty("kind").GetString().ShouldBe("human");
+        var week = await CallAsync(mcp, "time", new() { ["action"] = "week" });
+        week.GetProperty("days").GetArrayLength().ShouldBe(7);
+        week.GetProperty("totalMinutes").GetInt32().ShouldBe(90);
+        var issue = await CallAsync(mcp, "get_issue", new() { ["keys"] = new[] { "MCP-1" } });
+        issue.GetProperty("issues")[0].GetProperty("state").GetString().ShouldBe("done");
+        issue.GetProperty("time")[0].GetProperty("myMinutes").GetInt32().ShouldBe(90);
+        (await mcp.CallToolAsync("time", new Dictionary<string, object?> { ["action"] = "delete", ["id"] = entry.GetProperty("id").GetGuid() }, cancellationToken: Ct))
+            .Content.OfType<TextContentBlock>().Single().Text.ShouldContain("time_locked");
     }
 
     [Fact]

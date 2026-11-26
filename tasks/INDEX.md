@@ -36,13 +36,13 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | In progress |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | In progress |
-| 34 | [034 Time registration](034-time-registration.md) | P2 | 2 | 003, 004 | Todo |
+| 34 | [034 Time registration](034-time-registration.md) | P2 | 2 | 003, 004 | In progress |
 | 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
 ## What an agent can pick up
 
-Checked 2026-11-24. The build order above is not the same as what is buildable. **Pick up next**: 034's API, CLI
-and MCP (ADR-021; prototype 01 picked, recorded in task 034), then its web UI. Every other open row waits on a
+Checked 2026-11-25. The build order above is not the same as what is buildable. **Pick up next**: 034's web UI
+(prototype 01 picked), then its import of Jira worklogs and YouTrack work items. Every other open row waits on a
 person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -56,7 +56,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 023 | Built, web wizard and Hierarchy trees included. Left: three official product marks (manual) and the production run | The owner for the marks; 013 Done for the run |
 | 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras, Trello's authorize link and all four site pages done. Left: recorded fixtures and the close (sandbox accounts, manual steps) | The sandboxes |
 | 027 | GitHub (with Projects (v2) boards), YouTrack and Monday done, site pages included. Left: the recorded fixtures and live runs | Nothing for those; the sandboxes for the close |
-| 034 | ADR-021 accepted; prototype 01 (week grid) picked | Nothing for the build; the legal check (manual step) before claiming compliance |
+| 034 | ADR-021 accepted, prototype 01 picked; API, CLI and MCP done | Nothing for the web UI and the worklog import; the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed

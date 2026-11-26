@@ -15,6 +15,7 @@ using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Features.Time;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Mcp;
 using Kupro.Api.Tenancy;
@@ -81,6 +82,8 @@ builder.Services.AddScoped<MeetingService>();
 builder.Services.AddScoped<MeetingBudget>();
 builder.Services.AddSingleton<MeetingAgentMetrics>();
 builder.Services.AddHostedService<MeetingRetentionJob>();
+builder.Services.AddScoped<TimeService>();
+builder.Services.AddHostedService<TimeRetentionJob>();
 // Meeting agent vendors (ADR-015): OpenAI-compatible endpoints routed per language; without an extraction model the
 // offline keyword extractor proposes clear commands.
 builder.Services.Configure<MeetingAgentOptions>(builder.Configuration.GetSection(MeetingAgentOptions.Section));

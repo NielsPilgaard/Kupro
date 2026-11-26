@@ -8,6 +8,7 @@ using Kupro.Api.Features.Meetings;
 using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Features.Time;
 using Kupro.Api.Features.Users;
 using Kupro.Api.Features.Workspaces;
 using ModelContextProtocol;
@@ -33,10 +34,11 @@ public sealed partial class KuproTools(
     AttachmentService attachments,
     UserService users,
     MeetingService meetings,
-    Features.Imports.ImportService importService)
+    Features.Imports.ImportService importService,
+    TimeService time)
 {
-    // Repeated in every tool's schema, so it stays short; the server instructions explain when it can be left out.
-    private const string WorkspaceHelp = "Workspace slug, if you have several.";
+    // Every tool takes an optional `workspace` slug. It has no description: the server instructions explain it once,
+    // rather than every tool's schema repeating it (ADR-001 IMP-004).
 
     [McpServerTool(Name = "get_context", ReadOnly = true), Description(
         "Start here: who you are, your workspaces with your role, and for the workspace: its details, projects, members " +
@@ -45,7 +47,7 @@ public sealed partial class KuproTools(
         "none, you get the list only.")]
     [CoversOperations("getMe", "listWorkspaces", "getWorkspace", "listProjects", "getProject", "listMembers", "listLabels")]
     public async Task<ContextResponse> GetContext(
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         [Description("Parts to return; all when omitted.")] ContextPart[]? include = null,
         CancellationToken ct = default)
     {
@@ -87,7 +89,7 @@ public sealed partial class KuproTools(
     public async Task<ProjectResponse> CreateProject(
         [Description("Project key, e.g. KUP.")] string key,
         [Description("Project name.")] string name,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
@@ -102,7 +104,7 @@ public sealed partial class KuproTools(
     [CoversOperations("listIssues")]
     public async Task<IssueRowPage> SearchIssues(
         [Description("Search text with optional key:value filters.")] string? query = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         [Description("Project keys.")] string[]? project = null,
         [Description("States: backlog, todo, inProgress, inReview, done, canceled.")] IssueState[]? state = null,
         [Description("Types: epic, feature, task.")] IssueType[]? type = null,
@@ -138,12 +140,13 @@ public sealed partial class KuproTools(
     [McpServerTool(Name = "get_issue", ReadOnly = true), Description(
         "Up to 20 issues by key: description, children, relations, labels, effort. A key that doesn't exist gets an entry " +
         "in `errors` and the rest still return. include=activity adds each issue's history (created, field changes with " +
-        "from/to, relations) and comments, oldest first, with who did it and via which surface.")]
-    [CoversOperations("getIssue", "listIssueActivity")]
+        "from/to, relations) and comments, oldest first, with who did it and via which surface. With time registration " +
+        "on, time has your minutes per issue (Owners: everyone).")]
+    [CoversOperations("getIssue", "listIssueActivity", "getIssueTime")]
     public async Task<IssueLookup> GetIssue(
         [Description("Issue keys, 1-20.")] string[] keys,
         [Description("activity: also history and comments.")] IssueInclude[]? include = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         if (keys.Length is 0 or > 20)
@@ -155,6 +158,9 @@ public sealed partial class KuproTools(
         var issues = await issueService.GetManyAsync(keys, ct);
         var activity = include?.Contains(IssueInclude.Activity) == true ? await feed.GetManyAsync(keys, ct) : null;
 
+        // Guests have no time (ADR-021), and a workspace without time registration shows none.
+        var logged = scope.Role >= WorkspaceRole.Member && await time.EnabledAsync(ct) ? await time.ForIssuesAsync(keys, ct) : null;
+
         // A source reference an import kept (#4567, PROJ-1 from Jira) finds its issue too.
         var found = await issueService.ResolveKeysAsync(keys, ct);
         var errors = keys.Where(k => !found.ContainsKey(k.Trim())).Distinct(StringComparer.OrdinalIgnoreCase).Select(k =>
@@ -162,7 +168,7 @@ public sealed partial class KuproTools(
             var error = IssueError.NotFound(k);
             return new IssueLookupError(k, error.Code, error.Detail);
         }).ToList();
-        return new IssueLookup(issues, activity, errors.Count > 0 ? errors : null);
+        return new IssueLookup(issues, activity, errors.Count > 0 ? errors : null, logged);
     }
 
     [McpServerTool(Name = "create_issues"), Description(
@@ -171,7 +177,7 @@ public sealed partial class KuproTools(
     [CoversOperations("createIssues", "createIssue")]
     public async Task<IReadOnlyList<IssueRow>> CreateIssues(
         [Description("Issues to create.")] CreateIssueRequest[] issues,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
@@ -184,36 +190,34 @@ public sealed partial class KuproTools(
     [CoversOperations("updateIssues", "updateIssue")]
     public async Task<IReadOnlyList<IssueRow>> UpdateIssues(
         [Description("Updates: { key, changes }.")] IssueUpdate[] items,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
         return McpViews.Rows(Unwrap(await issueService.UpdateManyAsync(items, ct)));
     }
 
-    [McpServerTool(Name = "relate_issues"), Description("Relate two issues: blocks, blockedBy, relates, duplicates, duplicatedBy. Returns the relation id.")]
-    [CoversOperations("addIssueRelation")]
-    public async Task<IssueRelationResponse> RelateIssues(
+    [McpServerTool(Name = "relations"), Description(
+        "Relate two issues (relate: type, target) or remove a relation (unrelate: relationId, from get_issue).")]
+    [CoversOperations("addIssueRelation", "removeIssueRelation")]
+    public async Task<object> Relations(
+        RelationAction action,
         [Description("Issue key.")] string key,
-        [Description("How `key` relates to `target`.")] RelationKind type,
-        [Description("Other issue key.")] string target,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        [Description("How key relates to target.")] RelationKind? type = null,
+        [Description("Other issue key.")] string? target = null,
+        Guid? relationId = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
-        return Unwrap(await issueService.AddRelationAsync(key, new AddRelationRequest(type, target), ct));
-    }
-
-    [McpServerTool(Name = "unrelate_issues", Destructive = true), Description("Remove a relation by id (from get_issue).")]
-    [CoversOperations("removeIssueRelation")]
-    public async Task<string> UnrelateIssues(
-        [Description("Issue key.")] string key,
-        [Description("Relation id.")] Guid relationId,
-        [Description(WorkspaceHelp)] string? workspace = null,
-        CancellationToken ct = default)
-    {
-        await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
-        return await issueService.RemoveRelationAsync(key, relationId, ct) is { } error ? throw new McpException(Message(error)) : "removed";
+        return action switch
+        {
+            RelationAction.Relate when type is { } kind && target is not null =>
+                Unwrap(await issueService.AddRelationAsync(key, new AddRelationRequest(kind, target), ct)),
+            RelationAction.Unrelate when relationId is { } id =>
+                await issueService.RemoveRelationAsync(key, id, ct) is { } error ? throw new McpException(Message(error)) : "removed",
+            _ => throw new McpException("invalid_arguments: relate needs type and target; unrelate needs relationId."),
+        };
     }
 
     [McpServerTool(Name = "list_sprints", ReadOnly = true), Description(
@@ -223,7 +227,7 @@ public sealed partial class KuproTools(
     public async Task<IReadOnlyList<SprintResponse>> ListSprints(
         [Description("Project key; all projects when omitted.")] string? project = null,
         [Description("States: planned, active, closed.")] SprintState[]? state = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
@@ -237,7 +241,7 @@ public sealed partial class KuproTools(
     [CoversOperations("getSprintReview")]
     public async Task<SprintReview> GetSprintReview(
         [Description("Sprint id, from list_sprints.")] Guid id,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
@@ -252,7 +256,7 @@ public sealed partial class KuproTools(
     public async Task<SprintBurndown> GetSprintBurndown(
         [Description("Sprint id, from list_sprints.")] Guid id,
         [Description("assignee: also per assignee.")] BurndownGrouping? by = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
@@ -281,7 +285,7 @@ public sealed partial class KuproTools(
         [Description("Sprint id for carried and split work; default the next planned one (close).")] Guid? target = null,
         [Description("Outcome per issue: issue, outcome, hoursLeft (split), target (close).")] IReadOnlyList<CloseSprintItem>? items = null,
         [Description("Start the target sprint right after closing (close).")] bool startNext = false,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
@@ -309,7 +313,7 @@ public sealed partial class KuproTools(
         [Description("Last month. Default: December next year.")] DateOnly? to = null,
         [Description("Project keys; all when omitted.")] string[]? project = null,
         [Description("summary (default) or full.")] PlanView? view = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
@@ -323,7 +327,7 @@ public sealed partial class KuproTools(
     public async Task<IReadOnlyList<CapacityEntry>> SetCapacity(
         [Description("Project key.")] string project,
         [Description("Steps: fromMonth (first of month) and people.")] CapacityEntry[] entries,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
@@ -339,7 +343,7 @@ public sealed partial class KuproTools(
         [Description("Name (create, update).")] string? name = null,
         [Description("Date, YYYY-MM-DD (create, update).")] DateOnly? date = null,
         [Description("Project key (create).")] string? project = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
@@ -360,7 +364,7 @@ public sealed partial class KuproTools(
         [Description("Issue key (add).")] string? key = null,
         [Description("Comment id (edit, delete).")] Guid? id = null,
         [Description("Body (add, edit).")] string? body = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
@@ -373,12 +377,49 @@ public sealed partial class KuproTools(
         };
     }
 
+    [McpServerTool(Name = "time"), Description(
+        "Time registration, when on, for the person you act for. log: minutes on issue key, optionally closing it in " +
+        "the same save. edit or delete: entry id. week: entries with ids and day totals, Mon-Sun. Time on a done or canceled " +
+        "issue is locked.")]
+    [CoversOperations("logTime", "updateTimeEntry", "deleteTimeEntry", "listMyTime")]
+    public async Task<object> Time(
+        TimeAction action,
+        [Description("Issue key (log).")] string? key = null,
+        [Description("1-1440 (log, edit).")] int? minutes = null,
+        [Description("Default today; for week, any day in it.")] DateOnly? date = null,
+        [Description("Empty clears (edit).")] string? note = null,
+        [Description("Also close the issue (log).")] CloseState? state = null,
+        [Description("Entry id (edit, delete).")] Guid? id = null,
+        string? workspace = null,
+        CancellationToken ct = default)
+    {
+        await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);
+        IssueState? closing = state switch
+        {
+            CloseState.Done => IssueState.Done,
+            CloseState.Canceled => IssueState.Canceled,
+            _ => null,
+        };
+        return action switch
+        {
+            TimeAction.Log when key is not null && minutes is { } m =>
+                Unwrap(await time.LogAsync(new LogTimeRequest(key, m, date, note, closing), ct)),
+            TimeAction.Edit when id is { } e =>
+                Unwrap(await time.UpdateAsync(e, new UpdateTimeEntryRequest(minutes, date, note), ct)),
+            TimeAction.Delete when id is { } d =>
+                await time.DeleteAsync(d, ct) is { } error ? throw new McpException(Message(error)) : "deleted",
+            TimeAction.Week =>
+                Unwrap(await time.MineAsync(TimeService.WeekStart(date ?? time.Today), null, ct)),
+            _ => throw new McpException("invalid_arguments: log needs key and minutes; edit and delete need id."),
+        };
+    }
+
     [McpServerTool(Name = "get_attachment", ReadOnly = true), Description(
         "An attachment referenced as `attachment:ID` in a description or comment: name, type, size and a download URL " +
         "valid for 5 minutes.")]
     [CoversOperations("getAttachment")]
     public async Task<AttachmentResponse> GetAttachment(
-        [Description("Attachment id.")] Guid id, [Description(WorkspaceHelp)] string? workspace = null, CancellationToken ct = default)
+        [Description("Attachment id.")] Guid id, string? workspace = null, CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Guest, ct);
         return Unwrap(await attachments.GetAsync(id, ct));

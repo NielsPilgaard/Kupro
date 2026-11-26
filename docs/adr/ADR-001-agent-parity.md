@@ -75,7 +75,10 @@ without a check. Agents also need things humans don't: machine-readable output, 
 - **IMP-003**: Tool budget: 19 tools (task 031), enforced by the MCP test. `get_context` replaced `get_me`,
   `list_workspaces`, `list_projects`, `list_members` and `list_labels`; `get_issue` takes up to 20 `keys` and replaced
   `get_issue_activity`. A new feature extends an existing tool's actions or consolidates before the budget grows. Import
-  adds a read-only `imports` tool (20, [ADR-019](ADR-019-import.md)). The MCP test also holds these byte limits, on a
+  adds a read-only `imports` tool (20, [ADR-019](ADR-019-import.md)). Time registration merges `relate_issues` and
+  `unrelate_issues` into `relations` and adds `time` (still 20, [ADR-021](ADR-021-time-registration.md)); the optional
+  `workspace` parameter lost its per-tool description to fit the byte limit, since the server instructions explain it
+  (IMP-004). The MCP test also holds these byte limits, on a
   dataset of 1,000 dated epics and 300 tasks: `tools/list` 19 KB, default `get_plan` 10 KB, default `search_issues` 4 KB,
   `update_issues` with 100 rows 15 KB, `get_context` 6 KB. MCP list responses are compact rows
   (`McpViews`), with `fields` for the rest; `get_plan` defaults to a summary, and REST to the full view.

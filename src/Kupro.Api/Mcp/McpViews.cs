@@ -81,15 +81,41 @@ public enum IssueInclude
     Activity,
 }
 
+public enum RelationAction
+{
+    Relate,
+    Unrelate,
+}
+
+/// <summary>The states logging time can close an issue in (ADR-021 Locking).</summary>
+public enum CloseState
+{
+    Done,
+    Canceled,
+}
+
+public enum TimeAction
+{
+    Log,
+    Edit,
+    Delete,
+    Week,
+}
+
 public sealed record IssueLookupError(string Key, string Code, string Detail);
 
 /// <param name="Issues">The issues found, in the order asked.</param>
 /// <param name="Activity">History and comments by issue key, oldest first, when asked for.</param>
 /// <param name="Errors">One entry per key that could not be read.</param>
+/// <param name="Time">
+/// Time logged on each issue when the workspace has time registration on: yours, and for Owners the total and each
+/// person's share (ADR-021).
+/// </param>
 public sealed record IssueLookup(
     IReadOnlyList<IssueDetail> Issues,
     IReadOnlyDictionary<string, IReadOnlyList<FeedItem>>? Activity,
-    IReadOnlyList<IssueLookupError>? Errors);
+    IReadOnlyList<IssueLookupError>? Errors,
+    IReadOnlyList<Features.Time.IssueTime>? Time = null);
 
 /// <summary>The one mapping from feature DTOs to what MCP tools return. View logic only: the feature services stay unaware of it.</summary>
 public static class McpViews

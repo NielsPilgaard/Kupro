@@ -31,7 +31,7 @@ public sealed class WorkspacesController(WorkspaceService workspaces) : Controll
     [HttpGet("{workspace}", Name = "getWorkspace")]
     public Task<WorkspaceResponse> Get(CancellationToken ct) => workspaces.GetAsync(ct);
 
-    /// <summary>Rename a workspace or change its hours per person per week.</summary>
+    /// <summary>Rename a workspace, change its hours per person per week, or turn time registration on or off.</summary>
     [HttpPatch("{workspace}", Name = "updateWorkspace")]
     [NoAgentSurface(AgentSurface.Mcp, "Workspace administration is for people; agents are capped at Member.")]
     [WorkspaceRole(WorkspaceRole.Owner)]

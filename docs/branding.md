@@ -151,6 +151,7 @@ Mechanics of i18n: [ADR-011](adr/ADR-011-i18n.md). Domain definitions: [ADR-008]
 | Billing access | Adgang til fakturering | A flag on any person, not a role |
 | Label | Label | |
 | Command palette | Kommandopalet | |
+| Time registration · Log time · My time · Team time | Tidsregistrering · Registrér tid · Min tid · Teamets tid | [ADR-021](adr/ADR-021-time-registration.md). Durations as `1h30m` / `1t30m` |
 
 ## Taglines
 

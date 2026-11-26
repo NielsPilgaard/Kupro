@@ -638,10 +638,26 @@ public sealed class IssueService(
     }
 
     /// <summary>Applies updates all-or-nothing. Errors name the failing item as <c>items[i]</c>.</summary>
-    public async Task<IssueResult<IReadOnlyList<IssueSummary>>> UpdateManyAsync(
-        IReadOnlyList<IssueUpdate> updates, CancellationToken ct)
+    public Task<IssueResult<IReadOnlyList<IssueSummary>>> UpdateManyAsync(
+        IReadOnlyList<IssueUpdate> updates, CancellationToken ct) =>
+        UpdateWithAsync(updates, alongside: null, ct);
+
+    /// <summary>
+    /// Updates that commit in one transaction with another feature's write, which runs first on the same context and
+    /// fails both by returning an error: closing an issue while logging time on it (ADR-021 Locking).
+    /// </summary>
+    internal async Task<IssueResult<IReadOnlyList<IssueSummary>>> UpdateWithAsync(
+        IReadOnlyList<IssueUpdate> updates, Func<KuproDbContext, Task<IssueError?>>? alongside, CancellationToken ct)
     {
-        var applied = await InWriteAsync(db => ApplyUpdatesAsync(db, updates, ct), ct);
+        var applied = await InWriteAsync(async db =>
+        {
+            if (alongside is not null && await alongside(db) is { } alongsideError)
+            {
+                return alongsideError;
+            }
+
+            return await ApplyUpdatesAsync(db, updates, ct);
+        }, ct);
         if (applied.Error is { } error)
         {
             return error;

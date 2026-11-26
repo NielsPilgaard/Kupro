@@ -4,6 +4,8 @@ using System.Net;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Features.Time;
+using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
 using Kupro.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,6 +89,27 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
                 (await client.GetAsync(url, Ct)).EnsureSuccessStatusCode()));
         }
 
+        // Task 034: a year of workday entries, three a day, for 50 people (the caller and 49 others).
+        await SeedTimeAsync(workspace.Slug);
+        await AnalyzeAsync();
+        var today = TimeService.LocalDay(DateTimeOffset.UtcNow);
+        var weekStart = TimeService.WeekStart(today);
+        foreach (var url in new[]
+                 {
+                     $"{ws}/time/mine", $"{ws}/issues/CORE-1/time",
+                     $"{ws}/time/entries?from={weekStart:yyyy-MM-dd}&to={weekStart.AddDays(6):yyyy-MM-dd}",
+                 })
+        {
+            results.Add(await MeasureAsync($"GET {url.Replace(ws, "{ws}", StringComparison.Ordinal)}", async () =>
+                (await client.GetAsync(url, Ct)).EnsureSuccessStatusCode()));
+        }
+
+        (await client.PatchAsJsonAsync(ws, new UpdateWorkspaceRequest(TimeRegistration: true), Json.Options, Ct)).EnsureSuccessStatusCode();
+        var timed = await ReadAsync<IssueDetail>(await client.PostAsJsonAsync($"{ws}/issues", new CreateIssueRequest("WEB", "Timed"), Json.Options, Ct),
+            HttpStatusCode.Created);
+        results.Add(await MeasureAsync("POST {ws}/time", async () =>
+            (await client.PostAsJsonAsync($"{ws}/time", new LogTimeRequest(timed.Key, 1), Json.Options, Ct)).EnsureSuccessStatusCode()));
+
         // CI sets KUPRO_PERF_REPORT to $GITHUB_STEP_SUMMARY, so every run shows the numbers.
         if (Environment.GetEnvironmentVariable("KUPRO_PERF_REPORT") is { Length: > 0 } report)
         {
@@ -109,6 +132,29 @@ public sealed class PerfBudgetTests(PostgresFixture postgres) : ApiTestBase(post
         await connection.OpenAsync(Ct);
         await using var analyze = new NpgsqlCommand("ANALYZE", connection);
         await analyze.ExecuteNonQueryAsync(Ct);
+    }
+
+    /// <summary>Straight into the tables: through the API this would be 39 000 requests.</summary>
+    private async Task SeedTimeAsync(string slug)
+    {
+        await using var connection = new NpgsqlConnection(_postgres.ConnectionString);
+        await connection.OpenAsync(Ct);
+        await using var seed = new NpgsqlCommand("""
+            WITH w AS (SELECT id FROM workspaces WHERE slug = @slug)
+            INSERT INTO members (id, workspace_id, kind, role, can_manage_billing, status, display_name, created_at)
+            SELECT gen_random_uuid(), w.id, 'Human', 'Member', false, 'Placeholder', 'Person ' || n, now()
+            FROM w, generate_series(1, 49) n;
+
+            WITH w AS (SELECT id FROM workspaces WHERE slug = @slug),
+                 picks AS (SELECT array_agg(id ORDER BY number) AS ids FROM issues WHERE workspace_id = (SELECT id FROM w) AND number <= 500)
+            INSERT INTO time_entries (id, workspace_id, member_id, issue_id, date, minutes, via, created_at, updated_at)
+            SELECT gen_random_uuid(), m.workspace_id, m.id, picks.ids[1 + ((extract(doy FROM d)::int * 3 + k) % array_length(picks.ids, 1))],
+                   d::date, 150, 'Web', now(), now()
+            FROM members m, picks, generate_series(current_date - 365, current_date, interval '1 day') d, generate_series(0, 2) k
+            WHERE m.workspace_id = (SELECT id FROM w) AND m.kind = 'Human' AND extract(isodow FROM d) < 6;
+            """, connection);
+        seed.Parameters.AddWithValue("slug", slug);
+        await seed.ExecuteNonQueryAsync(Ct);
     }
 
     private static async Task<Guid> SeedSprintWithLedgerAsync(HttpClient client, string ws)

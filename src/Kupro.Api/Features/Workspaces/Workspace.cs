@@ -15,6 +15,9 @@ public sealed class Workspace
     /// <summary>Capacity per person per week for the delivery plan (ADR-008). Default 37, Danish full time.</summary>
     public decimal HoursPerWeek { get; set; }
 
+    /// <summary>Time registration (ADR-021): off by default, an Owner turns it on. Off keeps existing entries readable.</summary>
+    public bool TimeRegistration { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 

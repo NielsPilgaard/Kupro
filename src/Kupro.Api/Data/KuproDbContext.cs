@@ -10,6 +10,7 @@ using Kupro.Api.Features.Meetings;
 using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Features.Time;
 using Kupro.Api.Features.Tokens;
 using Kupro.Api.Features.Users;
 using Kupro.Api.Features.Workspaces;
@@ -58,6 +59,8 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     public DbSet<ImportedItem> ImportedItems => Set<ImportedItem>();
     public DbSet<ImportConflict> ImportConflicts => Set<ImportConflict>();
     public DbSet<IssueAlias> IssueAliases => Set<IssueAlias>();
+    public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
+    public DbSet<TimeEntryChange> TimeEntryChanges => Set<TimeEntryChange>();
 
     /// <summary>
     /// Workspace of the current request; null outside a workspace route, which makes every tenant-owned query empty

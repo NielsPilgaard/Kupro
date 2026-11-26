@@ -124,7 +124,7 @@
         "tags": [
           "Workspaces"
         ],
-        "summary": "Rename a workspace or change its hours per person per week.",
+        "summary": "Rename a workspace, change its hours per person per week, or turn time registration on or off.",
         "operationId": "updateWorkspace",
         "parameters": [
           {
@@ -926,6 +926,608 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/time": {
+      "post": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "Log time on an issue. Optionally close it in the same save with `state` (done or canceled): both commit or\nneither does. Refused while the issue is done or canceled, past 24 hours in a day, or for a future day.",
+        "operationId": "logTime",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogTimeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogTimeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogTimeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/time/{id}": {
+      "patch": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "Change the duration, day or note of your own entry. Refused while its issue is done or canceled.",
+        "operationId": "updateTimeEntry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTimeEntryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTimeEntryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTimeEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "Delete your own entry. Its history is kept. Refused while its issue is done or canceled.",
+        "operationId": "deleteTimeEntry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/time/mine": {
+      "get": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "Your entries and day totals for a range of up to 93 days. Without dates: this week, Monday to Sunday. With only\n`to`: the week it is in.",
+        "operationId": "listMyTime",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, YYYY-MM-DD.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, inclusive; default 6 days after `from`.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTime"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/issues/{key}/time": {
+      "get": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "Time on an issue: yours, and for Owners the total and each person's share.",
+        "operationId": "getIssueTime",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueTime"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/time/changes": {
+      "get": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "History of time entries, newest first: every create, edit and delete with who made it. Yours, or for Owners any\nmember's.",
+        "operationId": "listTimeChanges",
+        "parameters": [
+          {
+            "name": "member",
+            "in": "query",
+            "description": "Member id; default you. Owners only for someone else.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Id of the oldest change you have; returns the ones before it.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Changes per page, 1-200.",
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeEntryChangeResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/time/entries": {
+      "get": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "Everyone's entries for up to 93 days, or one member's. Owners only.",
+        "operationId": "listTimeEntries",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, YYYY-MM-DD.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "description": "Member id; everyone when omitted.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeEntryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/time/export": {
+      "get": {
+        "tags": [
+          "Time"
+        ],
+        "summary": "The employer's copy of everyone's time for up to 366 days, or one member's: CSV (default) or JSON, one row per\nentry, members who left included. Owners only.",
+        "operationId": "exportTime",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "First day, YYYY-MM-DD.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Last day, inclusive.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "description": "Member id; everyone when omitted.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "csv or json.",
+            "schema": {
+              "$ref": "#/components/schemas/TimeExportFormat"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeExportRow"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeExportRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/csv": { },
+              "application/json": { }
             }
           }
         }
@@ -8646,6 +9248,49 @@
           }
         }
       },
+      "IssueTime": {
+        "required": [
+          "issueKey",
+          "locked",
+          "myMinutes",
+          "totalMinutes",
+          "people"
+        ],
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "The issue."
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "Done or Canceled: no time can be added, edited or deleted until it is reopened."
+          },
+          "myMinutes": {
+            "type": "integer",
+            "description": "Your time on the issue.",
+            "format": "int32"
+          },
+          "totalMinutes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Everyone's time on the issue. Owners only; null for others.",
+            "format": "int32"
+          },
+          "people": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/MemberTime"
+            },
+            "description": "Each person's share, most first. Owners only; null for others."
+          }
+        }
+      },
       "IssueType": {
         "enum": [
           "task",
@@ -8697,6 +9342,50 @@
             "type": "integer",
             "description": "Issues carrying the label.",
             "format": "int32"
+          }
+        }
+      },
+      "LogTimeRequest": {
+        "required": [
+          "issue",
+          "minutes"
+        ],
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Issue key the time was spent on."
+          },
+          "minutes": {
+            "type": "integer",
+            "description": "Time spent, 1-1440 minutes.",
+            "format": "int32"
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Day it was spent, YYYY-MM-DD; today (Europe/Copenhagen) when omitted. Not later than today.",
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it went on, plain text."
+          },
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "`done` or `canceled`: also close the issue in the same save. Both commit or neither does, and the entry\nlocks with the issue afterwards.",
+                "$ref": "#/components/schemas/IssueState"
+              }
+            ]
           }
         }
       },
@@ -9000,6 +9689,24 @@
           "placeholder"
         ]
       },
+      "MemberTime": {
+        "required": [
+          "member",
+          "minutes"
+        ],
+        "type": "object",
+        "properties": {
+          "member": {
+            "description": "The person.",
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "minutes": {
+            "type": "integer",
+            "description": "Their time on the issue.",
+            "format": "int32"
+          }
+        }
+      },
       "MeResponse": {
         "required": [
           "id",
@@ -9113,6 +9820,47 @@
           }
         },
         "description": "Board move: optional new state and a position between two neighbours in the target column."
+      },
+      "MyTime": {
+        "required": [
+          "from",
+          "to",
+          "entries",
+          "days",
+          "totalMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "First day, inclusive.",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "description": "Last day, inclusive.",
+            "format": "date"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeEntryResponse"
+            },
+            "description": "Your entries in the range, by day, oldest first."
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeDay"
+            },
+            "description": "Every day in the range with its total, zero days included."
+          },
+          "totalMinutes": {
+            "type": "integer",
+            "description": "Sum over the range.",
+            "format": "int32"
+          }
+        }
       },
       "OperationStats": {
         "required": [
@@ -10765,6 +11513,284 @@
         ],
         "description": "Where an action came from; shown as \"via MCP\" in the UI (design guide, toasts)."
       },
+      "TimeChangeKind": {
+        "enum": [
+          "created",
+          "updated",
+          "deleted"
+        ]
+      },
+      "TimeDay": {
+        "required": [
+          "date",
+          "minutes"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "The day.",
+            "format": "date"
+          },
+          "minutes": {
+            "type": "integer",
+            "description": "Sum of the day's entries: the day's working time.",
+            "format": "int32"
+          }
+        }
+      },
+      "TimeEntryChangeResponse": {
+        "required": [
+          "id",
+          "entryId",
+          "member",
+          "changedBy",
+          "issue",
+          "kind",
+          "via",
+          "at",
+          "oldDate",
+          "newDate",
+          "oldMinutes",
+          "newMinutes",
+          "oldNote",
+          "newNote"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Change id; pass as `before` for older changes.",
+            "format": "uuid"
+          },
+          "entryId": {
+            "type": "string",
+            "description": "The entry changed. A deleted entry keeps its history.",
+            "format": "uuid"
+          },
+          "member": {
+            "description": "Whose entry it is.",
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "changedBy": {
+            "description": "Who changed it: the person, or an agent acting for them.",
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "issue": {
+            "type": "string",
+            "description": "Issue key."
+          },
+          "kind": {
+            "description": "created, updated or deleted.",
+            "$ref": "#/components/schemas/TimeChangeKind"
+          },
+          "via": {
+            "$ref": "#/components/schemas/Surface"
+          },
+          "at": {
+            "type": "string",
+            "description": "When.",
+            "format": "date-time"
+          },
+          "oldDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "newDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "oldMinutes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "newMinutes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "oldNote": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "newNote": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TimeEntryList": {
+        "required": [
+          "items",
+          "totalMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeEntryResponse"
+            },
+            "description": "Entries, by day then person."
+          },
+          "totalMinutes": {
+            "type": "integer",
+            "description": "Sum of the entries.",
+            "format": "int32"
+          }
+        }
+      },
+      "TimeEntryResponse": {
+        "required": [
+          "id",
+          "member",
+          "issue",
+          "projectKey",
+          "date",
+          "minutes",
+          "note",
+          "locked",
+          "via",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Entry id, used to edit or delete it.",
+            "format": "uuid"
+          },
+          "member": {
+            "description": "Whose time it is.",
+            "$ref": "#/components/schemas/MemberRef"
+          },
+          "issue": {
+            "description": "The issue it was spent on.",
+            "$ref": "#/components/schemas/IssueRef"
+          },
+          "projectKey": {
+            "type": "string",
+            "description": "The issue's project."
+          },
+          "date": {
+            "type": "string",
+            "description": "Day it was spent.",
+            "format": "date"
+          },
+          "minutes": {
+            "type": "integer",
+            "description": "Duration in minutes.",
+            "format": "int32"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it went on."
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "The issue is Done or Canceled: the entry can't be changed until it is reopened."
+          },
+          "via": {
+            "description": "Surface it was logged from.",
+            "$ref": "#/components/schemas/Surface"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TimeExportFormat": {
+        "enum": [
+          "csv",
+          "json"
+        ]
+      },
+      "TimeExportRow": {
+        "required": [
+          "date",
+          "memberId",
+          "member",
+          "email",
+          "issue",
+          "issueTitle",
+          "minutes",
+          "note",
+          "deactivated"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Day it was spent.",
+            "format": "date"
+          },
+          "memberId": {
+            "type": "string",
+            "description": "The person's member id.",
+            "format": "uuid"
+          },
+          "member": {
+            "type": "string",
+            "description": "The person's name."
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The person's email, when known."
+          },
+          "issue": {
+            "type": "string",
+            "description": "Issue key."
+          },
+          "issueTitle": {
+            "type": "string",
+            "description": "Issue title."
+          },
+          "minutes": {
+            "type": "integer",
+            "description": "Duration in minutes.",
+            "format": "int32"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "What it went on."
+          },
+          "deactivated": {
+            "type": "boolean",
+            "description": "The person has left the workspace; their entries are kept."
+          }
+        },
+        "description": "One row of an export: what the employer keeps (ADR-021)."
+      },
       "TranscriptRequest": {
         "required": [
           "text"
@@ -11284,6 +12310,34 @@
           }
         }
       },
+      "UpdateTimeEntryRequest": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "New duration, 1-1440 minutes.",
+            "format": "int32"
+          },
+          "date": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Move the entry to another day.",
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "New note; an empty string clears it."
+          }
+        }
+      },
       "UpdateWorkspaceRequest": {
         "type": "object",
         "properties": {
@@ -11301,6 +12355,13 @@
             ],
             "description": "Capacity per person per week used by the delivery plan.",
             "format": "double"
+          },
+          "timeRegistration": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Turn time registration on or off (ADR-021). Off keeps existing entries."
           }
         }
       },
@@ -11314,7 +12375,8 @@
           "seats",
           "guests",
           "guestLimit",
-          "canManageBilling"
+          "canManageBilling",
+          "timeRegistration"
         ],
         "type": "object",
         "properties": {
@@ -11361,6 +12423,10 @@
           "canManageBilling": {
             "type": "boolean",
             "description": "Whether you have billing access: Owners, and members an Owner granted it."
+          },
+          "timeRegistration": {
+            "type": "boolean",
+            "description": "Whether members log time on issues (ADR-021)."
           }
         }
       },
@@ -11456,6 +12522,9 @@
     },
     {
       "name": "Status"
+    },
+    {
+      "name": "Time"
     },
     {
       "name": "Tokens"

@@ -1,0 +1,40 @@
+using Kupro.Api.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace Kupro.Api.Features.Time;
+
+/// <summary>Every 6 hours: deletes time entries and their history past the 5-year retention (ADR-021 Retention).</summary>
+public sealed partial class TimeRetentionJob(
+    IServiceScopeFactory scopes, TimeProvider clock, ILogger<TimeRetentionJob> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // First run after a few hours, not at startup: the database may still be migrating, and the cutoff moves by a
+        // day at a time, so a run every few hours keeps it at most hours late.
+        using var timer = new PeriodicTimer(TimeSpan.FromHours(6), clock);
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>()
+                    .CreateDbContextAsync(stoppingToken);
+                var deleted = await TimeService.PurgeExpiredAsync(db, TimeService.LocalDay(clock.GetUtcNow()), stoppingToken);
+                if (deleted > 0)
+                {
+                    LogPurged(logger, deleted, TimeLimits.RetentionYears);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                LogFailed(logger, ex);
+            }
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Deleted {Count} time entries older than {Years} years")]
+    private static partial void LogPurged(ILogger logger, int count, int years);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Time retention run failed")]
+    private static partial void LogFailed(ILogger logger, Exception exception);
+}
