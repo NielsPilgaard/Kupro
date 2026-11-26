@@ -24,6 +24,9 @@ public sealed class McpWorkspace(
 
     public Guid? TokenWorkspaceId => http.HttpContext?.User.GetTokenWorkspaceId();
 
+    /// <summary>The caller's role in the workspace entered last.</summary>
+    public WorkspaceRole Role => context.Role;
+
     /// <summary>
     /// Resolves the workspace (argument, else the token's workspace, else the user's only workspace) and enforces the
     /// minimum role. Throws an <see cref="McpException"/> the client sees as a tool error.

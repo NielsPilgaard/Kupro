@@ -19,9 +19,11 @@ public sealed record CreateWorkspaceRequest(
 
 /// <param name="Name">New display name.</param>
 /// <param name="HoursPerWeek">Capacity per person per week used by the delivery plan.</param>
+/// <param name="TimeRegistration">Turn time registration on or off (ADR-021). Off keeps existing entries.</param>
 public sealed record UpdateWorkspaceRequest(
     [StringLength(100, MinimumLength = 1)] string? Name = null,
-    [Range(1, 80)] decimal? HoursPerWeek = null);
+    [Range(1, 80)] decimal? HoursPerWeek = null,
+    bool? TimeRegistration = null);
 
 /// <param name="Id">Workspace id.</param>
 /// <param name="Slug">URL id used in every workspace route.</param>
@@ -38,6 +40,7 @@ public sealed record WorkspaceSummary(Guid Id, string Slug, string Name, Workspa
 /// <param name="Guests">Active guests and pending guest invites.</param>
 /// <param name="GuestLimit">Most guests the seats allow (5 per seat on hosted Kupro); null when uncapped.</param>
 /// <param name="CanManageBilling">Whether you have billing access: Owners, and members an Owner granted it.</param>
+/// <param name="TimeRegistration">Whether members log time on issues (ADR-021).</param>
 public sealed record WorkspaceResponse(
     Guid Id,
     string Slug,
@@ -47,7 +50,8 @@ public sealed record WorkspaceResponse(
     int Seats,
     int Guests,
     int? GuestLimit,
-    bool CanManageBilling);
+    bool CanManageBilling,
+    bool TimeRegistration);
 
 /// <param name="Email">Who to invite.</param>
 /// <param name="Role">Role they get on accepting.</param>
@@ -273,10 +277,10 @@ public sealed class WorkspaceService(
         var id = workspace.RequireWorkspaceId();
         var row = await db.Workspaces.AsNoTracking()
             .Where(w => w.Id == id)
-            .Select(w => new { w.Slug, w.Name, w.HoursPerWeek, Seats = db.Members.Count(IsSeat), Guests = db.Members.Count(IsGuest) })
+            .Select(w => new { w.Slug, w.Name, w.HoursPerWeek, w.TimeRegistration, Seats = db.Members.Count(IsSeat), Guests = db.Members.Count(IsGuest) })
             .SingleAsync(ct);
         return new WorkspaceResponse(id, row.Slug, row.Name, row.HoursPerWeek, workspace.Role, row.Seats, row.Guests,
-            row.Seats * options.Value.GuestsPerSeat, workspace.CanManageBilling);
+            row.Seats * options.Value.GuestsPerSeat, workspace.CanManageBilling, row.TimeRegistration);
     }
 
     public async Task<WorkspaceResponse> UpdateAsync(UpdateWorkspaceRequest request, CancellationToken ct)
@@ -286,6 +290,7 @@ public sealed class WorkspaceService(
             var current = await db.Workspaces.SingleAsync(w => w.Id == workspace.RequireWorkspaceId(), ct);
             current.Name = request.Name?.Trim() ?? current.Name;
             current.HoursPerWeek = request.HoursPerWeek ?? current.HoursPerWeek;
+            current.TimeRegistration = request.TimeRegistration ?? current.TimeRegistration;
             await db.SaveChangesAsync(ct);
         }
 

@@ -35,7 +35,7 @@ public sealed partial class KuproTools
         [Description("list: live, paused or ended. update: the new state.")] MeetingState? state = null,
         [Description("proposals: pending, applied, rejected or undone.")] ProposalStatus? status = null,
         [Description("get: include the transcript.")] bool transcript = false,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         var reads = action is "proposals" or "get" or "list" or "usage";
@@ -74,7 +74,7 @@ public sealed partial class KuproTools
         [Description("Decisions: { id, decision: approve|reject|edit|undo, value?, issue? }.")] IReadOnlyList<ProposalDecision>? items = null,
         [Description("Revert everything the meeting applied (ignores items).")] bool undoAll = false,
         [Description(MeetingHelp)] Guid? meeting = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Member, ct);

@@ -19,7 +19,7 @@ namespace Kupro.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gin");
@@ -1497,6 +1497,154 @@ namespace Kupro.Api.Data.Migrations
                     b.ToTable("sprint_ledger", (string)null);
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Time.TimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("minutes");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Via")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("via");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_time_entries");
+
+                    b.HasIndex("WorkspaceId", "Date")
+                        .HasDatabaseName("ix_time_entries_workspace_id_date");
+
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_time_entries_workspace_id_issue_id");
+
+                    b.HasIndex("WorkspaceId", "MemberId", "Date")
+                        .HasDatabaseName("ix_time_entries_workspace_id_member_id_date");
+
+                    b.ToTable("time_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Time.TimeEntryChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid>("ChangedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("changed_by_id");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entry_id");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issue_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<DateOnly?>("NewDate")
+                        .HasColumnType("date")
+                        .HasColumnName("new_date");
+
+                    b.Property<int?>("NewMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("new_minutes");
+
+                    b.Property<string>("NewNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("new_note");
+
+                    b.Property<DateOnly?>("OldDate")
+                        .HasColumnType("date")
+                        .HasColumnName("old_date");
+
+                    b.Property<int?>("OldMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("old_minutes");
+
+                    b.Property<string>("OldNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("old_note");
+
+                    b.Property<string>("Via")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("via");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_time_entry_changes");
+
+                    b.HasIndex("WorkspaceId", "ChangedById")
+                        .HasDatabaseName("ix_time_entry_changes_workspace_id_changed_by_id");
+
+                    b.HasIndex("WorkspaceId", "EntryId")
+                        .HasDatabaseName("ix_time_entry_changes_workspace_id_entry_id");
+
+                    b.HasIndex("WorkspaceId", "IssueId")
+                        .HasDatabaseName("ix_time_entry_changes_workspace_id_issue_id");
+
+                    b.HasIndex("WorkspaceId", "MemberId", "At")
+                        .HasDatabaseName("ix_time_entry_changes_workspace_id_member_id_at");
+
+                    b.ToTable("time_entry_changes", (string)null);
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Tokens.ApiToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1757,6 +1905,10 @@ namespace Kupro.Api.Data.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
                         .HasColumnName("slug");
+
+                    b.Property<bool>("TimeRegistration")
+                        .HasColumnType("boolean")
+                        .HasColumnName("time_registration");
 
                     b.HasKey("Id")
                         .HasName("pk_workspaces");
@@ -2216,6 +2368,52 @@ namespace Kupro.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_sprint_ledger_sprints_workspace_id_sprint_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Time.TimeEntry", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_entries_issues_workspace_id_issue_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "MemberId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_entries_members_workspace_id_member_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Time.TimeEntryChange", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ChangedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_entry_changes_members_workspace_id_changed_by_id");
+
+                    b.HasOne("Kupro.Api.Features.Issues.Issue", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "IssueId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_entry_changes_issues_workspace_id_issue_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "MemberId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_time_entry_changes_members_workspace_id_member_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Tokens.ApiToken", b =>

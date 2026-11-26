@@ -5,7 +5,7 @@ description: >-
   duty (in force since 1 July 2024) inside Kupro, and teams leaving Jira or Azure DevOps keep their worklogs. One time
   entry model, a week timesheet, an owner's export, and full parity. It starts with an ADR, because it moves time
   tracking into v1 scope.
-status: 'Todo'
+status: 'In progress'
 phase: 2
 depends_on: ['003', '004']
 purpose: 'Implementation spec for task 034.'
@@ -24,6 +24,37 @@ purpose: 'Implementation spec for task 034.'
 - **Order**: ADR-021 (accepted), then prototypes, then the API, then the UI.
 - **Legal check**: the rules below are our reading of them. A lawyer or the employers' guidance confirms them before the
   site or the app claims compliance (a manual step).
+
+## Progress
+
+API, CLI and MCP are in (`Kupro.Api/Features/Time`, `kupro time`, the MCP `time` and `relations` tools), tested in
+`TimeTests`, `McpTests`, `CliTests` and `PerfBudgetTests`. Left: the web UI (prototype 01), the import of Jira worklogs
+and YouTrack work items, the site lines, and the manual steps (legal check, privacy policy and DPA lines).
+
+- **Model**: `time_entries` and the append-only `time_entry_changes` (who, when, via, old and new date, minutes and
+  note), per [ADR-021 Time entry](../docs/adr/ADR-021-time-registration.md#time-entry). The workspace's
+  `timeRegistration` flag (`PATCH` the workspace, `kupro workspace update --time-registration true`) follows
+  [ADR-021 Workspace setting](../docs/adr/ADR-021-time-registration.md#workspace-setting); off, writes answer
+  `time_registration_off`.
+- **REST**: `POST time` (`logTime`, optional `state` done or canceled closes the issue in the same transaction),
+  `PATCH|DELETE time/{id}`, `GET time/mine` (a week by default, up to 93 days), `GET issues/{key}/time`, `GET
+  time/changes` (own, or any member's for Owners). Owners only: `GET time/entries` (93 days) and `GET time/export`
+  (366 days, CSV with a BOM or JSON, streamed; formula characters escaped). Errors: `time_locked`, `day_full`,
+  `future_date`, `not_your_entry`, `time_entry_not_found`.
+- **Locking**: checked from the issue's saved state inside the write's transaction, holding a row lock on the issue
+  (`FOR SHARE`, or `FOR NO KEY UPDATE` when closing), so the issue can't close between the check and the save. The
+  day's cap takes a per-person-and-day advisory lock.
+- **Agents**: attribution per [ADR-021 Who sees what](../docs/adr/ADR-021-time-registration.md#who-sees-what);
+  `TimeService.PersonAsync` resolves an agent token to its person.
+- **CLI**: `kupro time log|week|edit|delete|issue|history|list|export`; durations `1h30m`, `90m`, `1.5h`, `1:30`.
+- **MCP**: `time` (`log | edit | delete | week`), `relations` (`relate | unrelate`) replaces `relate_issues` and
+  `unrelate_issues`, and `get_issue` returns `time` when the setting is on. To keep `tools/list` under 19 KB the
+  `workspace` parameter lost its per-tool description (ADR-001 IMP-003). `time/changes`, `time/entries` and
+  `time/export` are MCP opt-outs.
+- **Retention**: `TimeRetentionJob` applies [ADR-021 Retention and privacy](../docs/adr/ADR-021-time-registration.md#retention-and-privacy),
+  10 minutes after startup and then every 6 hours.
+- **Speed**: with a year of workday entries for 50 people, the week, an issue's time and the Owners' week list answer in
+  under 8 ms p50, and logging in under 10 ms p50 (`PerfBudgetTests`).
 
 ## Legal background
 
@@ -102,13 +133,13 @@ EN and DA strings; the DA term is "tidsregistrering" (add it to the [branding.md
 - [x] ADR-021 accepted; product.md, ADR-020 and task 024 updated to match.
 - [ ] Legal reading confirmed (manual step), and the ADR notes what the confirmation changed.
 - [ ] A member logs time on an issue in the web app, CLI and MCP, and sees it in their week.
-- [ ] Entries on a Done or Canceled issue can't be added, edited or deleted; reopening the issue unlocks them.
+- [x] Entries on a Done or Canceled issue can't be added, edited or deleted; reopening the issue unlocks them.
 - [ ] One save marks an issue Done and logs time on it, in the web app, CLI and MCP; if either fails, neither is saved.
-- [ ] An edit keeps the old value in the entry's history.
+- [x] An edit keeps the old value in the entry's history.
 - [ ] An Owner exports a month for all members as CSV; a Member can't.
 - [ ] Entries of a member who left are kept and still exported.
 - [ ] Jira worklogs import as entries when the setting is on.
-- [ ] A week's timesheet loads within the latency budget with a year of entries for 50 members.
+- [x] A week's timesheet loads within the latency budget with a year of entries for 50 members.
 
 ## Out of scope
 

@@ -32,7 +32,7 @@ internal static class WorkspaceCommands
             await c.Out.ItemAsync(w!, ("Name", w!.Name), ("Slug", w.Slug), ("Your role", Cli.Dashed(w.Role.ToString()!)),
                 ("Billing access", w.CanManageBilling == true ? "yes" : "no"), ("Seats", w.Seats?.ToString()),
                 ("Guests", w.GuestLimit is { } limit ? $"{w.Guests} of {limit}" : w.Guests?.ToString()),
-                ("Hours/week", w.HoursPerWeek?.ToString()));
+                ("Hours/week", w.HoursPerWeek?.ToString()), ("Time registration", w.TimeRegistration == true ? "on" : "off"));
         }));
 
         var slug = new Argument<string>("slug") { Description = "URL id: lowercase letters, digits, dashes." };
@@ -46,11 +46,12 @@ internal static class WorkspaceCommands
             }));
 
         var hours = new Option<double?>("--hours-per-week") { Description = "Capacity per person per week (delivery plan)." };
-        workspace.Subcommands.Add(new ApiCommand("update", "Rename the workspace or change hours per week.", "updateWorkspace") { name, hours }
+        var time = new Option<bool?>("--time-registration") { Description = "Turn time registration on (true) or off (false)." };
+        workspace.Subcommands.Add(new ApiCommand("update", "Rename the workspace, change hours per week, or turn time registration on or off.", "updateWorkspace") { name, hours, time }
             .Handle(async (c, ct) =>
             {
                 var w = await (await c.InWorkspaceAsync(ct)).PatchAsync(
-                    new UpdateWorkspaceRequest { Name = c.Get(name), HoursPerWeek = c.Get(hours) }, cancellationToken: ct);
+                    new UpdateWorkspaceRequest { Name = c.Get(name), HoursPerWeek = c.Get(hours), TimeRegistration = c.Get(time) }, cancellationToken: ct);
                 await c.Out.DoneAsync(w!, "Workspace updated.");
             }));
 

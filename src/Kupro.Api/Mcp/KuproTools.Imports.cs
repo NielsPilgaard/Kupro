@@ -36,7 +36,7 @@ public sealed partial class KuproTools
     public async Task<ImportsView> Imports(
         ImportsAction action,
         Guid? id = null,
-        [Description(WorkspaceHelp)] string? workspace = null,
+        string? workspace = null,
         CancellationToken ct = default)
     {
         await scope.EnterAsync(workspace, WorkspaceRole.Owner, ct);

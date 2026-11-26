@@ -16,12 +16,14 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
 {
     private string _token = null!;
     private string _workspace = null!;
+    private HttpClient _owner = null!;
 
     public override async ValueTask InitializeAsync()
     {
         await base.InitializeAsync();
         var (client, workspace, _) = await NewWorkspaceAsync();
         _workspace = workspace.Slug;
+        _owner = client;
         await ReadAsync<ProjectResponse>(await client.PostAsJsonAsync($"/api/v1/workspaces/{_workspace}/projects",
             new CreateProjectRequest("CLI", "CLI project"), Json.Options, Ct), HttpStatusCode.Created);
         _token = (await NewTokenAsync(client, new("cli", ApiTokenKind.Agent, "cli-agent", null, _workspace))).Secret;
@@ -274,6 +276,48 @@ public sealed class CliTests(PostgresFixture postgres) : ApiTestBase(postgres)
     }
 
     private Task<(int Exit, string Out, string Error)> RunAsync(bool json, params string[] args) => RunAsync(json, null, args);
+
+    [Fact]
+    public async Task Agent_logs_time_closes_the_issue_and_reads_its_week_with_the_cli()
+    {
+        await RunJsonAsync("issue", "create", "--project", "cli", "--title", "Timed work");
+        var (offExit, _, offError) = await RunAsync(json: true, "time", "log", "1h", "CLI-1");
+        offExit.ShouldBe(1);
+        offError.ShouldContain("time_registration_off");
+        (await _owner.PatchAsJsonAsync($"/api/v1/workspaces/{_workspace}",
+            new Kupro.Api.Features.Workspaces.UpdateWorkspaceRequest(TimeRegistration: true), Json.Options, Ct)).EnsureSuccessStatusCode();
+
+        var entry = await RunJsonAsync("time", "log", "1h30m", "CLI-1", "--note", "Pairing", "--done");
+        entry.GetProperty("minutes").GetInt32().ShouldBe(90);
+        entry.GetProperty("locked").GetBoolean().ShouldBeTrue();
+        (await RunJsonAsync("issue", "get", "CLI-1")).GetProperty("state").GetString().ShouldBe("done");
+
+        var week = await RunJsonAsync("time", "week");
+        week.GetProperty("totalMinutes").GetInt32().ShouldBe(90);
+        var (exit, table, _) = await RunAsync(json: false, "time", "week");
+        exit.ShouldBe(0);
+        table.ShouldContain("CLI-1 (locked)");
+        table.ShouldContain("= 1h30m");
+    }
+
+    [Theory]
+    [InlineData("1h30m", 90)]
+    [InlineData("90m", 90)]
+    [InlineData("1.5h", 90)]
+    [InlineData("1,5h", 90)]
+    [InlineData("1:30", 90)]
+    [InlineData("2h", 120)]
+    [InlineData("15min", 15)]
+    public void Durations_read_as_minutes(string text, int minutes) =>
+        Kupro.Cli.Commands.TimeCommands.ParseDuration(text).ShouldBe(minutes);
+
+    [Theory]
+    [InlineData("90")]
+    [InlineData("25h")]
+    [InlineData("0m")]
+    [InlineData("soon")]
+    public void Durations_out_of_range_or_unreadable_are_refused(string text) =>
+        Should.Throw<CliException>(() => Kupro.Cli.Commands.TimeCommands.ParseDuration(text));
 
     private async Task<(int Exit, string Out, string Error)> RunAsync(bool json, TextReader? stdin, params string[] args)
     {

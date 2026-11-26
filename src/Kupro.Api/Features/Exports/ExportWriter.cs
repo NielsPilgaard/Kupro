@@ -12,6 +12,7 @@ using Kupro.Api.Features.Meetings;
 using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Features.Time;
 using Kupro.Api.Features.Workspaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,6 +35,7 @@ internal static class ExportWriter
         typeof(Sprint), typeof(SprintLedgerEntry), typeof(Milestone), typeof(ProjectCapacity), typeof(Comment), typeof(ActivityEntry),
         typeof(Attachment), typeof(MeetingSession), typeof(TranscriptSegment), typeof(MeetingProposal), typeof(MeetingSettings),
         typeof(WorkspaceImport), typeof(ImportRun), typeof(ImportedItem), typeof(IssueAlias), typeof(ImportConflict),
+        typeof(TimeEntry), typeof(TimeEntryChange),
     };
 
     /// <summary>
@@ -154,6 +156,10 @@ internal static class ExportWriter
         await ArrayAsync(json, "importedItems", db.ImportedItems.AsNoTracking().OrderBy(i => i.Id), ct);
         await ArrayAsync(json, "issueAliases", db.IssueAliases.AsNoTracking().OrderBy(a => a.Alias), ct);
         await ArrayAsync(json, "importConflicts", db.ImportConflicts.AsNoTracking().OrderBy(c => c.Id), ct);
+
+        // Time registration (ADR-021): the employer's records, and every change to them.
+        await ArrayAsync(json, "timeEntries", db.TimeEntries.AsNoTracking().OrderBy(e => e.Date).ThenBy(e => e.Id), ct);
+        await ArrayAsync(json, "timeEntryChanges", db.TimeEntryChanges.AsNoTracking().OrderBy(c => c.At).ThenBy(c => c.Id), ct);
         json.WriteEndObject();
     }
 

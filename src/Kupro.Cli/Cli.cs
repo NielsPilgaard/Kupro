@@ -106,6 +106,7 @@ public static class Cli
                      .Concat(SprintCommands.Build())
                      .Concat(PlanCommands.Build())
                      .Concat(CommentCommands.Build())
+                     .Concat(TimeCommands.Build())
                      .Concat(MeetingCommands.Build())
                      .Concat(ImportCommands.Build())
                      .Concat(InstallCommands.Build())
