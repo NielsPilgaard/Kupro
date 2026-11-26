@@ -38,7 +38,10 @@
     "sprints": "Sprints",
     "plan": "Delivery plan",
     "members": "Members",
-    "imports": "Import"
+    "imports": "Import",
+    "myTime": "My time",
+    "teamTime": "Team time",
+    "workspaceSettings": "Workspace settings"
   },
   "views": {
     "label": "View",
@@ -1073,5 +1076,131 @@
   "importPeople": {
     "lede": "People an import couldn't match to a member. Invite them, or merge them into a member; their history follows.",
     "none": "No placeholders left."
+  },
+  "time": {
+    "unit": {
+      "hm": "{{h}}h {{m}}m",
+      "h": "{{h}}h",
+      "m": "{{m}}m"
+    },
+    "logTime": "Log time",
+    "locked": "Locked",
+    "lockedHint": "Time is locked because the issue is done or canceled. Reopen the issue to change it.",
+    "onIssue": "Time on this issue",
+    "total": "Total time",
+    "yours": "Your time",
+    "privateHint": "Only you and the workspace Owners see your time.",
+    "today": "Today",
+    "palette": {
+      "log": "Log time…",
+      "logOn": "Log time on {{key}}…"
+    },
+    "log": {
+      "title": "Log time",
+      "titleClose": "Mark {{state}}",
+      "closeHint": "You have logged no time on {{key}}. Log it now and it saves together with {{state}}; after that its time is locked.",
+      "issue": "Issue",
+      "searchIssue": "Search issues or type a key",
+      "pickIssue": "Pick an issue.",
+      "duration": "Time spent",
+      "durationPlaceholder": "1h30, 90m or 1,5",
+      "day": "Day",
+      "date": "Date",
+      "note": "Note (optional)",
+      "enterHint": "to log, Esc to close",
+      "save": "Log time",
+      "saveAndClose": "Log time and mark {{state}}",
+      "skip": "Mark {{state}} without time",
+      "saved": "Logged {{duration}} on {{key}}, {{day}}",
+      "savedAndClosed": "Saved together: {{duration}} logged and {{key}} marked {{state}}. Its time is now locked."
+    },
+    "week": {
+      "title": "Week {{week}}",
+      "short": "Week {{week}}",
+      "this": "This week",
+      "nav": "Weeks",
+      "off": "Time registration is off in this workspace. Your time stays here to read, but you can’t log new time.",
+      "tileWeek": "This week",
+      "onIssues_one": "on {{count}} issue",
+      "onIssues_other": "on {{count}} issues",
+      "tileToday": "Today, {{day}}",
+      "entries_one": "{{count}} entry",
+      "entries_other": "{{count}} entries",
+      "tileDays": "Days with time",
+      "daysWithTime": "this week",
+      "tileGaps": "Weekdays so far with no time",
+      "gapsHint": "Fill them in while you remember",
+      "noGaps": "Every day so far has time",
+      "lockedHint": "on Done or Canceled issues",
+      "grid": "Time per issue and day",
+      "issue": "Issue",
+      "weekCol": "Week",
+      "lockedGroup": "Done or Canceled · locked",
+      "empty": "No time this week yet. Add an issue below, or press T to log time.",
+      "dayTotal": "Day total",
+      "nothing": "Nothing",
+      "cellLabel": "{{key}}, {{day}}",
+      "severalHint": "Several entries on this day: change them in the panel below.",
+      "selectHint": "Select a cell to see its entries and notes.",
+      "noTime": "no time",
+      "noNote": "No note",
+      "notePlaceholder": "What it went on",
+      "deleteEntry": "Delete entry",
+      "typeHint": "Type a duration in the cell, then add a note here.",
+      "lockedLine": "Locked: the issue is {{state}}. Reopen it to change its time.",
+      "addTitle": "Add an issue to this week",
+      "keys": "Keys",
+      "keyDurations": "Durations a cell takes",
+      "keyMove": "Move between cells",
+      "keySave": "Save the cell",
+      "keyEmpty": "Empty the cell",
+      "keyEmptyHint": "Delete that day’s time"
+    },
+    "team": {
+      "hint": "each person’s day totals.",
+      "person": "Person",
+      "left": "(left)",
+      "note": "Only Owners see this page. Owners read and export, but don’t edit anyone’s time. People who have left stay here for 5 years.",
+      "ownersOnly": "Only workspace Owners see everyone’s time."
+    },
+    "export": {
+      "open": "Export…",
+      "title": "Export time",
+      "people": "People",
+      "everyone_one": "Everyone ({{count}})",
+      "everyone_other": "Everyone ({{count}})",
+      "everyoneLeft_one": "Everyone ({{count}}, including {{left}} who has left)",
+      "everyoneLeft_other": "Everyone ({{count}}, including {{left}} who have left)",
+      "from": "From",
+      "to": "To",
+      "format": "Format",
+      "hint": "One row per entry: date, person, minutes, issue key, issue title, note.",
+      "tooLong": "Pick a period of at most 366 days, with From before To.",
+      "download": "Download",
+      "failed": "Couldn’t export the time. Try again."
+    },
+    "errors": {
+      "duration": "Write a duration like 1h30, 90m or 1,5, up to 24 hours.",
+      "time_locked": "The issue is done or canceled, so its time is locked. Reopen it to change time on it.",
+      "day_full": "That day would pass 24 hours.",
+      "future_date": "You can’t log time on a day that hasn’t happened yet.",
+      "not_your_entry": "Only the person whose time it is can change it.",
+      "time_entry_not_found": "That entry is gone. The week has been reloaded.",
+      "time_registration_off": "Time registration is off in this workspace. An Owner can turn it on in workspace settings.",
+      "failed": "Couldn’t save the time. Try again."
+    }
+  },
+  "workspaceSettings": {
+    "failed": "Couldn’t save the setting. Try again.",
+    "ownersOnly": "Only workspace Owners change these settings.",
+    "time": {
+      "title": "Time registration",
+      "intro": "Members log the time they spend on issues. Danish employers must record working time; this is where your team does it. Off by default.",
+      "private": "Each person sees only their own time. Owners see everyone’s and export it.",
+      "locked": "Time on a Done or Canceled issue is locked until the issue is reopened.",
+      "kept": "Records are kept for 5 years, also after someone leaves, and also if you turn this off.",
+      "turnedOn": "Time registration is on for {{name}}.",
+      "turnedOff": "Time registration is off. Records are kept."
+    }
   }
 }

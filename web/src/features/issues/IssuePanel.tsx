@@ -22,6 +22,8 @@ import { useToast } from '../../components/Toasts';
 import { useHours } from '../../lib/format';
 import { priorities, states, types } from '../../lib/issues';
 import { useShortcuts } from '../../lib/shortcuts';
+import { useCloseWithTime, useTimeRegistration } from '../../api/time';
+import { IssueTimeBox } from '../time/IssueTimeBox';
 import { ActivityFeed } from './ActivityFeed';
 import { RichMarkdown } from './RichMarkdown';
 
@@ -120,6 +122,8 @@ function IssueBody({
   const hours = useHours();
   const update = useUpdateIssue(workspace);
   const save = (body: UpdateIssueRequest) => update.mutate({ path: { workspace, key: issue.key }, body });
+  const time = useTimeRegistration(workspace);
+  const closeWithTime = useCloseWithTime(workspace);
   const [title, setTitle] = useState(issue.title);
   // The row can be older than the detail, and a blur saves what an input holds: start over when the detail arrives.
   const [seededFromRow, setSeededFromRow] = useState(loading);
@@ -175,7 +179,7 @@ function IssueBody({
       disabled={loading}
       options={states.map((x, i) => ({ value: x, label: t(`state.${x}`), icon: <StatusRing state={x} />, key: String(i + 1) }))}
       selected={[issue.state]}
-      onPick={(v) => save({ state: v as IssueDetail['state'] })}
+      onPick={(v) => void closeWithTime(issue.key, v as IssueDetail['state'], () => save({ state: v as IssueDetail['state'] }))}
     >
       <StatusRing state={issue.state} /> {t(`state.${issue.state}`)}
     </Picker>
@@ -337,6 +341,14 @@ function IssueBody({
           <RailField label={t('issue.sprint')}>{sprint}</RailField>
           <RailField label={t('issue.dates')}>{dates}</RailField>
           <RailField label={t('issue.effort')}>{effort}</RailField>
+          {time.canLog && !loading && (
+            <>
+              <hr className="border-line" />
+              <RailField label={t(time.owner ? 'time.total' : 'time.yours')}>
+                <IssueTimeBox workspace={workspace} issueKey={issue.key} owner={time.owner} />
+              </RailField>
+            </>
+          )}
         </dl>
       </div>
     );
@@ -368,6 +380,7 @@ function IssueBody({
           {sprint}
           {dates}
           {effort}
+          {time.canLog && !loading && <IssueTimeBox workspace={workspace} issueKey={issue.key} owner={time.owner} compact />}
         </div>
         <div role="tablist" aria-label={t('issue.sections')} className="flex gap-4 border-b border-line">
           {tabs.map((x) => (

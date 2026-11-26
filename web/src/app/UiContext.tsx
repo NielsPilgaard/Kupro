@@ -3,6 +3,16 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 /** Palette pages double as pickers, so S/A/P/L and the palette share one keyboard-first UI. */
 export type PalettePage = 'root' | 'state' | 'assign' | 'priority' | 'label';
 
+/** What the Log time dialog opens for: an issue (or a pick), and a close to save with it (ADR-021 Locking). */
+export interface LogTimeRequest {
+  issue?: string;
+  date?: string;
+  /** Done or Canceled: the entry and the state change save together. */
+  state?: 'done' | 'canceled';
+  /** "Mark Done without time": the move the dialog interrupted. */
+  onSkip?(): void;
+}
+
 interface UiState {
   /** Issue the keyboard acts on: the open panel's issue, else the highlighted row. */
   activeKey: string | null;
@@ -20,6 +30,9 @@ interface UiState {
   /** The open issue panel takes over S/A/P/L with its inline pickers; returns false to fall back to the palette. */
   pickerOverride: ((page: PalettePage) => boolean) | null;
   setPickerOverride(fn: ((page: PalettePage) => boolean) | null): void;
+  logTime: LogTimeRequest | null;
+  openLogTime(request?: LogTimeRequest): void;
+  closeLogTime(): void;
 }
 
 const UiContext = createContext<UiState | null>(null);
@@ -41,6 +54,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const setCreateOverride = useCallback((fn: (() => void) | null) => setOverride(() => fn), []);
   const [pickerOverride, setPicker] = useState<((page: PalettePage) => boolean) | null>(null);
   const setPickerOverride = useCallback((fn: ((page: PalettePage) => boolean) | null) => setPicker(() => fn), []);
+  const [logTime, setLogTime] = useState<LogTimeRequest | null>(null);
 
   const value = useMemo<UiState>(
     () => ({
@@ -57,8 +71,11 @@ export function UiProvider({ children }: { children: ReactNode }) {
       setCreateOverride,
       pickerOverride,
       setPickerOverride,
+      logTime,
+      openLogTime: (request = {}) => setLogTime(request),
+      closeLogTime: () => setLogTime(null),
     }),
-    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride, pickerOverride, setPickerOverride],
+    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride, pickerOverride, setPickerOverride, logTime],
   );
 
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
