@@ -1913,6 +1913,20 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("time_zone");
 
+                    b.Property<bool>("VoiceAutoApply")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("voice_auto_apply");
+
+                    b.Property<string>("VoiceButton")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasDefaultValue("TopBar")
+                        .HasColumnName("voice_button");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
