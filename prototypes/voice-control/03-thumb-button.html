@@ -261,6 +261,11 @@ body.phone .icards{display:block}
 body.phone .issue{grid-template-columns:1fr;gap:12px}
 body.phone .usage{display:none}
 body.phone .top{padding:0 8px;gap:6px}
+/* On a real phone the frame is the phone itself: no drawn bezel, and the stage takes the height the bar leaves. */
+body{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.proto{flex:none}
+.stage{flex:1;min-height:0;height:auto}
+@media (max-width:700px){body.phone .stage{width:auto;height:auto;margin:0;border:0;border-radius:0}}
 .thumb{position:fixed;right:20px;bottom:20px;z-index:26;display:flex;flex-direction:column;align-items:center;gap:4px}
 .thumb button{width:60px;height:60px;border-radius:50%;border:0;background:var(--acc);color:var(--on-acc);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-float);touch-action:none}
 .thumb button svg{width:26px;height:26px}
