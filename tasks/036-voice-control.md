@@ -41,8 +41,8 @@ purpose: 'Implementation spec for task 036.'
 - The style is a per-person preference beside language and time zone (`voiceButton: topBar | thumb`), set over the
   API (`PATCH /me`), the CLI and in profile settings.
 - Onboarding asks once: "Do you want to talk to Kupro?" Yes sets the thumb button; no keeps the top bar mic. Kupro
-  has no onboarding yet, so this is its first step: shown once to each person after sign-in, skippable, and
-  answerable later in profile settings.
+  has no onboarding yet, so the first run itself is [task 037](037-onboarding.md); this task builds the preference
+  it sets, and profile settings to change it.
 - A hotkey (hold to talk, release to send) on desktop, with either style. No always-on listening.
 - Audio is one utterance cut by the browser (`web/src/lib/microphone`), sent as 16 kHz WAV, kept in memory, and dropped
   after transcription, as in meetings ([ADR-015](../docs/adr/ADR-015-meeting-agent-vendors.md) IMP-004).
