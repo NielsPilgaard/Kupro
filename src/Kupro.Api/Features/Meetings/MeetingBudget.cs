@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using System.Globalization;
 using Kupro.Api.Data;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
@@ -10,13 +11,19 @@ using Microsoft.Extensions.Options;
 
 namespace Kupro.Api.Features.Meetings;
 
-/// <summary>One workspace's AI usage in one month (ADR-013 "Meeting agent usage"). Last months' rows stay for reporting.</summary>
+/// <summary>
+/// One workspace's AI usage in one month, by who paid (ADR-013 "Meeting agent usage", ADR-022 decision 5). Only Kupro's
+/// row counts against the budget. Last months' rows stay for reporting.
+/// </summary>
 public sealed class MeetingUsage : ITenantOwned
 {
     public Guid WorkspaceId { get; set; }
 
     /// <summary>First day of the month, Copenhagen time.</summary>
     public DateOnly Period { get; set; }
+
+    /// <summary>Kupro's key within the budget, or the workspace's own connection.</summary>
+    public AiPaidBy PaidBy { get; set; }
 
     public double AudioSeconds { get; set; }
     public long InputTokens { get; set; }
@@ -43,7 +50,8 @@ internal sealed class MeetingUsageConfiguration : IEntityTypeConfiguration<Meeti
     public void Configure(EntityTypeBuilder<MeetingUsage> builder)
     {
         builder.ToTable("meeting_usage");
-        builder.HasKey(u => new { u.WorkspaceId, u.Period });
+        builder.HasKey(u => new { u.WorkspaceId, u.Period, u.PaidBy });
+        builder.Property(u => u.PaidBy).HasConversion<string>().HasMaxLength(16);
         builder.HasOne<Workspace>().WithMany().HasForeignKey(u => u.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(u => u.CostCents).HasPrecision(14, 4);
     }
@@ -128,48 +136,66 @@ public sealed partial class MeetingBudget(
             Period(clock.GetUtcNow()).AddMonths(1), state != BudgetState.Available);
     }
 
-    /// <summary>One utterance's audio, at the transcription route's rate for the language.</summary>
-    public Task RecordAudioAsync(double seconds, string language, CancellationToken ct)
+    /// <summary>One utterance's audio, at the rate of the route that transcribed it.</summary>
+    public Task RecordAudioAsync(double seconds, ResolvedAiRoute resolved, CancellationToken ct)
     {
-        var route = options.Value.Transcription.For(language);
+        var route = resolved.Route;
         var cents = (decimal)seconds / 60 * (route.EuroPerAudioMinute ?? 0) * 100;
         metrics.Audio(seconds, route.Model);
-        return RecordAsync(seconds, 0, 0, cents, "transcription", route.Model, ct);
+        return RecordAsync(seconds, 0, 0, cents, "transcription", route.Model, resolved.PaidBy, ct);
     }
 
-    /// <summary>One extraction call's tokens, at the extraction route's rates for the language.</summary>
-    public Task RecordTokensAsync(ModelUsage usage, string language, CancellationToken ct)
+    /// <summary>One extraction call's tokens, at the rates of the route that made it.</summary>
+    public Task RecordTokensAsync(ModelUsage usage, ResolvedAiRoute resolved, CancellationToken ct)
     {
-        var route = options.Value.Extraction.For(language);
+        var route = resolved.Route;
         var input = route.EuroPerMillionInputTokens ?? 0;
         var cents = ((usage.InputTokens - usage.CachedInputTokens) * input
             + usage.CachedInputTokens * (route.EuroPerMillionCachedInputTokens ?? input)
             + usage.OutputTokens * (route.EuroPerMillionOutputTokens ?? 0)) / 1_000_000m * 100;
         metrics.Tokens(usage, route.Model);
-        return RecordAsync(0, usage.InputTokens, usage.OutputTokens, cents, "extraction", route.Model, ct);
+        return RecordAsync(0, usage.InputTokens, usage.OutputTokens, cents, "extraction", route.Model, resolved.PaidBy, ct);
     }
 
-    private async Task RecordAsync(double seconds, long input, long output, decimal cents, string seam, string? model, CancellationToken ct)
+    /// <summary>This month's usage by who paid, for the AI settings (ADR-022 decision 5).</summary>
+    public async Task<(DateOnly Period, IReadOnlyList<AiUsageResponse> Usage)> UsageByPayerAsync(CancellationToken ct)
+    {
+        var period = Period(clock.GetUtcNow());
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var rows = await db.MeetingUsage.AsNoTracking().Where(u => u.Period == period).OrderBy(u => u.PaidBy).ToListAsync(ct);
+        return (period, rows.Select(u => new AiUsageResponse(
+            u.PaidBy, Math.Round(u.AudioSeconds / 60, 1), u.InputTokens, u.OutputTokens, Math.Round(u.CostCents / 100, 2))).ToList());
+    }
+
+    private async Task RecordAsync(double seconds, long input, long output, decimal cents, string seam, string? model, AiPaidBy paidBy,
+        CancellationToken ct)
     {
         var workspaceId = workspace.RequireWorkspaceId();
         var now = clock.GetUtcNow();
         var period = Period(now);
-        metrics.Spend(cents, seam, model, workspace.Slug);
+        var kupro = paidBy == AiPaidBy.Kupro;
+        if (kupro)
+        {
+            // Kupro's spend only: the dashboard and the daily ceiling are about what Kupro pays.
+            metrics.Spend(cents, seam, model, workspace.Slug);
+        }
+
+        var payer = paidBy.ToString();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
 
         // One atomic increment per row, so utterances from several microphones at once are all counted. Raw SQL skips
         // the tenant filter, so the workspace id is passed explicitly.
         var total = (await db.Database.SqlQuery<decimal>($"""
-            INSERT INTO meeting_usage AS u (workspace_id, period, audio_seconds, input_tokens, output_tokens, cost_cents)
-            VALUES ({workspaceId}, {period}, {seconds}, {input}, {output}, {cents})
-            ON CONFLICT (workspace_id, period) DO UPDATE SET
+            INSERT INTO meeting_usage AS u (workspace_id, period, paid_by, audio_seconds, input_tokens, output_tokens, cost_cents)
+            VALUES ({workspaceId}, {period}, {payer}, {seconds}, {input}, {output}, {cents})
+            ON CONFLICT (workspace_id, period, paid_by) DO UPDATE SET
                 audio_seconds = u.audio_seconds + excluded.audio_seconds,
                 input_tokens = u.input_tokens + excluded.input_tokens,
                 output_tokens = u.output_tokens + excluded.output_tokens,
                 cost_cents = u.cost_cents + excluded.cost_cents
             RETURNING u.cost_cents AS "Value"
             """).ToListAsync(ct))[0];
-        if (cents > 0)
+        if (kupro && cents > 0)
         {
             var today = Today(now);
             await db.Database.ExecuteSqlAsync($"""
@@ -178,7 +204,7 @@ public sealed partial class MeetingBudget(
                 """, ct);
         }
 
-        if (Budget is not null)
+        if (kupro && Budget is not null)
         {
             await WarnAsync(db, workspaceId, period, total, now, ct);
         }
@@ -199,11 +225,11 @@ public sealed partial class MeetingBudget(
 
         var full = totalCents >= budgetCents && await db.Database.ExecuteSqlAsync($"""
             UPDATE meeting_usage SET warned100at = {now}, warned80at = COALESCE(warned80at, {now})
-            WHERE workspace_id = {workspaceId} AND period = {period} AND warned100at IS NULL
+            WHERE workspace_id = {workspaceId} AND period = {period} AND paid_by = 'Kupro' AND warned100at IS NULL
             """, ct) == 1;
         var almost = !full && await db.Database.ExecuteSqlAsync($"""
             UPDATE meeting_usage SET warned80at = {now}
-            WHERE workspace_id = {workspaceId} AND period = {period} AND warned80at IS NULL
+            WHERE workspace_id = {workspaceId} AND period = {period} AND paid_by = 'Kupro' AND warned80at IS NULL
             """, ct) == 1;
         if (!full && !almost)
         {
@@ -254,7 +280,8 @@ public sealed partial class MeetingBudget(
     {
         var now = clock.GetUtcNow();
         var period = Period(now);
-        var spent = await db.MeetingUsage.Where(u => u.Period == period).Select(u => u.CostCents).SingleOrDefaultAsync(ct);
+        var spent = await db.MeetingUsage.Where(u => u.Period == period && u.PaidBy == AiPaidBy.Kupro)
+            .Select(u => u.CostCents).SingleOrDefaultAsync(ct);
         var budgetCents = await BudgetCentsAsync(db, ct);
         if (Budget!.DailyCeilingEuro is { } ceiling)
         {

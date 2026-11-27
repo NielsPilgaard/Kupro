@@ -4,6 +4,7 @@ using Kupro.Api.Auth;
 using Kupro.Api.Common;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Email;
@@ -84,18 +85,22 @@ builder.Services.AddSingleton<MeetingAgentMetrics>();
 builder.Services.AddHostedService<MeetingRetentionJob>();
 builder.Services.AddScoped<TimeService>();
 builder.Services.AddHostedService<TimeRetentionJob>();
-// Meeting agent vendors (ADR-015): OpenAI-compatible endpoints routed per language; without an extraction model the
-// offline keyword extractor proposes clear commands.
+// Meeting agent vendors (ADR-015): OpenAI-compatible endpoints routed per language. AiRouter picks the workspace's own
+// connection or Kupro's configured route (ADR-022); with neither, the offline keyword extractor proposes clear commands.
 builder.Services.Configure<MeetingAgentOptions>(builder.Configuration.GetSection(MeetingAgentOptions.Section));
-builder.Services.AddHttpClient<ISpeechToText, OpenAiSpeechToText>();
-if (builder.Configuration.GetSection(MeetingAgentOptions.Section).Get<MeetingAgentOptions>()?.Extraction.IsConfigured == true)
-{
-    builder.Services.AddHttpClient<IProposalExtractor, OpenAiProposalExtractor>();
-}
-else
-{
-    builder.Services.AddSingleton<IProposalExtractor, KeywordProposalExtractor>();
-}
+builder.Services.Configure<AiOptions>(builder.Configuration.GetSection(AiOptions.Section));
+builder.Services.AddHttpClient(AiHttp.Server);
+// A workspace's own endpoint is whatever its owner typed: public addresses only, no redirects (ADR-022 decision 6).
+builder.Services.AddHttpClient(AiHttp.Workspace).ConfigurePrimaryHttpMessageHandler(services =>
+    services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiOptions>>().Value.AllowPrivateAddresses
+        ? new SocketsHttpHandler { AllowAutoRedirect = false }
+        : new SocketsHttpHandler { AllowAutoRedirect = false, ConnectCallback = PublicAddresses.ConnectAsync });
+builder.Services.AddSingleton<ISpeechToText, OpenAiSpeechToText>();
+builder.Services.AddSingleton<IProposalExtractor, OpenAiProposalExtractor>();
+builder.Services.AddSingleton<IAiModels, OpenAiModels>();
+builder.Services.AddSingleton<AiKeys>();
+builder.Services.AddScoped<AiRouter>();
+builder.Services.AddScoped<AiConnectionService>();
 builder.Services.AddSignalR().AddJsonProtocol(options =>
     options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services

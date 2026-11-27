@@ -137,8 +137,8 @@ A new AI feature declares a capability and asks the router for it. It never read
 - A call on a workspace connection is written to the usage ledger with `paidBy = workspace`. It is shown in usage
   (minutes, tokens, and an estimate in euro at the provider type's list price; for a custom endpoint, minutes and
   tokens only). It takes nothing from the AI budget and nothing from the server's daily ceiling.
-- The ledger becomes per capability (`MeetingUsage` → `AiUsage` with `Capability` and `PaidBy`). The usage view
-  can then show the meeting agent and voice control apart, and who paid for each.
+- The ledger records who paid (`MeetingUsage.PaidBy`), and gains a capability column with voice control
+  ([task 036](../../tasks/036-voice-control.md)), so the usage view can show the meeting agent and voice control apart.
 - **Allowed in every plan**: trial, paid and non-profit. A non-profit with its own key gets the meeting agent and
   voice control, at no cost to Kupro.
 - **Guards that stay on a workspace's own key**: `max_tokens` (stops a runaway call) and the 10-minute silence
@@ -151,8 +151,8 @@ A new AI feature declares a capability and asks the router for it. It never read
 - The address is resolved on every call, and loopback, private, link-local and cloud-metadata addresses are
   refused. This is the import guard (`ImportOptions.AllowPrivateAddresses`); self-hosters can turn it off to reach a
   Whisper server on their own network.
-- An Owner ticks "This endpoint is in the EU/EEA and run by us or our processor". The activity log records who ticked
-  it and when, and the connection keeps both.
+- An Owner ticks "This endpoint is in the EU/EEA and run by us or our processor". The connection keeps who ticked it
+  and when, and the API logs it. A workspace-level activity log, when Kupro gets one, should show it too.
 - A custom endpoint is the workspace's own processor, under its own agreement, so it doesn't go in Kupro's ADR-006
   register. The privacy policy and DPA must say that audio and text go to the provider the workspace chose, while it
   has one (a manual legal step).

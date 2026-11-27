@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Options;
 
 namespace Kupro.Api.Features.Meetings;
 
@@ -48,17 +47,30 @@ public sealed record Extraction(IReadOnlyList<ExtractedAction> Actions, ModelUsa
 /// <param name="AudioSeconds">Length of the audio sent, which the vendor bills.</param>
 public sealed record Transcription(string Text, double AudioSeconds);
 
+/// <summary>Reads one utterance with a chat model. Which model, where and with whose key comes from <see cref="Ai.AiRouter"/>.</summary>
 public interface IProposalExtractor
 {
-    Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct);
+    Task<Extraction> ExtractAsync(ExtractionContext context, ModelRoute route, CancellationToken ct);
 }
 
+/// <summary>Transcribes one utterance. Which model, where and with whose key comes from <see cref="Ai.AiRouter"/>.</summary>
 public interface ISpeechToText
 {
-    /// <summary>False when no model is configured for the language; the browser then can't stream audio.</summary>
-    bool Supports(string language);
+    Task<Transcription> TranscribeAsync(Stream wav, string language, ModelRoute route, CancellationToken ct);
+}
 
-    Task<Transcription> TranscribeAsync(Stream wav, string language, CancellationToken ct);
+/// <summary>
+/// The HTTP clients model calls go through. A workspace's own connection may point anywhere its owner typed, so it goes
+/// through the public-address guard without redirects (ADR-022 decision 6); Kupro's configured routes don't, so a
+/// self-hosted Kupro can use a model server on its own network.
+/// </summary>
+public static class AiHttp
+{
+    public const string Server = "ai";
+    public const string Workspace = "ai-workspace";
+
+    public static HttpClient Client(IHttpClientFactory factory, ModelRoute route) =>
+        factory.CreateClient(route.PublicOnly ? Workspace : Server);
 }
 
 /// <summary>
@@ -117,6 +129,9 @@ public sealed class ModelRoute
     /// <summary>Extraction: euro per million output tokens.</summary>
     public decimal? EuroPerMillionOutputTokens { get; set; }
 
+    /// <summary>Set by the router for a workspace's own connection: calls go through <see cref="AiHttp.Workspace"/>. Not configuration.</summary>
+    public bool PublicOnly { get; set; }
+
     public Dictionary<string, ModelRoute> Languages { get; set; } = [];
 
     public ModelRoute For(string language) =>
@@ -140,13 +155,10 @@ public sealed class ModelRoute
 }
 
 /// <summary>Whisper-style <c>/audio/transcriptions</c> (Scaleway, ADR-015).</summary>
-public sealed class OpenAiSpeechToText(HttpClient http, IOptions<MeetingAgentOptions> options) : ISpeechToText
+public sealed class OpenAiSpeechToText(IHttpClientFactory clients) : ISpeechToText
 {
-    public bool Supports(string language) => options.Value.Transcription.For(language).IsConfigured;
-
-    public async Task<Transcription> TranscribeAsync(Stream wav, string language, CancellationToken ct)
+    public async Task<Transcription> TranscribeAsync(Stream wav, string language, ModelRoute route, CancellationToken ct)
     {
-        var route = options.Value.Transcription.For(language);
         // Under 2 MB (the endpoint's limit): buffered so its length can be metered before it goes out.
         using var audio = new MemoryStream();
         await wav.CopyToAsync(audio, ct);
@@ -161,7 +173,7 @@ public sealed class OpenAiSpeechToText(HttpClient http, IOptions<MeetingAgentOpt
         };
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{route.Endpoint!.TrimEnd('/')}/audio/transcriptions") { Content = form };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", route.ApiKey);
-        using var response = await http.SendAsync(request, ct);
+        using var response = await AiHttp.Client(clients, route).SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonObject>(ct);
         return new Transcription(body?["text"]?.GetValue<string>().Trim() ?? "", seconds);
@@ -210,7 +222,7 @@ public static class Wav
 }
 
 /// <summary>Chat completion with a JSON schema response (ADR-015). Issue and member matching stays in our code.</summary>
-public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAgentOptions> options) : IProposalExtractor
+public sealed class OpenAiProposalExtractor(IHttpClientFactory clients) : IProposalExtractor
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -248,9 +260,8 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
         }
         """)!;
 
-    public async Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct)
+    public async Task<Extraction> ExtractAsync(ExtractionContext context, ModelRoute route, CancellationToken ct)
     {
-        var route = options.Value.Extraction.For(context.Language);
         var user = JsonSerializer.Serialize(context, Json);
         var payload = new JsonObject
         {
@@ -278,7 +289,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
             Content = JsonContent.Create(payload),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", route.ApiKey);
-        using var response = await http.SendAsync(request, ct);
+        using var response = await AiHttp.Client(clients, route).SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         var completion = await response.Content.ReadFromJsonAsync<JsonObject>(ct);
         var content = completion?["choices"]?[0]?["message"]?["content"]?.GetValue<string>();
@@ -353,7 +364,7 @@ public sealed class OpenAiProposalExtractor(HttpClient http, IOptions<MeetingAge
 /// Offline extractor for clear English and Danish commands ("move KUP-12 to next sprint", "KUP-3 er færdig"). Used
 /// when no LLM is configured, so dev, E2E and self-hosters without a model still get proposals.
 /// </summary>
-public sealed partial class KeywordProposalExtractor : IProposalExtractor
+public sealed partial class KeywordProposalExtractor
 {
     private const string Ref = @"(?<ref>[A-Z][A-Z0-9]{1,9}-\d+|(?:the|den|det)\s+[\p{L}\d][\p{L}\d\s-]{1,40}?)";
 

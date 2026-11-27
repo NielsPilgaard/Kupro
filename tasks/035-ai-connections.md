@@ -4,7 +4,7 @@ description: >-
   Let a workspace connect its own AI provider (a Scaleway key now, or a custom OpenAI-compatible EU endpoint), route
   each AI capability to a connection, and skip the AI budget for calls on it. Build the provider registry and the
   capability router that make Scaleway replaceable. Implements ADR-022.
-status: 'Todo'
+status: 'In progress'
 phase: 2
 depends_on: ['015', '017', '018']
 purpose: 'Implementation spec for task 035.'
@@ -26,6 +26,34 @@ The rules are in [ADR-022](../docs/adr/ADR-022-ai-providers-byok.md). This task 
 The meeting agent is the first feature on it. Voice control ([task 036](036-voice-control.md)) is the second.
 
 **Before code**: ADR-022 accepted, and prototypes for the settings screen (see [UI](#ui)).
+
+## Progress
+
+The backend is built against ADR-022 as proposed (the owner asked to go ahead before accepting it); the web waits on
+the prototype pick.
+
+- [x] Provider registry and capabilities (`Features/Ai/AiProviders.cs`), connections and routes with a migration,
+      keys encrypted with Data Protection (`AiKeys`), the router (`AiRouter`) with Kupro's server route as the default
+      layer.
+- [x] The meeting agent asks the router: speech and extraction take the resolved route, the keyword extractor is the
+      fallback when nothing serves proposals, and the microphone shows per workspace.
+- [x] Budget: `meeting_usage` has a `paid_by` column. Only Kupro's row counts against the budget, the daily ceiling,
+      the warnings and the spend metric. The 3-hour limit is off on a workspace's own transcription key.
+- [x] Failure: 401/403 from a workspace's own key rejects the connection, returns `409 ai_connection_rejected` for
+      audio, gives keyword proposals for text, and emails billing once. Kupro's key is never used instead.
+- [x] REST (`api/v1/workspaces/{workspace}/ai`), CLI (`kupro ai status|providers|connections …|routes …`, key from
+      stdin, `KUPRO_AI_KEY` or a hidden prompt), MCP `ai` (status and providers, read-only), parity test.
+- [x] Custom endpoints: https, public addresses only (checked on save and on every call), no redirects, EU
+      confirmation required. `Ai:AllowPrivateAddresses` lets a self-hosted Kupro reach its own network.
+- [ ] Web settings screen: waits on the prototype pick.
+- [ ] Each proposal records the model that made it, and suggest-mode stats split by model.
+
+Different from the spec, on purpose:
+
+- **Ledger**: `MeetingUsage` keeps its name and gains `PaidBy`; the `Capability` column comes with task 036, when
+  voice is the first usage that isn't a meeting.
+- **EU confirmation**: kept on the connection (who and when) and in a structured log line. Kupro has no
+  workspace-level activity log yet; the issue activity feed is per issue.
 
 ## Scope
 
@@ -118,22 +146,24 @@ The meeting agent is the first feature on it. Voice control ([task 036](036-voic
 
 ## Acceptance criteria
 
-- [ ] An Owner connects a Scaleway key. The check calls `/models`, and from then on meeting audio and proposals for
+- [x] An Owner connects a Scaleway key. The check calls `/models`, and from then on meeting audio and proposals for
       that workspace go to that key. A test with a fake vendor proves this.
-- [ ] Calls on a workspace's own key are recorded with `PaidBy = workspace` and never return `meeting_budget_spent`,
+- [x] Calls on a workspace's own key are recorded with `PaidBy = workspace` and never return `meeting_budget_spent`,
       even when Kupro's budget for the workspace is spent and the daily ceiling is reached.
-- [ ] A 401 from a workspace's own key rejects the connection, stops audio with `409 ai_connection_rejected`, gives
+- [x] A 401 from a workspace's own key rejects the connection, stops audio with `409 ai_connection_rejected`, gives
       keyword proposals for text, sends one email, and never calls Kupro's key (asserted).
-- [ ] Two workspaces with different connections are never mixed up. A test runs them concurrently, and the cache
+- [x] Two workspaces with different connections are never mixed up. A test runs them concurrently, and the cache
       drops an entry when a key is replaced.
-- [ ] A self-hosted Whisper as a custom endpoint serves `transcription` while Scaleway serves `meeting-proposals`.
-- [ ] Hosted: a custom endpoint on HTTP, or one resolving to a private or metadata address, is refused. The EU
+- [x] A self-hosted Whisper as a custom endpoint serves `transcription` while Scaleway serves `meeting-proposals`.
+- [x] Hosted: a custom endpoint on HTTP, or one resolving to a private or metadata address, is refused. The EU
       confirmation is required and appears in the activity log.
 - [ ] No API response, log line, trace or export contains a key. A test searches each of them for a known key.
-- [ ] A Member without billing access, and an agent token, get `403` on every write.
-- [ ] The parity test passes, with MCP writes listed as an explicit opt-out.
-- [ ] Self-hosted with only `MeetingAgent:*` configuration behaves exactly as before.
-- [ ] Trial and non-profit workspaces can connect a key and use the meeting agent without limits.
+      (API responses and CLI output are tested; logs, traces and the export are not yet.)
+- [x] A Member without billing access, and an agent token, get `403` on every write.
+- [x] The parity test passes, with MCP writes listed as an explicit opt-out.
+- [x] Self-hosted with only `MeetingAgent:*` configuration behaves exactly as before.
+- [ ] Trial and non-profit workspaces can connect a key and use the meeting agent without limits. (Nothing blocks
+      it; there are no trial or non-profit plans to test against until billing exists.)
 
 ## Manual steps
 

@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using Kupro.Api.Features.Meetings;
-using Microsoft.Extensions.Options;
 
 namespace Kupro.Tests.Features;
 
@@ -43,8 +42,8 @@ public sealed class ProposalExtractorTests
             Languages = { ["en"] = new ModelRoute { Model = "english-model" } },
         };
 
-        await new OpenAiProposalExtractor(new HttpClient(model), Options.Create(new MeetingAgentOptions { Extraction = route }))
-            .ExtractAsync(Context, Ct);
+        // The router picks the language's route (ADR-015 decision 4); the extractor sends what it is given.
+        await Extractor(model, route.For("en")).ExtractAsync(Context, Ct);
 
         model.Request!["model"]!.GetValue<string>().ShouldBe("english-model");
         model.Request["reasoning_effort"]!.GetValue<string>().ShouldBe("low");
@@ -69,11 +68,20 @@ public sealed class ProposalExtractorTests
         action.Value.ShouldBe("done");
     }
 
-    private static OpenAiProposalExtractor Extractor(FakeModel model) =>
-        new(new HttpClient(model), Options.Create(new MeetingAgentOptions
-        {
-            Extraction = new ModelRoute { Endpoint = "https://llm.test/v1", Model = "test-model", ApiKey = "test" },
-        }));
+    private static BoundExtractor Extractor(FakeModel model, ModelRoute? route = null) =>
+        new(new OpenAiProposalExtractor(new OneClient(model)),
+            route ?? new ModelRoute { Endpoint = "https://llm.test/v1", Model = "test-model", ApiKey = "test" });
+
+    /// <summary>The extractor with the route the router would have resolved.</summary>
+    private sealed record BoundExtractor(OpenAiProposalExtractor Inner, ModelRoute Route)
+    {
+        public Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct) => Inner.ExtractAsync(context, Route, ct);
+    }
+
+    private sealed class OneClient(HttpMessageHandler handler) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+    }
 
     [Fact]
     public async Task Token_usage_comes_from_the_response_including_cached_input()

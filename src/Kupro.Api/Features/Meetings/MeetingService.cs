@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
@@ -28,6 +30,8 @@ public sealed partial class MeetingService(
     CommentService comments,
     IProposalExtractor extractor,
     ISpeechToText speech,
+    AiRouter router,
+    AiConnectionService connections,
     MeetingBudget budget,
     RealtimeEvents realtime,
     TimeProvider clock,
@@ -42,7 +46,10 @@ public sealed partial class MeetingService(
     private const int MaxCandidates = 3;
     private const int IssueHintLimit = 60;
 
-    /// <summary>A meeting live longer than this is ended: a forgotten browser tab can't spend all day (ADR-013 guards).</summary>
+    /// <summary>
+    /// A meeting live longer than this is ended: a forgotten browser tab can't spend all day (ADR-013 guards). Not on a
+    /// workspace's own transcription key, which costs Kupro nothing (ADR-022 decision 5).
+    /// </summary>
     public static readonly TimeSpan MaxDuration = TimeSpan.FromHours(3);
 
     /// <summary>How far back an open proposal counts as the same one heard again, e.g. by a second microphone.</summary>
@@ -196,20 +203,36 @@ public sealed partial class MeetingService(
             language = meeting.Language;
         }
 
-        if (!speech.Supports(language))
+        if (await router.ResolveAsync(AiCapability.Transcription, language, ct) is not { } route)
         {
             return new IssueError("transcription_unavailable", $"No speech-to-text model is configured for '{language}'.");
         }
 
+        // A workspace's own key that its vendor refused stops the microphone; Kupro's key is never used instead (ADR-022).
+        if (route.Rejected)
+        {
+            return ConnectionRejected();
+        }
+
         // Speech has no free fallback, so a spent budget stops the microphone (ADR-013); text still works.
-        if (await budget.CheckAsync(ct) != BudgetState.Available)
+        if (!route.OwnKey && await budget.CheckAsync(ct) != BudgetState.Available)
         {
             return new IssueError("meeting_budget_spent",
                 "This workspace's meeting hours are used up for this month. Typed text still gets proposals from keyword matching.");
         }
 
-        var transcription = await speech.TranscribeAsync(wav, language, ct);
-        await budget.RecordAudioAsync(transcription.AudioSeconds, language, ct);
+        Transcription transcription;
+        try
+        {
+            transcription = await speech.TranscribeAsync(wav, language, route.Route, ct);
+        }
+        catch (HttpRequestException ex) when (route.OwnKey && Refused(ex))
+        {
+            await connections.RejectAsync(route.ConnectionId!.Value, $"{(int)ex.StatusCode!.Value} {ex.StatusCode}", ct);
+            return ConnectionRejected();
+        }
+
+        await budget.RecordAudioAsync(transcription.AudioSeconds, route, ct);
         return string.IsNullOrWhiteSpace(transcription.Text)
             ? new TranscriptResult("", [], ExtractorKind.Keyword, BudgetSpent: false)
             : await AddTranscriptAsync(id, new TranscriptRequest(transcription.Text), ct);
@@ -477,8 +500,12 @@ public sealed partial class MeetingService(
     {
         var startedBefore = now - MaxDuration;
         // System job across all tenants: no request workspace exists, and each meeting is judged on its own start time.
+        // A workspace that transcribes on its own key has no limit (ADR-022 decision 5).
+        var ownTranscription = db.AiRoutes.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+            .Where(r => r.Capability == AiCapability.Transcription);
         return db.Meetings.IgnoreQueryFilters([KuproDbContext.TenantFilter])
-            .Where(m => m.State != MeetingState.Ended && m.StartedAt < startedBefore)
+            .Where(m => m.State != MeetingState.Ended && m.StartedAt < startedBefore
+                && !ownTranscription.Any(r => r.WorkspaceId == m.WorkspaceId))
             .ExecuteUpdateAsync(m => m.SetProperty(x => x.State, MeetingState.Ended).SetProperty(x => x.EndedAt, now), ct);
     }
 
@@ -849,20 +876,31 @@ public sealed partial class MeetingService(
     private async Task<(IReadOnlyList<ExtractedAction> Actions, ExtractorKind Kind, bool Spent)> ExtractAsync(
         ExtractionContext context, CancellationToken ct)
     {
-        if (await budget.CheckAsync(ct) != BudgetState.Available)
+        // No model anywhere, or the workspace's own key was refused: keyword matching, never Kupro's key (ADR-022).
+        if (await router.ResolveAsync(AiCapability.MeetingProposals, context.Language, ct) is not { Rejected: false } route)
+        {
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
+        }
+
+        if (!route.OwnKey && await budget.CheckAsync(ct) != BudgetState.Available)
         {
             return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, true);
         }
 
         try
         {
-            var extraction = await extractor.ExtractAsync(context, ct);
+            var extraction = await extractor.ExtractAsync(context, route.Route, ct);
             if (extraction.Usage is { } usage)
             {
-                await budget.RecordTokensAsync(usage, context.Language, ct);
+                await budget.RecordTokensAsync(usage, route, ct);
             }
 
             return (extraction.Actions, extraction.Usage is null ? ExtractorKind.Keyword : ExtractorKind.Model, false);
+        }
+        catch (HttpRequestException ex) when (route.OwnKey && Refused(ex))
+        {
+            await connections.RejectAsync(route.ConnectionId!.Value, $"{(int)ex.StatusCode!.Value} {ex.StatusCode}", ct);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
         }
         catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException
             || (ex is OperationCanceledException && !ct.IsCancellationRequested))
@@ -872,10 +910,16 @@ public sealed partial class MeetingService(
         }
     }
 
+    private static bool Refused(HttpRequestException ex) => ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private static IssueError ConnectionRejected() => new("ai_connection_rejected",
+        "The workspace's own AI key was rejected by its provider. Replace it in Settings → AI, or remove the connection to use Kupro's included hours. Typed text still gets proposals from keyword matching.");
+
     /// <summary>Ends a meeting live past <see cref="MaxDuration"/>; the hourly job catches the ones nobody talks in.</summary>
     private async Task<IssueError?> TimeLimitAsync(MeetingSession meeting, CancellationToken ct)
     {
-        if (clock.GetUtcNow() - meeting.StartedAt <= MaxDuration)
+        if (clock.GetUtcNow() - meeting.StartedAt <= MaxDuration
+            || await router.ResolveAsync(AiCapability.Transcription, meeting.Language, ct) is { OwnKey: true })
         {
             return null;
         }
@@ -966,10 +1010,16 @@ public sealed partial class MeetingService(
         })
             .ToListAsync(ct);
         var members = await MemberRefs.ByIdAsync(db, rows.SelectMany(r => new[] { r.Meeting.StartedById, r.Meeting.AgentId }), ct);
+        var listening = new Dictionary<string, bool>();
+        foreach (var language in rows.Select(r => r.Meeting.Language).Distinct())
+        {
+            listening[language] = await router.AvailableAsync(AiCapability.Transcription, language, ct);
+        }
+
         return rows.Select(r => new MeetingResponse(
                 r.Meeting.Id, r.Project, r.Meeting.Type, r.Meeting.Mode, r.Meeting.Language, r.Meeting.State,
                 members[r.Meeting.StartedById], members[r.Meeting.AgentId], r.Meeting.StartedAt, r.Meeting.EndedAt, r.Counts,
-                speech.Supports(r.Meeting.Language)))
+                listening[r.Meeting.Language]))
             .ToList();
     }
 
