@@ -38,9 +38,16 @@ export function SettingsPage() {
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-semibold">{t('settings.workspaces')}</h2>
           {workspaces.map((w) => (
-            <Link key={w.slug} to="/w/$workspace/members" params={{ workspace: w.slug }} className="text-acc-ink underline">
-              {t('settings.membersOf', { name: w.name })}
-            </Link>
+            <span key={w.slug} className="flex flex-wrap gap-x-4">
+              <Link to="/w/$workspace/members" params={{ workspace: w.slug }} className="text-acc-ink underline">
+                {t('settings.membersOf', { name: w.name })}
+              </Link>
+              {w.role !== 'guest' && (
+                <Link to="/w/$workspace/settings/ai" params={{ workspace: w.slug }} className="text-acc-ink underline">
+                  {t('settings.aiOf', { name: w.name })}
+                </Link>
+              )}
+            </span>
           ))}
         </section>
       )}

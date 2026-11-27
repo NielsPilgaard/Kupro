@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Command } from 'cmdk';
-import { ArrowDownToLine, CircleCheck, FileText, FolderKanban, Inbox, List, Plus, RefreshCw, Search, Tag, UserRound, Users } from 'lucide-react';
+import { ArrowDownToLine, AudioLines, CircleCheck, FileText, FolderKanban, Inbox, List, Plus, RefreshCw, Search, Tag, UserRound, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -146,6 +146,9 @@ export function CommandPalette({ workspace }: { workspace: string }) {
             : []),
           { id: 'nav:mine', label: t('nav.myIssues'), icon: <Inbox size={16} />, cli: 'kupro issue list --assignee me', run: () => { close(); void navigate({ to: '/w/$workspace/my-issues', params: { workspace } }); } },
           { id: 'nav:members', label: t('palette.members'), icon: <Users size={16} />, cli: 'kupro member list', run: () => { close(); void navigate({ to: '/w/$workspace/members', params: { workspace } }); } },
+          ...(info && info.role !== 'guest'
+            ? [{ id: 'nav:ai', label: t('ai.palette'), icon: <AudioLines size={16} />, cli: 'kupro ai status', run: () => { close(); void navigate({ to: '/w/$workspace/settings/ai', params: { workspace } }); } }]
+            : []),
           ...(owner
             ? [
                 { id: 'nav:import', label: t('imports.palette.importFrom'), icon: <ArrowDownToLine size={16} />, cli: 'kupro import create <source> --url <url>', run: () => { close(); void navigate({ to: '/w/$workspace/imports/new', params: { workspace } }); } },
@@ -188,7 +191,7 @@ export function CommandPalette({ workspace }: { workspace: string }) {
         ];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t, owner, imports]);
+  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t, owner, imports, info]);
 
   if (!page) return null;
   // While searching, the server has already matched the issues; commands are matched here by a plain substring so
