@@ -1305,6 +1305,11 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("paid_by");
 
+                    b.Property<string>("Feature")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("feature");
+
                     b.Property<double>("AudioSeconds")
                         .HasColumnType("double precision")
                         .HasColumnName("audio_seconds");
@@ -1330,7 +1335,7 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("warned80at");
 
-                    b.HasKey("WorkspaceId", "Period", "PaidBy")
+                    b.HasKey("WorkspaceId", "Period", "PaidBy", "Feature")
                         .HasName("pk_meeting_usage");
 
                     b.ToTable("meeting_usage", (string)null);

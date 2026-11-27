@@ -17,6 +17,7 @@ using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Features.Sprints;
 using Kupro.Api.Features.Time;
+using Kupro.Api.Features.Voice;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Mcp;
 using Kupro.Api.Tenancy;
@@ -101,6 +102,9 @@ builder.Services.AddSingleton<IAiModels, OpenAiModels>();
 builder.Services.AddSingleton<AiKeys>();
 builder.Services.AddScoped<AiRouter>();
 builder.Services.AddScoped<AiConnectionService>();
+// Voice control (task 036): the voice-commands capability, or keyword matching when nothing serves it.
+builder.Services.AddSingleton<IVoiceInterpreter, OpenAiVoiceInterpreter>();
+builder.Services.AddScoped<VoiceService>();
 builder.Services.AddSignalR().AddJsonProtocol(options =>
     options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services
