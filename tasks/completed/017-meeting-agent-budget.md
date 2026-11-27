@@ -85,7 +85,7 @@ Code: `MeetingBudget.cs` (ledger, check, emails, metrics), the guards in `Meetin
 
 ## Out of scope
 
-- Extra-hour packs, customer API keys and a higher seat tier ([ADR-013](../../docs/adr/ADR-013-seats-billing.md) "Not now").
+- Extra-hour packs and a higher seat tier ([ADR-013](../../docs/adr/ADR-013-seats-billing.md) "Not now"). A workspace's own AI key is [task 035](../035-ai-connections.md).
 - Choosing the extraction model: the spike in [ADR-015](../../docs/adr/ADR-015-meeting-agent-vendors.md) IMP-006. Rates
   are configuration, so a model change is a config change.
 - Charging money: billing is a later task.
