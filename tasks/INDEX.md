@@ -39,6 +39,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 35 | [035 Workspace AI connections (bring your own key)](035-ai-connections.md) | P1 | 2 | 015, 017, 018 | In progress |
 | 36 | [036 Voice control](036-voice-control.md) | P1 | 2 | 035 | Todo |
 | 37 | [037 First-run onboarding](037-onboarding.md) | P2 | 2 | 036 | Todo |
+| 38 | [038 On-device transcription (proposal)](038-on-device-transcription.md) | P3 | 2 | 036 | Proposed: waits for a customer ask |
 | 34 | [034 Time registration](034-time-registration.md) | P2 | 2 | 003, 004 | In progress |
 | 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
