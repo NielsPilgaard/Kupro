@@ -204,6 +204,8 @@ public sealed class VoiceTests(PostgresFixture postgres, StorageFixture storage)
     public async Task Dictation_inserts_the_words_as_said_and_tidy_up_only_fixes_spelling_and_punctuation()
     {
         var w = await WorkspaceAsync();
+        // Three utterances: more than Kupro's budget here, so on the workspace's own key.
+        await AddConnectionAsync(w, "scw-dictation-0003");
         _speech.Next = "the login page brakes on safari";
 
         _interpreter.Tidied = "The login page breaks on Safari.";
@@ -269,8 +271,8 @@ public sealed class VoiceTests(PostgresFixture postgres, StorageFixture storage)
 
         var (yes, _, yesError) = await CliAsync(token.Secret, w.Slug, null, "say", "--yes", "comment on KUP-1: shipped behind a flag");
         yes.ShouldBe(0, yesError);
-        var comments = await w.Client.GetStringAsync($"/api/v1/workspaces/{w.Slug}/issues/KUP-1/comments", Ct);
-        comments.ShouldContain("shipped behind a flag");
+        var feed = await w.Client.GetStringAsync($"/api/v1/workspaces/{w.Slug}/issues/KUP-1/activity", Ct);
+        feed.ShouldContain("shipped behind a flag");
     }
 
     // ---------------------------------------------------------------- helpers
