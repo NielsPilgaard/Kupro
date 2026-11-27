@@ -1,14 +1,21 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+/** A button in the toast, such as Undo; pressing it dismisses the toast. */
+export interface ToastAction {
+  label: string;
+  run(): void;
+}
+
 interface Toast {
   id: number;
   message: string;
   tone: 'info' | 'error';
+  action?: ToastAction;
 }
 
 interface ToastApi {
-  info(message: string): void;
+  info(message: string, action?: ToastAction): void;
   error(message: string): void;
 }
 
@@ -24,19 +31,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id: number) => setToasts((all) => all.filter((x) => x.id !== id)), []);
   const push = useCallback(
-    (message: string, tone: Toast['tone']) => {
+    (message: string, tone: Toast['tone'], action?: ToastAction) => {
       const id = Date.now() + Math.random();
-      setToasts((all) => [...all.slice(-3), { id, message, tone }]);
-      if (tone === 'info') setTimeout(() => dismiss(id), 5000);
+      setToasts((all) => [...all.slice(-3), { id, message, tone, action }]);
+      // A toast with an action stays a little longer, so there is time to reach Undo.
+      if (tone === 'info') setTimeout(() => dismiss(id), action ? 8000 : 5000);
     },
     [dismiss],
   );
-  const api = useMemo<ToastApi>(() => ({ info: (m) => push(m, 'info'), error: (m) => push(m, 'error') }), [push]);
+  const api = useMemo<ToastApi>(() => ({ info: (m, action) => push(m, 'info', action), error: (m) => push(m, 'error') }), [push]);
 
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2" role="status" aria-live="polite">
+      <div className="pointer-events-none fixed right-4 bottom-[var(--toast-bottom,1rem)] z-50 flex flex-col items-end gap-2" role="status" aria-live="polite">
         {toasts.map((toast) => (
           <div
             key={toast.id}
@@ -44,6 +52,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           >
             {toast.tone === 'error' && <span className="font-semibold text-bad">!</span>}
             <span className="min-w-0 flex-1">{toast.message}</span>
+            {toast.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  dismiss(toast.id);
+                  toast.action!.run();
+                }}
+                className="font-semibold text-acc hover:underline"
+              >
+                {toast.action.label}
+              </button>
+            )}
             <button type="button" onClick={() => dismiss(toast.id)} className="opacity-70 hover:opacity-100" aria-label={t('common.dismiss')}>
               ×
             </button>

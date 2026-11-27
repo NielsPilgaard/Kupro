@@ -326,7 +326,8 @@
       "mcp": "MCP",
       "api": "API",
       "meeting": "meeting",
-      "import": "import"
+      "import": "import",
+      "voice": "voice"
     },
     "sprintClosed": {
       "carry": "{{name}} carried this from {{sprint}} to {{target}} on close",
@@ -1073,5 +1074,83 @@
   "importPeople": {
     "lede": "People an import couldn't match to a member. Invite them, or merge them into a member; their history follows.",
     "none": "No placeholders left."
+  },
+  "voice": {
+    "talk": "Talk",
+    "button": {
+      "idle": "Talk to Kupro. Hold to talk, or hold Ctrl+Space.",
+      "listening": "Listening. Release to send.",
+      "thinking": "Working out what you said"
+    },
+    "status": {
+      "listening": "Listening…",
+      "dictating": "Listening. Your words go into the field.",
+      "thinking": "Thinking…"
+    },
+    "said": "You said",
+    "close": "Close",
+    "apply": "Apply",
+    "applyCount_one": "Apply {{count}} change",
+    "applyCount_other": "Apply {{count}} changes",
+    "pick": "Which issue?",
+    "newIssue": "New issue",
+    "typeLabel": "Or type it",
+    "typePlaceholder": "Move KUP-12 to next sprint",
+    "send": "Send",
+    "held": {
+      "lowConfidence": "Not sure I heard right",
+      "ambiguous": "Pick the issue",
+      "destructive": "Cancels the issue, so it asks first",
+      "createIssue": "New issues always ask first"
+    },
+    "applied_one": "Changed {{keys}}",
+    "applied_other": "Made {{count}} changes on {{keys}}",
+    "undo": "Undo",
+    "undone": "Undone",
+    "undoFailed": "Couldn’t undo: the issue was changed since. Undo it by hand.",
+    "applyFailed": "That change didn’t go through. {{detail}}",
+    "opened": "Opened {{place}}",
+    "place": {
+      "myIssues": "My issues",
+      "list": "{{project}} issues",
+      "board": "{{project}} board",
+      "sprints": "Sprints",
+      "plan": "Delivery plan",
+      "for": "{{place}} for {{name}}"
+    },
+    "none": {
+      "nothingHeard": "I didn’t hear anything. Hold the button while you talk.",
+      "notUnderstood": "I didn’t catch a change or a place to go. Try “move KUP-12 to next sprint” or “open KUP-12”.",
+      "notFound": "I couldn’t find that issue, person or sprint in this workspace.",
+      "projectNeeded": "Say which project, for example “board for Kupro”."
+    },
+    "keyword": "This month’s AI hours are used up, so only clear commands work.",
+    "blocked": {
+      "budgetTitle": "This month’s AI hours are used up",
+      "budget": "The microphone is off until next month. Typing still works, and an Owner can connect the workspace’s own AI key for unlimited voice.",
+      "rejectedTitle": "The AI provider rejected the workspace’s key",
+      "rejected": "The microphone is off until an Owner replaces the key in the AI settings. Kupro’s included hours aren’t used meanwhile. Typing still works.",
+      "unavailableTitle": "Voice isn’t set up on this server",
+      "unavailable": "Typing still works.",
+      "microphoneTitle": "Kupro can’t use the microphone",
+      "microphone": "Allow the microphone for this site in your browser, then try again.",
+      "failed": "That didn’t work. Try again."
+    },
+    "dictated": "Added to the field",
+    "tidy": {
+      "title": "Tidy up?",
+      "hint": "Fixes spelling and punctuation, nothing else.",
+      "accept": "Use tidied text",
+      "keep": "Keep as said",
+      "gone": "The text was changed since, so it was left as it is."
+    },
+    "settings": {
+      "title": "Voice",
+      "button": "Talk button",
+      "topBar": "In the top bar, next to search",
+      "thumb": "Large round button within thumb reach",
+      "autoApply": "Apply sure changes without asking",
+      "autoApplyHint": "Unsure matches, cancelling and new issues still ask first. Every change can be undone."
+    }
   }
 }

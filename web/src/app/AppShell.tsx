@@ -11,6 +11,7 @@ import { CommandPalette } from '../features/palette/CommandPalette';
 import { CreateIssueDialog } from '../features/issues/CreateIssueDialog';
 import { IssuePanel } from '../features/issues/IssuePanel';
 import { MeetingPanel } from '../features/meetings/MeetingPanel';
+import { TopBarMic, VoiceProvider } from '../features/voice/VoiceControl';
 import { useShortcuts } from '../lib/shortcuts';
 import { projectColorClass } from '../lib/issues';
 import { useUi, type PalettePage } from './UiContext';
@@ -46,16 +47,18 @@ export function AppShell() {
   });
 
   return (
-    <div className="flex h-full">
-      <Sidebar workspace={workspace} collapsed={ui.sidebarCollapsed} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Outlet />
+    <VoiceProvider workspace={workspace}>
+      <div className="flex h-full">
+        <Sidebar workspace={workspace} collapsed={ui.sidebarCollapsed} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Outlet />
+        </div>
+        {search.issue && <IssuePanel workspace={workspace} issueKey={search.issue} meName={me?.displayName} />}
+        {search.meeting && <MeetingPanel workspace={workspace} meetingId={search.meeting} />}
+        <CommandPalette workspace={workspace} />
+        <CreateIssueDialog workspace={workspace} />
       </div>
-      {search.issue && <IssuePanel workspace={workspace} issueKey={search.issue} meName={me?.displayName} />}
-      {search.meeting && <MeetingPanel workspace={workspace} meetingId={search.meeting} />}
-      <CommandPalette workspace={workspace} />
-      <CreateIssueDialog workspace={workspace} />
-    </div>
+    </VoiceProvider>
   );
 }
 
@@ -195,7 +198,10 @@ export function Topbar({ crumbs, tabs, actions }: { crumbs: string[]; tabs?: Rea
         ))}
       </h1>
       {tabs}
-      <div className="ml-auto flex items-center gap-2">{actions}</div>
+      <div className="ml-auto flex items-center gap-2">
+        <TopBarMic />
+        {actions}
+      </div>
       <button
         type="button"
         onClick={() => ui.setCreateOpen(true)}
