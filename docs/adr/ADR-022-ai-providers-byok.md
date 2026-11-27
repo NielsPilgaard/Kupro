@@ -1,6 +1,6 @@
 ---
 title: 'ADR-022: AI providers and workspace AI connections (bring your own key)'
-status: 'Proposed'
+status: 'Accepted'
 date: '2026-11-26'
 authors: 'Niels'
 tags: ['ai', 'vendors', 'tenancy', 'billing', 'security']
@@ -40,8 +40,7 @@ description: >-
 
 ## Status
 
-**Proposed** 2026-11-26. The owner made each decision below in a Q&A on 2026-11-26. This becomes Accepted once the
-owner has read this text.
+**Accepted** 2026-11-27 by the owner. The decisions come from the owner's answers in a Q&A on 2026-11-26.
 
 ## Context
 

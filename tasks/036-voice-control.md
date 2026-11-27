@@ -26,15 +26,24 @@ purpose: 'Implementation spec for task 036.'
   - Without a workspace key: Kupro's key, drawing on the same monthly AI budget as meetings
     ([ADR-013](../docs/adr/ADR-013-seats-billing.md)).
   - With one: unlimited.
-- **Order**: product scope change (done with this task's creation), then prototypes, then the owner's pick, then the
-  API, then the UI.
+- **Order**: product scope change, prototypes and the owner's pick are done (01 and 03, see
+  [Prototypes](#prototypes-before-any-web-code)); next the API, then the UI.
 
 ## Scope
 
 ### Push to talk
 
-- A microphone button in the top bar and in the command palette; on a phone, a large thumb-reach button. A hotkey
-  (hold to talk, release to send) on desktop. No always-on listening.
+- Two button styles, each person's choice (owner's pick, 2026-11-27):
+  - **Top bar mic** (prototype 01, the default): a Talk button next to search on every screen; results drop down as a
+    card under the top bar.
+  - **Thumb button** (prototype 03): a large round button within thumb reach on every screen; results in a bottom
+    sheet with big buttons and large text.
+- The style is a per-person preference beside language and time zone (`voiceButton: topBar | thumb`), set over the
+  API (`PATCH /me`), the CLI and in profile settings.
+- Onboarding asks once: "Do you want to talk to Kupro?" Yes sets the thumb button; no keeps the top bar mic. Kupro
+  has no onboarding yet, so this is its first step: shown once to each person after sign-in, skippable, and
+  answerable later in profile settings.
+- A hotkey (hold to talk, release to send) on desktop, with either style. No always-on listening.
 - Audio is one utterance cut by the browser (`web/src/lib/microphone`), sent as 16 kHz WAV, kept in memory, and dropped
   after transcription, as in meetings ([ADR-015](../docs/adr/ADR-015-meeting-agent-vendors.md) IMP-004).
 - Language: the user's UI language by default. The workspace's meeting languages decide which are offered.
@@ -91,14 +100,13 @@ purpose: 'Implementation spec for task 036.'
 ### Prototypes (before any `web/` code)
 
 - [prototypes/voice-control/](../prototypes/voice-control/index.html) has three directions (01 top bar mic, 02 voice in
-  the command palette, 03 thumb button). **Pick: not made yet.** Each covers:
+  the command palette, 03 thumb button). **Pick (2026-11-27): 01 and 03, as a per-person setting** (see
+  [Push to talk](#push-to-talk)): both are valuable, so neither replaces the other. 02 is not built. Each covers:
   - the button on desktop and on a phone;
   - an operation's card;
   - navigation;
   - dictation in a comment, with "tidy up";
   - over budget, and a rejected key.
-
-  The owner picks one, and this file records the pick.
 
 ## Acceptance criteria
 

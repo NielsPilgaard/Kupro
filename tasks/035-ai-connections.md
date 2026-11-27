@@ -25,12 +25,11 @@ The rules are in [ADR-022](../docs/adr/ADR-022-ai-providers-byok.md). This task 
 
 The meeting agent is the first feature on it. Voice control ([task 036](036-voice-control.md)) is the second.
 
-**Before code**: ADR-022 accepted, and prototypes for the settings screen (see [UI](#ui)).
+**Before code**: ADR-022 accepted (2026-11-27), and prototype 03 picked for the settings screen (see [UI](#ui)).
 
 ## Progress
 
-The backend is built against ADR-022 as proposed (the owner asked to go ahead before accepting it); the web waits on
-the prototype pick.
+The backend is built against ADR-022 (accepted 2026-11-27). The web settings screen is next, on prototype 03.
 
 - [x] Provider registry and capabilities (`Features/Ai/AiProviders.cs`), connections and routes with a migration,
       keys encrypted with Data Protection (`AiKeys`), the router (`AiRouter`) with Kupro's server route as the default
@@ -45,7 +44,7 @@ the prototype pick.
       stdin, `KUPRO_AI_KEY` or a hidden prompt), MCP `meeting action=ai` (status and providers, read-only; a separate tool would pass the 20-tool cap), parity test.
 - [x] Custom endpoints: https, public addresses only (checked on save and on every call), no redirects, EU
       confirmation required. `Ai:AllowPrivateAddresses` lets a self-hosted Kupro reach its own network.
-- [ ] Web settings screen: waits on the prototype pick.
+- [ ] Web settings screen, on prototype 03 (see [UI](#ui)).
 - [ ] Each proposal records the model that made it, and suggest-mode stats split by model.
 
 Different from the spec, on purpose:
@@ -132,13 +131,14 @@ Different from the spec, on purpose:
 
 - Prototypes first (AGENTS.md rule 11): [prototypes/ai-connections/](../prototypes/ai-connections/index.html) has three
   directions for the workspace settings "AI" section (01 one card, 02 connections and routes, 03 usage first).
-  **Pick: not made yet.** They cover:
+  **Pick (2026-11-27): 03 usage first.** The page leads with this month's hours and who paid; "Go unlimited" opens
+  the three-step wizard (make a key, paste and check, choose what runs on it). Owner's change: don't mention
+  Scaleway's price on the page. They cover:
   - the Scaleway connect flow: guide, paste key, check, done;
   - a custom endpoint with the EU confirmation;
   - capability routes;
   - the rejected-key state.
 
-  The owner picks one, and this file records the pick.
 - The fast path is the point: "Connect Scaleway", paste the key, check, done. Every capability routes to the new
   connection with Kupro's default models. Routes and model overrides sit under "Advanced".
 - A short guide to making a Scaleway key (EN/DA), linked from the flow. Every string through i18n

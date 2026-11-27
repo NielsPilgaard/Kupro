@@ -43,8 +43,9 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-25. The build order above is not the same as what is buildable. **Pick up next**: 034's web UI
-(prototype 01 picked), then its import of Jira worklogs and YouTrack work items. Every other open row waits on a
+Checked 2026-11-27. The build order above is not the same as what is buildable. **Pick up next**: 035's web settings
+screen (prototype 03 picked) and 036 (prototypes 01 and 03 picked, as a per-person setting), both P1; then 034's web
+UI (prototype 01 picked) and its import of Jira worklogs and YouTrack work items. Every other open row waits on a
 person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -60,8 +61,8 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 027 | GitHub (with Projects (v2) boards), YouTrack and Monday done, site pages included. Left: the recorded fixtures and live runs | Nothing for those; the sandboxes for the close |
 | 034 | ADR-021 accepted, prototype 01 picked; API, CLI and MCP done | Nothing for the web UI and the worklog import; the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
-| 035 | API, CLI and MCP built to ADR-022 (still Proposed); three settings prototypes made | The owner's prototype pick for the web; then per-model approval stats |
-| 036 | Spec written; three prototypes made | The owner's pick; code also waits on 035's router |
+| 035 | ADR-022 accepted, prototype 03 picked; API, CLI and MCP built | Nothing for the web settings screen and per-model approval stats |
+| 036 | Prototypes 01 and 03 picked, as a per-person setting; 035's router is built | Nothing: the API, the voice-button preference and onboarding question, then the web |
 
 ## Completed
 
