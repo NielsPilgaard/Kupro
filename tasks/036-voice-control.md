@@ -61,8 +61,9 @@ purpose: 'Implementation spec for task 036.'
 - [x] Tests: `VoiceTests` (API, budget, own and refused keys, dictation, nothing stored, preference, `kupro say`),
       `VoiceInterpreterTests` (keyword reader EN/DA, model parsing, the tidy-up guard), web `voice.test.ts` and
       `VoiceCard.test.tsx`.
-- [ ] Run the .NET integration tests above: they were written without a Docker daemon in the build session, so the
-      ticked criteria below rest on them until they pass in CI.
+- [x] The .NET integration tests run and pass (2026-11-27, with the full suite in Release). The first run found two
+      budget bugs from the per-feature ledger rows, fixed on merge: the budget check now sums Kupro's rows, and the
+      80/100 % warnings claim only the meetings row (regression test in `VoiceTests`).
 - [ ] Measure the 3 s p50 from release to card on Scaleway defaults (OQ-1), and a Playwright mobile run at 360 px.
 - [ ] The transcript as the snippet on the activity entry (changes already show "via voice").
 
