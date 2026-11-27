@@ -214,8 +214,17 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ai_connections");
 
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_ai_connections_workspace_id_id");
+
                     b.HasIndex("WorkspaceId")
                         .HasDatabaseName("ix_ai_connections_workspace_id");
+
+                    b.HasIndex("WorkspaceId", "CreatedById")
+                        .HasDatabaseName("ix_ai_connections_workspace_id_created_by_id");
+
+                    b.HasIndex("WorkspaceId", "EuConfirmedById")
+                        .HasDatabaseName("ix_ai_connections_workspace_id_eu_confirmed_by_id");
 
                     b.ToTable("ai_connections", (string)null);
                 });
@@ -255,8 +264,8 @@ namespace Kupro.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ai_routes");
 
-                    b.HasIndex("ConnectionId")
-                        .HasDatabaseName("ix_ai_routes_connection_id");
+                    b.HasIndex("WorkspaceId", "ConnectionId")
+                        .HasDatabaseName("ix_ai_routes_workspace_id_connection_id");
 
                     b.HasIndex("WorkspaceId", "Capability", "Language")
                         .IsUnique()
@@ -2098,23 +2107,39 @@ namespace Kupro.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_ai_connections_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CreatedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_connections_members_workspace_id_created_by_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "EuConfirmedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ai_connections_members_workspace_id_eu_confirmed_by_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Ai.AiRoute", b =>
                 {
-                    b.HasOne("Kupro.Api.Features.Ai.AiConnection", null)
-                        .WithMany()
-                        .HasForeignKey("ConnectionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_ai_routes_ai_connections_connection_id");
-
                     b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_ai_routes_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Ai.AiConnection", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ConnectionId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_routes_ai_connections_workspace_id_connection_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Attachments.Attachment", b =>

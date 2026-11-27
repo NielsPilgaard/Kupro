@@ -86,6 +86,8 @@ internal sealed class AiConnectionConfiguration : IEntityTypeConfiguration<AiCon
         builder.HasKey(c => c.Id);
         builder.HasOne<Workspace>().WithMany().HasForeignKey(c => c.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(c => c.WorkspaceId);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(c => c.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Member>().WithMany().HasWorkspaceForeignKey(c => c.EuConfirmedById).OnDelete(DeleteBehavior.Restrict);
         builder.Property(c => c.ProviderType).HasMaxLength(32);
         builder.Property(c => c.Name).HasMaxLength(80);
         builder.Property(c => c.Endpoint).HasMaxLength(500);
@@ -100,7 +102,7 @@ internal sealed class AiConnectionConfiguration : IEntityTypeConfiguration<AiCon
         builder.ToTable("ai_routes");
         builder.HasKey(r => r.Id);
         builder.HasOne<Workspace>().WithMany().HasForeignKey(r => r.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne<AiConnection>().WithMany().HasForeignKey(r => r.ConnectionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<AiConnection>().WithMany().HasWorkspaceForeignKey(r => r.ConnectionId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(r => new { r.WorkspaceId, r.Capability, r.Language }).IsUnique();
         builder.Property(r => r.Capability).HasConversion<string>().HasMaxLength(32);
         builder.Property(r => r.Language).HasMaxLength(8);

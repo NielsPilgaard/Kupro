@@ -14,7 +14,7 @@ namespace Kupro.Api.Features.Ai;
 [Route("api/v1/workspaces/{workspace}/ai")]
 public sealed class AiController(AiConnectionService ai) : ControllerBase
 {
-    private const string SecretsStayOffMcp = "Keys must not pass through a model's context; agents read status with the ai tool.";
+    private const string SecretsStayOffMcp = "Keys must not pass through a model's context; agents read status with the meeting tool's ai action.";
 
     /// <summary>The provider types a workspace can connect, with Kupro's tested default models.</summary>
     [HttpGet("providers", Name = "listAiProviders")]

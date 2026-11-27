@@ -42,7 +42,7 @@ the prototype pick.
 - [x] Failure: 401/403 from a workspace's own key rejects the connection, returns `409 ai_connection_rejected` for
       audio, gives keyword proposals for text, and emails billing once. Kupro's key is never used instead.
 - [x] REST (`api/v1/workspaces/{workspace}/ai`), CLI (`kupro ai status|providers|connections …|routes …`, key from
-      stdin, `KUPRO_AI_KEY` or a hidden prompt), MCP `ai` (status and providers, read-only), parity test.
+      stdin, `KUPRO_AI_KEY` or a hidden prompt), MCP `meeting action=ai` (status and providers, read-only; a separate tool would pass the 20-tool cap), parity test.
 - [x] Custom endpoints: https, public addresses only (checked on save and on every call), no redirects, EU
       confirmation required. `Ai:AllowPrivateAddresses` lets a self-hosted Kupro reach its own network.
 - [ ] Web settings screen: waits on the prototype pick.
@@ -124,7 +124,7 @@ Different from the spec, on purpose:
   - `kupro ai connections list|add|check|set-key|remove` (the key from stdin or a hidden prompt; refused as an
     argument);
   - `kupro ai routes list|set|remove`.
-- MCP: `ai` with `action=status`, read-only (connections without keys, routes, usage by who paid). Writes are an
+- MCP: `meeting` with `action=ai`, read-only (connections without keys, routes, usage by who paid). Writes are an
   explicit opt-out in the parity test, with the reason "secrets must not pass through model context"
   ([ADR-001](../docs/adr/ADR-001-agent-parity.md)).
 

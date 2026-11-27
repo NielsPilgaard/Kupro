@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Imports;
@@ -42,7 +43,12 @@ internal static class ExportWriter
     /// Tenant-owned tables left out on purpose: the export records themselves, and the meeting agent's cost ledger
     /// (billing metering, not workspace content).
     /// </summary>
-    public static readonly IReadOnlySet<Type> NotExported = new HashSet<Type> { typeof(WorkspaceExport), typeof(MeetingUsage) };
+    // AI connections and routes (ADR-022) hold keys encrypted with this server's key ring: useless anywhere else, and a
+    // key must not leave in a file. The workspace connects its provider again after moving.
+    public static readonly IReadOnlySet<Type> NotExported = new HashSet<Type>
+    {
+        typeof(WorkspaceExport), typeof(MeetingUsage), typeof(AiConnection), typeof(AiRoute),
+    };
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
