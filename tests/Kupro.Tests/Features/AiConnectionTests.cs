@@ -27,7 +27,11 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
 {
     private const string KuproKey = "kupro-key";
 
-    private static Dictionary<string, string?> Settings(StorageFixture storage) => new(storage.Settings)
+    /// <summary>
+    /// Only the key ring from the storage fixture: with snapshot storage too, this API's import job would pick up other
+    /// test classes' import runs in the shared database and fail them, their snapshots being in another bucket.
+    /// </summary>
+    private static Dictionary<string, string?> Settings(StorageFixture storage) => new(storage.Settings.Where(s => s.Key.StartsWith("KeyStorage:", StringComparison.Ordinal)))
     {
         ["MeetingAgent:Transcription:Endpoint"] = "https://speech.test/v1",
         ["MeetingAgent:Transcription:Model"] = "speech",
