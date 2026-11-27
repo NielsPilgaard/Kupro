@@ -12,8 +12,8 @@ using Microsoft.Extensions.Options;
 namespace Kupro.Api.Features.Meetings;
 
 /// <summary>
-/// One workspace's AI usage in one month, by who paid (ADR-013 "Meeting agent usage", ADR-022 decision 5). Only Kupro's
-/// row counts against the budget. Last months' rows stay for reporting.
+/// One workspace's AI usage in one month, by who paid and which feature (ADR-013 "Meeting agent usage", ADR-022 decision 5).
+/// Only Kupro's rows count against the budget, meetings and voice control together. Last months' rows stay for reporting.
 /// </summary>
 public sealed class MeetingUsage : ITenantOwned
 {
@@ -25,6 +25,9 @@ public sealed class MeetingUsage : ITenantOwned
     /// <summary>Kupro's key within the budget, or the workspace's own connection.</summary>
     public AiPaidBy PaidBy { get; set; }
 
+    /// <summary>The meeting agent or voice control (task 036), so usage can show them apart.</summary>
+    public AiFeature Feature { get; set; }
+
     public double AudioSeconds { get; set; }
     public long InputTokens { get; set; }
     public long OutputTokens { get; set; }
@@ -32,8 +35,20 @@ public sealed class MeetingUsage : ITenantOwned
     /// <summary>What speech and tokens cost at the routes' rates.</summary>
     public decimal CostCents { get; set; }
 
+    /// <summary>Kept on the <see cref="AiFeature.Meetings"/> row only: the warnings are about the whole budget.</summary>
     public DateTimeOffset? Warned80At { get; set; }
+
     public DateTimeOffset? Warned100At { get; set; }
+}
+
+/// <summary>What spent the AI usage: the ledger's feature dimension (ADR-022 decision 5).</summary>
+public enum AiFeature
+{
+    /// <summary>The meeting agent (task 015).</summary>
+    Meetings,
+
+    /// <summary>Push-to-talk commands and dictation (task 036).</summary>
+    Voice,
 }
 
 /// <summary>Server-wide spend per day, for the daily ceiling. Not tenant-owned: it sums every workspace.</summary>
@@ -50,8 +65,9 @@ internal sealed class MeetingUsageConfiguration : IEntityTypeConfiguration<Meeti
     public void Configure(EntityTypeBuilder<MeetingUsage> builder)
     {
         builder.ToTable("meeting_usage");
-        builder.HasKey(u => new { u.WorkspaceId, u.Period, u.PaidBy });
+        builder.HasKey(u => new { u.WorkspaceId, u.Period, u.PaidBy, u.Feature });
         builder.Property(u => u.PaidBy).HasConversion<string>().HasMaxLength(16);
+        builder.Property(u => u.Feature).HasConversion<string>().HasMaxLength(16);
         builder.HasOne<Workspace>().WithMany().HasForeignKey(u => u.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(u => u.CostCents).HasPrecision(14, 4);
     }
@@ -137,16 +153,16 @@ public sealed partial class MeetingBudget(
     }
 
     /// <summary>One utterance's audio, at the rate of the route that transcribed it.</summary>
-    public Task RecordAudioAsync(double seconds, ResolvedAiRoute resolved, CancellationToken ct)
+    public Task RecordAudioAsync(double seconds, ResolvedAiRoute resolved, CancellationToken ct, AiFeature feature = AiFeature.Meetings)
     {
         var route = resolved.Route;
         var cents = (decimal)seconds / 60 * (route.EuroPerAudioMinute ?? 0) * 100;
         metrics.Audio(seconds, route.Model);
-        return RecordAsync(seconds, 0, 0, cents, "transcription", route.Model, resolved.PaidBy, ct);
+        return RecordAsync(seconds, 0, 0, cents, "transcription", route.Model, resolved.PaidBy, feature, ct);
     }
 
-    /// <summary>One extraction call's tokens, at the rates of the route that made it.</summary>
-    public Task RecordTokensAsync(ModelUsage usage, ResolvedAiRoute resolved, CancellationToken ct)
+    /// <summary>One chat call's tokens (meeting extraction, a voice command, a tidy-up), at the rates of the route that made it.</summary>
+    public Task RecordTokensAsync(ModelUsage usage, ResolvedAiRoute resolved, CancellationToken ct, AiFeature feature = AiFeature.Meetings)
     {
         var route = resolved.Route;
         var input = route.EuroPerMillionInputTokens ?? 0;
@@ -154,21 +170,32 @@ public sealed partial class MeetingBudget(
             + usage.CachedInputTokens * (route.EuroPerMillionCachedInputTokens ?? input)
             + usage.OutputTokens * (route.EuroPerMillionOutputTokens ?? 0)) / 1_000_000m * 100;
         metrics.Tokens(usage, route.Model);
-        return RecordAsync(0, usage.InputTokens, usage.OutputTokens, cents, "extraction", route.Model, resolved.PaidBy, ct);
+        var seam = feature == AiFeature.Voice ? "voice" : "extraction";
+        return RecordAsync(0, usage.InputTokens, usage.OutputTokens, cents, seam, route.Model, resolved.PaidBy, feature, ct);
     }
 
-    /// <summary>This month's usage by who paid, for the AI settings (ADR-022 decision 5).</summary>
+    /// <summary>This month's usage by who paid, meetings and voice together, for the AI settings (ADR-022 decision 5).</summary>
     public async Task<(DateOnly Period, IReadOnlyList<AiUsageResponse> Usage)> UsageByPayerAsync(CancellationToken ct)
     {
         var period = Period(clock.GetUtcNow());
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var rows = await db.MeetingUsage.AsNoTracking().Where(u => u.Period == period).OrderBy(u => u.PaidBy).ToListAsync(ct);
-        return (period, rows.Select(u => new AiUsageResponse(
-            u.PaidBy, Math.Round(u.AudioSeconds / 60, 1), u.InputTokens, u.OutputTokens, Math.Round(u.CostCents / 100, 2))).ToList());
+        var rows = await db.MeetingUsage.AsNoTracking().Where(u => u.Period == period)
+            .GroupBy(u => u.PaidBy)
+            .Select(g => new
+            {
+                PaidBy = g.Key,
+                Audio = g.Sum(u => u.AudioSeconds),
+                Input = g.Sum(u => u.InputTokens),
+                Output = g.Sum(u => u.OutputTokens),
+                Cents = g.Sum(u => u.CostCents),
+            })
+            .ToListAsync(ct);
+        return (period, rows.OrderBy(u => u.PaidBy).Select(u => new AiUsageResponse(
+            u.PaidBy, Math.Round(u.Audio / 60, 1), u.Input, u.Output, Math.Round(u.Cents / 100, 2))).ToList());
     }
 
     private async Task RecordAsync(double seconds, long input, long output, decimal cents, string seam, string? model, AiPaidBy paidBy,
-        CancellationToken ct)
+        AiFeature feature, CancellationToken ct)
     {
         var workspaceId = workspace.RequireWorkspaceId();
         var now = clock.GetUtcNow();
@@ -181,20 +208,37 @@ public sealed partial class MeetingBudget(
         }
 
         var payer = paidBy.ToString();
+        var by = feature.ToString();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
 
         // One atomic increment per row, so utterances from several microphones at once are all counted. Raw SQL skips
         // the tenant filter, so the workspace id is passed explicitly.
         var total = (await db.Database.SqlQuery<decimal>($"""
-            INSERT INTO meeting_usage AS u (workspace_id, period, paid_by, audio_seconds, input_tokens, output_tokens, cost_cents)
-            VALUES ({workspaceId}, {period}, {payer}, {seconds}, {input}, {output}, {cents})
-            ON CONFLICT (workspace_id, period, paid_by) DO UPDATE SET
+            INSERT INTO meeting_usage AS u (workspace_id, period, paid_by, feature, audio_seconds, input_tokens, output_tokens, cost_cents)
+            VALUES ({workspaceId}, {period}, {payer}, {by}, {seconds}, {input}, {output}, {cents})
+            ON CONFLICT (workspace_id, period, paid_by, feature) DO UPDATE SET
                 audio_seconds = u.audio_seconds + excluded.audio_seconds,
                 input_tokens = u.input_tokens + excluded.input_tokens,
                 output_tokens = u.output_tokens + excluded.output_tokens,
                 cost_cents = u.cost_cents + excluded.cost_cents
             RETURNING u.cost_cents AS "Value"
             """).ToListAsync(ct))[0];
+        if (kupro && Budget is not null && feature != AiFeature.Meetings)
+        {
+            // One budget for meetings and voice: warn on what both spent. The warnings are claimed on the meetings row,
+            // so it must exist.
+            await db.Database.ExecuteSqlAsync($"""
+                INSERT INTO meeting_usage (workspace_id, period, paid_by, feature, audio_seconds, input_tokens, output_tokens, cost_cents)
+                VALUES ({workspaceId}, {period}, {payer}, {nameof(AiFeature.Meetings)}, 0, 0, 0, 0)
+                ON CONFLICT (workspace_id, period, paid_by, feature) DO NOTHING
+                """, ct);
+        }
+
+        if (kupro && Budget is not null)
+        {
+            total = await db.MeetingUsage.Where(u => u.Period == period && u.PaidBy == AiPaidBy.Kupro).SumAsync(u => u.CostCents, ct);
+        }
+
         if (kupro && cents > 0)
         {
             var today = Today(now);
@@ -225,11 +269,11 @@ public sealed partial class MeetingBudget(
 
         var full = totalCents >= budgetCents && await db.Database.ExecuteSqlAsync($"""
             UPDATE meeting_usage SET warned100at = {now}, warned80at = COALESCE(warned80at, {now})
-            WHERE workspace_id = {workspaceId} AND period = {period} AND paid_by = 'Kupro' AND warned100at IS NULL
+            WHERE workspace_id = {workspaceId} AND period = {period} AND paid_by = 'Kupro' AND feature = 'Meetings' AND warned100at IS NULL
             """, ct) == 1;
         var almost = !full && await db.Database.ExecuteSqlAsync($"""
             UPDATE meeting_usage SET warned80at = {now}
-            WHERE workspace_id = {workspaceId} AND period = {period} AND paid_by = 'Kupro' AND warned80at IS NULL
+            WHERE workspace_id = {workspaceId} AND period = {period} AND paid_by = 'Kupro' AND feature = 'Meetings' AND warned80at IS NULL
             """, ct) == 1;
         if (!full && !almost)
         {
@@ -280,8 +324,9 @@ public sealed partial class MeetingBudget(
     {
         var now = clock.GetUtcNow();
         var period = Period(now);
+        // One row per feature (meetings, voice); Kupro's budget is their sum.
         var spent = await db.MeetingUsage.Where(u => u.Period == period && u.PaidBy == AiPaidBy.Kupro)
-            .Select(u => u.CostCents).SingleOrDefaultAsync(ct);
+            .SumAsync(u => u.CostCents, ct);
         var budgetCents = await BudgetCentsAsync(db, ct);
         if (Budget!.DailyCeilingEuro is { } ceiling)
         {

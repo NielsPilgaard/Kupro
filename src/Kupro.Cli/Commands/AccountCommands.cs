@@ -106,16 +106,26 @@ internal static class AccountCommands
         {
             var profile = await c.Api.Api.V1.Me.GetAsync(cancellationToken: ct);
             await c.Out.ItemAsync(profile!, ("Name", profile!.DisplayName), ("Email", profile.Email), ("Agent", profile.Agent),
-                ("Language", profile.Locale), ("Time zone", profile.TimeZone));
+                ("Language", profile.Locale), ("Time zone", profile.TimeZone),
+                ("Voice button", Cli.Dashed(profile.VoiceButton?.ToString() ?? nameof(VoiceButton.TopBar))),
+                ("Voice applies sure changes", profile.VoiceAutoApply == true ? "yes" : "no, asks first"));
         });
 
         var name = new Option<string?>("--name") { Description = "Display name." };
         var locale = new Option<string?>("--language") { Description = "UI language: en or da." };
         var zone = new Option<string?>("--time-zone") { Description = "IANA time zone, e.g. Europe/Copenhagen." };
-        me.Subcommands.Add(new ApiCommand("update", "Update your profile.", "updateMe") { name, locale, zone }.Handle(async (c, ct) =>
+        var button = Cli.EnumOption<VoiceButton>("--voice-button", "Push-to-talk button in the web app");
+        var autoApply = new Option<bool?>("--voice-auto-apply") { Description = "Let voice control apply sure changes without asking (true or false)." };
+        me.Subcommands.Add(new ApiCommand("update", "Update your profile.", "updateMe") { name, locale, zone, button, autoApply }.Handle(async (c, ct) =>
         {
-            var profile = await c.Api.Api.V1.Me.PatchAsync(
-                new UpdateMeRequest { DisplayName = c.Get(name), Locale = c.Get(locale), TimeZone = c.Get(zone) }, cancellationToken: ct);
+            var profile = await c.Api.Api.V1.Me.PatchAsync(new UpdateMeRequest
+            {
+                DisplayName = c.Get(name),
+                Locale = c.Get(locale),
+                TimeZone = c.Get(zone),
+                VoiceButton = c.Get(button),
+                VoiceAutoApply = c.Get(autoApply),
+            }, cancellationToken: ct);
             await c.Out.DoneAsync(profile!, "Profile updated.");
         }));
         return me;

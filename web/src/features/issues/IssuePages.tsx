@@ -17,9 +17,9 @@ export type View = 'list' | 'board';
 export function ProjectIssuesPage() {
   const { t } = useTranslation();
   const { workspace, project } = useParams({ strict: false }) as { workspace: string; project: string };
-  const { view = 'list' } = useSearch({ strict: false }) as { view?: View };
+  const { view = 'list', assignee } = useSearch({ strict: false }) as { view?: View; assignee?: string };
   const { data: info } = useQuery(getProjectOptions({ path: { workspace, key: project } }));
-  const filters = { project: [project] };
+  const filters = { project: [project], ...(assignee ? { assignee } : {}) };
 
   const tabs = (
     <div role="tablist" aria-label={t('views.label')} className="flex rounded-r1 bg-sunk p-0.5">

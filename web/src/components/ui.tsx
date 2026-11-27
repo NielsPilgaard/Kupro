@@ -1,5 +1,5 @@
 import { Layers, Puzzle, SquareCheck, type LucideIcon } from 'lucide-react';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, IssueState, IssueType, MemberRef } from '../api/gen/types.gen';
 
@@ -190,7 +190,11 @@ const variants: Record<Variant, string> = {
   ghost: 'text-mute hover:bg-sel hover:text-ink',
 };
 
-export function Button({ variant = 'secondary', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+export function Button({
+  variant = 'secondary',
+  className = '',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; ref?: Ref<HTMLButtonElement> }) {
   return (
     <button
       type="button"

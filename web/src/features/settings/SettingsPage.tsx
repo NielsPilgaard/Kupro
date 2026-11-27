@@ -17,6 +17,7 @@ import {
   updateMeMutation,
 } from '../../api/gen/@tanstack/react-query.gen';
 import { Button } from '../../components/ui';
+import { VoiceSettings } from '../voice/VoiceSettings';
 import { useDate, useDateTime } from '../../lib/format';
 
 /** Profile (language), API tokens for the CLI, CI and agents, and workspace exports for owners. */
@@ -97,6 +98,7 @@ function Profile() {
           <option value="da">Dansk</option>
         </select>
       </label>
+      <VoiceSettings me={me} />
     </section>
   );
 }

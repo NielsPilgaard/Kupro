@@ -16,15 +16,22 @@ public sealed record ExternalIdentity(
 /// <param name="Locale">UI language: <c>en</c> or <c>da</c>.</param>
 /// <param name="TimeZone">IANA time zone id.</param>
 /// <param name="Agent">Agent name when the caller is an agent token acting for this user; otherwise null.</param>
-public sealed record MeResponse(Guid Id, string Email, string DisplayName, string Locale, string TimeZone, string? Agent);
+/// <param name="VoiceButton">Push-to-talk button style in the web app: <c>topBar</c> (default) or <c>thumb</c>.</param>
+/// <param name="VoiceAutoApply">Voice control applies sure changes without asking.</param>
+public sealed record MeResponse(
+    Guid Id, string Email, string DisplayName, string Locale, string TimeZone, string? Agent, VoiceButton VoiceButton, bool VoiceAutoApply);
 
 /// <param name="DisplayName">New display name.</param>
 /// <param name="Locale">UI language: <c>en</c> or <c>da</c>.</param>
 /// <param name="TimeZone">IANA time zone id, e.g. <c>Europe/Copenhagen</c>.</param>
+/// <param name="VoiceButton">Push-to-talk button style: <c>topBar</c> or <c>thumb</c>.</param>
+/// <param name="VoiceAutoApply">Apply sure voice changes without asking. Held ones (unsure, ambiguous, cancelling, new issues) still wait.</param>
 public sealed record UpdateMeRequest(
     [StringLength(200, MinimumLength = 1)] string? DisplayName = null,
     [AllowedValues("en", "da", null)] string? Locale = null,
-    [StringLength(64)] string? TimeZone = null);
+    [StringLength(64)] string? TimeZone = null,
+    VoiceButton? VoiceButton = null,
+    bool? VoiceAutoApply = null);
 
 public sealed class UserService(IDbContextFactory<KuproDbContext> dbFactory, IMemoryCache cache, TimeProvider clock)
 {
@@ -77,7 +84,7 @@ public sealed class UserService(IDbContextFactory<KuproDbContext> dbFactory, IMe
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         return await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => new MeResponse(u.Id, u.Email, u.DisplayName, u.Locale, u.TimeZone, agent))
+            .Select(u => new MeResponse(u.Id, u.Email, u.DisplayName, u.Locale, u.TimeZone, agent, u.VoiceButton, u.VoiceAutoApply))
             .SingleOrDefaultAsync(ct);
     }
 
@@ -99,8 +106,10 @@ public sealed class UserService(IDbContextFactory<KuproDbContext> dbFactory, IMe
         user.DisplayName = request.DisplayName ?? user.DisplayName;
         user.Locale = request.Locale ?? user.Locale;
         user.TimeZone = request.TimeZone ?? user.TimeZone;
+        user.VoiceButton = request.VoiceButton ?? user.VoiceButton;
+        user.VoiceAutoApply = request.VoiceAutoApply ?? user.VoiceAutoApply;
         await db.SaveChangesAsync(ct);
 
-        return new MeResponse(user.Id, user.Email, user.DisplayName, user.Locale, user.TimeZone, agent);
+        return new MeResponse(user.Id, user.Email, user.DisplayName, user.Locale, user.TimeZone, agent, user.VoiceButton, user.VoiceAutoApply);
     }
 }

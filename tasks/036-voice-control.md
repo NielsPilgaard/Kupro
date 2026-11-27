@@ -4,7 +4,7 @@ description: >-
   Talk to Kupro anywhere, not only in meetings: push to talk to change issues (the meeting agent's operations),
   navigate ("open KUP-12", "show next sprint"), and dictate into any text field. For people who find spelling hard,
   have little time, or work in the field. Uses the AI budget, or the workspace's own key for unlimited use (ADR-022).
-status: 'Todo'
+status: 'In progress'
 phase: 2
 depends_on: ['035']
 purpose: 'Implementation spec for task 036.'
@@ -27,7 +27,58 @@ purpose: 'Implementation spec for task 036.'
     ([ADR-013](../docs/adr/ADR-013-seats-billing.md)).
   - With one: unlimited.
 - **Order**: product scope change, prototypes and the owner's pick are done (01 and 03, see
-  [Prototypes](#prototypes-before-any-web-code)); next the API, then the UI.
+  [Prototypes](#prototypes-before-any-web-code)). The API, the preference, the CLI and the web are built (see
+  [Progress](#progress)); left are the measurements, a Playwright mobile run and the activity-feed snippet.
+
+## Progress
+
+- [x] API (`Features/Voice`): `POST …/voice/interpret` (text) and `POST …/voice/interpret/audio` (WAV) return one
+      interpretation: `operations` in the meeting proposal shape (target issue, candidates, before/after with display
+      values, confidence, `held` reasons, and the `update`/`undo`/`create` bodies for the issue endpoints), `navigate`
+      (a structured `VoiceTarget` checked against the workspace), or `none` with a `reason`. `POST …/voice/transcribe`
+      is dictation with an optional `tidy` suggestion. Interpreting changes nothing.
+- [x] Model: `voice-commands` through `AiRouter` with its own JSON schema (the meeting operations plus `navigate`),
+      behind the `IVoiceInterpreter` seam. Keyword fallback (`KeywordVoiceInterpreter`: the meeting rules plus EN/DA
+      place patterns, "this one" as the issue on screen) when nothing serves it, the own key is refused, Kupro's
+      budget is spent, or the vendor fails. Issue references are matched by our own search, shared with the meeting
+      agent (`Meetings/ProposalValues.cs`, moved out of `MeetingService`).
+- [x] Tidy-up is checked on the server: the same words in order, each spelled at most a third differently; anything
+      else is dropped, so a person's words are never rewritten.
+- [x] Budget and keys: audio and tokens are metered like meetings and draw from the same monthly budget on Kupro's
+      key; `409 ai_budget_spent` for audio over budget; a workspace's own key skips the budget; a refused own key
+      gives `409 ai_connection_rejected` for audio and keyword reading for text, and never borrows Kupro's key.
+- [x] Preference: `voiceButton` (`topBar` default, `thumb`) and `voiceAutoApply` on the user, in `GET`/`PATCH /me`
+      and `kupro me update --voice-button --voice-auto-apply`.
+- [x] CLI: `kupro say "<text>"` shows the changes, asks (or `--yes`), and applies through the issue endpoints.
+      Parity: MCP opts out of all three operations; the CLI opts out of the two audio ones.
+- [x] Web (`web/src/features/voice`): the two button styles by preference, hold Ctrl+Space with either, a short tap
+      or the keyboard latches the microphone; the card (01) or bottom sheet (03) with the diff, held reasons,
+      candidate picking, Enter to apply, Escape to close, Undo in the toast; "apply without asking" for sure changes;
+      navigation through the router; dictation at the cursor of the focused field with "Tidy up?" as a word diff;
+      over-budget, rejected-key, no-speech-model and microphone-denied states with typing as the fallback; a
+      live region announces listening, thinking and the result; profile settings for both preferences. EN and DA.
+      Applied changes are sent with `X-Kupro-Client: voice`, so the feed says "via voice".
+- [x] Tests: `VoiceTests` (API, budget, own and refused keys, dictation, nothing stored, preference, `kupro say`),
+      `VoiceInterpreterTests` (keyword reader EN/DA, model parsing, the tidy-up guard), web `voice.test.ts` and
+      `VoiceCard.test.tsx`.
+- [ ] Run the .NET integration tests above: they were written without a Docker daemon in the build session, so the
+      ticked criteria below rest on them until they pass in CI.
+- [ ] Measure the 3 s p50 from release to card on Scaleway defaults (OQ-1), and a Playwright mobile run at 360 px.
+- [ ] The transcript as the snippet on the activity entry (changes already show "via voice").
+
+Different from the spec, on purpose:
+
+- **Audio has its own path**: `voice/interpret/audio` next to `voice/interpret`, as meetings have `/audio` next to
+  `/transcript`. One path with two content types can't be one OpenAPI operation, and the CLI's generated client
+  needs the JSON one.
+- **Ledger**: `meeting_usage` gets a `feature` column (`Meetings`, `Voice`) in its key rather than a `capability`
+  column: transcription serves both features, so only the feature tells the meeting agent and voice control apart
+  (ADR-022 decision 5). The budget, the 80 %/100 % warnings and the AI settings' usage sum both; the warnings are
+  claimed on the meetings row.
+- **Apply without asking** is stored on the user (`voiceAutoApply`), like the button style, so it follows the person
+  across devices.
+- **Navigation targets**: issue, my issues, a project's list or board (optionally one person's issues: the project
+  route gained an `assignee` search parameter), sprints (with the sprint asked for), and the delivery plan.
 
 ## Scope
 
@@ -111,17 +162,18 @@ purpose: 'Implementation spec for task 036.'
 ## Acceptance criteria
 
 - [ ] Saying "move KUP-12 to next sprint" shows a card with the diff within 3 s of release (p50, Scaleway defaults),
-      and one tap applies it with undo.
-- [ ] Saying "open KUP-12" opens the issue. A navigation target the user can't see (another workspace, no access) is
+      and one tap applies it with undo. (Card, apply and undo built and tested; the 3 s is not measured yet.)
+- [x] Saying "open KUP-12" opens the issue. A navigation target the user can't see (another workspace, no access) is
       never produced.
-- [ ] Dictating into a comment inserts the text at the cursor. "Tidy up" changes only spelling and punctuation, as a
+- [x] Dictating into a comment inserts the text at the cursor. "Tidy up" changes only spelling and punctuation, as a
       suggestion.
-- [ ] Danish and English both work for all three kinds.
-- [ ] Without a workspace key, usage draws on the AI budget and stops at it. With one, there is no limit (shared
+- [x] Danish and English both work for all three kinds.
+- [x] Without a workspace key, usage draws on the AI budget and stops at it. With one, there is no limit (shared
       tests with task 035).
-- [ ] Works with keyboard only and with a screen reader, and on a 360 px phone (Playwright mobile project).
-- [ ] The parity test passes, with the opt-outs above.
-- [ ] Audio is never stored. A test asserts nothing about an utterance outlives the request.
+- [ ] Works with keyboard only and with a screen reader, and on a 360 px phone (Playwright mobile project). (Built
+      for it; no Playwright run yet.)
+- [x] The parity test passes, with the opt-outs above.
+- [x] Audio is never stored. A test asserts nothing about an utterance outlives the request.
 
 ## Open questions
 

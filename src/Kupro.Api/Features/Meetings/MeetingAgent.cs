@@ -315,7 +315,7 @@ public sealed class OpenAiProposalExtractor(IHttpClientFactory clients) : IPropo
     /// The response's token counts. Without them (not every OpenAI-compatible vendor sends <c>usage</c>), an estimate
     /// at four characters a token, so the budget still moves.
     /// </summary>
-    private static ModelUsage Usage(JsonNode? usage, int promptChars, int outputChars)
+    internal static ModelUsage Usage(JsonNode? usage, int promptChars, int outputChars)
     {
         long? Read(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var n) ? n : null;
         var input = Read(usage?["prompt_tokens"]);

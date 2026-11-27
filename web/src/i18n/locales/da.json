@@ -473,7 +473,8 @@
       "mcp": "MCP",
       "api": "API",
       "meeting": "møde",
-      "import": "import"
+      "import": "import",
+      "voice": "tale"
     },
     "sprintClosed": {
       "carry": "{{name}} overførte dette fra {{sprint}} til {{target}} ved afslutning",
@@ -1220,5 +1221,83 @@
   "importPeople": {
     "lede": "Personer, en import ikke kunne matche med et medlem. Inviter dem, eller flet dem ind i et medlem; historikken følger med.",
     "none": "Ingen pladsholdere tilbage."
+  },
+  "voice": {
+    "talk": "Tal",
+    "button": {
+      "idle": "Tal til Kupro. Hold knappen nede, eller hold Ctrl+Mellemrum.",
+      "listening": "Lytter. Slip for at sende.",
+      "thinking": "Finder ud af, hvad du sagde"
+    },
+    "status": {
+      "listening": "Lytter …",
+      "dictating": "Lytter. Dine ord kommer i feltet.",
+      "thinking": "Tænker …"
+    },
+    "said": "Du sagde",
+    "close": "Luk",
+    "apply": "Udfør",
+    "applyCount_one": "Udfør {{count}} ændring",
+    "applyCount_other": "Udfør {{count}} ændringer",
+    "pick": "Hvilken opgave?",
+    "newIssue": "Ny opgave",
+    "typeLabel": "Eller skriv det",
+    "typePlaceholder": "Flyt KUP-12 til næste sprint",
+    "send": "Send",
+    "held": {
+      "lowConfidence": "Ikke sikker på, at jeg hørte rigtigt",
+      "ambiguous": "Vælg opgaven",
+      "destructive": "Annullerer opgaven, så den spørger først",
+      "createIssue": "Nye opgaver spørger altid først"
+    },
+    "applied_one": "Ændrede {{keys}}",
+    "applied_other": "Lavede {{count}} ændringer på {{keys}}",
+    "undo": "Fortryd",
+    "undone": "Fortrudt",
+    "undoFailed": "Kunne ikke fortryde: opgaven er ændret siden. Fortryd den i hånden.",
+    "applyFailed": "Ændringen gik ikke igennem. {{detail}}",
+    "opened": "Åbnede {{place}}",
+    "place": {
+      "myIssues": "Mine opgaver",
+      "list": "Opgaver i {{project}}",
+      "board": "Tavlen for {{project}}",
+      "sprints": "Sprints",
+      "plan": "Leveranceplan",
+      "for": "{{place}} for {{name}}"
+    },
+    "none": {
+      "nothingHeard": "Jeg hørte ikke noget. Hold knappen nede, mens du taler.",
+      "notUnderstood": "Jeg fangede ikke en ændring eller et sted at gå hen. Prøv „flyt KUP-12 til næste sprint“ eller „åbn KUP-12“.",
+      "notFound": "Jeg kunne ikke finde den opgave, person eller det sprint i dette arbejdsområde.",
+      "projectNeeded": "Sig hvilket projekt, for eksempel „tavlen for Kupro“."
+    },
+    "keyword": "Månedens AI-timer er brugt, så kun tydelige kommandoer virker.",
+    "blocked": {
+      "budgetTitle": "Månedens AI-timer er brugt",
+      "budget": "Mikrofonen er slået fra til næste måned. Du kan stadig skrive, og en ejer kan forbinde arbejdsområdets egen AI-nøgle for ubegrænset tale.",
+      "rejectedTitle": "AI-udbyderen afviste arbejdsområdets nøgle",
+      "rejected": "Mikrofonen er slået fra, til en ejer udskifter nøglen i AI-indstillingerne. Kupros inkluderede timer bruges ikke imens. Du kan stadig skrive.",
+      "unavailableTitle": "Tale er ikke sat op på denne server",
+      "unavailable": "Du kan stadig skrive.",
+      "microphoneTitle": "Kupro kan ikke bruge mikrofonen",
+      "microphone": "Tillad mikrofonen for denne side i din browser, og prøv igen.",
+      "failed": "Det virkede ikke. Prøv igen."
+    },
+    "dictated": "Tilføjet i feltet",
+    "tidy": {
+      "title": "Ret til?",
+      "hint": "Retter stavning og tegnsætning, intet andet.",
+      "accept": "Brug den rettede tekst",
+      "keep": "Behold som sagt",
+      "gone": "Teksten er ændret siden, så den blev ladt, som den er."
+    },
+    "settings": {
+      "title": "Tale",
+      "button": "Taleknap",
+      "topBar": "I topbjælken, ved siden af søgning",
+      "thumb": "Stor rund knap inden for tommelfingerens rækkevidde",
+      "autoApply": "Udfør sikre ændringer uden at spørge",
+      "autoApplyHint": "Usikre match, annulleringer og nye opgaver spørger stadig først. Alle ændringer kan fortrydes."
+    }
   }
 }

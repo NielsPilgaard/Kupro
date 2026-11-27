@@ -126,8 +126,10 @@ const projectRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/p/$project',
   component: ProjectIssuesPage,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { view: View; assignee?: string; issue?: string; meeting?: string } => ({
     view: (search.view === 'board' ? 'board' : 'list') as View,
+    // "Filter by Anna" from voice control (task 036): a member id.
+    ...(typeof search.assignee === 'string' ? { assignee: search.assignee } : {}),
     ...withIssue(search),
   }),
 });

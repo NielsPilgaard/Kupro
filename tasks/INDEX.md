@@ -64,8 +64,8 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 034 | ADR-021 accepted, prototype 01 picked; API, CLI and MCP done | Nothing for the web UI and the worklog import; the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 | 035 | ADR-022 accepted; API, CLI, MCP and the web settings screen (prototype 03) built | Nothing for per-model approval stats; a second Scaleway account (manual step) for the end-to-end try |
-| 036 | Prototypes 01 and 03 picked, as a per-person setting; 035's router is built | Nothing: the API, the voice-button preference, then the web |
-| 037 | Spec written: the first run asks the voice question | 036's preference; then prototypes and the owner's pick |
+| 036 | API, voice-button preference, `kupro say` and the web (both button styles, card, dictation) built | Nothing for the activity-feed snippet; a Scaleway key for the 3 s measurement; a Playwright mobile run |
+| 037 | Spec written: the first run asks the voice question; 036's preference is built | Prototypes and the owner's pick |
 
 ## Completed
 

@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Linq.Expressions;
 using System.Net;
 using System.Text.Json;
@@ -43,7 +42,6 @@ public sealed partial class MeetingService(
     public const double AutoApplyConfidence = 0.8;
 
     private const int RecentSegments = 6;
-    private const int MaxCandidates = 3;
     private const int IssueHintLimit = 60;
 
     /// <summary>
@@ -683,17 +681,7 @@ public sealed partial class MeetingService(
         return null;
     }
 
-    private static UpdateIssueRequest Change(ProposalOperation operation, string value) => operation switch
-    {
-        ProposalOperation.State => new UpdateIssueRequest(State: Enum.Parse<IssueState>(value, ignoreCase: true)),
-        ProposalOperation.Sprint when value == "none" => new UpdateIssueRequest(Clear: [IssueField.Sprint]),
-        ProposalOperation.Sprint => new UpdateIssueRequest(Sprint: value),
-        ProposalOperation.Assignee when value == "none" => new UpdateIssueRequest(Clear: [IssueField.Assignee]),
-        ProposalOperation.Assignee => new UpdateIssueRequest(Assignee: value),
-        ProposalOperation.Estimate when value == "none" => new UpdateIssueRequest(Clear: [IssueField.Effort]),
-        ProposalOperation.Estimate => new UpdateIssueRequest(Effort: decimal.Parse(value, CultureInfo.InvariantCulture)),
-        _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Not a field change."),
-    };
+    private static UpdateIssueRequest Change(ProposalOperation operation, string value) => ProposalValues.Change(operation, value);
 
     private static bool AutoApplies(MeetingSession meeting, MeetingSettings settings, MeetingProposal p) =>
         meeting.Mode == MeetingMode.FullAuto
@@ -772,101 +760,14 @@ public sealed partial class MeetingService(
     }
 
     /// <summary>An exact key wins; otherwise search the project. Several matches become candidates, never a guess.</summary>
-    private async Task<(Guid? Id, List<string> Candidates)> ResolveIssueAsync(
-        KuproDbContext db, string projectKey, string reference, CancellationToken ct)
-    {
-        var text = reference.Trim();
-        if (IssueKey().IsMatch(text.ToUpperInvariant()))
-        {
-            var key = text.ToUpperInvariant();
-            if (await db.Issues.Where(i => i.Key == key).Select(i => (Guid?)i.Id).SingleOrDefaultAsync(ct) is { } exact)
-            {
-                return (exact, []);
-            }
-        }
-
-        var words = Article().Replace(text, "").Trim();
-        if (words.Length < 2)
-        {
-            return (null, []);
-        }
-
-        var found = await issues.ListAsync(new IssueQuery
-        {
-            Q = words,
-            Project = [projectKey],
-            State = [IssueState.Backlog, IssueState.Todo, IssueState.InProgress, IssueState.InReview],
-            Limit = MaxCandidates,
-        }, ct);
-        var items = found.Value?.Items ?? [];
-        return items.Count == 1 ? (items[0].Id, []) : (null, items.Select(i => i.Key).ToList());
-    }
+    private Task<(Guid? Id, List<string> Candidates)> ResolveIssueAsync(
+        KuproDbContext db, string projectKey, string reference, CancellationToken ct) =>
+        ProposalValues.ResolveIssueAsync(db, issues, projectKey, reference, ct);
 
     /// <summary>Canonical value for an operation, or null if it can't be resolved.</summary>
-    private async Task<string?> NormalizeValueAsync(KuproDbContext db, MeetingSession meeting, ProposalOperation operation,
-        string? raw, CancellationToken ct)
-    {
-        var value = raw?.Trim();
-        if (string.IsNullOrEmpty(value))
-        {
-            return null;
-        }
-
-        switch (operation)
-        {
-            case ProposalOperation.State:
-                return Enum.TryParse<IssueState>(value.Replace(" ", ""), ignoreCase: true, out var state) && Enum.IsDefined(state)
-                    ? Camel(state)
-                    : null;
-            case ProposalOperation.Estimate:
-                return value.Equals("none", StringComparison.OrdinalIgnoreCase) ? "none"
-                    : decimal.TryParse(value.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var hours) && hours is >= 0 and <= 100_000
-                        ? hours.ToString(CultureInfo.InvariantCulture)
-                        : null;
-            case ProposalOperation.Comment:
-                return Truncate(value, 4000);
-            case ProposalOperation.CreateIssue:
-                return Truncate(value, 500);
-            case ProposalOperation.Sprint:
-                if (value.Equals("none", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "none";
-                }
-
-                var sprints = db.Sprints.Where(s => s.ProjectId == meeting.ProjectId && s.State != SprintState.Closed);
-                var sprintId = value.ToLowerInvariant() switch
-                {
-                    "next" => await sprints.Where(s => s.State == SprintState.Planned).OrderBy(s => s.StartDate).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct),
-                    "current" or "active" => await sprints.Where(s => s.State == SprintState.Active).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct),
-                    _ when Guid.TryParse(value, out var id) => await sprints.Where(s => s.Id == id).Select(s => (Guid?)s.Id).SingleOrDefaultAsync(ct),
-                    _ => await sprints.Where(s => EF.Functions.ILike(s.Name, value)).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct),
-                };
-                return sprintId?.ToString();
-            case ProposalOperation.Assignee:
-                if (value.Equals("none", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "none";
-                }
-
-                if (value.Equals("me", StringComparison.OrdinalIgnoreCase) || value.Equals("mig", StringComparison.OrdinalIgnoreCase))
-                {
-                    return workspace.MemberId.ToString();
-                }
-
-                var people = await PeopleAsync(db, ct);
-                if (Guid.TryParse(value, out var memberId))
-                {
-                    return people.Any(p => p.Id == memberId) ? memberId.ToString() : null;
-                }
-
-                // Full name first, then a unique first name ("give it to Anna").
-                var exact = people.Where(p => p.Name.Equals(value, StringComparison.OrdinalIgnoreCase)).ToList();
-                var first = people.Where(p => p.Name.Split(' ')[0].Equals(value.Split(' ')[0], StringComparison.OrdinalIgnoreCase)).ToList();
-                return (exact.Count == 1 ? exact : first.Count == 1 ? first : []).SingleOrDefault()?.Id.ToString();
-            default:
-                return null;
-        }
-    }
+    private Task<string?> NormalizeValueAsync(KuproDbContext db, MeetingSession meeting, ProposalOperation operation,
+        string? raw, CancellationToken ct) =>
+        ProposalValues.NormalizeAsync(db, meeting.ProjectId, workspace.MemberId, operation, raw, ct);
 
     /// <summary>
     /// The model vendor down or too slow must not lose what was said: the utterance is kept and proposals come from
@@ -953,23 +854,11 @@ public sealed partial class MeetingService(
             sprints, recent, utterance);
     }
 
-    private static Task<List<MemberRef>> PeopleAsync(KuproDbContext db, CancellationToken ct) =>
-        db.Members.AsNoTracking().Where(m => m.Status == MemberStatus.Active).Select(MemberRefs.Projection(db)).ToListAsync(ct);
+    private static Task<List<MemberRef>> PeopleAsync(KuproDbContext db, CancellationToken ct) => ProposalValues.PeopleAsync(db, ct);
 
     /// <summary>The field's current canonical value, for diffs and undo.</summary>
-    private static async Task<string?> CurrentAsync(KuproDbContext db, Guid issueId, ProposalOperation operation, CancellationToken ct)
-    {
-        var issue = await db.Issues.AsNoTracking().Where(i => i.Id == issueId)
-            .Select(i => new { i.State, i.SprintId, i.AssigneeId, i.Effort }).SingleOrDefaultAsync(ct);
-        return issue is null ? null : operation switch
-        {
-            ProposalOperation.State => Camel(issue.State),
-            ProposalOperation.Sprint => issue.SprintId?.ToString() ?? "none",
-            ProposalOperation.Assignee => issue.AssigneeId?.ToString() ?? "none",
-            ProposalOperation.Estimate => issue.Effort?.ToString(CultureInfo.InvariantCulture) ?? "none",
-            _ => null,
-        };
-    }
+    private static Task<string?> CurrentAsync(KuproDbContext db, Guid issueId, ProposalOperation operation, CancellationToken ct) =>
+        ProposalValues.CurrentAsync(db, issueId, operation, ct);
 
     /// <summary>The <c>meeting-agent</c> member: reused if it exists, otherwise created for the person starting the meeting.</summary>
     private async Task<Guid?> AgentIdAsync(KuproDbContext db, CancellationToken ct)
@@ -1070,9 +959,7 @@ public sealed partial class MeetingService(
     }
 
     /// <summary>"kup 12" and "kup-12" in speech become KUP-12.</summary>
-    private static string NormalizeKeys(string text, string projectKey) =>
-        Regex.Replace(text, $@"\b{Regex.Escape(projectKey)}[\s-]?(\d+)\b", m => $"{projectKey}-{m.Groups[1].Value}",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    private static string NormalizeKeys(string text, string projectKey) => ProposalValues.NormalizeKeys(text, projectKey);
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];
 
@@ -1086,12 +973,6 @@ public sealed partial class MeetingService(
 
     private static IssueError FullAutoDisabled() =>
         new("full_auto_disabled", "Full auto is off in this workspace. An admin can enable it in meeting settings.");
-
-    [GeneratedRegex(@"^[A-Z][A-Z0-9]{1,9}-\d+$")]
-    private static partial Regex IssueKey();
-
-    [GeneratedRegex(@"^(?:the|den|det)\s+|\s+(?:issue|ticket|task|opgave|sag)$", RegexOptions.IgnoreCase)]
-    private static partial Regex Article();
 
     [GeneratedRegex(@"\w+")]
     private static partial Regex Word();

@@ -126,7 +126,7 @@ internal static class IssueResults
                 or "proposal_not_applied" or "changed_since_applied" or "meeting_budget_spent" or "meeting_time_limit"
                 or "import_closed" or "import_busy" or "conflict_resolved" or "no_snapshot" or "no_mapping"
                 or "time_locked" or "day_full" or "time_registration_off" or "ai_connection_rejected"
-                or "key_storage_not_configured"
+                or "key_storage_not_configured" or "ai_budget_spent"
                 => StatusCodes.Status409Conflict,
             "not_comment_author" or "not_uploader" or "full_auto_disabled" or "not_your_entry" or "insufficient_role" or "not_a_person"
                 => StatusCodes.Status403Forbidden,

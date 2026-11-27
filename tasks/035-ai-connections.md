@@ -52,8 +52,8 @@ approval stats are next.
 
 Different from the spec, on purpose:
 
-- **Ledger**: `MeetingUsage` keeps its name and gains `PaidBy`; the `Capability` column comes with task 036, when
-  voice is the first usage that isn't a meeting.
+- **Ledger**: `MeetingUsage` keeps its name and gains `PaidBy`. Task 036 added a `Feature` column (meetings, voice)
+  rather than a capability one, since transcription serves both.
 - **EU confirmation**: kept on the connection (who and when) and in a structured log line. Kupro has no
   workspace-level activity log yet; the issue activity feed is per issue.
 
@@ -62,8 +62,8 @@ Web screen, different from prototype 03:
 - **Where**: Kupro has no workspace settings page with tabs yet, so the page stands alone with its own route and
   sidebar entry ("AI"), instead of a tab row.
 - **Usage**: two figures, Kupro's included hours (the meeting budget) and the audio and tokens on the workspace's own
-  key. The prototype's bars per feature (meetings, voice, dictation) wait for the ledger's capability column (task
-  036). No amount in euro anywhere (the owner's pick note), though the API still returns an estimate.
+  key. The prototype's bars per feature (meetings, voice, dictation) can use the ledger's `Feature` column (task
+  036) in a follow-up. No amount in euro anywhere (the owner's pick note), though the API still returns an estimate.
 - **Step 2 adds the connection** without routes, so the vendor really checks the key; step 3 routes what was ticked.
   Cancel removes the connection the dialog added, and a retry with another key replaces it. No auto-advance after a
   passing check: a "Continue" button instead.

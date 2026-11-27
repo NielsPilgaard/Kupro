@@ -17,9 +17,9 @@ public sealed class MeController(UserService users) : ControllerBase
             ? me
             : this.Problem(StatusCodes.Status404NotFound, "user_not_found");
 
-    /// <summary>Update the current user's profile (display name, language, time zone).</summary>
+    /// <summary>Update the current user's profile (display name, language, time zone, voice button).</summary>
     [HttpPatch(Name = "updateMe")]
-    [NoAgentSurface(AgentSurface.Mcp, "Profile settings (language, time zone) are personal.")]
+    [NoAgentSurface(AgentSurface.Mcp, "Profile settings (language, time zone, voice button) are personal.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<MeResponse>> Update(UpdateMeRequest request, CancellationToken ct) =>

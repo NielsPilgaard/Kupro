@@ -136,8 +136,9 @@ A new AI feature declares a capability and asks the router for it. It never read
 - A call on a workspace connection is written to the usage ledger with `paidBy = workspace`. It is shown in usage
   (minutes, tokens, and an estimate in euro at the provider type's list price; for a custom endpoint, minutes and
   tokens only). It takes nothing from the AI budget and nothing from the server's daily ceiling.
-- The ledger records who paid (`MeetingUsage.PaidBy`), and gains a capability column with voice control
-  ([task 036](../../tasks/036-voice-control.md)), so the usage view can show the meeting agent and voice control apart.
+- The ledger records who paid (`MeetingUsage.PaidBy`) and, since voice control
+  ([task 036](../../tasks/036-voice-control.md)), which feature (`Feature`: meetings or voice), so the usage view can
+  show the meeting agent and voice control apart. A feature, not a capability: transcription serves both.
 - **Allowed in every plan**: trial, paid and non-profit. A non-profit with its own key gets the meeting agent and
   voice control, at no cost to Kupro.
 - **Guards that stay on a workspace's own key**: `max_tokens` (stops a runaway call) and the 10-minute silence
