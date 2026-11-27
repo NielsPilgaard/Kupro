@@ -60,8 +60,8 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 027 | GitHub (with Projects (v2) boards), YouTrack and Monday done, site pages included. Left: the recorded fixtures and live runs | Nothing for those; the sandboxes for the close |
 | 034 | ADR-021 accepted, prototype 01 picked; API, CLI and MCP done | Nothing for the web UI and the worklog import; the legal check (manual step) before claiming compliance |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
-| 035 | ADR-022 proposed; owner decisions taken 2026-11-26 | The owner accepting ADR-022; then prototypes for the settings screen, and the API and CLI right away |
-| 036 | Spec written | Prototypes can start now; code waits on 035's router and the owner's pick |
+| 035 | ADR-022 proposed; owner decisions taken 2026-11-26; three settings prototypes made | The owner accepting ADR-022 (then the API and CLI) and picking a prototype (then the web) |
+| 036 | Spec written; three prototypes made | The owner's pick; code also waits on 035's router |
 
 ## Completed
 

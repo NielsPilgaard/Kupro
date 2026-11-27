@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 Connections and routes · AI connections prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+/* Large monitors (Tailwind 3xl, 1920 px): wider, roomier sidebar. */
+@media (min-width: 120rem) {
+  :root {
+    --sidebar: 252px;
+    --nav-item: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}
+
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:20}
+.proto span.t{flex:1;min-width:180px}.proto label{display:inline-flex;gap:6px;align-items:center}
+.proto button,.proto select{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer;max-width:260px}
+.proto select option{color:var(--ink);background:var(--panel)}
+h1{font:600 22px var(--font-display);margin:0 0 4px}
+h2{font:600 16px var(--font-display);margin:0 0 8px}
+h3{font:600 14px var(--font-ui);margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 16px}
+.btn{height:var(--control);padding:0 12px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--acc-ink)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,input.f:focus,select.f:focus,textarea.f:focus{outline:2px solid var(--acc);outline-offset:1px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.mute{color:var(--mute)}
+.mono{font-family:var(--font-mono)}
+.key{font:12px var(--font-mono);color:var(--mute)}
+.hint{font-size:12px;color:var(--mute)}
+.err{font-size:12px;color:var(--bad)}
+kbd{font:11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel);color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--mute);white-space:nowrap}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.chip.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.chip.acc{background:var(--sel);color:var(--acc-ink)}
+.chip.prog{background:color-mix(in srgb,var(--prog) 15%,transparent);color:var(--prog)}
+input.f,select.f,textarea.f{height:var(--control);border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);padding:0 8px;min-width:0}
+textarea.f{height:auto;padding:6px 8px;resize:vertical}
+.note{font-size:13px;color:var(--mute);max-width:680px}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+a.card{color:inherit;text-decoration:none}a.card:hover{border-color:var(--acc)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--side);color:var(--side-ink);padding:8px 8px 8px 14px;border-radius:var(--r1);display:none;z-index:40;align-items:center;gap:10px;box-shadow:var(--shadow-float);max-width:calc(100vw - 32px)}
+.toast.on{display:flex}.toast button{all:unset;cursor:pointer;color:var(--acc);font-weight:600;padding:2px 8px}
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r2);padding:10px 12px;font-size:13px}
+.banner.bad{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--ink);border:1px solid color-mix(in srgb,var(--bad) 35%,transparent)}
+.banner.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.banner.ok{background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.banner.info{background:var(--sunk);border:1px solid var(--line)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pop{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;padding-top:10vh;z-index:30}
+.pop.on{display:flex}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow-float);width:min(520px,calc(100vw - 32px));padding:18px;max-height:80vh;overflow:auto}
+.fld{display:grid;gap:4px;margin-bottom:12px}
+.fld>label{font-size:12px;color:var(--mute)}
+table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.t th,.t td{padding:0 10px;height:var(--row);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.t th{font-size:12px;color:var(--mute);font-weight:500;background:var(--sunk)}
+.t tr:last-child td{border-bottom:0}
+.t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation-duration:3s}}
+.stage{min-height:calc(100vh - 30px)}
+.app{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);min-height:calc(100vh - 30px)}
+.side{background:var(--side);color:var(--side-ink);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.side .ws{font:600 15px var(--font-display);padding:6px 10px 14px}
+.side button{all:unset;cursor:pointer;height:var(--nav-item);padding:0 10px;border-radius:var(--r1);display:flex;align-items:center;gap:8px}
+.side button[aria-current=true]{background:var(--side-sel);font-weight:600}
+.side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:14px 10px 4px}
+.top{height:var(--topbar);border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;padding:0 20px;font-size:13px;color:var(--mute)}
+.top b{color:var(--ink)}
+main#main{padding:20px 28px 80px;max-width:900px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 0 20px;overflow-x:auto}
+.tabs button{all:unset;cursor:pointer;padding:8px 12px;font-size:13px;color:var(--mute);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-current=true]{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.sec{margin-bottom:22px}
+.meter{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;margin:8px 0 4px}
+.meter i{display:block;height:100%;background:var(--acc)}
+.meter.full i{background:var(--warn)}
+.steps{margin:10px 0 14px;padding-left:20px;display:grid;gap:6px}
+.steps li::marker{color:var(--acc-ink);font-weight:600}
+.checks{list-style:none;padding:0;margin:10px 0;display:grid;gap:6px;font-size:13px}
+.checks li{display:flex;gap:8px;align-items:center}
+.tick{color:var(--ok);font-weight:700;width:14px;text-align:center}
+.cross{color:var(--bad);font-weight:700;width:14px;text-align:center}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13px;margin:10px 0}
+.kv dt{color:var(--mute)}.kv dd{margin:0}
+details.adv{margin-top:16px}
+details.adv summary{cursor:pointer;color:var(--acc-ink);font-weight:600;padding:4px 0}
+.t select.f,.t input.f{height:26px;width:100%}
+.t td{white-space:normal;padding:6px 10px;height:auto}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.tile{border:1px solid var(--line);border-radius:var(--r2);padding:12px;cursor:pointer;background:var(--panel);text-align:left;display:grid;gap:4px}
+.tile:hover{border-color:var(--acc)}.tile[aria-pressed=true]{border-color:var(--acc);background:var(--sel)}
+.tile:disabled{opacity:.55;cursor:not-allowed}
+.conns{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.conn{display:grid;gap:6px;align-content:start}
+.conn .name{font:600 15px var(--font-display)}
+.addtile{border:1px dashed var(--line);border-radius:var(--r2);display:grid;place-items:center;min-height:120px;cursor:pointer;background:transparent;color:var(--acc-ink);font-weight:600}
+.addtile:hover{border-color:var(--acc)}
+.big{font:600 28px var(--font-display)}
+.bars{display:grid;gap:8px;margin-top:10px}
+.bar{display:grid;grid-template-columns:140px 1fr 90px;gap:10px;align-items:center;font-size:13px}
+.bar .track{height:10px;background:var(--sunk);border-radius:99px;overflow:hidden;display:flex}
+.bar .track i{display:block;height:100%}
+.bar .track i.k{background:var(--acc)}.bar .track i.o{background:var(--rev)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mute);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.stepper{display:flex;gap:6px;margin-bottom:14px}
+.stepper span{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.stepper span.on{background:var(--acc)}
+.cta{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.fakeconsole{border:1px solid var(--line);border-radius:var(--r2);background:var(--sunk);padding:10px 12px;font:12px var(--font-mono);display:grid;gap:4px}
+.fakeconsole b{color:var(--acc-ink);font-weight:600}
+input.f.w{width:100%}
+@media (max-width:760px){.app{grid-template-columns:minmax(0,1fr)}.side{display:none}main#main{padding:16px}.kv{grid-template-columns:1fr}.bar{grid-template-columns:100px 1fr 70px}.t{display:block;overflow-x:auto}}
+</style>
+</head>
+<body>
+<div class="proto"><span class="t">PROTOTYPE · AI connections (task 035) · 02 Connections and routes</span></div>
+<div class="stage" id="stage"></div>
+
+<script>function toggleTheme(){var r=document.documentElement;var dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'}
+// Shared state and fakes for the AI connections prototypes. Nothing leaves the page: "checking" a key is simulated.
+// Keys containing "bad" are rejected; URLs on http or private addresses are refused.
+var CAPS=[
+ {id:'transcription',name:'Transcription',hint:'Meeting audio, voice commands, dictation',def:'whisper-large-v3'},
+ {id:'proposals',name:'Meeting proposals',hint:'Turns what was said into issue changes',def:'deepseek-v4.1-flash'},
+ {id:'voice',name:'Voice commands',hint:'Push to talk outside meetings',def:'deepseek-v4.1-flash'}];
+var A={role:'owner',state:'none',key:'',last4:'a3f9',project:'',routes:{},models:{},custom:null,langRoutes:[]};
+function resetRoutes(to){CAPS.forEach(function(c){A.routes[c.id]=to;A.models[c.id]=''})}
+resetRoutes('kupro');
+function canEdit(){return A.role!=='member'}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function connName(id){return id==='kupro'?'Kupro (included)':id==='scw'?'Scaleway (your key)':id==='custom'&&A.custom?esc(A.custom.name)+' (your endpoint)':id}
+function connOptions(sel){var o=[['kupro','Kupro (included hours)']];if(A.state!=='none')o.push(['scw','Scaleway, your key']);if(A.custom)o.push(['custom',A.custom.name+', your endpoint']);
+ return o.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===sel?' selected':'')+'>'+esc(x[1])+'</option>'}).join('')}
+function ownUsed(){return CAPS.some(function(c){return A.routes[c.id]!=='kupro'})}
+function protoBar(){
+ document.querySelector('.proto').insertAdjacentHTML('beforeend','<label>State <select id="pState"><option value="none">Not connected</option><option value="connected">Own Scaleway key</option><option value="rejected">Own key rejected</option></select></label>'+
+  '<label>Viewing as <select id="pRole"><option value="owner">Owner</option><option value="billing">Member with billing access</option><option value="member">Member</option></select></label><button type="button" onclick="toggleTheme()">Theme</button>');
+ pState.onchange=function(){A.state=pState.value;resetRoutes(A.state==='none'?'kupro':'scw');render()};
+ pRole.onchange=function(){A.role=pRole.value;render()};
+}
+function syncBar(){var p=document.getElementById('pState');if(p)p.value=A.state}
+function shell(){
+ document.getElementById('stage').innerHTML='<div class="app"><nav class="side" aria-label="Main"><div class="ws">Fjord Labs</div><button>Issues</button><button>Board</button><button>Sprints</button><button>Delivery plan</button><div class="grp">Workspace</div><button>Members</button><button aria-current="true">Settings</button></nav>'+
+ '<div><header class="top">Settings / <b>AI</b></header><main id="main"></main></div></div><div class="pop" id="pop"><div class="dlg" id="dlg" role="dialog" aria-modal="true"></div></div><div class="toast" id="toast" role="status"></div>';
+}
+function tabs(){return '<div class="tabs" role="tablist"><button>General</button><button>Members</button><button>Meetings</button><button aria-current="true">AI</button><button>Import</button><button>Export</button></div>'}
+var toastTimer;function toast(m){var t=document.getElementById('toast');t.innerHTML='<span>'+m+'</span>';t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('on')},3500)}
+function dialog(html){dlg.innerHTML=html;pop.classList.add('on');var f=dlg.querySelector('input,select,button');if(f)f.focus()}
+function closeDialog(){pop.classList.remove('on')}
+addEventListener('keydown',function(e){if(e.key==='Escape')closeDialog()});
+// Simulated check against GET /models
+function checkKey(key,models,cb){setTimeout(function(){
+ if(!key.trim())return cb({ok:false,error:'Paste the secret key first.'});
+ if(/bad/i.test(key))return cb({ok:false,error:'401 Unauthorized: the key is invalid or was revoked.'});
+ cb({ok:true,models:models||['whisper-large-v3','deepseek-v4.1-flash']})},1100)}
+function checkingHtml(){return '<ul class="checks"><li><span class="spin"></span> Asking Scaleway which models this key can use…</li></ul>'}
+function checkResultHtml(r){if(!r.ok)return '<ul class="checks"><li><span class="cross">✕</span><span>'+esc(r.error)+'</span></li></ul>';
+ return '<ul class="checks"><li><span class="tick">✓</span> Key accepted</li>'+r.models.map(function(m){return '<li><span class="tick">✓</span> <span class="mono">'+m+'</span> available</li>'}).join('')+'</ul>'}
+function urlProblem(u){var m=/^(\w+):\/\/([^\/:]+)/.exec(u.trim());if(!m)return 'Enter the full address, like https://whisper.example.eu/v1.';if(m[1]!=='https')return 'Use HTTPS. Kupro sends meeting audio to this address.';
+ var h=m[2];if(/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1)/.test(h)||/\.internal$|\.local$/.test(h))return 'That is a private address, which Kupro can’t reach from its servers. Use an address that is public on the internet.';return ''}
+// The custom endpoint dialog, shared by all three directions.
+function customDialog(done){
+ dialog('<h2>Your own EU endpoint</h2><p class="hint">Any OpenAI-compatible API, such as your own Whisper or vLLM server. Kupro sends meeting audio and text to it.</p>'+
+ '<div class="fld"><label for="cName">Name</label><input class="f" id="cName" value="Self-hosted Whisper"></div>'+
+ '<div class="fld"><label for="cUrl">Address</label><input class="f" id="cUrl" placeholder="https://ai.example.eu/v1" value="https://whisper.fjordlabs.dk/v1"><span class="err" id="cUrlErr"></span></div>'+
+ '<div class="fld"><label for="cKey">Key</label><input class="f" id="cKey" type="password" placeholder="Bearer token, if the endpoint needs one" value="sk-local-1234"></div>'+
+ '<div class="fld"><label>It can serve</label><label class="row"><input type="checkbox" id="cT" checked> Transcription, model <input class="f" id="cTm" value="hviske-v3" style="width:150px"></label><label class="row"><input type="checkbox" id="cC"> Chat with structured output (proposals, voice), model <input class="f" id="cCm" placeholder="model id" style="width:150px"></label></div>'+
+ '<label class="row banner info" style="align-items:flex-start"><input type="checkbox" id="cEu"><span><b>This endpoint is in the EU/EEA and run by us or our processor.</b><br><span class="hint">Recorded with your name and the time in the activity log. Kupro doesn’t check it.</span></span></label>'+
+ '<div id="cRes"></div><div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn ghost" onclick="closeDialog()">Cancel</button><button class="btn pri" id="cSave">Check and save</button></div>');
+ cSave.onclick=function(){var p=urlProblem(cUrl.value);cUrlErr.textContent=p;if(p)return;if(!cEu.checked){cRes.innerHTML='<p class="err">Confirm where the endpoint runs first.</p>';return}
+  cRes.innerHTML=checkingHtml().replace('Scaleway','the endpoint');checkKey(cKey.value,[cT.checked&&cTm.value,cC.checked&&cCm.value].filter(Boolean),function(r){cRes.innerHTML=checkResultHtml(r);if(r.ok)setTimeout(function(){A.custom={name:cName.value,url:cUrl.value,t:cT.checked&&cTm.value,c:cC.checked&&cCm.value};closeDialog();toast('Saved '+esc(cName.value)+'. EU confirmation logged.');done&&done()},700)})}}
+function memberNote(){return '<div class="banner info">Only Owners and members with billing access can change this. A key moves the cost of AI to the workspace’s own Scaleway account.</div>'}
+function rejectedBanner(){return '<div class="banner bad" role="alert"><div><b>Scaleway rejected the workspace’s key</b><div>401 Unauthorized: the key is invalid or was revoked. Seen 26 Nov at 09:14.</div><div style="margin-top:4px">Meeting audio and voice are off, and typed text uses keyword matching. Kupro doesn’t switch to its own key; replace the key, or disconnect to go back to the included hours. Everyone with billing access got an email.</div></div></div>'}
+function usageLine(){if(A.state==='none')return '<b>3.5 of 12 hours</b> used this month on Kupro’s included hours. Resets 1 December.';return '<b>No limit.</b> 41 hours this month on your key, about €28 billed by Scaleway to your account.'}
+protoBar();shell();
+function render(){syncBar();var m=document.getElementById('main'),edit=canEdit(),bad=A.state==='rejected';
+ var h=tabs()+'<h1>AI</h1><p class="sub">Connections are the AI services Kupro can use for this workspace. Routes decide which connection does each part.</p>';
+ if(bad)h+='<div class="sec">'+rejectedBanner()+'</div>';if(!edit)h+='<div class="sec">'+memberNote()+'</div>';
+ h+='<div class="sec"><h2>Connections</h2><div class="conns">'+
+  '<div class="card conn"><div class="row"><span class="name">Kupro</span><span class="sp"></span><span class="chip">Included</span></div><div class="hint">Scaleway in Paris, run and paid for by Kupro.</div><div class="meter"><i style="width:29%"></i></div><div class="hint">3.5 of 12 hours this month</div></div>'+
+  (A.state!=='none'?'<div class="card conn"><div class="row"><span class="name">Scaleway</span><span class="sp"></span>'+(bad?'<span class="chip bad">Rejected</span>':'<span class="chip ok">Working</span>')+'</div><div class="hint">Your key ••••'+A.last4+' · Paris · checked '+(bad?'26 Nov 09:14':'just now')+'</div><div class="hint">'+(bad?'401 Unauthorized: invalid or revoked key':'41 h this month, about €28 billed by Scaleway')+'</div>'+(edit?'<div class="row"><button class="btn" onclick="toast(\'Checked\')">Check</button><button class="btn" onclick="addDialog(\'scw\')">Replace key</button><span class="sp"></span><button class="btn ghost danger" onclick="removeScw()">Remove</button></div>':'')+'</div>':'')+
+  (A.custom?'<div class="card conn"><div class="row"><span class="name">'+esc(A.custom.name)+'</span><span class="sp"></span><span class="chip ok">Working</span></div><div class="hint mono">'+esc(A.custom.url)+'</div><div class="hint">EU confirmed by Mads Kjær, just now</div>'+(edit?'<div class="row"><span class="sp"></span><button class="btn ghost danger" onclick="A.custom=null;CAPS.forEach(function(c){if(A.routes[c.id]===\'custom\')A.routes[c.id]=A.state===\'none\'?\'kupro\':\'scw\'});A.langRoutes=[];render()">Remove</button></div>':'')+'</div>':'')+
+  (edit?'<button class="addtile" onclick="addDialog()">+ Add connection</button>':'')+'</div></div>';
+ h+='<div class="sec"><h2>What runs where</h2><table class="t"><thead><tr><th>Part</th><th>Language</th><th>Connection</th><th>Model</th><th>Paid by</th></tr></thead><tbody>'+
+  CAPS.map(function(c){return row(c,'All',A.routes[c.id],A.models[c.id],'cap')}).join('')+
+  A.langRoutes.map(function(r,ix){var c=CAPS.filter(function(x){return x.id===r.cap})[0];return row(c,r.lang,r.conn,r.model,'lang'+ix)}).join('')+'</tbody></table>'+
+  (edit?'<div class="row" style="margin-top:8px"><button class="btn ghost" onclick="langDialog()">+ Route one language elsewhere</button><span class="hint">For example Danish transcription to a Danish model.</span></div>':'')+'</div>';
+ m.innerHTML=h;
+ document.querySelectorAll('select[data-r]').forEach(function(s){s.onchange=function(){var k=s.dataset.r;if(k==='cap')A.routes[s.dataset.c]=s.value;else A.langRoutes[+k.slice(4)].conn=s.value;render()}});
+ document.querySelectorAll('input[data-r]').forEach(function(i){i.onchange=function(){var k=i.dataset.r;if(k==='cap')A.models[i.dataset.c]=i.value;else A.langRoutes[+k.slice(4)].model=i.value;render()}});
+}
+function row(c,lang,conn,model,key){var own=conn!=='kupro',off=conn==='scw'&&A.state==='rejected',edit=canEdit();
+ var mdl=conn==='custom'?(c.id==='transcription'?A.custom.t:A.custom.c)||model||'':model||'';
+ return '<tr><td><b>'+c.name+'</b><div class="hint">'+c.hint+'</div></td><td>'+lang+'</td><td>'+(edit?'<select class="f" data-r="'+key+'" data-c="'+c.id+'">'+connOptions(conn)+'</select>':connName(conn))+(off?'<div><span class="chip bad">Off: key rejected</span></div>':'')+'</td>'+
+ '<td>'+(own&&edit?'<input class="f" data-r="'+key+'" data-c="'+c.id+'" placeholder="'+c.def+'" value="'+esc(mdl)+'">':'<span class="mono hint">'+esc(mdl||c.def)+'</span>')+(mdl&&mdl!==c.def?'<div><span class="chip warn">Not tested by Kupro</span></div>':'')+'</td>'+
+ '<td>'+(own?'<span class="chip acc">You, no limit</span>':'<span class="chip">Kupro hours</span>')+'</td></tr>'}
+function removeScw(){A.state='none';CAPS.forEach(function(c){if(A.routes[c.id]==='scw')A.routes[c.id]='kupro'});render();toast('Removed. Those parts are back on Kupro’s included hours.')}
+function addDialog(only){
+ if(only==='scw'||window._pick==='scw'){window._pick=null;return scwDialog()}
+ dialog('<h2>Add connection</h2><p class="hint">Pick a provider.</p><div class="tiles"><button class="tile" onclick="closeDialog();scwDialog()"><b>Scaleway</b><span class="hint">Paris. Kupro’s tested models. Recommended.</span></button><button class="tile" onclick="closeDialog();customDialog(function(){render()})"><b>Your own endpoint</b><span class="hint">Any OpenAI-compatible API in the EU, such as your own Whisper.</span></button><button class="tile" disabled><b>More providers</b><span class="hint">Mistral, syv.ai and others, as they are approved.</span></button></div><div class="row"><span class="sp"></span><button class="btn ghost" onclick="closeDialog()">Cancel</button></div>')}
+function scwDialog(){
+ dialog('<h2>Scaleway</h2><ol class="steps"><li>Scaleway console → <b>IAM → API keys</b>.</li><li>Create a key for an application with <b>Generative APIs</b> access.</li><li>Paste the secret key.</li></ol><div class="fld"><label for="k">Secret key</label><input class="f" id="k" type="password" placeholder="Paste the secret key"></div><div class="fld"><label for="pj">Project ID (optional)</label><input class="f" id="pj" placeholder="Default project"></div><label class="row hint"><input type="checkbox" id="useAll" checked> Use it for everything that now runs on Kupro’s hours</label><div id="res"></div><div class="row" style="margin-top:12px"><span class="sp"></span><button class="btn ghost" onclick="closeDialog()">Cancel</button><button class="btn pri" id="sv">Check and save</button></div>');
+ sv.onclick=function(){res.innerHTML=checkingHtml();sv.disabled=true;checkKey(k.value,null,function(r){res.innerHTML=checkResultHtml(r);sv.disabled=false;if(r.ok)setTimeout(function(){var all=useAll.checked;A.last4=k.value.slice(-4);A.state='connected';if(all)CAPS.forEach(function(c){if(A.routes[c.id]==='kupro')A.routes[c.id]='scw'});closeDialog();render();toast('Scaleway connected')},700)})}}
+function langDialog(){var opts=connOptions('custom');
+ dialog('<h2>Route one language elsewhere</h2><div class="fld"><label>Part</label><select class="f" id="lc"><option value="transcription">Transcription</option><option value="proposals">Meeting proposals</option><option value="voice">Voice commands</option></select></div><div class="fld"><label>Language</label><select class="f" id="ll"><option>Danish</option><option>English</option></select></div><div class="fld"><label>Connection</label><select class="f" id="lcn">'+opts+'</select>'+(A.custom?'':'<span class="hint">Tip: add your own endpoint first to route Danish to a Danish model.</span>')+'</div><div class="fld"><label>Model</label><input class="f" id="lm" placeholder="Default"></div><div class="row"><span class="sp"></span><button class="btn ghost" onclick="closeDialog()">Cancel</button><button class="btn pri" onclick="A.langRoutes.push({cap:lc.value,lang:ll.value,conn:lcn.value,model:lm.value});closeDialog();render()">Add route</button></div>')}
+render();
+</script>
+</body>
+</html>

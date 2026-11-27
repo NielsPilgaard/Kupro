@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 Thumb button · Voice control prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+/* Large monitors (Tailwind 3xl, 1920 px): wider, roomier sidebar. */
+@media (min-width: 120rem) {
+  :root {
+    --sidebar: 252px;
+    --nav-item: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}
+
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:20}
+.proto span.t{flex:1;min-width:180px}.proto label{display:inline-flex;gap:6px;align-items:center}
+.proto button,.proto select{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer;max-width:260px}
+.proto select option{color:var(--ink);background:var(--panel)}
+h1{font:600 22px var(--font-display);margin:0 0 4px}
+h2{font:600 16px var(--font-display);margin:0 0 8px}
+h3{font:600 14px var(--font-ui);margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 16px}
+.btn{height:var(--control);padding:0 12px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--acc-ink)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,input.f:focus,select.f:focus,textarea.f:focus{outline:2px solid var(--acc);outline-offset:1px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.mute{color:var(--mute)}
+.mono{font-family:var(--font-mono)}
+.key{font:12px var(--font-mono);color:var(--mute)}
+.hint{font-size:12px;color:var(--mute)}
+.err{font-size:12px;color:var(--bad)}
+kbd{font:11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel);color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--mute);white-space:nowrap}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.chip.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.chip.acc{background:var(--sel);color:var(--acc-ink)}
+.chip.prog{background:color-mix(in srgb,var(--prog) 15%,transparent);color:var(--prog)}
+input.f,select.f,textarea.f{height:var(--control);border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);padding:0 8px;min-width:0}
+textarea.f{height:auto;padding:6px 8px;resize:vertical}
+.note{font-size:13px;color:var(--mute);max-width:680px}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+a.card{color:inherit;text-decoration:none}a.card:hover{border-color:var(--acc)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--side);color:var(--side-ink);padding:8px 8px 8px 14px;border-radius:var(--r1);display:none;z-index:40;align-items:center;gap:10px;box-shadow:var(--shadow-float);max-width:calc(100vw - 32px)}
+.toast.on{display:flex}.toast button{all:unset;cursor:pointer;color:var(--acc);font-weight:600;padding:2px 8px}
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r2);padding:10px 12px;font-size:13px}
+.banner.bad{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--ink);border:1px solid color-mix(in srgb,var(--bad) 35%,transparent)}
+.banner.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.banner.ok{background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.banner.info{background:var(--sunk);border:1px solid var(--line)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pop{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;padding-top:10vh;z-index:30}
+.pop.on{display:flex}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow-float);width:min(520px,calc(100vw - 32px));padding:18px;max-height:80vh;overflow:auto}
+.fld{display:grid;gap:4px;margin-bottom:12px}
+.fld>label{font-size:12px;color:var(--mute)}
+table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.t th,.t td{padding:0 10px;height:var(--row);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.t th{font-size:12px;color:var(--mute);font-weight:500;background:var(--sunk)}
+.t tr:last-child td{border-bottom:0}
+.t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation-duration:3s}}
+.stage{position:relative;transform:translateZ(0);height:calc(100vh - 30px);overflow:hidden;background:var(--bg)}
+body.phone{background:var(--sunk)}
+body.phone .stage{width:360px;height:min(740px,calc(100vh - 60px));margin:14px auto;border:8px solid var(--side);border-radius:26px}
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;height:100%}
+.side{background:var(--side);color:var(--side-ink);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.side .ws{font:600 15px var(--font-display);padding:6px 10px 14px}
+.side button{all:unset;cursor:pointer;height:var(--nav-item);padding:0 10px;border-radius:var(--r1);display:flex;align-items:center;gap:8px}
+.side button[aria-current=true]{background:var(--side-sel);font-weight:600}
+.side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:14px 10px 4px}
+.colm{display:flex;flex-direction:column;min-width:0;height:100%}
+.top{height:var(--topbar);border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:center;gap:10px;padding:0 14px;flex:none}
+.top .crumbs{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .crumbs b{color:var(--ink);font-weight:600}
+.usage{font:12px var(--font-mono);color:var(--mute);white-space:nowrap}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--sel);color:var(--acc-ink);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none;cursor:pointer}
+.menu{display:none}
+main#main{flex:1;overflow:auto;padding:20px 24px 110px}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.st i{width:9px;height:9px;border-radius:50%;border:2px solid var(--mute);display:inline-block}
+.st.inProgress i{border-color:var(--prog);background:color-mix(in srgb,var(--prog) 40%,transparent)}
+.st.inReview i{border-color:var(--rev)}
+.st.done i{border-color:var(--ok);background:var(--ok)}
+.st.todo i{border-color:var(--mute)}
+.st.backlog i{border-style:dashed}
+tr.flash td,.icard.flash{animation:flash 1.6s var(--ease)}
+@keyframes flash{0%{background:var(--sel)}100%{background:transparent}}
+.t tr.click{cursor:pointer}.t tr.click:hover td{background:var(--sunk)}
+.icards{display:none}
+.icard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.icard .k{font:12px var(--font-mono);color:var(--mute)}
+.icard .m{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:4px}
+.issue{display:grid;grid-template-columns:1fr 240px;gap:24px;align-items:start}
+.props{display:grid;gap:10px;margin:0}
+.props dt{font-size:12px;color:var(--mute)}.props dd{margin:0}
+.desc{color:var(--ink);max-width:640px}
+.cmt{border-top:1px solid var(--line);padding:10px 0;font-size:13px}
+.cmt b{font-weight:600}
+.cbox{position:relative;margin-top:10px}
+.cbox textarea{width:100%;min-height:84px}
+.filterbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.diff{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;font-size:13px}
+.diff .from{color:var(--mute);text-decoration:line-through}
+.diff .to{color:var(--ink);font-weight:600}
+.op{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.op:first-child{border-top:0}
+.op input{margin-top:3px}
+.op .held{font-size:12px;color:var(--warn)}
+.said{font-size:13px;color:var(--mute);font-style:italic}
+.said b{font-style:normal;color:var(--ink);font-weight:500}
+.wave{display:inline-flex;gap:3px;align-items:center;height:20px}
+.wave i{width:3px;height:6px;background:var(--acc);border-radius:2px;animation:wave .9s ease-in-out infinite}
+.wave i:nth-child(2){animation-delay:.1s}.wave i:nth-child(3){animation-delay:.2s}.wave i:nth-child(4){animation-delay:.3s}.wave i:nth-child(5){animation-delay:.4s}
+@keyframes wave{0%,100%{height:5px}50%{height:18px}}
+@media (prefers-reduced-motion: reduce){.wave i{animation:none;height:10px}}
+.tidy{margin-top:8px;border:1px solid var(--line);border-radius:var(--r2);background:var(--sunk);padding:10px 12px;font-size:13px}
+.tidy del{color:var(--bad);text-decoration:line-through;background:color-mix(in srgb,var(--bad) 10%,transparent)}
+.tidy ins{color:var(--ok);text-decoration:none;background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.block{display:grid;gap:8px}
+.mic-ico{width:16px;height:16px;flex:none}
+/* Phone layout: inside the frame, or on a real small screen. */
+body.phone .app{grid-template-columns:1fr}
+body.phone .side{display:none}
+body.phone .menu{display:inline-flex}
+body.phone main#main{padding:14px 12px 120px}
+body.phone .t{display:none}
+body.phone .icards{display:block}
+body.phone .issue{grid-template-columns:1fr;gap:12px}
+body.phone .usage{display:none}
+body.phone .top{padding:0 8px;gap:6px}
+.thumb{position:fixed;right:20px;bottom:20px;z-index:26;display:flex;flex-direction:column;align-items:center;gap:4px}
+.thumb button{width:60px;height:60px;border-radius:50%;border:0;background:var(--acc);color:var(--on-acc);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-float);touch-action:none}
+.thumb button svg{width:26px;height:26px}
+.thumb button.live{box-shadow:0 0 0 10px var(--sel),var(--shadow-float);transform:scale(1.06)}
+.thumb button.dict{background:var(--rev)}
+.thumb button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.thumb .cap{font-size:12px;color:var(--mute);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:0 8px}
+.thumb button.off{background:var(--mute)}
+body.phone .thumb{right:50%;transform:translateX(50%);bottom:18px}
+body.phone .thumb button{width:72px;height:72px}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:var(--shadow-float);padding:12px 16px 112px;display:none;max-height:78%;overflow:auto}
+.sheet.on{display:block}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.sheet .live{font:500 20px/1.35 var(--font-display);min-height:28px;margin:6px 0 10px}
+.sheet .bigbtn{height:48px;width:100%;font-size:16px;margin-top:8px}
+.sheet .opcard{border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px;margin-top:8px}
+.sheet .opcard.off{opacity:.5}
+.sheet .opcard .row{justify-content:space-between}
+.sheet .diff{font-size:15px}
+.sheet .twobtn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheet .twobtn .btn{height:48px;font-size:15px}
+body:not(.phone) .sheet{left:auto;right:16px;bottom:96px;width:400px;border-radius:var(--r2);border:1px solid var(--line);padding:12px 16px 16px}
+body:not(.phone) .sheet .grab{display:none}
+.tidy .twobtn{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.tidy .twobtn .btn{height:44px}
+</style>
+</head>
+<body>
+<div class="proto"><span class="t">PROTOTYPE · Voice control (task 036) · 03 Thumb button</span></div>
+<div class="stage" id="stage"></div>
+
+<script>function toggleTheme(){var r=document.documentElement;var dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'}
+// Shared sample data and a simulated voice pipeline. Nothing is recorded: holding the button plays back the phrase
+// picked in "Say" in the prototype bar.
+var ME='Mads Kjær';
+var SPRINTS={cur:'Sprint 24',next:'Sprint 25'};
+var ISSUES=[
+ {key:'KUP-12',title:'Login fails on Safari',state:'inProgress',sprint:'Sprint 24',assignee:'Anna Holm',est:'5 h',desc:'Safari 18 drops the session cookie after the redirect from Keycloak. Chrome and Firefox are fine.',comments:[['Anna Holm','Reproduced on iOS 18.1 too.']]},
+ {key:'KUP-38',title:'Dark mode for the board',state:'todo',sprint:'Sprint 24',assignee:'',est:'',desc:'Board cards use the light panel colour in dark mode.',comments:[]},
+ {key:'KUP-41',title:'Export to CSV',state:'inReview',sprint:'Sprint 24',assignee:'Mads Kjær',est:'3 h',desc:'One CSV per project with every field the list shows.',comments:[['Sofie Lund','Danish characters need UTF-8 with BOM for Excel.']]},
+ {key:'KUP-44',title:'Sprint report shows wrong total',state:'todo',sprint:'Sprint 25',assignee:'Mads Kjær',est:'2 h',desc:'',comments:[]},
+ {key:'KUP-57',title:'Login page copy is outdated',state:'backlog',sprint:'',assignee:'Sofie Lund',est:'1 h',desc:'',comments:[]},
+ {key:'KUP-63',title:'Slow search with 10k issues',state:'todo',sprint:'Sprint 25',assignee:'Anna Holm',est:'8 h',desc:'',comments:[]}
+];
+var STATE_LABEL={backlog:'Backlog',todo:'Todo',inProgress:'In progress',inReview:'In review',done:'Done'};
+var SAY={
+ sprint:{say:'Move KUP-12 to next sprint',kind:'operations',ops:[{key:'KUP-12',field:'sprint',label:'Sprint',to:'Sprint 25',conf:.96}]},
+ multi:{say:'Give the dark mode one to Sofie and estimate it at three hours',kind:'operations',ops:[{key:'KUP-38',field:'assignee',label:'Assignee',to:'Sofie Lund',conf:.91},{key:'KUP-38',field:'est',label:'Estimate',to:'3 h',conf:.93}]},
+ da:{say:'Flyt KUP-12 til næste sprint og sæt den til in review',lang:'da',kind:'operations',ops:[{key:'KUP-12',field:'sprint',label:'Sprint',to:'Sprint 25',conf:.95},{key:'KUP-12',field:'state',label:'State',to:'inReview',conf:.9}]},
+ create:{say:'New issue, export fails for workspaces over ten thousand issues',kind:'operations',ops:[{key:'',field:'create',label:'New issue',to:'Export fails for workspaces over 10,000 issues',conf:.88,held:'Creating an issue always asks first.'}]},
+ ambiguous:{say:'Mark the login bug as done',kind:'operations',ambiguous:{field:'state',label:'State',to:'done',candidates:['KUP-12','KUP-57']}},
+ open:{say:'Open KUP-41',kind:'navigate',target:{view:'issue',key:'KUP-41',label:'KUP-41 · Export to CSV'}},
+ filter:{say:'Show my issues in the next sprint',kind:'navigate',target:{view:'list',filter:{assignee:ME,sprint:'Sprint 25'},label:'Issues · Assignee: me · Sprint 25'}},
+ none:{say:'Hmm, what was I going to say',kind:'none',reason:'I didn’t hear a change or a place to go. Try "move KUP-12 to next sprint" or "open KUP-41".'}
+};
+var DICT={raw:'i think the safari bug is cause by the cookie setting we chaged last week we shud roll it back',
+ tidyParts:[['','I'],[' think the ',''],['safari','Safari'],[' bug is ',''],['cause','caused'],[' by the cookie setting we ',''],['chaged','changed'],[' last week',''],['','.'],[' ',''],['we','We'],[' ',''],['shud','should'],[' roll it back',''],['','.']]};
+DICT.tidy=DICT.tidyParts.map(function(p){return p[1]||p[0]}).join('');
+var V={ai:'budget',device:'desktop',sample:'sprint',view:{name:'list'},auto:false,billing:true,undo:null,focusField:null};
+
+function issue(k){return ISSUES.filter(function(i){return i.key===k})[0]}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function stHtml(s){return '<span class="st '+s+'"><i></i>'+STATE_LABEL[s]+'</span>'}
+function fmt(field,v){if(field==='state')return stHtml(v);return v?esc(v):'<span class="mute">—</span>'}
+function micSvg(){return '<svg class="mic-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'}
+
+// ---- Prototype bar
+function protoBar(extra){
+ var bar=document.querySelector('.proto');
+ var opts=Object.keys(SAY).map(function(k){return '<option value="'+k+'">'+(SAY[k].lang==='da'?'DA · ':'')+esc(SAY[k].say)+'</option>'}).join('');
+ bar.insertAdjacentHTML('beforeend','<label>Say <select id="pSay">'+opts+'</select></label>'+
+  '<label>AI <select id="pAi"><option value="budget">Kupro hours (3.5 of 12 used)</option><option value="spent">Kupro hours spent</option><option value="own">Own Scaleway key</option><option value="rejected">Own key rejected</option></select></label>'+
+  '<label>Device <select id="pDev"><option value="desktop">Desktop</option><option value="phone">Phone 360</option></select></label>'+
+  '<label>Viewing as <select id="pRole"><option value="1">Owner</option><option value="0">Member</option></select></label>'+(extra||'')+
+  '<button type="button" onclick="toggleTheme()">Theme</button>');
+ pSay.onchange=function(){V.sample=pSay.value};
+ pAi.onchange=function(){V.ai=pAi.value;renderUsage();if(window.onAiChange)onAiChange()};
+ pDev.onchange=function(){V.device=pDev.value;document.body.classList.toggle('phone',V.device==='phone')};
+ pRole.onchange=function(){V.billing=pRole.value==='1'};
+ if(innerWidth<700){pDev.value='phone';pDev.onchange()}
+}
+
+// ---- App shell
+function shell(topSlot){
+ document.getElementById('stage').innerHTML='<div class="app"><nav class="side" aria-label="Main"><div class="ws">Fjord Labs</div>'+
+  '<button aria-current="true" onclick="go({name:\'list\'})">Issues</button><button>Board</button><button>Sprints</button><button>Delivery plan</button><div class="grp">Workspace</div><button>Members</button><button>Settings</button></nav>'+
+  '<div class="colm"><header class="top"><button class="btn ghost menu" aria-label="Menu">☰</button><div class="crumbs" id="crumbs"></div><span class="sp"></span>'+(topSlot||'')+'<span class="usage" id="usage"></span><div class="avatar" title="'+ME+'">MK</div></header><main id="main"></main></div></div><div class="toast" id="toast" role="status"></div><div class="sr" aria-live="polite" id="live"></div>';
+ renderUsage();render();
+}
+function renderUsage(){var u=document.getElementById('usage');if(!u)return;u.textContent={budget:'AI · 3.5 of 12 h',spent:'AI · 12 of 12 h',own:'AI · own key',rejected:'AI · key rejected'}[V.ai]}
+function go(view){V.view=view;render()}
+function render(){
+ var m=document.getElementById('main'),c=document.getElementById('crumbs');
+ if(V.view.name==='issue'){var i=issue(V.view.key);c.innerHTML='KUP / <b>'+i.key+'</b>';
+  m.innerHTML='<div class="issue"><div><div class="key">'+i.key+'</div><h1>'+esc(i.title)+'</h1><p class="desc">'+(esc(i.desc)||'<span class="mute">No description.</span>')+'</p>'+
+  '<h2 style="margin-top:20px">Comments</h2>'+i.comments.map(function(x){return '<div class="cmt"><b>'+esc(x[0])+'</b> <span class="mute">· 2 d</span><div>'+esc(x[1])+'</div></div>'}).join('')+
+  '<div class="cbox" id="cbox"><textarea class="f" id="comment" placeholder="Write a comment…" aria-label="Comment"></textarea><div id="tidySlot"></div><div class="row" style="margin-top:6px"><span class="sp"></span><button class="btn pri" onclick="postComment()">Comment</button></div></div></div>'+
+  '<dl class="props"><dt>State</dt><dd>'+stHtml(i.state)+'</dd><dt>Sprint</dt><dd>'+fmt('sprint',i.sprint)+'</dd><dt>Assignee</dt><dd>'+fmt('a',i.assignee)+'</dd><dt>Estimate</dt><dd>'+fmt('e',i.est)+'</dd></dl></div>';
+  if(window.onIssueRendered)onIssueRendered();
+  return}
+ var f=V.view.filter,rows=ISSUES.filter(function(i){return !f||(i.assignee===f.assignee&&i.sprint===f.sprint)});
+ c.innerHTML='KUP / <b>Issues</b>';
+ m.innerHTML='<h1>Issues</h1><p class="sub">Project KUP · '+rows.length+' issues</p>'+(f?'<div class="filterbar"><span class="chip acc">Assignee: me</span><span class="chip acc">Sprint: '+f.sprint+'</span><button class="btn ghost" onclick="go({name:\'list\'})">Clear</button></div>':'')+
+  '<table class="t"><thead><tr><th>Key</th><th>Title</th><th>State</th><th>Sprint</th><th>Assignee</th><th class="n">Estimate</th></tr></thead><tbody>'+
+  rows.map(function(i){return '<tr class="click" data-k="'+i.key+'" onclick="go({name:\'issue\',key:\''+i.key+'\'})"><td class="key">'+i.key+'</td><td>'+esc(i.title)+'</td><td>'+stHtml(i.state)+'</td><td>'+fmt('s',i.sprint)+'</td><td>'+fmt('a',i.assignee)+'</td><td class="n">'+fmt('e',i.est)+'</td></tr>'}).join('')+'</tbody></table>'+
+  '<div class="icards">'+rows.map(function(i){return '<div class="icard" data-k="'+i.key+'" onclick="go({name:\'issue\',key:\''+i.key+'\'})"><div class="k">'+i.key+'</div><div>'+esc(i.title)+'</div><div class="m">'+stHtml(i.state)+'<span>'+(i.sprint||'No sprint')+'</span><span>'+(i.assignee||'Unassigned')+'</span></div></div>'}).join('')+'</div>';
+}
+function postComment(){var t=document.getElementById('comment');if(!t.value.trim())return;issue(V.view.key).comments.push([ME,t.value.trim()]);render();toast('Comment added')}
+function flash(k){document.querySelectorAll('[data-k="'+k+'"]').forEach(function(e){e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash')})}
+
+// ---- Toast with undo
+var toastTimer;
+function toast(msg,undo){var t=document.getElementById('toast');t.innerHTML='<span>'+msg+'</span>'+(undo?'<button type="button">Undo</button>':'');t.classList.add('on');
+ if(undo)t.querySelector('button').onclick=function(){undo();t.classList.remove('on')};clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('on')},6000)}
+
+// ---- Interpretation
+function result(){var s=SAY[V.sample];return JSON.parse(JSON.stringify(s))}
+function heldReason(op){if(op.held)return op.held;if(op.conf<.8)return 'Low confidence.';if(op.field==='state'&&op.to==='canceled')return 'Destructive, always asks.';return ''}
+function opDiff(op){
+ if(op.field==='create')return '<div class="diff"><span class="mute">New issue</span><span class="to">'+esc(op.to)+'</span><span class="mute">Where</span><span>KUP · Backlog</span></div>';
+ var i=issue(op.key),from=i[op.field];
+ return '<div class="diff"><span class="mute">'+op.label+'</span><span><span class="from">'+(op.field==='state'?STATE_LABEL[from]:(from||'—'))+'</span> → <span class="to">'+(op.field==='state'?STATE_LABEL[op.to]:esc(op.to))+'</span></span></div>';
+}
+function applyOps(ops){
+ var before=[],touched=[];
+ ops.forEach(function(op){
+  if(op.field==='create'){var n={key:'KUP-158',title:op.to,state:'backlog',sprint:'',assignee:'',est:'',desc:'',comments:[]};ISSUES.push(n);before.push({create:n.key});touched.push(n.key);return}
+  var i=issue(op.key);before.push({key:op.key,field:op.field,val:i[op.field]});i[op.field]=op.to;touched.push(op.key)});
+ render();touched.forEach(flash);
+ var keys=touched.filter(function(k,ix){return touched.indexOf(k)===ix}).join(', ');
+ toast((ops.length===1?'Changed ':'Made '+ops.length+' changes on ')+keys,function(){
+  before.reverse().forEach(function(b){if(b.create){ISSUES=ISSUES.filter(function(i){return i.key!==b.create})}else{issue(b.key)[b.field]=b.val}});render();toast('Undone')});
+}
+function navigate(t){go(t.view==='issue'?{name:'issue',key:t.key}:{name:'list',filter:t.filter})}
+
+// ---- Gate: budget and own key
+function blocked(){
+ if(V.ai==='spent')return{title:'This month’s AI hours are used up',body:'12 of 12 hours used. Voice comes back on 1 December'+(V.billing?', or right away with your own Scaleway key.':'. An Owner can connect the workspace’s own Scaleway key for unlimited voice.'),action:V.billing?'Connect a key':''};
+ if(V.ai==='rejected')return{title:'Scaleway rejected the workspace’s key',body:'Voice is off until '+(V.billing?'you replace the key':'an Owner replaces the key')+'. Kupro’s included hours aren’t used meanwhile. Typing still works.',action:V.billing?'Replace key':''};
+ return null}
+function say(t){var l=document.getElementById('live');if(l)l.textContent=t}
+function blockedHtml(b){return '<div class="banner '+(V.ai==='rejected'?'bad':'warn')+'" role="alert"><div><b>'+b.title+'</b><div>'+b.body+'</div>'+(b.action?'<a class="btn ghost" style="padding:0;margin-top:4px" href="../ai-connections/index.html">'+b.action+' →</a>':'')+'</div></div>'}
+
+// ---- Simulated listening
+// Voice.listen({mode:'command'|'dictate', onPartial(text), onThinking(), onResult(r)}) returns {stop()}.
+var Voice={listen:function(o){
+ var words=(o.mode==='dictate'?DICT.raw:SAY[V.sample].say).split(' '),n=0,stopped=false;
+ var iv=setInterval(function(){if(n<words.length){n++;o.onPartial(words.slice(0,n).join(' '))}},230);
+ return{stop:function(){if(stopped)return;stopped=true;clearInterval(iv);o.onPartial(words.join(' '));o.onThinking&&o.onThinking();
+  setTimeout(function(){o.onResult(o.mode==='dictate'?{raw:DICT.raw,tidy:DICT.tidy}:result())},o.mode==='dictate'?450:800)},cancel:function(){stopped=true;clearInterval(iv)}};
+}};
+function tidyDiffHtml(){return DICT.tidyParts.map(function(p){if(!p[1])return esc(p[0]);return (p[0]?'<del>'+esc(p[0])+'</del>':'')+'<ins>'+esc(p[1])+'</ins>'}).join('')}
+
+// Hold Ctrl+Space anywhere: start on press, stop on release.
+function bindHotkey(start,stop){var on=false;
+ addEventListener('keydown',function(e){if(e.code==='Space'&&e.ctrlKey&&!on){on=true;e.preventDefault();start()}});
+ addEventListener('keyup',function(e){if(on&&(e.code==='Space'||e.key==='Control')){on=false;e.preventDefault();stop()}})}
+
+// Push to talk on a button: hold to talk, or tap once to start and again to stop.
+function pushToTalk(btn,start,stop){var t0=0,live=false;
+ btn.addEventListener('mousedown',function(e){e.preventDefault()}); // keep focus in a text field for dictation
+ btn.addEventListener('pointerdown',function(e){e.preventDefault();try{btn.setPointerCapture(e.pointerId)}catch(x){}if(live){live=false;stop();return}t0=Date.now();live=true;start()});
+ btn.addEventListener('pointerup',function(){if(live&&Date.now()-t0>350){live=false;stop()}});
+ btn.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&!e.repeat){e.preventDefault();if(live){live=false;stop()}else{live=true;start()}}});
+ return{reset:function(){live=false}}}
+function focusedField(){var a=document.activeElement;return a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.type==='text'))?a:null}
+function insertAtCursor(el,text){var s=el.selectionStart,e=el.selectionEnd,v=el.value;var pre=v.slice(0,s),sep=pre&&!/\s$/.test(pre)?' ':'';el.value=pre+sep+text+v.slice(e);var p=s+sep.length+text.length;el.setSelectionRange(p,p);el.focus()}
+protoBar();
+shell('');
+document.getElementById('stage').insertAdjacentHTML('beforeend','<div class="sheet" id="sheet" role="dialog" aria-label="Voice"></div><div class="thumb"><button id="tb" aria-label="Talk to Kupro. Hold, or tap to start and again to stop.">'+micSvg()+'</button><span class="cap" id="cap">Hold to talk</span></div>');
+var sheet=document.getElementById('sheet'),tb=document.getElementById('tb'),cap=document.getElementById('cap'),session=null,target=null,current=null;
+function setCap(){var f=focusedField();tb.classList.toggle('dict',!!f);cap.textContent=f?'Hold to dictate':'Hold to talk';tb.classList.toggle('off',V.ai==='spent'||V.ai==='rejected')}
+document.addEventListener('focusin',setCap);document.addEventListener('focusout',function(){setTimeout(setCap,0)});
+function show(h){if(!session)setCap();sheet.innerHTML='<div class="grab"></div>'+h;sheet.classList.add('on')}
+function hide(){current=null;sheet.classList.remove('on');tb.classList.remove('live');ptt.reset();setCap()}
+function start(){var b=blocked();if(b){show(blockedHtml(b)+'<button class="btn bigbtn" onclick="hide()">OK</button>');say(b.title);return}
+ target=focusedField();tb.classList.add('live');cap.textContent='Release to send';say(target?'Dictating':'Listening');
+ show('<div class="row"><span class="wave"><i></i><i></i><i></i><i></i><i></i></span><b>'+(target?'Dictating':'Listening')+'</b><span class="sp"></span><button class="btn ghost" onclick="cancel()">Cancel</button></div><div class="live" id="liveText"></div>');
+ cap.textContent='Release to send';
+ session=Voice.listen({mode:target?'dictate':'command',onPartial:function(t){var e=document.getElementById('liveText');if(e)e.textContent=t},
+  onThinking:function(){tb.classList.remove('live');cap.textContent='Working…';var r=sheet.querySelector('.row');if(r)r.innerHTML='<span class="spin"></span><b>Working it out…</b>'},
+  onResult:target?dictated:interpreted})}
+function stop(){if(session){var x=session;session=null;x.stop()}}
+function cancel(){if(session){session.cancel();session=null}hide()}
+var ptt=pushToTalk(tb,start,stop);bindHotkey(start,stop);
+addEventListener('keydown',function(e){if(!sheet.classList.contains('on'))return;if(e.key==='Escape')cancel();if(e.key==='Enter'&&current&&!e.ctrlKey){e.preventDefault();applyCur()}});
+function dictated(r){hide();insertAtCursor(target,r.raw);
+ tidySlot.innerHTML='<div class="tidy"><b>Tidy up?</b> <span class="hint">Spelling and punctuation only</span><div style="margin-top:6px;font-size:15px">'+tidyDiffHtml()+'</div><div class="twobtn"><button class="btn pri" onclick="acceptTidy()">Use this</button><button class="btn" onclick="tidySlot.innerHTML=\'\'">Keep mine</button></div></div>'}
+function acceptTidy(){var t=document.getElementById('comment');t.value=t.value.replace(DICT.raw,DICT.tidy);tidySlot.innerHTML='';toast('Tidied')}
+function interpreted(r){
+ var said='<div class="live">“'+esc(r.say)+'”'+(r.lang==='da'?' <span class="chip">Dansk</span>':'')+'</div>';
+ if(r.kind==='none'){show(said+'<p>'+esc(r.reason)+'</p><button class="btn bigbtn" onclick="hide()">OK</button>');say(r.reason);return}
+ if(r.kind==='navigate'){navigate(r.target);hide();toast('Opened '+esc(r.target.label));return}
+ if(r.ambiguous){var a=r.ambiguous;show(said+'<h3>Which one?</h3>'+a.candidates.map(function(k){return '<button class="btn bigbtn" style="justify-content:flex-start" onclick="pick(\''+k+'\')"><span class="key">'+k+'</span>&nbsp;'+esc(issue(k).title)+'</button>'}).join('')+'<button class="btn ghost bigbtn" onclick="hide()">Neither</button>');say('Which one?');return}
+ var held=r.ops.filter(heldReason);
+ if(V.auto&&!held.length){hide();applyOps(r.ops);return}
+ current=r.ops.map(function(op){return{op:op,on:true}});
+ show(said+current.map(function(c,ix){var op=c.op;return '<div class="opcard" id="oc'+ix+'"><div class="row"><span class="key">'+(op.key?op.key+' · '+esc(issue(op.key).title):'New issue in KUP')+'</span>'+(current.length>1?'<button class="btn ghost" onclick="toggleOp('+ix+')" id="ot'+ix+'">Skip</button>':'')+'</div>'+opDiff(op)+'</div>'}).join('')+
+  '<div class="twobtn" style="margin-top:12px"><button class="btn" onclick="hide()">Not this</button><button class="btn pri" onclick="applyCur()">Apply</button></div>'+
+  '<label class="row hint" style="margin-top:12px"><input type="checkbox" '+(V.auto?'checked':'')+' onchange="V.auto=this.checked"> Apply without asking when sure</label>');
+ say('Ready. Apply or Not this.')}
+function toggleOp(ix){current[ix].on=!current[ix].on;document.getElementById('oc'+ix).classList.toggle('off',!current[ix].on);document.getElementById('ot'+ix).textContent=current[ix].on?'Skip':'Include'}
+function applyCur(){var ops=current.filter(function(c){return c.on}).map(function(c){return c.op});hide();if(ops.length)applyOps(ops)}
+function pick(k){var a=SAY.ambiguous.ambiguous;interpreted({say:SAY.ambiguous.say,kind:'operations',ops:[{key:k,field:a.field,label:a.label,to:a.to,conf:.9}]})}
+function onAiChange(){setCap();hide()}
+setCap();
+</script>
+</body>
+</html>

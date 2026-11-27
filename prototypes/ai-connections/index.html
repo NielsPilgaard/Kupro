@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index · AI connections prototype</title>
+<style>/* Kobber design tokens — the only file allowed to contain colours and font names (docs/design-guide.md). */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f2f4f3;
+  --panel: #ffffff;
+  --sunk: #e7ecea;
+  --line: #d3dbd8;
+  --ink: #16201d;
+  --mute: #56655f;
+  --acc: #2c7a6a;
+  --acc-ink: #246859;
+  --on-acc: #ffffff;
+  --side: #1c2a26;
+  --side-ink: #cfe0da;
+  --prog: #b5651f;
+  --rev: #6553a8;
+  --ok: #3f8a3c;
+  --warn: #a9801a;
+  --bad: #b3393b;
+
+  /* Project colours (named in the API: ProjectColor). */
+  --proj-verdigris: #2c7a6a;
+  --proj-copper: #b5651f;
+  --proj-plum: #6553a8;
+  --proj-moss: #3f8a3c;
+  --proj-ochre: #a9801a;
+  --proj-brick: #b3393b;
+  --proj-slate: #56708a;
+  --proj-fjord: #2f6f9f;
+
+  --sel: color-mix(in srgb, var(--acc) 13%, transparent);
+  --side-sel: color-mix(in srgb, var(--side-ink) 11%, transparent);
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+
+  --r1: 5px;
+  --r2: 7px;
+  --row: 34px;
+  --nav-item: 28px;
+  --topbar: 48px;
+  --control: 30px;
+  --sidebar: 212px;
+
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.45);
+  /* Backdrop behind the palette and dialogs: dims in both themes. */
+  --scrim: rgb(0 0 0 / 0.35);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 120ms;
+  --dur-2: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1514;
+    --panel: #161f1d;
+    --sunk: #0b100f;
+    --line: #25322e;
+    --ink: #e2ece8;
+    --mute: #8fa29b;
+    --acc: #5bb8a3;
+    --acc-ink: #6cc4af;
+    --on-acc: #08130f;
+    --side: #0b100f;
+    --side-ink: #b7cac3;
+    --prog: #e08e52;
+    --rev: #a194e6;
+    --ok: #78c36f;
+    --warn: #e3bc55;
+    --bad: #ee6e6e;
+    --proj-verdigris: #5bb8a3;
+    --proj-copper: #e08e52;
+    --proj-plum: #a194e6;
+    --proj-moss: #78c36f;
+    --proj-ochre: #e3bc55;
+    --proj-brick: #ee6e6e;
+    --proj-slate: #93a9c0;
+    --proj-fjord: #6faedc;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1514;
+  --panel: #161f1d;
+  --sunk: #0b100f;
+  --line: #25322e;
+  --ink: #e2ece8;
+  --mute: #8fa29b;
+  --acc: #5bb8a3;
+  --acc-ink: #6cc4af;
+  --on-acc: #08130f;
+  --side: #0b100f;
+  --side-ink: #b7cac3;
+  --prog: #e08e52;
+  --rev: #a194e6;
+  --ok: #78c36f;
+  --warn: #e3bc55;
+  --bad: #ee6e6e;
+  --proj-verdigris: #5bb8a3;
+  --proj-copper: #e08e52;
+  --proj-plum: #a194e6;
+  --proj-moss: #78c36f;
+  --proj-ochre: #e3bc55;
+  --proj-brick: #ee6e6e;
+  --proj-slate: #93a9c0;
+  --proj-fjord: #6faedc;
+}
+
+/* Large monitors (Tailwind 3xl, 1920 px): wider, roomier sidebar. */
+@media (min-width: 120rem) {
+  :root {
+    --sidebar: 252px;
+    --nav-item: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+}
+
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font-ui)}
+button,input,select,textarea{font:inherit;color:inherit}
+.proto{background:var(--side);color:var(--side-ink);font:12px var(--font-mono);padding:6px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:20}
+.proto span.t{flex:1;min-width:180px}.proto label{display:inline-flex;gap:6px;align-items:center}
+.proto button,.proto select{font:inherit;background:transparent;color:inherit;border:1px solid currentColor;border-radius:var(--r1);padding:2px 8px;cursor:pointer;max-width:260px}
+.proto select option{color:var(--ink);background:var(--panel)}
+h1{font:600 22px var(--font-display);margin:0 0 4px}
+h2{font:600 16px var(--font-display);margin:0 0 8px}
+h3{font:600 14px var(--font-ui);margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 16px}
+.btn{height:var(--control);padding:0 12px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--acc-ink)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,input.f:focus,select.f:focus,textarea.f:focus{outline:2px solid var(--acc);outline-offset:1px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.mute{color:var(--mute)}
+.mono{font-family:var(--font-mono)}
+.key{font:12px var(--font-mono);color:var(--mute)}
+.hint{font-size:12px;color:var(--mute)}
+.err{font-size:12px;color:var(--bad)}
+kbd{font:11px var(--font-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel);color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--sunk);color:var(--mute);white-space:nowrap}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.chip.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.chip.acc{background:var(--sel);color:var(--acc-ink)}
+.chip.prog{background:color-mix(in srgb,var(--prog) 15%,transparent);color:var(--prog)}
+input.f,select.f,textarea.f{height:var(--control);border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);padding:0 8px;min-width:0}
+textarea.f{height:auto;padding:6px 8px;resize:vertical}
+.note{font-size:13px;color:var(--mute);max-width:680px}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+a.card{color:inherit;text-decoration:none}a.card:hover{border-color:var(--acc)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--side);color:var(--side-ink);padding:8px 8px 8px 14px;border-radius:var(--r1);display:none;z-index:40;align-items:center;gap:10px;box-shadow:var(--shadow-float);max-width:calc(100vw - 32px)}
+.toast.on{display:flex}.toast button{all:unset;cursor:pointer;color:var(--acc);font-weight:600;padding:2px 8px}
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r2);padding:10px 12px;font-size:13px}
+.banner.bad{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--ink);border:1px solid color-mix(in srgb,var(--bad) 35%,transparent)}
+.banner.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.banner.ok{background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.banner.info{background:var(--sunk);border:1px solid var(--line)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pop{position:fixed;inset:0;background:var(--scrim);display:none;align-items:flex-start;justify-content:center;padding-top:10vh;z-index:30}
+.pop.on{display:flex}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow-float);width:min(520px,calc(100vw - 32px));padding:18px;max-height:80vh;overflow:auto}
+.fld{display:grid;gap:4px;margin-bottom:12px}
+.fld>label{font-size:12px;color:var(--mute)}
+table.t{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.t th,.t td{padding:0 10px;height:var(--row);border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.t th{font-size:12px;color:var(--mute);font-weight:500;background:var(--sunk)}
+.t tr:last-child td{border-bottom:0}
+.t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation-duration:3s}}
+</style>
+</head>
+<body>
+<div class="proto"><span class="t">PROTOTYPE · AI connections (task 035) · Index</span><button type="button" onclick="toggleTheme()">Theme</button></div>
+<div class="wrap">
+<h1>AI connections: three directions</h1>
+<p class="sub">Workspace settings → AI, where an Owner or a member with billing access connects the workspace's own Scaleway key or EU endpoint (ADR-022). The directions differ in how much of the routing they show and what leads the page. Nothing leaves the page: checking a key is simulated.</p>
+<div class="cards">
+<a class="card" href="01-one-card.html"><span class="key">01</span><h2>One card</h2><p class="mute">The fast path first: a short guide, paste the key, Connect. Routes, models and custom endpoints sit under "Advanced". Least to read; the routing is hidden until someone wants it.</p></a>
+<a class="card" href="02-connections-routes.html"><span class="key">02</span><h2>Connections and routes</h2><p class="mute">The model of ADR-022, shown as it is: connection cards (Kupro's included one, your Scaleway key, your own endpoint) and a table of what runs where, per language too. Most flexible, and most to take in.</p></a>
+<a class="card" href="03-usage-first.html"><span class="key">03</span><h2>Usage first</h2><p class="mute">Leads with this month's hours and who paid for them. "Go unlimited" opens a three-step wizard: make a key, paste and check, choose what runs on it. Sells the why; routing reduced to three checkboxes.</p></a>
+</div>
+<h2 style="margin-top:28px">Try in each</h2>
+<ul class="note">
+<li>Connect a key: any text works; a key containing "bad" is rejected with Scaleway's 401.</li>
+<li>Set State to "Own key rejected": what the Owner is told, and that Kupro does not fall back to its own key.</li>
+<li>Add your own EU endpoint (a self-hosted Whisper). Try <span class="mono">http://…</span> or <span class="mono">https://10.0.0.5/v1</span>: both are refused. The EU confirmation is required.</li>
+<li>Change a model away from Kupro's default: it's marked "Not tested by Kupro".</li>
+<li>Switch Viewing as to Member: read-only, with who to ask.</li>
+<li>Disconnect: back to the included hours.</li>
+</ul>
+</div>
+
+<script>function toggleTheme(){var r=document.documentElement;var dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'}
+</script>
+</body>
+</html>

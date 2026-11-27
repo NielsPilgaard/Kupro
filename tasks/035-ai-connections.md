@@ -102,8 +102,9 @@ The meeting agent is the first feature on it. Voice control ([task 036](036-voic
 
 ### UI
 
-- Prototypes first (AGENTS.md rule 11): `prototypes/ai-connections/`, at least three directions for the
-  workspace settings "AI" section:
+- Prototypes first (AGENTS.md rule 11): [prototypes/ai-connections/](../prototypes/ai-connections/index.html) has three
+  directions for the workspace settings "AI" section (01 one card, 02 connections and routes, 03 usage first).
+  **Pick: not made yet.** They cover:
   - the Scaleway connect flow: guide, paste key, check, done;
   - a custom endpoint with the EU confirmation;
   - capability routes;

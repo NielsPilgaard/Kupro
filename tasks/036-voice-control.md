@@ -90,7 +90,8 @@ purpose: 'Implementation spec for task 036.'
 
 ### Prototypes (before any `web/` code)
 
-- `prototypes/voice-control/`, at least three directions, each covering:
+- [prototypes/voice-control/](../prototypes/voice-control/index.html) has three directions (01 top bar mic, 02 voice in
+  the command palette, 03 thumb button). **Pick: not made yet.** Each covers:
   - the button on desktop and on a phone;
   - an operation's card;
   - navigation;
