@@ -26,6 +26,7 @@ namespace Kupro.Tests.Features;
 /// workspace has 100 cents of AI budget, shared with meetings, so two utterances spend it. Keys starting "revoked" are
 /// refused by the vendor.
 /// </summary>
+[Collection(nameof(StorageTests))]
 public sealed class VoiceTests(PostgresFixture postgres, StorageFixture storage)
     : ApiTestBase(postgres, Settings(storage)), IClassFixture<StorageFixture>
 {

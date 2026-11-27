@@ -22,6 +22,7 @@ namespace Kupro.Tests.Features;
 /// uses <c>kupro-key</c>; a one-seat workspace has 100 cents of budget and each utterance's audio costs 50, so two
 /// utterances spend it. The vendor check refuses keys containing "bad"; calls refuse keys starting "revoked".
 /// </summary>
+[Collection(nameof(StorageTests))]
 public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture storage)
     : ApiTestBase(postgres, Settings(storage)), IClassFixture<StorageFixture>
 {
