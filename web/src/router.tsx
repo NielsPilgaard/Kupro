@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from './app/AppShell';
+import { AiSettingsPage } from './features/ai/AiSettingsPage';
 import { callbackPath, completeSignIn, getSession, signIn } from './auth/auth';
 import { ImportPage, ImportsPage } from './features/imports/ImportsPage';
 import { ImportWizardPage, type WizardSearch } from './features/imports/ImportWizard';
@@ -62,6 +63,7 @@ const workspaceRoute = createRoute({ getParentRoute: () => authedRoute, path: '/
 const workspaceIndexRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/', component: WorkspaceIndexPage });
 const newProjectRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/new-project', component: NewProjectPage });
 const membersRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/members', component: MembersPage });
+const aiSettingsRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/settings/ai', component: AiSettingsPage });
 const importsRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/imports', component: ImportsPage });
 const wizardSearch = (search: Record<string, unknown>): WizardSearch => ({
   ...(typeof search.step === 'string' ? { step: search.step as StepId } : {}),
@@ -139,6 +141,7 @@ const routeTree = rootRoute.addChildren([
       workspaceIndexRoute,
       newProjectRoute,
       membersRoute,
+      aiSettingsRoute,
       importsRoute,
       newImportRoute,
       importSetupRoute,

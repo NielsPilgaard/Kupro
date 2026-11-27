@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { ArrowDownToLine, CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Users } from 'lucide-react';
+import { ArrowDownToLine, AudioLines, CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, getWorkspaceOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
@@ -161,6 +161,12 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           <Users size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.members')}
         </Link>
+        {info && info.role !== 'guest' && (
+          <Link to="/w/$workspace/settings/ai" params={{ workspace }} className={nav} activeProps={active}>
+            <AudioLines size={16} strokeWidth={1.5} aria-hidden="true" />
+            {!collapsed && t('nav.ai')}
+          </Link>
+        )}
         {info?.role === 'owner' && (
           <Link to="/w/$workspace/imports" params={{ workspace }} className={nav} activeProps={active}>
             <ArrowDownToLine size={16} strokeWidth={1.5} aria-hidden="true" />

@@ -29,7 +29,8 @@ The meeting agent is the first feature on it. Voice control ([task 036](036-voic
 
 ## Progress
 
-The backend is built against ADR-022 (accepted 2026-11-27). The web settings screen is next, on prototype 03.
+The backend and the web settings screen (prototype 03) are built against ADR-022 (accepted 2026-11-27). Per-model
+approval stats are next.
 
 - [x] Provider registry and capabilities (`Features/Ai/AiProviders.cs`), connections and routes with a migration,
       keys encrypted with Data Protection (`AiKeys`), the router (`AiRouter`) with Kupro's server route as the default
@@ -44,7 +45,9 @@ The backend is built against ADR-022 (accepted 2026-11-27). The web settings scr
       stdin, `KUPRO_AI_KEY` or a hidden prompt), MCP `meeting action=ai` (status and providers, read-only; a separate tool would pass the 20-tool cap), parity test.
 - [x] Custom endpoints: https, public addresses only (checked on save and on every call), no redirects, EU
       confirmation required. `Ai:AllowPrivateAddresses` lets a self-hosted Kupro reach its own network.
-- [ ] Web settings screen, on prototype 03 (see [UI](#ui)).
+- [x] Web settings screen, on prototype 03 (see [UI](#ui)): `/w/:workspace/settings/ai`, linked from the sidebar, the
+      command palette and the account settings page. Usage first, "Go unlimited" wizard, connection cards, the
+      rejected-key banner, read-only for members without billing access. Tests in `AiSettingsPage.test.tsx`.
 - [ ] Each proposal records the model that made it, and suggest-mode stats split by model.
 
 Different from the spec, on purpose:
@@ -53,6 +56,26 @@ Different from the spec, on purpose:
   voice is the first usage that isn't a meeting.
 - **EU confirmation**: kept on the connection (who and when) and in a structured log line. Kupro has no
   workspace-level activity log yet; the issue activity feed is per issue.
+
+Web screen, different from prototype 03:
+
+- **Where**: Kupro has no workspace settings page with tabs yet, so the page stands alone with its own route and
+  sidebar entry ("AI"), instead of a tab row.
+- **Usage**: two figures, Kupro's included hours (the meeting budget) and the audio and tokens on the workspace's own
+  key. The prototype's bars per feature (meetings, voice, dictation) wait for the ledger's capability column (task
+  036). No amount in euro anywhere (the owner's pick note), though the API still returns an estimate.
+- **Step 2 adds the connection** without routes, so the vendor really checks the key; step 3 routes what was ticked.
+  Cancel removes the connection the dialog added, and a retry with another key replaces it. No auto-advance after a
+  passing check: a "Continue" button instead.
+- **Step 1** names Scaleway's menus but not the permission set; its exact name is a code comment to confirm against
+  Scaleway's console (ADR-022 IMP-002).
+- **Custom endpoint**: one form opened from step 1. "Check and save" adds it with what was ticked, so the API routes
+  only when the check passes. A key is required, as the API requires one.
+- **No "Advanced" section**: a model other than Scaleway's tested one, and per-language routes, are set with the CLI
+  (`kupro ai routes set --model`); the page shows them, with "Not tested by Kupro". The mark next to the full-auto
+  toggle comes with the per-model stats.
+- **Rejected state**: "Go back to included hours" is "Disconnect and use included hours", behind the same in-page
+  confirmation as Disconnect.
 
 ## Scope
 
