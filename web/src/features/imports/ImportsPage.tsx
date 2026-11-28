@@ -218,6 +218,7 @@ function RunsTab({ workspace, importId, runs }: { workspace: string; importId: s
   const sorted = [...(runs ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const running = sorted.find((r) => active(r) && r.kind === 'commit');
   const commits = sorted.filter((r) => r.kind === 'commit');
+  const timed = commits.some((r) => r.counts?.timeEntries);
   const tone = { queued: 'neutral', running: 'acc', succeeded: 'ok', failed: 'bad' } as const;
 
   if (runs && runs.length === 0) return <p className="text-mute">{t('importRuns.none')}</p>;
@@ -241,6 +242,7 @@ function RunsTab({ workspace, importId, runs }: { workspace: string; importId: s
             <th className="text-right!">{t('importRuns.col.created')}</th>
             <th className="text-right!">{t('importRuns.col.updated')}</th>
             <th className="text-right!">{t('importRuns.col.conflicts')}</th>
+            {timed && <th className="text-right!">{t('importRuns.col.timeEntries')}</th>}
             <th>
               <span className="sr-only">{t('importRuns.details')}</span>
             </th>
@@ -262,6 +264,7 @@ function RunsTab({ workspace, importId, runs }: { workspace: string; importId: s
                 <td className="text-right font-mono tabular-nums">{r.kind === 'commit' ? number.format(r.counts?.issues ?? 0) : ''}</td>
                 <td className="text-right font-mono tabular-nums">{r.kind === 'commit' ? number.format(r.counts?.updated ?? 0) : ''}</td>
                 <td className={`text-right font-mono tabular-nums ${r.counts?.conflicts ? 'text-bad' : ''}`}>{r.kind === 'commit' ? number.format(r.counts?.conflicts ?? 0) : ''}</td>
+                {timed && <td className="text-right font-mono tabular-nums">{r.kind === 'commit' ? number.format(r.counts?.timeEntries ?? 0) : ''}</td>}
                 <td>
                   <Button variant="ghost" className="h-6 px-2 text-sm" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)}>
                     {t('imports.report')}

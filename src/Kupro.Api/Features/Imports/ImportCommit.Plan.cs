@@ -1,4 +1,5 @@
 using Kupro.Api.Features.Plan;
+using Kupro.Api.Features.Time;
 using Kupro.Import.Snapshot;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,6 +35,7 @@ public sealed partial class ImportCommit
         var notes = await CompareAllAsync(snapshot, fit, checklists, references, ct);
         var tops = await TopTitlesAsync(snapshot, fit, ct);
         var (labelsToCreate, effort) = await LabelsAndEffortAsync(snapshot, read, tops, ct);
+        var worklogs = await WorklogPlanAsync(snapshot, fit, ct);
         var counted = await ImportPlanner.PlanAsync(snapshot, read, new ImportedHistory((kind, ids) => DoneAsync(kind, ids, ct), await ChangeMarksAsync(ct)), keysTaken, ct);
 
         return counted with
@@ -47,7 +49,50 @@ public sealed partial class ImportCommit
             SprintsToCreate = sprintsToCreate,
             MilestonesToCreate = milestones,
             EffortByProject = effort,
+            Worklogs = worklogs.Entries,
+            WorklogsSummed = worklogs.Summed,
+            LongDays = worklogs.LongDays,
         };
+    }
+
+    /// <summary>The worklogs a commit would write as entries, the ones that stay summed, and the days over 24 hours.</summary>
+    private async Task<(int Entries, int Summed, PlanCount LongDays)> WorklogPlanAsync(SnapshotReader snapshot, FitResult fit, CancellationToken ct)
+    {
+        var on = await TimeRegistrationAsync(ct);
+        var holds = Holds();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var held = new List<(string Id, string Author, DateOnly Date, int Minutes)>();
+        var summed = 0;
+        await foreach (var worklog in snapshot.ReadWorklogsAsync(ct))
+        {
+            if (!seen.Add(worklog.Id) || !fit.Items.ContainsKey(worklog.Item))
+            {
+                continue;
+            }
+
+            if (on && holds(worklog))
+            {
+                held.Add((worklog.Id, worklog.Author!, worklog.Date, worklog.Minutes));
+            }
+            else
+            {
+                summed++;
+            }
+        }
+
+        var written = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var chunk in held.Chunk(BatchSize))
+        {
+            written.UnionWith(await DoneAsync(ImportedKinds.Worklog, chunk.Select(w => w.Id), ct));
+        }
+
+        var todo = held.Where(w => !written.Contains(w.Id)).ToList();
+        var longDays = todo.GroupBy(w => (w.Author, w.Date))
+            .Where(g => g.Sum(w => w.Minutes) > TimeLimits.MinutesPerDay)
+            .OrderBy(g => g.Key.Date).ThenBy(g => g.Key.Author, StringComparer.Ordinal)
+            .Select(g => new PlanSample(g.Key.Author, null, $"{PersonName(g.Key.Author)}, {g.Key.Date:yyyy-MM-dd}"))
+            .ToList();
+        return (todo.Count, summed, new PlanCount(longDays.Count, [.. longDays.Take(MaxReportSamples)]));
     }
 
     /// <summary>The commit's own checks on projects, numbers and milestones, without writing.</summary>

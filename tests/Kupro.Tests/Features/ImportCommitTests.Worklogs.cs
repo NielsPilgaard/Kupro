@@ -79,6 +79,25 @@ public sealed partial class ImportCommitTests
     }
 
     [Fact]
+    public async Task The_plan_counts_worklogs_and_warns_about_a_day_over_24_hours()
+    {
+        var import = await WorklogImportAsync();
+        var off = await DryRunAsync(import);
+        (off.Worklogs, off.WorklogsSummed).ShouldBe((0, 4));
+
+        await TimeRegistrationAsync(true);
+        var on = await DryRunAsync(import);
+
+        (on.Worklogs, on.WorklogsSummed).ShouldBe((2, 2));
+        on.LongDays.Count.ShouldBe(1);
+        on.LongDays.Samples.ShouldHaveSingleItem().Title.ShouldBe("Sofie Larsen, 2025-03-04", "a 40-hour worklog");
+
+        (await RunAsync(import, ImportRunKind.Commit)).State.ShouldBe(ImportRunState.Succeeded);
+        var again = await DryRunAsync(import);
+        (again.Worklogs, again.LongDays.Count).ShouldBe((0, 0), "written already");
+    }
+
+    [Fact]
     public async Task With_time_registration_off_worklogs_write_no_entries()
     {
         var run = await RunAsync(await WorklogImportAsync(), ImportRunKind.Commit);

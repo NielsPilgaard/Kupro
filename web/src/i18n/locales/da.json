@@ -1050,11 +1050,14 @@
       "parentLoops_one": "{{count}} opgave er i en forældreløkke og bliver en opgave på øverste niveau.",
       "parentLoops_other": "{{count}} opgaver er i en forældreløkke og bliver opgaver på øverste niveau.",
       "skippedByScope_one": "{{count}} opgave er udeladt af afgrænsningen.",
-      "skippedByScope_other": "{{count}} opgaver er udeladt af afgrænsningen."
+      "skippedByScope_other": "{{count}} opgaver er udeladt af afgrænsningen.",
+      "longDays_one": "På {{count}} dag har nogen registreret mere end 24 timer. Kupro beholder tiden, som kilden har den.",
+      "longDays_other": "På {{count}} dage har nogen registreret mere end 24 timer. Kupro beholder tiden, som kilden har den."
     },
     "noWarnings": "Intet at se på: alle opgaver har en plads.",
     "examples": "fx {{list}}",
     "alsoCopied": "Kopieres også: {{comments}} kommentarer, {{changes}} historikposter, {{sprints}} sprints, {{labels}} labels.",
+    "worklogs": "{{entries}} worklogs bliver til tidsregistreringer; {{summed}} lægges sammen i opgavens detaljer, fordi de er fra en, der er sprunget over, eller tidsregistrering er slået fra.",
     "foldBottom": "Behold toppen",
     "foldBottomTrade": "Øverste niveau bliver på leveranceplanen. Det nederste niveaus gruppering bliver et relates-link.",
     "foldTop": "Fold toppen",
@@ -1092,7 +1095,8 @@
       "sprints": "Nye sprints",
       "effort": "Estimat",
       "comments": "Kommentarer",
-      "attachments": "Vedhæftninger"
+      "attachments": "Vedhæftninger",
+      "timeEntries": "Tidsregistreringer"
     }
   },
   "importRun": {
@@ -1128,7 +1132,8 @@
       "invited": "Inviteret",
       "notInvited": "Ikke inviteret",
       "conflicts": "Åbne konflikter",
-      "deletedInSource": "Slettet i kilden"
+      "deletedInSource": "Slettet i kilden",
+      "timeEntries": "Tidsregistreringer"
     },
     "failedTitle": "Importen fejlede",
     "failedLede": "Alt til og med sidste færdige batch er gemt. Ret årsagen, og prøv igen; kørslen fortsætter uden dubletter.",
@@ -1184,7 +1189,8 @@
       "kind": "Slags",
       "created": "Oprettet",
       "updated": "Opdateret",
-      "conflicts": "Konflikter"
+      "conflicts": "Konflikter",
+      "timeEntries": "Tidsregistreringer"
     },
     "kind": {
       "dryRun": "Prøvekørsel",

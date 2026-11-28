@@ -1050,11 +1050,14 @@
       "parentLoops_one": "{{count}} item is in a parent loop and becomes a top-level issue.",
       "parentLoops_other": "{{count}} items are in a parent loop and become top-level issues.",
       "skippedByScope_one": "{{count}} item is left out by the scope.",
-      "skippedByScope_other": "{{count}} items are left out by the scope."
+      "skippedByScope_other": "{{count}} items are left out by the scope.",
+      "longDays_one": "On {{count}} day someone logged more than 24 hours. Kupro keeps the time as the source recorded it.",
+      "longDays_other": "On {{count}} days someone logged more than 24 hours. Kupro keeps the time as the source recorded it."
     },
     "noWarnings": "Nothing to look at: every item has a place.",
     "examples": "e.g. {{list}}",
     "alsoCopied": "Also copied: {{comments}} comments, {{changes}} history entries, {{sprints}} sprints, {{labels}} labels.",
+    "worklogs": "{{entries}} worklogs become time entries; {{summed}} stay summed in the issue's details, as they are by someone skipped, or time registration is off.",
     "foldBottom": "Keep the top",
     "foldBottomTrade": "Top-level items stay on the delivery plan. The bottom level's grouping becomes a relates link.",
     "foldTop": "Fold the top",
@@ -1092,7 +1095,8 @@
       "sprints": "New sprints",
       "effort": "Effort",
       "comments": "Comments",
-      "attachments": "Attachments"
+      "attachments": "Attachments",
+      "timeEntries": "Time entries"
     }
   },
   "importRun": {
@@ -1128,7 +1132,8 @@
       "invited": "Invited",
       "notInvited": "Not invited",
       "conflicts": "Open conflicts",
-      "deletedInSource": "Deleted in the source"
+      "deletedInSource": "Deleted in the source",
+      "timeEntries": "Time entries"
     },
     "failedTitle": "The import failed",
     "failedLede": "Everything up to the last finished batch is kept. Fix the cause and try again; the run resumes without duplicates.",
@@ -1184,7 +1189,8 @@
       "kind": "Kind",
       "created": "Created",
       "updated": "Updated",
-      "conflicts": "Conflicts"
+      "conflicts": "Conflicts",
+      "timeEntries": "Time entries"
     },
     "kind": {
       "dryRun": "Dry run",

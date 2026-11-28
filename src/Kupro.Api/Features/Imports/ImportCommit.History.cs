@@ -357,21 +357,31 @@ public sealed partial class ImportCommit
     /// </summary>
     private async Task<Dictionary<string, int>> HeldMinutesAsync(SnapshotReader snapshot, CancellationToken ct)
     {
-        var people = _header.People.DistinctBy(p => p.Id).ToDictionary(p => p.Id, StringComparer.Ordinal);
+        var holds = Holds();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var held = new Dictionary<string, int>(StringComparer.Ordinal);
         await foreach (var worklog in snapshot.ReadWorklogsAsync(ct))
         {
-            if (seen.Add(worklog.Id) && worklog.Author is { } author
-                && (_mapping.People.TryGetValue(author, out var target)
-                    ? target.Action != PersonAction.Skip
-                    : people.GetValueOrDefault(author) is { Bot: false }))
+            if (seen.Add(worklog.Id) && holds(worklog))
             {
                 held[worklog.Item] = held.GetValueOrDefault(worklog.Item) + worklog.Minutes;
             }
         }
 
         return held;
+    }
+
+    /// <summary>
+    /// Whether a worklog becomes an entry: someone logged it and the owner didn't skip them, by the mapping or, for
+    /// someone it doesn't name, the default it would propose (bots skipped).
+    /// </summary>
+    private Func<SourceWorklog, bool> Holds()
+    {
+        var people = _header.People.DistinctBy(p => p.Id).ToDictionary(p => p.Id, StringComparer.Ordinal);
+        return worklog => worklog.Author is { } author
+            && (_mapping.People.TryGetValue(author, out var target)
+                ? target.Action != PersonAction.Skip
+                : people.GetValueOrDefault(author) is { Bot: false });
     }
 
     private async Task<bool> TimeRegistrationAsync(CancellationToken ct)

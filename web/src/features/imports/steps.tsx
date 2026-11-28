@@ -752,6 +752,7 @@ export function ReviewStep({ mapping, plan, decided, go, steps, description }: S
         ['deletedInSource', plan.deletedInSource],
         ['parentLoops', plan.parentLoops],
         ['skippedByScope', plan.skippedByScope],
+        ['longDays', plan.longDays],
       ] as const).filter(([, c]) => c && c.count > 0)
     : [];
 
@@ -821,6 +822,9 @@ export function ReviewStep({ mapping, plan, decided, go, steps, description }: S
               labels: n(plan.labelsToCreate ?? 0),
             })}
           </p>
+          {(plan.worklogs ?? 0) + (plan.worklogsSummed ?? 0) > 0 && (
+            <p className="text-sm text-mute">{t('importWizard.worklogs', { entries: n(plan.worklogs ?? 0), summed: n(plan.worklogsSummed ?? 0) })}</p>
+          )}
         </>
       )}
     </>

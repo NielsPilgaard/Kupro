@@ -596,7 +596,10 @@ internal static class ImportCommands
                 ("Update", Count(plan.Update)), ("Conflicts", Count(plan.Conflicts)), ("Keys taken", Count(plan.KeysTaken)), ("Re-parented", Count(plan.Reparented)),
                 ("Skipped", Count(plan.SkippedByScope)), ("Deleted there", Count(plan.DeletedInSource)), ("Statuses to check", Count(plan.StatusesToReview)),
                 ("Project keys taken", plan.ProjectKeysTaken is { Count: > 0 } keys ? string.Join(", ", keys) : null),
-                ("Comments", plan.Comments?.ToString(CultureInfo.InvariantCulture)), ("Attachments", plan.Attachments?.ToString(CultureInfo.InvariantCulture)));
+                ("Comments", plan.Comments?.ToString(CultureInfo.InvariantCulture)), ("Attachments", plan.Attachments?.ToString(CultureInfo.InvariantCulture)),
+                ("Time entries", plan.Worklogs is > 0 ? plan.Worklogs.Value.ToString(CultureInfo.InvariantCulture) : null),
+                ("Worklogs summed", plan.WorklogsSummed is > 0 ? $"{plan.WorklogsSummed} (by someone skipped, or time registration is off)" : null),
+                ("Days over 24 h", Count(plan.LongDays)));
             return;
         }
 
@@ -604,6 +607,7 @@ internal static class ImportCommands
         await c.Out.ItemAsync(detail, ("Run", run.Id.ToString()), ("State", Cli.Dashed(run.State.ToString()!)),
             ("Created", counts?.Issues?.ToString(CultureInfo.InvariantCulture)), ("Updated", counts?.Updated?.ToString(CultureInfo.InvariantCulture)),
             ("Comments", counts?.Comments?.ToString(CultureInfo.InvariantCulture)), ("Attachments", counts?.Attachments?.ToString(CultureInfo.InvariantCulture)),
+            ("Time entries", counts?.TimeEntries is > 0 ? counts.TimeEntries.Value.ToString(CultureInfo.InvariantCulture) : null),
             ("Conflicts", Count(detail.Report?.Conflicts)), ("Deleted there", Count(detail.Report?.DeletedInSource)),
             ("Per project", detail.Report?.Projects is { Count: > 0 } projects
                 ? string.Join("; ", projects.Select(p => $"{p.Project}: {p.Imported} imported, {p.Reparented} re-parented, {p.Conflicts} conflicts"))
