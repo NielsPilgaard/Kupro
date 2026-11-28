@@ -511,7 +511,7 @@ function NextLine({ step }: { step?: StepId }) {
   );
 }
 
-type RowKey = 'create' | 'update' | 'skipped' | 'reparented' | 'promoted' | 'checklists' | 'placeholders' | 'invites' | 'labels' | 'sprints' | 'effort' | 'comments' | 'attachments';
+type RowKey = 'create' | 'update' | 'skipped' | 'reparented' | 'promoted' | 'checklists' | 'placeholders' | 'invites' | 'labels' | 'sprints' | 'effort' | 'comments' | 'attachments' | 'timeEntries';
 
 /** The live dry run (design guide: split pane with live rail). */
 function Rail(props: {
@@ -563,6 +563,7 @@ function Rail(props: {
         ['effort', plan.effortHours, previous?.effortHours, hours(plan.effortHours)],
         ['comments', plan.comments, previous?.comments],
         ['attachments', plan.attachments, previous?.attachments, `${number.format(plan.attachments)} · ${formatBytes(plan.attachmentBytes, i18n.language)}`],
+        ...(plan.worklogs ? [['timeEntries', plan.worklogs, previous?.worklogs] as [RowKey, number, number | undefined]] : []),
       ]
     : [];
 
@@ -984,7 +985,7 @@ function RunView({ workspace, importId, runId, total, first }: { workspace: stri
           <span className="text-sm text-mute">{done ? t('importRun.railNote') : t('importRun.lede')}</span>
           {run?.counts && (
             <dl className="grid grid-cols-[1fr_auto] gap-x-2.5 gap-y-1 text-sm">
-              {(['comments', 'attachments', 'changes', 'updated', 'renumbered'] as const)
+              {(['comments', 'attachments', 'timeEntries', 'changes', 'updated', 'renumbered'] as const)
                 .filter((k) => run.counts?.[k])
                 .map((k) => (
                   <span key={k} className="contents">

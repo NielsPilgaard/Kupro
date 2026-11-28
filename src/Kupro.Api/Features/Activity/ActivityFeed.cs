@@ -46,6 +46,7 @@ public sealed record FeedMeeting(Guid MeetingId, Guid ProposalId, string? Snippe
 /// <param name="Meeting">Set when the meeting agent made this change.</param>
 /// <param name="SourceActor">For an import: the source's name for someone the owner skipped, whose entries the shared placeholder holds.</param>
 /// <param name="Source">For an import: the source kind it came from (<c>jira</c>, <c>azure-devops</c>...), for "via Jira import".</param>
+/// <param name="Said">For a change made by voice: the words the person said.</param>
 public sealed record FeedItem(
     Guid Id,
     FeedItemKind Kind,
@@ -57,7 +58,8 @@ public sealed record FeedItem(
     DateTimeOffset? EditedAt,
     FeedMeeting? Meeting = null,
     string? SourceActor = null,
-    string? Source = null);
+    string? Source = null,
+    string? Said = null);
 
 /// <summary>An issue's history and comments merged in time order (task 008).</summary>
 public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
@@ -121,7 +123,7 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
             .SelectMany(i => db.Activity
                 .Where(a => a.IssueId == i.Id && (!paged || EF.Functions.LessThan(ValueTuple.Create(a.CreatedAt, a.Id), ValueTuple.Create(beforeAt, beforeId))))
                 .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit))
-            .Select(a => new { a.Id, a.IssueId, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId })
+            .Select(a => new { a.Id, a.IssueId, a.Kind, a.ActorId, a.Via, a.Data, a.CreatedAt, a.ProposalId, a.Said })
             .ToListAsync(ct);
         var comments = await db.Issues.Where(i => issueIds.Contains(i.Id))
             .SelectMany(i => db.Comments
@@ -228,7 +230,7 @@ public sealed class ActivityFeed(IDbContextFactory<KuproDbContext> dbFactory)
             }
 
             var sourceActor = data is { ValueKind: JsonValueKind.Object } d ? Text(d, "sourceActor") : null;
-            items.Add((e.IssueId, new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId), sourceActor, SourceOf(e.IssueId, e.Via))));
+            items.Add((e.IssueId, new FeedItem(e.Id, kind, actor, e.Via, e.CreatedAt, changes, null, null, Meeting(e.ProposalId), sourceActor, SourceOf(e.IssueId, e.Via), e.Said)));
         }
 
         foreach (var c in comments)

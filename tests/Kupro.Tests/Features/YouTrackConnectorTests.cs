@@ -82,6 +82,9 @@ public sealed class YouTrackConnectorTests
             a => a.Item.ShouldBe("2-2"),
             a => a.Url.ShouldBe("https://acme.youtrack.cloud/api/files/7-1?sign=ok"));
         records.OfType<SourceComment>().Select(c => (c.Id, c.Author, c.Body)).ShouldBe([("4-1", "1-1", "Reproduced")], "a deleted comment is left out");
+        records.OfType<SourceWorklog>().Select(w => (w.Id, w.Item, w.Author, w.Date, w.Minutes, w.Note)).ShouldBe(
+            [("9-1", "2-2", "1-1", new DateOnly(2025, 3, 4), 25, "Repro"), ("9-2", "2-2", "1-2", new DateOnly(2025, 3, 5), 5, null)]);
+        (await Connect(youtrack).DescribeAsync(Ct)).Fields.Single(f => f.Id == YouTrackConnector.SpentTimeField).SumsWorklogs.ShouldBeTrue();
         records.OfType<SourceRelation>().Select(r => (r.From, r.To, r.Kind)).ShouldBe(
             [("2-3", "2-2", RelationKinds.Blocks), ("2-2", "2-3", RelationKinds.Relates), ("2-3", "2-1", RelationKinds.Duplicates)], ignoreOrder: true,
             "each link once, read from the outward side (is required for, is duplicated by); the subtask link is the parent");
@@ -239,6 +242,12 @@ public sealed class YouTrackConnectorTests
         bug["comments"] = new JsonArray(
             new JsonObject { ["id"] = "4-1", ["text"] = "Reproduced", ["author"] = User("1-1", "sofie", "Sofie Larsen"), ["created"] = Ms(T0.AddDays(1)), ["deleted"] = false },
             new JsonObject { ["id"] = "4-2", ["text"] = "Oops", ["author"] = User("1-1", "sofie", "Sofie Larsen"), ["created"] = Ms(T0.AddDays(1)), ["deleted"] = true });
+        bug["timeTracking"] = new JsonObject
+        {
+            ["workItems"] = new JsonArray(
+                new JsonObject { ["id"] = "9-1", ["author"] = User("1-1", "sofie", "Sofie Larsen"), ["date"] = Ms(new DateTimeOffset(2025, 3, 4, 0, 0, 0, TimeSpan.Zero)), ["duration"] = new JsonObject { ["minutes"] = 25 }, ["text"] = " Repro ", ["created"] = Ms(T0.AddDays(3)) },
+                new JsonObject { ["id"] = "9-2", ["author"] = User("1-2", "jonas", "Jonas Holm"), ["date"] = Ms(new DateTimeOffset(2025, 3, 5, 0, 0, 0, TimeSpan.Zero)), ["duration"] = new JsonObject { ["minutes"] = 5 } }),
+        };
         bug["attachments"] = new JsonArray(new JsonObject
         {
             ["id"] = "7-1",

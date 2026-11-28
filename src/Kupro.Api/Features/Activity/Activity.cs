@@ -49,6 +49,9 @@ public sealed class ActivityEntry : ITenantOwned
     /// <summary>Meeting proposal this change applied or undid (task 015); links the entry to its transcript snippet.</summary>
     public Guid? ProposalId { get; set; }
 
+    /// <summary>What the person said to voice control to make this change (task 036); null otherwise.</summary>
+    public string? Said { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -62,6 +65,7 @@ internal sealed class ActivityEntryConfiguration : IEntityTypeConfiguration<Acti
         builder.Property(a => a.Via).HasConversion<string>().HasMaxLength(8);
         builder.Property(a => a.Kind).HasMaxLength(32);
         builder.Property(a => a.Data).HasColumnType("jsonb");
+        builder.Property(a => a.Said).HasMaxLength(WorkspaceAccessFilter.SaidMaxLength);
         builder.HasOne<MeetingProposal>().WithMany().HasWorkspaceForeignKey(a => a.ProposalId).OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(a => new { a.WorkspaceId, a.IssueId, a.CreatedAt });
     }
@@ -93,6 +97,7 @@ public sealed class ActivityLog(WorkspaceContext workspace, TimeProvider clock)
             Kind = kind,
             Data = data is null ? null : JsonSerializer.Serialize(data, Json),
             ProposalId = workspace.ProposalId,
+            Said = workspace.Surface == Surface.Voice ? workspace.Said : null,
             CreatedAt = clock.GetUtcNow(),
         });
 

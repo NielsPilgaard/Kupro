@@ -109,6 +109,9 @@ public sealed class MeetingProposal : ITenantOwned
 
     public double Confidence { get; set; }
 
+    /// <summary>The language model that proposed it; null for keyword matching. Suggest-mode stats split by it (ADR-022).</summary>
+    public string? Model { get; set; }
+
     /// <summary>Transcript words that triggered the proposal; cleared with the transcript.</summary>
     public string? Snippet { get; set; }
 
@@ -176,6 +179,7 @@ internal sealed class MeetingConfiguration :
         builder.Property(p => p.Value).HasMaxLength(4000);
         builder.Property(p => p.Before).HasMaxLength(4000);
         builder.Property(p => p.Snippet).HasMaxLength(1000);
+        builder.Property(p => p.Model).HasMaxLength(200);
         builder.HasIndex(p => new { p.SessionId, p.CreatedAt });
         builder.HasIndex(p => new { p.WorkspaceId, p.Operation });
     }

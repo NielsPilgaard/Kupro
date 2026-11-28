@@ -36,6 +36,12 @@ public sealed class WorkspaceAccessFilter(WorkspaceService workspaces, Workspace
     /// <summary>Which client sent the request: <c>web</c>, <c>cli</c> or <c>mcp</c>; default <c>api</c>.</summary>
     public const string ClientHeader = "X-Kupro-Client";
 
+    /// <summary>With <c>X-Kupro-Client: voice</c>: what the person said, percent-encoded (task 036).</summary>
+    public const string SaidHeader = "X-Kupro-Said";
+
+    /// <summary>As long as a meeting proposal's snippet.</summary>
+    public const int SaidMaxLength = 1000;
+
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         if (context.RouteData.Values[RouteKey] is not string slug)
@@ -89,6 +95,18 @@ public sealed class WorkspaceAccessFilter(WorkspaceService workspaces, Workspace
             workspaceContext.Surface = surface;
         }
 
+        if (workspaceContext.Surface == Surface.Voice && Said(http.Request.Headers[SaidHeader]) is { } said)
+        {
+            workspaceContext.Said = said;
+        }
+
         await next();
+    }
+
+    /// <summary>Decoded, trimmed and cut to <see cref="SaidMaxLength"/>; null when empty.</summary>
+    private static string? Said(string? header)
+    {
+        var said = string.IsNullOrWhiteSpace(header) ? "" : Uri.UnescapeDataString(header).Trim();
+        return said.Length == 0 ? null : said[..Math.Min(said.Length, SaidMaxLength)];
     }
 }

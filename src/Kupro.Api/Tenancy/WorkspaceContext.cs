@@ -32,6 +32,9 @@ public sealed class WorkspaceContext
     /// <summary>Client surface, from the <c>X-Kupro-Client</c> header; MCP tools set it in-process.</summary>
     public Surface Surface { get; set; }
 
+    /// <summary>With <see cref="Surface.Voice"/>: the words the person said, from <c>X-Kupro-Said</c>, for the activity feed.</summary>
+    public string? Said { get; set; }
+
     /// <summary>Meeting proposal being applied while <see cref="ActAs"/> is in effect (task 015).</summary>
     public Guid? ProposalId { get; private set; }
 

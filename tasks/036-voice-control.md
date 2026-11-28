@@ -28,7 +28,7 @@ purpose: 'Implementation spec for task 036.'
   - With one: unlimited.
 - **Order**: product scope change, prototypes and the owner's pick are done (01 and 03, see
   [Prototypes](#prototypes-before-any-web-code)). The API, the preference, the CLI and the web are built (see
-  [Progress](#progress)); left are the measurements, a Playwright mobile run and the activity-feed snippet.
+  [Progress](#progress)); left are the measurements and a Playwright mobile run.
 
 ## Progress
 
@@ -65,7 +65,10 @@ purpose: 'Implementation spec for task 036.'
       budget bugs from the per-feature ledger rows, fixed on merge: the budget check now sums Kupro's rows, and the
       80/100 % warnings claim only the meetings row (regression test in `VoiceTests`).
 - [ ] Measure the 3 s p50 from release to card on Scaleway defaults (OQ-1), and a Playwright mobile run at 360 px.
-- [ ] The transcript as the snippet on the activity entry (changes already show "via voice").
+- [x] What was said on the activity entry: the web sends the operation's words in `X-Kupro-Said` (percent-encoded)
+      next to `X-Kupro-Client: voice`; the API keeps it on the entry (`activity.said`, 1000 characters) only for the
+      voice surface, and the feed returns it as `said`, quoted under the change. A voice comment needs no quote: its
+      body is what was said.
 
 Different from the spec, on purpose:
 
@@ -78,6 +81,9 @@ Different from the spec, on purpose:
   claimed on the meetings row.
 - **Apply without asking** is stored on the user (`voiceAutoApply`), like the button style, so it follows the person
   across devices.
+- **What was said** comes in a header, not in the issue request bodies, which every surface shares. It stays on the
+  entry like a comment does, rather than being cleared with a meeting transcript: the person said it to make that
+  change.
 - **Navigation targets**: issue, my issues, a project's list or board (optionally one person's issues: the project
   route gained an `assignee` search parameter), sprints (with the sprint asked for), and the delivery plan.
 

@@ -254,6 +254,14 @@ internal sealed partial class FakeJira : HttpMessageHandler
                         ["total"] = issue.Comments.Count,
                         ["comments"] = Array(issue.Comments.Skip(start).Take(size)),
                     });
+                case "/worklog":
+                    return Json(new JsonObject
+                    {
+                        ["startAt"] = start,
+                        ["maxResults"] = size,
+                        ["total"] = issue.Worklogs.Count,
+                        ["worklogs"] = Array(issue.Worklogs.Skip(start).Take(size)),
+                    });
             }
         }
 
@@ -307,7 +315,7 @@ internal sealed partial class FakeJira : HttpMessageHandler
     [GeneratedRegex(@"^rest/api/(?<api>\d)/project/(?<id>\d+)/(?<what>statuses|versions)$")]
     private static partial Regex ProjectPath();
 
-    [GeneratedRegex(@"^rest/api/(?<api>\d)/issue/(?<id>[^/]+)(?<what>/changelog|/comment|/remotelink|)$")]
+    [GeneratedRegex(@"^rest/api/(?<api>\d)/issue/(?<id>[^/]+)(?<what>/changelog|/comment|/worklog|/remotelink|)$")]
     private static partial Regex IssuePath();
 
     [GeneratedRegex(@"^rest/agile/1\.0/sprint/(\d+)$")]
@@ -326,6 +334,7 @@ internal sealed class FakeJiraIssue(FakeJira jira, string id, string key, string
     public JsonObject Fields { get; } = [];
     public List<JsonObject> Histories { get; } = [];
     public List<JsonObject> Comments { get; } = [];
+    public List<JsonObject> Worklogs { get; } = [];
     public List<JsonObject> RemoteLinks { get; } = [];
 
     /// <summary>A Confluence page or web link, in the <c>remotelink</c> shape.</summary>
@@ -417,6 +426,13 @@ internal sealed class FakeJiraIssue(FakeJira jira, string id, string key, string
         return this;
     }
 
+    /// <summary>Time logged; <paramref name="started"/> is as Jira sends it, with the offset it recorded.</summary>
+    public FakeJiraIssue Worklog(string worklogId, JsonObject author, string started, long seconds, JsonNode? comment = null)
+    {
+        Worklogs.Add(new JsonObject { ["id"] = worklogId, ["author"] = author, ["started"] = started, ["timeSpentSeconds"] = seconds, ["comment"] = comment, ["created"] = started });
+        return this;
+    }
+
     /// <summary>The issue as a search or issue GET returns it; the changelog and comments cut at <paramref name="embedded"/>.</summary>
     public JsonObject Json(int embedded, bool changelog)
     {
@@ -428,6 +444,13 @@ internal sealed class FakeJiraIssue(FakeJira jira, string id, string key, string
             ["maxResults"] = embedded,
             ["total"] = Comments.Count,
             ["comments"] = new JsonArray([.. Comments.Take(embedded).Select(c => c.DeepClone())]),
+        };
+        fields["worklog"] = new JsonObject
+        {
+            ["startAt"] = 0,
+            ["maxResults"] = embedded,
+            ["total"] = Worklogs.Count,
+            ["worklogs"] = new JsonArray([.. Worklogs.Take(embedded).Select(w => w.DeepClone())]),
         };
         var issue = new JsonObject { ["id"] = Id, ["key"] = Key, ["fields"] = fields };
         if (changelog)

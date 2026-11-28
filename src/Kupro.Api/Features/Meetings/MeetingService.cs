@@ -276,11 +276,12 @@ public sealed partial class MeetingService(
         };
 
         var context = await ContextAsync(db, meeting, recent, text, ct);
-        var (extracted, kind, spent) = await ExtractAsync(context, ct);
+        var (extracted, model, spent) = await ExtractAsync(context, ct);
+        var kind = model is null ? ExtractorKind.Keyword : ExtractorKind.Model;
         var heard = new List<MeetingProposal>();
         foreach (var action in extracted)
         {
-            if (await ProposeAsync(db, meeting, segment, projectKey, action, ct) is { } proposal)
+            if (await ProposeAsync(db, meeting, segment, projectKey, action, model, ct) is { } proposal)
             {
                 heard.Add(proposal);
             }
@@ -444,19 +445,47 @@ public sealed partial class MeetingService(
         var settings = await SettingsAsync(db, ct);
         var decided = await db.MeetingProposals.AsNoTracking()
             .Where(p => !p.AutoApplied && p.Status != ProposalStatus.Pending)
-            .GroupBy(p => p.Operation)
-            .Select(g => new OperationStats(
-                g.Key,
-                g.Count(),
-                g.Count(p => p.Status != ProposalStatus.Rejected && !p.Edited),
-                g.Count(p => p.Status != ProposalStatus.Rejected && p.Edited),
-                g.Count(p => p.Status == ProposalStatus.Rejected)))
+            .GroupBy(p => new { p.Model, p.Operation })
+            .Select(g => new
+            {
+                g.Key.Model,
+                Stats = new OperationStats(
+                    g.Key.Operation,
+                    g.Count(),
+                    g.Count(p => p.Status != ProposalStatus.Rejected && !p.Edited),
+                    g.Count(p => p.Status != ProposalStatus.Rejected && p.Edited),
+                    g.Count(p => p.Status == ProposalStatus.Rejected)),
+            })
             .ToListAsync(ct);
-        var stats = Enum.GetValues<ProposalOperation>()
-            .Select(op => decided.FirstOrDefault(s => s.Operation == op) ?? new OperationStats(op, 0, 0, 0, 0)).ToList();
+        var stats = AllOperations(decided.Select(d => d.Stats).GroupBy(d => d.Operation).Select(g => new OperationStats(
+            g.Key, g.Sum(d => d.Decided), g.Sum(d => d.ApprovedUnchanged), g.Sum(d => d.Edited), g.Sum(d => d.Rejected))));
+        var byModel = decided.GroupBy(d => d.Model).OrderBy(g => g.Key is null).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => new ModelStats(g.Key, g.Key is { } m && router.Tested(m), AllOperations(g.Select(d => d.Stats))))
+            .ToList();
+        var current = await ProposalModelAsync("", ct);
+        var byLanguage = new Dictionary<string, ProposalModelInfo>();
+        foreach (var language in await router.LanguagesAsync(AiCapability.MeetingProposals, ct))
+        {
+            if (await ProposalModelAsync(language, ct) is { } info && info != current)
+            {
+                byLanguage[language] = info;
+            }
+        }
+
         return new MeetingSettingsResponse(settings.DefaultMode, settings.FullAutoEnabled, settings.FullAutoOperations,
-            settings.TranscriptRetentionDays, stats, await budget.UsageAsync(ct));
+            settings.TranscriptRetentionDays, stats, byModel, current, byLanguage, await budget.UsageAsync(ct));
     }
+
+    /// <summary>The model a meeting in this language proposes with; null for keyword matching.</summary>
+    private async Task<ProposalModelInfo?> ProposalModelAsync(string language, CancellationToken ct) =>
+        await router.ResolveAsync(AiCapability.MeetingProposals, language, ct) is { Rejected: false, Route.Model: { } model }
+            ? new ProposalModelInfo(model, router.Tested(model))
+            : null;
+
+    /// <summary>One row per operation, in enum order, zeros where nothing was decided.</summary>
+    private static List<OperationStats> AllOperations(IEnumerable<OperationStats> decided) =>
+        Enum.GetValues<ProposalOperation>()
+            .Select(op => decided.FirstOrDefault(s => s.Operation == op) ?? new OperationStats(op, 0, 0, 0, 0)).ToList();
 
     /// <summary>This month's meeting hours; null when the server sets no AI budget.</summary>
     public Task<MeetingUsageResponse?> UsageAsync(CancellationToken ct) => budget.UsageAsync(ct);
@@ -727,7 +756,7 @@ public sealed partial class MeetingService(
 
     /// <summary>Turns an extracted action into a proposal, or null when its value can't be used.</summary>
     private async Task<MeetingProposal?> ProposeAsync(KuproDbContext db, MeetingSession meeting, TranscriptSegment segment,
-        string projectKey, ExtractedAction action, CancellationToken ct)
+        string projectKey, ExtractedAction action, string? model, CancellationToken ct)
     {
         if (await NormalizeValueAsync(db, meeting, action.Operation, action.Value, ct) is not { } value)
         {
@@ -753,6 +782,7 @@ public sealed partial class MeetingService(
             Value = value,
             Before = issueId is { } id ? await CurrentAsync(db, id, action.Operation, ct) : null,
             Confidence = issueId is null ? Math.Min(action.Confidence, 0.5) : action.Confidence,
+            Model = model is null ? null : Truncate(model, 200),
             Snippet = Truncate(action.Snippet.Length > 0 ? action.Snippet : segment.Text, 1000),
             Status = ProposalStatus.Pending,
             CreatedAt = clock.GetUtcNow(),
@@ -774,18 +804,18 @@ public sealed partial class MeetingService(
     /// keyword matching instead (ADR-015 IMP-007). So does a spent AI budget: the feature gets less clever, it never
     /// disappears (ADR-013). Every model call's tokens are metered.
     /// </summary>
-    private async Task<(IReadOnlyList<ExtractedAction> Actions, ExtractorKind Kind, bool Spent)> ExtractAsync(
+    private async Task<(IReadOnlyList<ExtractedAction> Actions, string? Model, bool Spent)> ExtractAsync(
         ExtractionContext context, CancellationToken ct)
     {
         // No model anywhere, or the workspace's own key was refused: keyword matching, never Kupro's key (ADR-022).
         if (await router.ResolveAsync(AiCapability.MeetingProposals, context.Language, ct) is not { Rejected: false } route)
         {
-            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, null, false);
         }
 
         if (!route.OwnKey && await budget.CheckAsync(ct) != BudgetState.Available)
         {
-            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, true);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, null, true);
         }
 
         try
@@ -796,18 +826,18 @@ public sealed partial class MeetingService(
                 await budget.RecordTokensAsync(usage, route, ct);
             }
 
-            return (extraction.Actions, extraction.Usage is null ? ExtractorKind.Keyword : ExtractorKind.Model, false);
+            return (extraction.Actions, extraction.Usage is null ? null : route.Route.Model, false);
         }
         catch (HttpRequestException ex) when (route.OwnKey && Refused(ex))
         {
             await connections.RejectAsync(route.ConnectionId!.Value, $"{(int)ex.StatusCode!.Value} {ex.StatusCode}", ct);
-            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, null, false);
         }
         catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException
             || (ex is OperationCanceledException && !ct.IsCancellationRequested))
         {
             LogExtractorFailed(logger, ex);
-            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, null, false);
         }
     }
 

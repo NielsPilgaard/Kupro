@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Kupro.Api.Features.Imports;
 
 /// <summary>A record the import didn't create that points at one of its issues. Undo waits until it is moved or deleted.</summary>
-/// <param name="Kind"><c>comment</c>, <c>attachment</c>, <c>relation</c> or <c>child</c>.</param>
+/// <param name="Kind"><c>comment</c>, <c>attachment</c>, <c>relation</c>, <c>child</c> or <c>time</c>.</param>
 public sealed record UndoBlocker(string Kind, string IssueKey, Guid Id);
 
 /// <summary>What undoing would lose and what stands in its way. Lists stop at <see cref="ImportService.MaxListed"/>; the counts don't.</summary>
@@ -164,10 +164,15 @@ public sealed partial class ImportService
             .Join(keyOf, r => r.SourceId, i => i.Id, (r, i) => new BlockerRow { Kind = "relation", IssueKey = i.Key, Id = r.Id });
         var children = keyOf.Where(i => i.ParentId != null && issues.Contains(i.ParentId.Value) && !issues.Contains(i.Id))
             .Select(i => new BlockerRow { Kind = "child", IssueKey = i.Key, Id = i.Id });
+        // Time someone logged in Kupro, or an imported entry someone changed since: working-time records (ADR-021).
+        var time = db.TimeEntries.AsNoTracking()
+            .Where(e => issues.Contains(e.IssueId) && (!Ours(db, importId, ImportedKinds.Worklog).Contains(e.Id)
+                || db.TimeEntryChanges.Any(c => c.EntryId == e.Id && c.Via != Surface.Import)))
+            .Join(keyOf, e => e.IssueId, i => i.Id, (e, i) => new BlockerRow { Kind = "time", IssueKey = i.Key, Id = e.Id });
 
         var blockers = new List<UndoBlocker>();
         var count = 0;
-        foreach (var query in new[] { comments, files, relations, children })
+        foreach (var query in new[] { comments, files, relations, children, time })
         {
             count += await query.CountAsync(ct);
             blockers.AddRange((await query.OrderBy(b => b.IssueKey).Take(MaxListed - blockers.Count).ToListAsync(ct)).Select(b => new UndoBlocker(b.Kind, b.IssueKey, b.Id)));
@@ -183,6 +188,10 @@ public sealed partial class ImportService
         // Files first: their rows would outlive the issues as orphans. Parents next, so the issues delete in any order.
         await db.Attachments.Where(a => Ours(db, importId, ImportedKinds.Attachment).Contains(a.Id)).ExecuteDeleteAsync(ct);
         await db.Issues.Where(i => issues.Contains(i.Id)).ExecuteUpdateAsync(s => s.SetProperty(i => i.ParentId, (Guid?)null), ct);
+        // Imported time entries hold the issue (restrict), so they and their history go before it.
+        var entries = Ours(db, importId, ImportedKinds.Worklog);
+        await db.TimeEntryChanges.Where(c => entries.Contains(c.EntryId)).ExecuteDeleteAsync(ct);
+        await db.TimeEntries.Where(e => entries.Contains(e.Id)).ExecuteDeleteAsync(ct);
 
         // Comments, the feed, relations, labels on them, aliases, conflicts and ledger rows go with each issue.
         var deleted = await db.Issues.Where(i => issues.Contains(i.Id)).ExecuteDeleteAsync(ct);

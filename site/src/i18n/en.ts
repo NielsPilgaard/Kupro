@@ -105,7 +105,7 @@ export const en = {
   plan: {
     eyebrow: 'Delivery plan',
     title: 'Plan the year. Ship the week.',
-    sub: 'Every project’s epics on one plan, with milestones and a capacity band that says each month “needs 4.5, has 3”. Draw an epic on the plan and it’s in the backlog. Close the last task and the plan moves.',
+    sub: 'Every project’s epics on one plan, with milestones and a capacity band that says each month “needs 4.5, has 3”. Draw an epic on the plan and it’s in the backlog. Close the last task and the plan moves. Turn on time registration, and everyone logs their hours on the issue they worked on.',
     mockLabel: 'Delivery plan: three projects from January to June, a launch milestone in April, and May over capacity',
     mockTitle: 'Delivery plan · 2027',
     viewList: 'List',
@@ -208,6 +208,7 @@ export const en = {
       { q: 'Do agents and guests need a seat?', a: 'No. Agents get their own name and token and don’t take a seat. Guests can read, comment and attach files, free for up to 5 per seat.' },
       { q: 'What happens when the trial ends?', a: 'The workspace turns read-only until you subscribe. You can still export everything. If you don’t subscribe, it is deleted 30 days later, and we email you before each step.' },
       { q: 'What if we use up the meeting hours?', a: 'The microphone stops until next month. Text sent through the API, CLI or MCP still turns into proposals with a simpler keyword matcher.' },
+      { q: 'Can we register working hours?', a: 'Yes. An owner turns on time registration for the workspace. Everyone then logs time on the issues they worked on, in the app, the CLI or through an agent, and sees their week. Every edit is kept, and owners export a month as CSV.' },
       { q: 'Can we cancel?', a: 'Yes, in the app, any time. The plan runs to the end of the month or year you paid for. We don’t refund part periods.' },
       { q: 'Non-profits and education?', a: 'The paid plan is free on request, without the meeting agent: every meeting hour costs us about €0.70 in AI fees, and a free plan pays none of it back.' },
       { q: 'Can we host it ourselves?', a: 'Yes. Kupro is open source under AGPL. Self-hosted has no seat limit; you bring your own servers and AI keys.' },
@@ -249,11 +250,11 @@ export const en = {
           { t: 'Comments, files and links', d: 'Mentions, links to other issues and inline images are rewritten to point inside Kupro.' },
           { t: 'History', d: 'Status, assignee, sprint and priority changes show with the original person and time.' },
           { t: 'Labels and components', d: 'Labels stay labels. Components become labels too, unless you untick them.' },
+          { t: 'Worklogs', d: 'With time registration on, each worklog becomes a time entry for the person who logged it, on the day they logged it. Otherwise logged work is added up in the details block.' },
         ],
         changes: [
           { t: 'One workflow', d: 'Backlog, Todo, In Progress, In Review, Done, Canceled. Your own statuses map into these.' },
           { t: 'No custom fields', d: 'Their values stay readable in a details block on each issue, and their history comes along.' },
-          { t: 'No time tracking', d: 'Logged work is added up in the details block.' },
           { t: 'Service Management', d: 'Request types, queues and SLAs stay in Jira.' },
         ],
         steps: [
@@ -409,7 +410,7 @@ export const en = {
           { t: 'Types and subtasks', d: 'Each type maps to Epic, Feature or Task; bugs keep a bug label. Subtask links become the hierarchy.' },
           { t: 'States and priorities', d: 'Resolved states are Done, or Canceled when named for dropped work, like Duplicate or Won’t fix. Show-stopper and Critical become Urgent.' },
           { t: 'Sprints', d: 'Sprints from your agile boards keep their dates. An issue in several sprints lands in the latest.' },
-          { t: 'Estimates and dates', d: 'Estimation and Due Date come across. Total spent time shows in hours in a details block.' },
+          { t: 'Estimates and dates', d: 'Estimation and Due Date come across. With time registration on, work items become time entries for the person who logged them; otherwise total spent time shows in hours in a details block.' },
           { t: 'Comments, files and links', d: 'Comments keep their author and time. Files are copied into Kupro. Depends on becomes blocks, duplicates stay duplicates, and other links relate.' },
           { t: 'History', d: 'State, assignee, priority and other field changes show with the original person and time.' },
         ],

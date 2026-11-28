@@ -174,6 +174,24 @@ public sealed class JiraConnectorTests
     }
 
     [Fact]
+    public async Task Worklogs_are_paged_in_on_the_day_jira_recorded_and_the_time_field_says_it_sums_them()
+    {
+        var jira = Cloud();
+        var connector = Connect(jira);
+        var records = await connector.ReadAsync(new ReadScope { Projects = ["10000"] }, null, Ct).ToListAsync(Ct);
+
+        jira.Requests.ShouldContain(r => r.StartsWith("GET rest/api/3/issue/10012/worklog?startAt=0", StringComparison.Ordinal));
+        jira.Requests.ShouldNotContain(r => r.Contains("issue/10013/worklog", StringComparison.Ordinal), "an issue without worklogs has them all in the search");
+        records.OfType<SourceWorklog>().Select(w => (w.Id, w.Item, w.Author, w.Date, w.Minutes, w.Note)).ShouldBe(
+        [
+            ("80001", "10012", "acc-jonas", new DateOnly(2025, 3, 3), 60, "Pairing\non the form"),
+            ("80002", "10012", "acc-sofie", new DateOnly(2025, 3, 4), 30, null),
+            ("80003", "10012", "acc-sofie", new DateOnly(2025, 3, 4), 1, null),
+        ]);
+        (await connector.DescribeAsync(Ct)).Fields.Single(f => f.Id == JiraConnector.TimeLoggedField).SumsWorklogs.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Data_center_reads_wiki_markup_epic_links_and_sprint_strings()
     {
         var jira = DataCenter();
@@ -486,7 +504,10 @@ public sealed class JiraConnectorTests
             .History("70004", Jonas(), T0.AddDays(3), ("description", "description", null, "old", null, "new"), ("Fix Version", "fixVersions", null, null, "20001", "1.0"))
             .Comment("50001", Doc(Paragraph(Text("Looks good"))), Jonas(), T0.AddDays(1))
             .Comment("50002", Doc(Paragraph(Text("Thanks"))), Sofie(), T0.AddDays(2))
-            .Comment("50003", Doc(Media("flow.png")), Sofie(), T0.AddDays(3));
+            .Comment("50003", Doc(Media("flow.png")), Sofie(), T0.AddDays(3))
+            .Worklog("80001", Jonas(), "2025-03-03T09:00:00.000+0100", 3600, Doc(Paragraph(Text("Pairing")), Paragraph(Text("on the form"))))
+            .Worklog("80002", Sofie(), "2025-03-04T00:30:00.000+0100", 1790)
+            .Worklog("80003", Sofie(), "2025-03-04T10:00:00.000+0100", 10);
         jira.AddIssue("10000", "10013", "WEB-4", "10003", "5", "Wire up gateway", T0.AddDays(5))
             .Set("parent", new JsonObject { ["id"] = "10012", ["key"] = "WEB-3" })
             .Set("resolutiondate", FakeJira.Time(T0.AddDays(5)))

@@ -44,6 +44,19 @@ public sealed record ImportPlan
     public required int AttachmentsOfUnknownSize { get; init; }
 
     public required int Changes { get; init; }
+
+    /// <summary>Worklogs a commit would write as time entries: time registration is on and someone not skipped logged them (ADR-021 Import).</summary>
+    public int Worklogs { get; init; }
+
+    /// <summary>Worklogs that stay summed in the details block: time registration is off, or someone skipped or nobody logged them.</summary>
+    public int WorklogsSummed { get; init; }
+
+    /// <summary>
+    /// Days on which one person's new entries add up to more than 24 hours. They are kept as the source recorded them;
+    /// a sample's title is the person and the day.
+    /// </summary>
+    public PlanCount LongDays { get; init; } = PlanCount.None;
+
     public required decimal EffortHours { get; init; }
     public required bool FourLevels { get; init; }
 

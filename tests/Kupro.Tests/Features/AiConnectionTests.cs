@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using Kupro.Api.Features.Ai;
@@ -13,6 +14,7 @@ using Kupro.Tests.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using CliApp = Kupro.Cli.Cli;
 
 namespace Kupro.Tests.Features;
@@ -244,6 +246,42 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
     }
 
     [Fact]
+    public async Task Approval_stats_split_by_the_model_that_proposed_and_mark_an_untested_one()
+    {
+        var (client, ws) = await WorkspaceAsync();
+        var meeting = await StartAsync(client, ws);
+        var kupros = (await SayAsync(client, ws, meeting, "KUP-1 is done.")).Proposals.ShouldHaveSingleItem();
+        await ReviewAsync(client, ws, meeting, kupros, ReviewDecision.Reject);
+        await AddAsync(client, ws, new AddAiConnectionRequest(AiProviders.ScalewayId, "scw-secret-0006",
+            UseFor: [AiCapability.MeetingProposals], ChatModel: "own-llm"));
+        var own = (await SayAsync(client, ws, meeting, "KUP-1 is done.")).Proposals.ShouldHaveSingleItem();
+        await ReviewAsync(client, ws, meeting, own, ReviewDecision.Approve);
+
+        var settings = await GetAsync<MeetingSettingsResponse>(client, $"/api/v1/workspaces/{ws}/meeting-settings");
+
+        settings.ProposalModel.ShouldBe(new ProposalModelInfo("own-llm", Tested: false));
+        settings.Stats.Single(s => s.Operation == ProposalOperation.State).ShouldBe(new OperationStats(ProposalOperation.State, 2, 1, 0, 1));
+        settings.StatsByModel.Select(m => (m.Model, m.Tested)).ShouldBe([("llm", true), ("own-llm", false)]);
+        settings.StatsByModel[0].Operations.Single(s => s.Operation == ProposalOperation.State).Rejected.ShouldBe(1);
+        settings.StatsByModel[1].Operations.Single(s => s.Operation == ProposalOperation.State).ApprovedUnchanged.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task A_language_routed_to_its_own_model_reports_that_model()
+    {
+        var (client, ws) = await WorkspaceAsync();
+        var added = await AddAsync(client, ws, new AddAiConnectionRequest(AiProviders.ScalewayId, "scw-secret-0007"));
+        (await client.PutAsJsonAsync($"/api/v1/workspaces/{ws}/ai/routes",
+            new SetAiRouteRequest(AiCapability.MeetingProposals, added.Id, Language: "da", Model: "own-llm"), Json.Options, Ct))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var settings = await GetAsync<MeetingSettingsResponse>(client, $"/api/v1/workspaces/{ws}/meeting-settings");
+
+        settings.ProposalModel.ShouldBe(new ProposalModelInfo("llm", Tested: true));
+        settings.ProposalModelByLanguage.ShouldBe(new Dictionary<string, ProposalModelInfo> { ["da"] = new("own-llm", Tested: false) });
+    }
+
+    [Fact]
     public async Task Keys_are_never_returned()
     {
         const string secret = "scw-very-secret-key-9876";
@@ -260,6 +298,54 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
         {
             body.ShouldNotContain(secret);
             body.ShouldNotContain("very-secret");
+        }
+    }
+
+    [Fact]
+    public async Task Keys_never_reach_a_log_line_or_a_trace()
+    {
+        string[] secrets = ["revoked-leak-secret-1", "scw-leak-secret-2", "bad-leak-secret-3"];
+        var logs = new AllLogs();
+        var traces = new ConcurrentQueue<string>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => traces.Enqueue(string.Join('\n', [
+                a.DisplayName, a.StatusDescription ?? "",
+                .. a.TagObjects.Select(t => $"{t.Key}={t.Value}"),
+                .. a.Events.SelectMany(e => e.Tags.Select(t => $"{e.Name} {t.Key}={t.Value}")),
+                .. a.Baggage.Select(b => $"{b.Key}={b.Value}"),
+            ])),
+        };
+        ActivitySource.AddActivityListener(listener);
+        await using var app = _app.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddLogging(l =>
+        {
+            l.AddProvider(logs);
+            l.AddFilter<AllLogs>(null, LogLevel.Trace);
+        })));
+        var (owner, ws) = await WorkspaceAsync();
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization = owner.DefaultRequestHeaders.Authorization;
+        var meeting = await StartAsync(client, ws);
+
+        var connection = await AddAsync(client, ws, new AddAiConnectionRequest(AiProviders.ScalewayId, secrets[0],
+            UseFor: [AiCapability.Transcription, AiCapability.MeetingProposals]));
+        await ShouldBeProblemAsync(await PostAudioAsync(client, ws, meeting), HttpStatusCode.Conflict, "ai_connection_rejected");
+        await SayAsync(client, ws, meeting, "KUP-1 is done.");
+        await ReadAsync<AiConnectionResponse>(await client.PutAsJsonAsync(
+            $"/api/v1/workspaces/{ws}/ai/connections/{connection.Id}/key", new SetAiConnectionKeyRequest(secrets[1]), Json.Options, Ct));
+        await AudioAsync(client, ws, meeting);
+        await SayAsync(client, ws, meeting, "KUP-1 is in review.");
+        await client.PostAsJsonAsync($"/api/v1/workspaces/{ws}/ai/connections",
+            new AddAiConnectionRequest(AiProviders.ScalewayId, secrets[2], "Second"), Json.Options, Ct);
+
+        logs.Lines.ShouldNotBeEmpty();
+        traces.ShouldNotBeEmpty();
+        foreach (var secret in secrets)
+        {
+            logs.Lines.Where(l => l.Contains(secret, StringComparison.Ordinal)).ShouldBeEmpty($"log lines with {secret}");
+            traces.Where(t => t.Contains(secret, StringComparison.Ordinal)).ShouldBeEmpty($"traces with {secret}");
         }
     }
 
@@ -359,6 +445,10 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
         await ReadAsync<TranscriptResult>(await client.PostAsJsonAsync($"/api/v1/workspaces/{ws}/meetings/{meeting.Id}/transcript",
             new TranscriptRequest(text), Json.Options, Ct));
 
+    private static async Task ReviewAsync(HttpClient client, string ws, MeetingResponse meeting, ProposalResponse proposal, ReviewDecision decision) =>
+        (await ReadAsync<List<ProposalReviewResult>>(await client.PostAsJsonAsync($"/api/v1/workspaces/{ws}/meetings/{meeting.Id}/proposals/review",
+            new ReviewProposalsRequest([new ProposalReview(proposal.Id, decision)]), Json.Options, Ct))).ShouldHaveSingleItem().Error.ShouldBeNull();
+
     private static Task<HttpResponseMessage> PostAudioAsync(HttpClient client, string ws, MeetingResponse meeting)
     {
         var body = new ByteArrayContent(new byte[64]);
@@ -381,6 +471,39 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
     }
 
     private static HttpRequestException Refused() => new("401 Unauthorized", null, HttpStatusCode.Unauthorized);
+
+    /// <summary>Every log line in every category, as text: message, each structured value, scopes and exception.</summary>
+    private sealed class AllLogs : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<string> _lines = new();
+
+        public IReadOnlyCollection<string> Lines => _lines;
+
+        public ILogger CreateLogger(string categoryName) => new Logger(_lines);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(ConcurrentQueue<string> lines) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+            {
+                lines.Enqueue(Text(state));
+                return null;
+            }
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+                Func<TState, Exception?, string> formatter) =>
+                lines.Enqueue($"{formatter(state, exception)}\n{Text(state)}\n{exception}");
+
+            private static string Text(object? state) => state is IEnumerable<KeyValuePair<string, object?>> fields
+                ? string.Join('\n', fields.Select(f => $"{f.Key}={f.Value}"))
+                : state?.ToString() ?? "";
+        }
+    }
 
     private sealed class RecordingSpeech : ISpeechToText
     {
@@ -426,7 +549,7 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
         public Task<IReadOnlyList<string>> ListAsync(string baseUrl, string key, CancellationToken ct) =>
             key.Contains("bad", StringComparison.Ordinal)
                 ? throw Refused()
-                : Task.FromResult<IReadOnlyList<string>>(["whisper-large-v3", "deepseek-v4.1-flash", "hviske-v3"]);
+                : Task.FromResult<IReadOnlyList<string>>(["whisper-large-v3", "deepseek-v4.1-flash", "hviske-v3", "own-llm"]);
     }
 
     private sealed class RecordingEmail : IEmailSender

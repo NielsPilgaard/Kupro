@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -178,6 +179,65 @@ internal sealed partial class JiraReading(Catalog catalog, Uri site)
             Created = created,
             Updated = updated > created ? updated : null,
         };
+    }
+
+    /// <summary>A worklog, on the day Jira recorded it started; null when it has no start or no time.</summary>
+    public SourceWorklog? Worklog(SourceItem item, JiraWorklog worklog) =>
+        Jira.Day(worklog.Started) is { } day && worklog.TimeSpentSeconds > 0
+            ? new SourceWorklog
+            {
+                Id = worklog.Id,
+                Item = item.Id,
+                Author = PersonId(worklog.Author),
+                Date = day,
+                Minutes = Worklogs.Minutes(worklog.TimeSpentSeconds),
+                Note = PlainText(worklog.Comment) is { Length: > 0 } note ? note : null,
+                Created = Jira.Time(worklog.Created),
+            }
+            : null;
+
+    /// <summary>A worklog comment as plain text: v2 sends a string, v3 ADF, whose paragraphs become lines.</summary>
+    private static string? PlainText(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            return value.GetString()?.Trim();
+        }
+
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var text = new StringBuilder();
+        void Walk(JsonElement node)
+        {
+            if (node.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            if (Jira.Prop(node, "text") is { } t && Jira.Prop(node, "type") == "text")
+            {
+                text.Append(t);
+            }
+
+            if (node.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var child in content.EnumerateArray())
+                {
+                    Walk(child);
+                }
+            }
+
+            if (Jira.Prop(node, "type") is "paragraph" or "hardBreak" or "heading" or "listItem")
+            {
+                text.Append('\n');
+            }
+        }
+
+        Walk(value);
+        return text.ToString().Trim();
     }
 
     /// <summary>

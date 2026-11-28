@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using Kupro.Api.Data;
+using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Email;
 using Kupro.Api.Features.Issues;
@@ -292,6 +293,36 @@ public sealed class VoiceTests(PostgresFixture postgres, StorageFixture storage)
         yes.ShouldBe(0, yesError);
         var feed = await w.Client.GetStringAsync($"/api/v1/workspaces/{w.Slug}/issues/KUP-1/activity", Ct);
         feed.ShouldContain("shipped behind a flag");
+    }
+
+    [Fact]
+    public async Task A_change_by_voice_quotes_what_was_said_in_the_activity_feed()
+    {
+        var w = await WorkspaceAsync();
+        async Task UpdateAsync(string? client, string said, IssueState state)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Patch, $"/api/v1/workspaces/{w.Slug}/issues/KUP-1")
+            {
+                Content = JsonContent.Create(new UpdateIssueRequest(State: state), options: Json.Options),
+            };
+            if (client is not null)
+            {
+                request.Headers.Add("X-Kupro-Client", client);
+            }
+
+            request.Headers.Add("X-Kupro-Said", Uri.EscapeDataString(said));
+            (await w.Client.SendAsync(request, Ct)).EnsureSuccessStatusCode();
+        }
+
+        await UpdateAsync("voice", "  Sæt KUP-1 i gang  ", IssueState.InProgress);
+        await UpdateAsync(null, "not by voice", IssueState.InReview);
+
+        var feed = await GetAsync<List<FeedItem>>(w.Client, $"/api/v1/workspaces/{w.Slug}/issues/KUP-1/activity");
+        var voice = feed.Single(f => f.Changes.Any(c => c.Field == "state" && c.To == "inProgress"));
+        voice.Via.ShouldBe(Surface.Voice);
+        voice.Said.ShouldBe("Sæt KUP-1 i gang");
+        feed.Single(f => f.Changes.Any(c => c.Field == "state" && c.To == "inReview")).Said
+            .ShouldBeNull("only a change made by voice carries what was said");
     }
 
     // ---------------------------------------------------------------- helpers

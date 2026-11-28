@@ -16,7 +16,7 @@ public sealed class YouTrackConnector : ISourceConnector
     /// <summary>Item type of an issue in a project without a Type field.</summary>
     public const string PlainIssueType = "Issue";
 
-    /// <summary>Hours spent, for the details block only (time tracking is out of v1 scope).</summary>
+    /// <summary>Hours spent, for the details block: the sum of the work items (<see cref="SourceField.SumsWorklogs"/>).</summary>
     public const string SpentTimeField = "spentTime";
 
     private const string TypeField = "Type";
@@ -35,7 +35,8 @@ public sealed class YouTrackConnector : ISourceConnector
         + "customFields(name,value(" + ValueFields + ")),tags(name),"
         + "links(direction,linkType(name,directed,aggregation,sourceToTarget,targetToSource),issues(id)),"
         + "comments(id,text,author(" + UserFields + "),created,updated,deleted),"
-        + "attachments(id,name,mimeType,size,url,author(" + UserFields + "),created,removed)";
+        + "attachments(id,name,mimeType,size,url,author(" + UserFields + "),created,removed),"
+        + "timeTracking(workItems(id,author(" + UserFields + "),date,duration(minutes),text,created))";
 
     private const string ActivityFields =
         "activities(id,timestamp,author(" + UserFields + "),field(presentation),category(id),added(" + ValueFields + "),removed(" + ValueFields + ")),hasAfter,afterCursor";
@@ -146,6 +147,7 @@ public sealed class YouTrackConnector : ISourceConnector
                 users.AddRange(issue.CustomFields.Select(f => User(f.Value)));
                 users.AddRange(issue.Comments.Select(c => c.Author));
                 users.AddRange(issue.Attachments.Select(a => a.Author));
+                users.AddRange((issue.TimeTracking?.WorkItems ?? []).Select(w => w.Author));
                 var activities = await ActivitiesAsync(issue.Id, since, ct);
                 users.AddRange(activities.Select(a => a.Author));
                 foreach (var user in users.OfType<YtUser>().Where(u => people.Add(u.Id)))
@@ -192,6 +194,20 @@ public sealed class YouTrackConnector : ISourceConnector
                 foreach (var change in Changes(issue.Id, activities))
                 {
                     yield return change;
+                }
+
+                foreach (var work in (issue.TimeTracking?.WorkItems ?? []).Where(w => w.Duration is { Minutes: > 0 }))
+                {
+                    yield return new SourceWorklog
+                    {
+                        Id = work.Id,
+                        Item = issue.Id,
+                        Author = work.Author?.Id,
+                        Date = Day(work.Date)!.Value,
+                        Minutes = work.Duration!.Minutes,
+                        Note = string.IsNullOrWhiteSpace(work.Text) ? null : work.Text.Trim(),
+                        Created = work.Created is { } at ? Time(at) : null,
+                    };
                 }
             }
         }
@@ -525,7 +541,7 @@ public sealed class YouTrackConnector : ISourceConnector
             People = people,
             ItemTypes = [.. types.Values],
             Statuses = [.. statuses.Values],
-            Fields = [.. fields.Values, new SourceField { Id = SpentTimeField, Name = "Spent time (hours)", Kind = FieldKind.Number }],
+            Fields = [.. fields.Values, new SourceField { Id = SpentTimeField, Name = "Spent time (hours)", Kind = FieldKind.Number, SumsWorklogs = true }],
         });
         return _catalog;
     }
