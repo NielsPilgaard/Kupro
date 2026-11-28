@@ -173,6 +173,7 @@ public sealed record SnapshotCounts
     public int Comments { get; init; }
     public int Attachments { get; init; }
     public int Changes { get; init; }
+    public int Worklogs { get; init; }
 }
 
 /// <summary>A Jira project, ADO project, Linear team, Trello or Monday board.</summary>
@@ -269,6 +270,12 @@ public sealed record SourceField
     public required string Name { get; init; }
     public required FieldKind Kind { get; init; }
     public IReadOnlyList<string> Options { get; set; } = [];
+
+    /// <summary>
+    /// The field sums the item's <see cref="SourceWorklog"/>s in hours. With time registration on, the worklogs become
+    /// time entries and this sum keeps only the time nobody in Kupro holds (ADR-021 Import).
+    /// </summary>
+    public bool SumsWorklogs { get; init; }
 }
 
 /// <summary>A sprint or iteration. Without <see cref="Project"/> it can span projects; import splits it per project.</summary>
@@ -387,6 +394,34 @@ public sealed record SourceComment : ISnapshotRecord
     public MarkupKind Markup { get; init; } = MarkupKind.Plain;
     public required DateTimeOffset Created { get; init; }
     public DateTimeOffset? Updated { get; init; }
+}
+
+/// <summary>
+/// Time someone logged on an item (a Jira worklog, a YouTrack work item). With time registration on it becomes a time
+/// entry for that person (ADR-021 Import). <see cref="Date"/> is the day as the source recorded it.
+/// </summary>
+public sealed record SourceWorklog : ISnapshotRecord
+{
+    public required string Id { get; init; }
+    public required string Item { get; init; }
+    public string? Author { get; init; }
+    public required DateOnly Date { get; init; }
+
+    /// <summary>Whole minutes, at least 1. Sources in seconds round to the nearest minute (<see cref="Worklogs.Minutes"/>).</summary>
+    public required int Minutes { get; init; }
+
+    public string? Note { get; init; }
+    public DateTimeOffset? Created { get; init; }
+}
+
+/// <summary>Shared rules for <see cref="SourceWorklog"/>.</summary>
+public static class Worklogs
+{
+    /// <summary>
+    /// Seconds to whole minutes, half a minute up; anything under 30 seconds is 1 minute, since an entry is at least 1
+    /// (ADR-021 Import).
+    /// </summary>
+    public static int Minutes(long seconds) => (int)Math.Max(1, (seconds + 30) / 60);
 }
 
 /// <summary>

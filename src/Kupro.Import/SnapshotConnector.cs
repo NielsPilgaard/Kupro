@@ -82,6 +82,14 @@ public sealed class SnapshotConnector(SnapshotReader snapshot) : ISourceConnecto
             }
         }
 
+        await foreach (var worklog in snapshot.ReadWorklogsAsync(ct))
+        {
+            if (inScope.Contains(worklog.Item))
+            {
+                yield return worklog;
+            }
+        }
+
         yield return new ReadCursor(header.Cursor);
     }
 

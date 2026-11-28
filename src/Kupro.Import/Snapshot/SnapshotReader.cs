@@ -91,6 +91,10 @@ public sealed class SnapshotReader : IAsyncDisposable
     public IAsyncEnumerable<SourceChange> ReadChangesAsync(CancellationToken ct = default) =>
         ReadPartAsync(SnapshotParts.Changes, SnapshotJson.Default.SourceChange, ct);
 
+    /// <summary>Time logged on items; empty for snapshots written before the part existed.</summary>
+    public IAsyncEnumerable<SourceWorklog> ReadWorklogsAsync(CancellationToken ct = default) =>
+        ReadPartAsync(SnapshotParts.Worklogs, SnapshotJson.Default.SourceWorklog, ct);
+
     /// <summary>Opens a file stored in the snapshot (<see cref="SourceAttachment.File"/>); null if it isn't there.</summary>
     public async Task<Stream?> OpenFileAsync(string path, CancellationToken ct = default)
     {
