@@ -60,9 +60,17 @@ public sealed record AddAiConnectionRequest(
     bool EuConfirmed = false,
     IReadOnlyList<AiCapability>? UseFor = null,
     string? TranscriptionModel = null,
-    string? ChatModel = null);
+    string? ChatModel = null)
+{
+    /// <summary>Without the key: MVC logs action arguments this way at trace level.</summary>
+    public override string ToString() => $"{nameof(AddAiConnectionRequest)} {{ ProviderType = {ProviderType}, Name = {Name}, Endpoint = {Endpoint} }}";
+}
 
-public sealed record SetAiConnectionKeyRequest(string Key);
+public sealed record SetAiConnectionKeyRequest(string Key)
+{
+    /// <summary>Without the key: MVC logs action arguments this way at trace level.</summary>
+    public override string ToString() => nameof(SetAiConnectionKeyRequest);
+}
 
 /// <summary>Route a capability to a connection.</summary>
 /// <param name="Language">Only this meeting language (e.g. <c>da</c>); left out, every language.</param>

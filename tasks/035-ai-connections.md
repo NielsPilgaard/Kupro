@@ -29,9 +29,8 @@ The meeting agent is the first feature on it. Voice control ([task 036](036-voic
 
 ## Progress
 
-Built against ADR-022 (accepted 2026-11-27), per-model approval stats included. Left for an agent: the key-leak
-test over logs, traces and the export. Left for a person: a second Scaleway account for the end-to-end try, and the
-legal review.
+Built against ADR-022 (accepted 2026-11-27), per-model approval stats and the key-leak tests included. What is left
+needs a person: a second Scaleway account for the end-to-end try, and the legal review.
 
 - [x] Provider registry and capabilities (`Features/Ai/AiProviders.cs`), connections and routes with a migration,
       keys encrypted with Data Protection (`AiKeys`), the router (`AiRouter`) with Kupro's server route as the default
@@ -186,8 +185,9 @@ Web screen, different from prototype 03:
 - [x] A self-hosted Whisper as a custom endpoint serves `transcription` while Scaleway serves `meeting-proposals`.
 - [x] Hosted: a custom endpoint on HTTP, or one resolving to a private or metadata address, is refused. The EU
       confirmation is required and appears in the activity log.
-- [ ] No API response, log line, trace or export contains a key. A test searches each of them for a known key.
-      (API responses and CLI output are tested; logs, traces and the export are not yet.)
+- [x] No API response, log line, trace or export contains a key. A test searches each of them for a known key.
+      The log test found MVC's trace-level line with the action's arguments; key and token request records now leave
+      the secret out of `ToString()`.
 - [x] A Member without billing access, and an agent token, get `403` on every write.
 - [x] The parity test passes, with MCP writes listed as an explicit opt-out.
 - [x] Self-hosted with only `MeetingAgent:*` configuration behaves exactly as before.

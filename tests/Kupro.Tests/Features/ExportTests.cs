@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Kupro.Api.Data;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Email;
@@ -243,6 +244,43 @@ public sealed class ExportTests(PostgresFixture postgres, StorageFixture storage
         json.RootElement.GetProperty("issueAliases")[0].GetProperty("alias").GetString().ShouldBe("#4567");
         text.ShouldNotContain(encrypted);
         text.ShouldNotContain("encryptedToken", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task An_ai_key_never_leaves_in_the_export()
+    {
+        const string secret = "scw-export-secret-4242";
+        var id = Guid.CreateVersion7();
+        var encrypted = Factory.Services.GetRequiredService<AiKeys>().Protect(id, secret);
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            scope.ServiceProvider.GetRequiredService<WorkspaceContext>().SetForSystem(_workspace.Id);
+            await using var db = await scope.ServiceProvider.GetRequiredService<IDbContextFactory<KuproDbContext>>().CreateDbContextAsync(Ct);
+            db.AiConnections.Add(new AiConnection
+            {
+                Id = id,
+                WorkspaceId = _workspace.Id,
+                ProviderType = AiProviders.ScalewayId,
+                Name = "Scaleway",
+                EncryptedKey = encrypted,
+                KeyHint = "4242",
+                CreatedById = await db.Members.Select(m => m.Id).SingleAsync(Ct),
+                CreatedAt = DateTimeOffset.UtcNow,
+            });
+            db.AiRoutes.Add(new AiRoute { Id = Guid.CreateVersion7(), WorkspaceId = _workspace.Id, Capability = AiCapability.Transcription, ConnectionId = id });
+            await db.SaveChangesAsync(Ct);
+        }
+
+        var started = await ReadAsync<ExportResponse>(await _client.PostAsync($"{Ws}/exports", null, Ct), HttpStatusCode.Accepted);
+        using var zip = await DownloadAsync((await ReadyAsync(started.Id)).DownloadUrl!);
+
+        foreach (var entry in zip.Entries.Where(e => !e.FullName.StartsWith("attachments/", StringComparison.Ordinal)))
+        {
+            await using var stream = await entry.OpenAsync(Ct);
+            var text = await new StreamReader(stream).ReadToEndAsync(Ct);
+            text.ShouldNotContain(secret, customMessage: entry.FullName);
+            text.ShouldNotContain(encrypted, customMessage: entry.FullName);
+        }
     }
 
     [Fact]
