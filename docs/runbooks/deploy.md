@@ -142,6 +142,9 @@ CLIs then warn and point to `kupro update`. Release that CLI before deploying th
 
 ## First deploy (once per environment)
 
+0. **Harden the VPS** with `infrastructure/vps/harden.sh` (ufw, key-only SSH, unattended upgrades with a 05:30
+   reboot, swap, Docker log rotation and image prune); usage is in its header. Run it before installing Dokploy, and
+   again after logging in with your key once, which turns password login off. Rerunning is safe.
 1. **DNS**: A records for the apex, `www`, `app`, `auth` and `grafana` point at the VPS.
 2. **Object Storage**: in the OVHcloud control panel create an S3 bucket for attachments in the VPS's region and an
    S3 user with read/write on it only; its keys go in `STORAGE_ACCESS_KEY`/`STORAGE_SECRET_KEY`. Browsers upload
