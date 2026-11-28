@@ -45,7 +45,8 @@
         "relations": { "type": "integer" },
         "comments": { "type": "integer" },
         "attachments": { "type": "integer" },
-        "changes": { "type": "integer" }
+        "changes": { "type": "integer" },
+        "worklogs": { "type": "integer" }
       }
     },
     "project": {
@@ -111,7 +112,8 @@
         "id": { "$ref": "#/$defs/id" },
         "name": { "type": "string" },
         "kind": { "enum": ["text", "number", "date", "select", "multi-select", "user"] },
-        "options": { "type": "array", "items": { "type": "string" } }
+        "options": { "type": "array", "items": { "type": "string" } },
+        "sumsWorklogs": { "type": "boolean", "description": "The field sums the item's worklogs in hours. With time registration on, the worklogs become time entries and this sum keeps only the time nobody in Kupro holds." }
       },
       "required": ["id", "name", "kind"]
     },
@@ -233,6 +235,20 @@
         "toText": { "type": ["string", "null"] }
       },
       "required": ["id", "item", "at", "field"]
+    },
+    "worklog": {
+      "type": "object",
+      "description": "Time someone logged on an item (a Jira worklog, a YouTrack work item). With time registration on it becomes a time entry for that person.",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "item": { "type": "string" },
+        "author": { "type": ["string", "null"] },
+        "date": { "type": "string", "format": "date", "description": "The day as the source recorded it." },
+        "minutes": { "type": "integer", "minimum": 1, "description": "Whole minutes. Sources in seconds round to the nearest minute, at least 1." },
+        "note": { "type": ["string", "null"] },
+        "created": { "$ref": "#/$defs/optionalTime" }
+      },
+      "required": ["id", "item", "date", "minutes"]
     }
   }
 }

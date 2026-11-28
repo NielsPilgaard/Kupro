@@ -231,6 +231,7 @@ public sealed class SnapshotTests
     [InlineData(typeof(SourceComment), "comment")]
     [InlineData(typeof(SourceAttachment), "attachment")]
     [InlineData(typeof(SourceChange), "change")]
+    [InlineData(typeof(SourceWorklog), "worklog")]
     public void Public_schema_matches_the_model(Type type, string definition)
     {
         var model = SnapshotJson.Default.Options.GetJsonSchemaAsNode(type);
