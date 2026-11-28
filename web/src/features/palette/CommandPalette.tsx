@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Command } from 'cmdk';
-import { ArrowDownToLine, CircleCheck, FileText, FolderKanban, Inbox, List, Plus, RefreshCw, Search, Tag, UserRound, Users } from 'lucide-react';
+import { ArrowDownToLine, CircleCheck, Clock, FileText, FolderKanban, Inbox, List, Plus, RefreshCw, Search, Tag, UserRound, Users } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,6 +19,7 @@ import { useUi, type PalettePage } from '../../app/UiContext';
 import { Avatar, Kbd, LabelPill, PriorityIcon, StatusRing } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
 import { useImportName } from '../imports/sources';
+import { useCloseWithTime, useTimeRegistration } from '../../api/time';
 import { cliFor, priorities, states } from '../../lib/issues';
 
 interface Entry {
@@ -71,6 +72,8 @@ export function CommandPalette({ workspace }: { workspace: string }) {
     enabled: searching,
     placeholderData: keepPreviousData,
   });
+  const time = useTimeRegistration(workspace);
+  const closeWithTime = useCloseWithTime(workspace);
   const update = useUpdateIssue(workspace, members?.find((m) => m.kind === 'human' && m.email === me?.email)?.id);
 
   const close = () => {
@@ -82,8 +85,16 @@ export function CommandPalette({ workspace }: { workspace: string }) {
     ui.openPalette(to);
   };
   const change = (body: Parameters<typeof update.mutate>[0]['body']) => {
-    if (key) update.mutate({ path: { workspace, key }, body });
+    const target = key;
     close();
+    if (!target) return;
+    const save = () => update.mutate({ path: { workspace, key: target }, body });
+    if (body.state) void closeWithTime(target, body.state, save);
+    else save();
+  };
+  const logTime = (issue?: string) => {
+    close();
+    ui.openLogTime(issue ? { issue } : {});
   };
 
   const entries = useMemo<Entry[]>(() => {
@@ -142,7 +153,19 @@ export function CommandPalette({ workspace }: { workspace: string }) {
                 { id: 'go:label', label: t('palette.label', { key }), icon: <Tag size={16} />, hint: <Kbd>L</Kbd>, run: () => go('label') },
                 { id: 'assign:me', label: t('palette.assignMe', { key }), icon: <UserRound size={16} />, cli: cliFor('assign', key), run: () => change({ assignee: 'me' }) },
                 { id: 'close', label: t('palette.close', { key }), icon: <StatusRing state="done" />, cli: cliFor('close', key), run: () => change({ state: 'done' }) },
+                ...(time.canLog
+                  ? [{ id: 'time:log:key', label: t('time.palette.logOn', { key }), icon: <Clock size={16} />, hint: <Kbd>T</Kbd>, cli: `kupro time log <duration> ${key}`, run: () => logTime(key) }]
+                  : []),
               ]
+            : []),
+          ...(time.canLog
+            ? [
+                { id: 'time:log', label: t('time.palette.log'), icon: <Clock size={16} />, cli: 'kupro time log <duration> <KEY>', run: () => logTime() },
+                { id: 'nav:time', label: t('nav.myTime'), icon: <Clock size={16} />, cli: 'kupro time week', run: () => { close(); void navigate({ to: '/w/$workspace/time', params: { workspace } }); } },
+              ]
+            : []),
+          ...(time.on && owner
+            ? [{ id: 'nav:team-time', label: t('nav.teamTime'), icon: <Users size={16} />, cli: 'kupro time list --from <date> --to <date>', run: () => { close(); void navigate({ to: '/w/$workspace/team-time', params: { workspace } }); } }]
             : []),
           { id: 'nav:mine', label: t('nav.myIssues'), icon: <Inbox size={16} />, cli: 'kupro issue list --assignee me', run: () => { close(); void navigate({ to: '/w/$workspace/my-issues', params: { workspace } }); } },
           { id: 'nav:members', label: t('palette.members'), icon: <Users size={16} />, cli: 'kupro member list', run: () => { close(); void navigate({ to: '/w/$workspace/members', params: { workspace } }); } },
@@ -188,7 +211,7 @@ export function CommandPalette({ workspace }: { workspace: string }) {
         ];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t, owner, imports]);
+  }, [page, key, members, labels, projects, recent, found, searching, search, query, me, t, owner, imports, time.canLog, time.on]);
 
   if (!page) return null;
   // While searching, the server has already matched the issues; commands are matched here by a plain substring so

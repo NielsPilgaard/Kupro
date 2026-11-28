@@ -25,6 +25,7 @@ import { LoadMore } from '../../components/LoadMore';
 import { Avatar, Labels, StatusRing, TypeTag } from '../../components/ui';
 import { useHours } from '../../lib/format';
 import { boardStates, compareRank } from '../../lib/issues';
+import { useCloseWithTime } from '../../api/time';
 
 const columnId = (state: IssueState) => `column:${state}`;
 
@@ -46,6 +47,7 @@ export function Board({ workspace, filters }: { workspace: string; filters: Issu
   const { t } = useTranslation();
   const qc = useQueryClient();
   const move = useMoveIssue(workspace);
+  const closeWithTime = useCloseWithTime(workspace);
   const [dragging, setDragging] = useState<IssueSummary | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -79,7 +81,11 @@ export function Board({ workspace, filters }: { workspace: string; filters: Issu
     const after = column[index - 1]?.key ?? null;
     const before = column[index]?.key ?? null;
     if (state === issue.state && after === prevKey(columns, issue) && before === nextKey(columns, issue)) return;
-    move.mutate({ path: { workspace, key: issue.key }, body: { state, after, before } });
+    const doMove = () => move.mutate({ path: { workspace, key: issue.key }, body: { state, after, before } });
+    // Dropping on Done or Canceled asks for time first when you have logged none (ADR-021 Locking).
+    // Saving time closes the issue without a position, so the drop's gap is applied after the save.
+    if (state !== issue.state) void closeWithTime(issue.key, state, doMove, doMove);
+    else doMove();
   }
 
   return (

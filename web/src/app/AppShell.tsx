@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { ArrowDownToLine, CalendarRange, CircleUser, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Users } from 'lucide-react';
+import { ArrowDownToLine, CalendarRange, CircleUser, Clock, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, UsersRound, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, getWorkspaceOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
@@ -11,6 +11,8 @@ import { CommandPalette } from '../features/palette/CommandPalette';
 import { CreateIssueDialog } from '../features/issues/CreateIssueDialog';
 import { IssuePanel } from '../features/issues/IssuePanel';
 import { MeetingPanel } from '../features/meetings/MeetingPanel';
+import { LogTimeDialog } from '../features/time/LogTimeDialog';
+import { useTimeRegistration } from '../api/time';
 import { useShortcuts } from '../lib/shortcuts';
 import { projectColorClass } from '../lib/issues';
 import { useUi, type PalettePage } from './UiContext';
@@ -24,6 +26,10 @@ export function AppShell() {
   const navigate = useNavigate();
   const { data: me } = useQuery(getMeOptions());
   useRealtime(workspace, search.issue);
+  const time = useTimeRegistration(workspace);
+  // A pending Log time request names an issue key, and keys repeat across workspaces.
+  const { closeLogTime } = ui;
+  useEffect(() => closeLogTime(), [workspace, closeLogTime]);
 
   // The profile's language wins over the browser's (ADR-011).
   useEffect(() => {
@@ -40,6 +46,7 @@ export function AppShell() {
     a: () => pickFor('assign'),
     p: () => pickFor('priority'),
     l: () => pickFor('label'),
+    t: time.canLog && (() => ui.openLogTime(ui.activeKey ? { issue: ui.activeKey } : {})),
     escape: () => {
       if (search.issue) void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: undefined }) });
     },
@@ -55,6 +62,7 @@ export function AppShell() {
       {search.meeting && <MeetingPanel workspace={workspace} meetingId={search.meeting} />}
       <CommandPalette workspace={workspace} />
       <CreateIssueDialog workspace={workspace} />
+      <LogTimeDialog workspace={workspace} />
     </div>
   );
 }
@@ -117,6 +125,18 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           <IterationCw size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.sprints')}
         </Link>
+        {info?.timeRegistration && info.role !== 'guest' && (
+          <Link to="/w/$workspace/time" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.myTime')}>
+            <Clock size={16} strokeWidth={1.5} aria-hidden="true" />
+            {!collapsed && t('nav.myTime')}
+          </Link>
+        )}
+        {info?.timeRegistration && info.role === 'owner' && (
+          <Link to="/w/$workspace/team-time" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.teamTime')}>
+            <UsersRound size={16} strokeWidth={1.5} aria-hidden="true" />
+            {!collapsed && t('nav.teamTime')}
+          </Link>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto">
@@ -165,6 +185,12 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           <Link to="/w/$workspace/imports" params={{ workspace }} className={nav} activeProps={active}>
             <ArrowDownToLine size={16} strokeWidth={1.5} aria-hidden="true" />
             {!collapsed && t('nav.imports')}
+          </Link>
+        )}
+        {info?.role === 'owner' && (
+          <Link to="/w/$workspace/settings" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.workspaceSettings')}>
+            <Settings size={16} strokeWidth={1.5} aria-hidden="true" />
+            {!collapsed && t('nav.workspaceSettings')}
           </Link>
         )}
         <Link to="/settings" className={nav}>
