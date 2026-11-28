@@ -39,7 +39,10 @@
     "plan": "Leveranceplan",
     "members": "Medlemmer",
     "imports": "Import",
-    "ai": "AI"
+    "ai": "AI",
+    "myTime": "Min tid",
+    "teamTime": "Teamets tid",
+    "workspaceSettings": "Indstillinger for arbejdsområdet"
   },
   "views": {
     "label": "Visning",
@@ -1299,5 +1302,133 @@
       "autoApply": "Udfør sikre ændringer uden at spørge",
       "autoApplyHint": "Usikre match, annulleringer og nye opgaver spørger stadig først. Alle ændringer kan fortrydes."
     }
+  },
+  "time": {
+    "unit": {
+      "hm": "{{h}}t {{m}}m",
+      "h": "{{h}}t",
+      "m": "{{m}}m"
+    },
+    "logTime": "Registrér tid",
+    "locked": "Låst",
+    "lockedHint": "Tiden er låst, fordi opgaven er færdig eller annulleret. Genåbn opgaven for at ændre den.",
+    "onIssue": "Tid på denne opgave",
+    "total": "Tid i alt",
+    "yours": "Din tid",
+    "privateHint": "Kun du og arbejdsområdets ejere ser din tid.",
+    "today": "I dag",
+    "palette": {
+      "log": "Registrér tid…",
+      "logOn": "Registrér tid på {{key}}…"
+    },
+    "log": {
+      "title": "Registrér tid",
+      "titleClose": "Markér som {{state}}",
+      "closeHint": "Du har ikke registreret tid på {{key}}. Registrér den nu, så gemmes den sammen med {{state}}; derefter er tiden låst.",
+      "issue": "Opgave",
+      "searchIssue": "Søg i opgaver, eller skriv en nøgle",
+      "pickIssue": "Vælg en opgave.",
+      "duration": "Brugt tid",
+      "durationPlaceholder": "1t30, 90m eller 1,5",
+      "day": "Dag",
+      "date": "Dato",
+      "note": "Note (valgfri)",
+      "enterHint": "for at registrere, Esc for at lukke",
+      "save": "Registrér tid",
+      "saveAndClose": "Registrér tid og markér som {{state}}",
+      "skip": "Markér som {{state}} uden tid",
+      "saved": "Registrerede {{duration}} på {{key}}, {{day}}",
+      "savedAndClosed": "Gemt sammen: {{duration}} registreret og {{key}} markeret som {{state}}. Tiden er nu låst."
+    },
+    "week": {
+      "title": "Uge {{week}}",
+      "short": "Uge {{week}}",
+      "this": "Denne uge",
+      "nav": "Uger",
+      "off": "Tidsregistrering er slået fra i dette arbejdsområde. Din tid kan stadig ses her, men du kan ikke registrere ny tid.",
+      "tileWeek": "Denne uge",
+      "onIssues_one": "på {{count}} opgave",
+      "onIssues_other": "på {{count}} opgaver",
+      "tileToday": "I dag, {{day}}",
+      "entries_one": "{{count}} registrering",
+      "entries_other": "{{count}} registreringer",
+      "tileDays": "Dage med tid",
+      "daysWithTime": "denne uge",
+      "tileGaps": "Hverdage indtil nu uden tid",
+      "gapsHint": "Udfyld dem, mens du husker det",
+      "noGaps": "Alle dage indtil nu har tid",
+      "lockedHint": "på færdige eller annullerede opgaver",
+      "grid": "Tid pr. opgave og dag",
+      "issue": "Opgave",
+      "weekCol": "Uge",
+      "lockedGroup": "Færdig eller annulleret · låst",
+      "empty": "Ingen tid i denne uge endnu. Tilføj en opgave nedenfor, eller tryk T for at registrere tid.",
+      "dayTotal": "Dag i alt",
+      "nothing": "Intet",
+      "cellLabel": "{{key}}, {{day}}",
+      "severalHint": "Flere registreringer på denne dag: ret dem i panelet nedenfor.",
+      "selectHint": "Vælg en celle for at se dens registreringer og noter.",
+      "noTime": "ingen tid",
+      "noNote": "Ingen note",
+      "notePlaceholder": "Hvad tiden gik til",
+      "deleteEntry": "Slet registrering",
+      "typeHint": "Skriv en varighed i cellen, og tilføj så en note her.",
+      "lockedLine": "Låst: opgaven er {{state}}. Genåbn den for at ændre tiden.",
+      "addTitle": "Tilføj en opgave til denne uge",
+      "keys": "Taster",
+      "keyDurations": "Varigheder, en celle forstår",
+      "keyMove": "Flyt mellem celler",
+      "keySave": "Gem cellen",
+      "keyEmpty": "Tøm cellen",
+      "keyEmptyHint": "Slet dagens tid"
+    },
+    "team": {
+      "hint": "hver persons tid pr. dag.",
+      "person": "Person",
+      "left": "(stoppet)",
+      "note": "Kun ejere ser denne side. Ejere kan læse og eksportere, men ikke rette andres tid. Personer, der er stoppet, bliver her i 5 år.",
+      "ownersOnly": "Kun arbejdsområdets ejere ser alles tid."
+    },
+    "export": {
+      "open": "Eksportér…",
+      "title": "Eksportér tid",
+      "people": "Personer",
+      "everyone_one": "Alle ({{count}})",
+      "everyone_other": "Alle ({{count}})",
+      "everyoneLeft_one": "Alle ({{total}}, heraf {{count}}, der er stoppet)",
+      "everyoneLeft_other": "Alle ({{total}}, heraf {{count}}, der er stoppet)",
+      "from": "Fra",
+      "to": "Til",
+      "format": "Format",
+      "hint": "Én række pr. registrering: dato, person, minutter, opgavenøgle, opgavetitel, note.",
+      "tooLong": "Vælg en Fra- og en Til-dato, højst 366 dage fra hinanden, med Fra først.",
+      "download": "Hent",
+      "failed": "Kunne ikke eksportere tiden. Prøv igen."
+    },
+    "errors": {
+      "duration": "Skriv en varighed som 1t30, 90m eller 1,5, højst 24 timer.",
+      "time_locked": "Opgaven er færdig eller annulleret, så tiden er låst. Genåbn den for at ændre tiden.",
+      "day_full": "Den dag ville komme over 24 timer.",
+      "future_date": "Du kan ikke registrere tid på en dag, der ikke er kommet endnu.",
+      "not_your_entry": "Kun den person, tiden tilhører, kan ændre den.",
+      "time_entry_not_found": "Registreringen findes ikke længere. Ugen er indlæst igen.",
+      "time_registration_off": "Tidsregistrering er slået fra i dette arbejdsområde. En ejer kan slå den til under indstillinger for arbejdsområdet.",
+      "failed": "Kunne ikke gemme tiden. Prøv igen.",
+      "load": "Kunne ikke indlæse tiden."
+    }
+  },
+  "workspaceSettings": {
+    "failed": "Kunne ikke gemme indstillingen. Prøv igen.",
+    "ownersOnly": "Kun arbejdsområdets ejere ændrer disse indstillinger.",
+    "time": {
+      "title": "Tidsregistrering",
+      "intro": "Medlemmer registrerer den tid, de bruger på opgaver. Danske arbejdsgivere skal registrere arbejdstid; her gør jeres team det. Slået fra som standard.",
+      "private": "Hver person ser kun sin egen tid. Ejere ser alles og eksporterer den.",
+      "locked": "Tid på en færdig eller annulleret opgave er låst, til opgaven genåbnes.",
+      "kept": "Registreringerne gemmes i 5 år, også når en person stopper, og også hvis I slår funktionen fra.",
+      "turnedOn": "Tidsregistrering er slået til for {{name}}.",
+      "turnedOff": "Tidsregistrering er slået fra. Registreringerne gemmes."
+    },
+    "aiOpen": "Åbn AI-indstillinger"
   }
 }

@@ -28,8 +28,15 @@ purpose: 'Implementation spec for task 034.'
 ## Progress
 
 API, CLI and MCP are in (`Kupro.Api/Features/Time`, `kupro time`, the MCP `time` and `relations` tools), tested in
-`TimeTests`, `McpTests`, `CliTests` and `PerfBudgetTests`. Left: the web UI (prototype 01), the import of Jira worklogs
-and YouTrack work items, the site lines, and the manual steps (legal check, privacy policy and DPA lines).
+`TimeTests`, `McpTests`, `CliTests` and `PerfBudgetTests`. The web UI (prototype 01) is in `web/src/features/time`,
+tested in `time.test.ts` and the E2E `time.spec.ts`. Left: the import of Jira worklogs and YouTrack work items, the
+site lines, and the manual steps (legal check, privacy policy and DPA lines).
+
+- **Web**: My time (`/w/:workspace/time`, the week grid with `?week=`), Team time (`/team-time`, Owners, with the
+  export dialog), and workspace settings (`/settings`, Owners, the time registration switch). The Log time dialog opens
+  from `T`, the palette and the issue panel's time box; setting Done or Canceled from the panel, the palette or the
+  board asks for time in the same save when you have logged none (`useCloseWithTime`). A cell with several entries is
+  edited in the panel under the grid, so no note is lost.
 
 - **Model**: `time_entries` and the append-only `time_entry_changes` (who, when, via, old and new date, minutes and
   note), per [ADR-021 Time entry](../docs/adr/ADR-021-time-registration.md#time-entry). The workspace's
@@ -132,12 +139,12 @@ EN and DA strings; the DA term is "tidsregistrering" (add it to the [branding.md
 
 - [x] ADR-021 accepted; product.md, ADR-020 and task 024 updated to match.
 - [ ] Legal reading confirmed (manual step), and the ADR notes what the confirmation changed.
-- [ ] A member logs time on an issue in the web app, CLI and MCP, and sees it in their week.
+- [x] A member logs time on an issue in the web app, CLI and MCP, and sees it in their week.
 - [x] Entries on a Done or Canceled issue can't be added, edited or deleted; reopening the issue unlocks them.
-- [ ] One save marks an issue Done and logs time on it, in the web app, CLI and MCP; if either fails, neither is saved.
+- [x] One save marks an issue Done and logs time on it, in the web app, CLI and MCP; if either fails, neither is saved.
 - [x] An edit keeps the old value in the entry's history.
-- [ ] An Owner exports a month for all members as CSV; a Member can't.
-- [ ] Entries of a member who left are kept and still exported.
+- [x] An Owner exports a month for all members as CSV; a Member can't.
+- [x] Entries of a member who left are kept and still exported.
 - [ ] Jira worklogs import as entries when the setting is on.
 - [x] A week's timesheet loads within the latency budget with a year of entries for 50 members.
 

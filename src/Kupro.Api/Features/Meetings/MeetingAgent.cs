@@ -164,11 +164,19 @@ public sealed class OpenAiSpeechToText(IHttpClientFactory clients) : ISpeechToTe
         await wav.CopyToAsync(audio, ct);
         var seconds = Wav.Seconds(audio.GetBuffer().AsSpan(0, (int)audio.Length));
         audio.Position = 0;
+
+        // Callers validate en/da already; mapping to constants keeps request input out of the outgoing form.
+        var spoken = language switch
+        {
+            "da" => "da",
+            "en" => "en",
+            _ => throw new ArgumentOutOfRangeException(nameof(language), language, "Spoken language must be en or da."),
+        };
         using var form = new MultipartFormDataContent
         {
             { new StreamContent(audio) { Headers = { ContentType = new MediaTypeHeaderValue("audio/wav") } }, "file", "utterance.wav" },
             { new StringContent(route.Model!), "model" },
-            { new StringContent(language), "language" },
+            { new StringContent(spoken), "language" },
             { new StringContent("json"), "response_format" },
         };
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{route.Endpoint!.TrimEnd('/')}/audio/transcriptions") { Content = form };

@@ -9,6 +9,10 @@ import type { StepId } from './features/imports/wizard';
 import { MyIssuesPage, ProjectIssuesPage, type View } from './features/issues/IssuePages';
 import { MembersPage } from './features/members/MembersPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { WorkspaceSettingsPage } from './features/settings/WorkspaceSettingsPage';
+import { MyTimePage, type TimeSearch } from './features/time/MyTimePage';
+import { isCalendarDay } from './lib/time';
+import { TeamTimePage } from './features/time/TeamTimePage';
 import { PlanPage, type Zoom } from './features/plan/PlanPage';
 import { SprintReportPage } from './features/sprints/SprintReportPage';
 import { SprintsPage } from './features/sprints/SprintsPage';
@@ -122,6 +126,14 @@ const planRoute = createRoute({
     ...withIssue(search),
   }),
 });
+/** `?week=` is any day of the week shown; the pages clamp it to this week at the latest. */
+const timeSearch = (search: Record<string, unknown>): TimeSearch => ({
+  ...(typeof search.week === 'string' && isCalendarDay(search.week) ? { week: search.week } : {}),
+  ...withIssue(search),
+});
+const myTimeRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/time', component: MyTimePage, validateSearch: timeSearch });
+const teamTimeRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/team-time', component: TeamTimePage, validateSearch: timeSearch });
+const workspaceSettingsRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/settings', component: WorkspaceSettingsPage });
 const projectRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/p/$project',
@@ -152,6 +164,9 @@ const routeTree = rootRoute.addChildren([
       sprintsRoute,
       sprintReportRoute,
       planRoute,
+      myTimeRoute,
+      teamTimeRoute,
+      workspaceSettingsRoute,
       projectRoute,
     ]),
   ]),
