@@ -29,11 +29,13 @@ export async function email(kit, prod) {
     }
     domain.status === "checked" ? ok("domain verified") : warn(`domain ${domain.status}: add the DNS records (node scripts/go-live/go-live.mjs dns), then run email again`);
     kit.set("SCW_TEM_DOMAIN_ID", domain.id);
-    prod.set("SMTP_USER", projectId);
 
+    // Exact names, narrowest first: a pattern also matched e.g. TransactionalEmailBlocklistFullAccess.
     const sets = await permissionSets(call, orgId);
-    await appKey(call, prod, { orgId, projectId, name: "kupro-tem", key: "SMTP_PASSWORD", set: pick(sets, /^TransactionalEmail\w*FullAccess$/) });
-    await appKey(call, prod, { orgId, projectId, name: "kupro-genai", key: "SCALEWAY_AI_KEY", set: pick(sets, /^GenerativeApis\w*FullAccess$/) });
+    await appKey(call, prod, { orgId, projectId, name: "kupro-tem", key: "SMTP_PASSWORD", set: pick(sets, ["TransactionalEmailEmailSmtpCreate", "TransactionalEmailFullAccess"]) });
+    await appKey(call, prod, { orgId, projectId, name: "kupro-genai", key: "SCALEWAY_AI_KEY", set: pick(sets, ["GenerativeApisModelAccess", "GenerativeApisFullAccess"]) });
+    // SMTP signs in with the project id, so it changes only once the key's policy covers this project.
+    prod.set("SMTP_USER", projectId);
     warn("Set a billing alert on this project (manual step E4).");
 }
 
@@ -63,9 +65,12 @@ async function permissionSets(call, orgId) {
     }
 }
 
-function pick(sets, re) {
-    const name = sets.find(s => re.test(s));
-    if (!name) fail(`No Scaleway permission set matches ${re}. Known: ${sets.join(", ")}`);
+function pick(sets, wanted) {
+    const name = wanted.find(w => sets.includes(w));
+    if (!name) {
+        const prefix = wanted[0].match(/^[A-Z][a-z]+[A-Z][a-z]+/)[0];
+        fail(`None of ${wanted.join(", ")} exists. Similar: ${sets.filter(s => s.startsWith(prefix)).join(", ")}`);
+    }
     return name;
 }
 
@@ -77,13 +82,23 @@ async function appKey(call, prod, { orgId, projectId, name, key, set }) {
         app = await call("POST", "/iam/v1alpha1/applications", { name, organization_id: orgId, description: "Kupro production, created by scripts/go-live" });
         log("application created");
     }
+    const rules = [{ permission_set_names: [set], project_ids: [projectId] }];
     const policies = (await call("GET", `/iam/v1alpha1/policies?organization_id=${orgId}&application_ids=${app.id}`)).policies;
-    if (!policies.length) {
-        await call("POST", "/iam/v1alpha1/policies", {
-            name, organization_id: orgId, application_id: app.id,
-            rules: [{ permission_set_names: [set], project_ids: [projectId] }],
-        });
+    const policy = policies.find(p => p.name === name);
+    if (!policy) {
+        if (policies.length) fail(`Application ${name} has policies the kit did not create (${policies.map(p => p.name).join(", ")}). Remove them in the Scaleway console, then rerun.`);
+        await call("POST", "/iam/v1alpha1/policies", { name, organization_id: orgId, application_id: app.id, rules });
         log("policy created");
+    } else {
+        // Reconcile the kit's policy: another project or permission set from an earlier run would make the key useless.
+        const current = (await call("GET", `/iam/v1alpha1/rules?policy_id=${policy.id}`)).rules;
+        const matches = current.length === 1 &&
+            current[0].permission_set_names?.join() === set && current[0].project_ids?.join() === projectId;
+        if (!matches) {
+            await call("PUT", "/iam/v1alpha1/rules", { policy_id: policy.id, rules });
+            log("policy rules updated");
+        }
+        if (policies.length > 1) warn(`${name} also has other policies: ${policies.filter(p => p !== policy).map(p => p.name).join(", ")}`);
     }
     ok(`${name} may only use ${set}`);
     if (prod.isSet(key)) return log(`${key} already in production.env`);

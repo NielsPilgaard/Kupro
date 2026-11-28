@@ -8,6 +8,11 @@ const MAY_BE_EMPTY = /^(\w+_IMAGE|ELMAHIO_\w+|TRELLO_API_KEY|SCALEWAY_AI_KEY|MEM
 
 function client(kit) {
     const base = kit.need("DOKPLOY_URL").replace(/\/$/, "");
+    // The API key and every production secret go through this client: HTTPS, or plain HTTP only through an SSH tunnel.
+    const { protocol, hostname } = new URL(base);
+    if (protocol !== "https:" && !["localhost", "127.0.0.1", "[::1]"].includes(hostname)) {
+        fail("DOKPLOY_URL must be https, or http://localhost:3000 through 'ssh -L 3000:127.0.0.1:3000 <vps>'");
+    }
     const headers = { "x-api-key": kit.need("DOKPLOY_API_KEY") };
     return {
         get: async (proc, query = {}) => (await http("GET", `${base}/api/${proc}?${new URLSearchParams(query)}`, { headers })).data,
@@ -66,9 +71,9 @@ export async function dokploy(kit, prod) {
     step("Environment");
     const todo = prod.entries().filter(([, v]) => v === "TODO").map(([k]) => k);
     if (todo.length) fail(`Still TODO in production.env: ${todo.join(", ")}`);
-    // Keep what Dokploy has where production.env is empty, e.g. the image tags CD set.
+    // Keep the image tags CD set where production.env leaves them empty; every other value comes from the file.
     const env = parseEnv((await api.get("compose.one", { composeId })).env);
-    for (const [k, v] of prod.entries()) if (v !== "" || !env.has(k)) env.set(k, v);
+    for (const [k, v] of prod.entries()) if (v !== "" || !/_IMAGE$/.test(k) || !env.has(k)) env.set(k, v);
     const missing = composeVars().filter(k => !env.has(k) || (env.get(k) === "" && !MAY_BE_EMPTY.test(k)));
     if (missing.length) fail(`The compose file needs these, missing or empty in production.env: ${missing.join(", ")}`);
     const empty = [...env].filter(([k, v]) => v === "" && !/_IMAGE$/.test(k)).map(([k]) => k);

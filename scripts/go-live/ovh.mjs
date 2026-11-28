@@ -85,10 +85,28 @@ export async function storage(kit, prod) {
                 ...(t.versioning && { versioning: { status: "enabled" } }),
             });
             ok(`created (encrypted${t.versioning ? ", versioned" : ""})`);
-        } else ok("exists");
+        } else {
+            // An existing bucket must already have the protection a new one gets; the kit does not change it.
+            const b = await call("GET", `${base}/region/${region}/storage/${t.bucket}`);
+            const gaps = [
+                ...(b.encryption?.sseAlgorithm === "AES256" ? [] : ["encryption (AES256)"]),
+                ...(t.versioning && b.versioning?.status !== "enabled" ? ["versioning"] : []),
+            ];
+            if (gaps.length) {
+                fail(`${t.bucket} exists without ${gaps.join(" and ")}. Turn it on in the OVHcloud control panel ` +
+                    "(Object Storage → the bucket), then rerun. Encryption applies to new objects only, so re-upload or empty any existing ones.");
+            }
+            ok(`exists (encrypted${t.versioning ? ", versioned" : ""})`);
+        }
 
+        // Saved keys must belong to this user, or they bypass the policy set above.
+        const own = (await call("GET", `${base}/user/${user.id}/s3Credentials`)).map(c => c.access);
+        if (t.env.isSet(t.key) && !own.includes(t.env.get(t.key))) {
+            fail(`${t.key} in ${t.env === prod ? "production.env" : "go-live.env"} belongs to another S3 user, not ${user.username}. ` +
+                `Empty ${t.key} and ${t.secret} to issue keys for the restricted user, then delete the old user's keys in the control panel.`);
+        }
         if (t.env.isSet(t.key) && t.env.isSet(t.secret)) {
-            log(`keys already in ${t.env === prod ? "production.env" : "go-live.env"}`);
+            log(`keys of ${user.username} already in ${t.env === prod ? "production.env" : "go-live.env"}`);
         } else {
             const cred = await call("POST", `${base}/user/${user.id}/s3Credentials`);
             const secret = cred.secret ?? (await call("POST", `${base}/user/${user.id}/s3Credentials/${cred.access}/secret`)).secret;

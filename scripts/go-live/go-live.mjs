@@ -42,7 +42,8 @@ OVH_REGION=GRA
 SCW_ACCESS_KEY=TODO
 SCW_SECRET_KEY=TODO
 
-# Dokploy: after 'vps', open http://<VPS_IP>:3000, create the admin, then Settings → Profile → API keys.
+# Dokploy: after 'vps', tunnel (ssh -L 3000:127.0.0.1:3000 <VPS_SSH>), open http://localhost:3000, create the admin,
+# then Settings → Profile → API keys. Plain http only through the tunnel; https://<DOKPLOY_PANEL_HOST> once it loads.
 DOKPLOY_URL=TODO
 DOKPLOY_API_KEY=TODO
 DOKPLOY_PANEL_HOST=deploy.kupro.app
@@ -79,7 +80,8 @@ function vps() {
     if (run("ssh", ["-t", target, "sudo bash harden.sh && sudo bash dokploy.sh"]) !== 0) fail("VPS setup failed; fix and rerun 'vps'");
     prod.set("BACKUP_CONSOLE_SSH", `ssh -L 9090:127.0.0.1:9090 ${target}`);
     ok("BACKUP_CONSOLE_SSH set");
-    log(`Next: open http://${kit.get("VPS_IP")}:3000 within minutes and create the Dokploy admin (the first visitor gets it).`);
+    log(`Next, within minutes (the first visitor gets the admin account): ssh -L 3000:127.0.0.1:3000 ${target}`);
+    log("then open http://localhost:3000, create the Dokploy admin and an API key. DOKPLOY_URL=http://localhost:3000 works while the tunnel is open.");
 }
 
 async function dns() {
@@ -96,7 +98,14 @@ async function dns() {
     for (const [name, type, value] of records) {
         let found = false;
         try {
-            if (type === "A") found = (await r.resolve4(name === "*" ? `app.${domain}` : fqdn(name))).includes(value);
+            if (type === "A" && name === "*") {
+                // A name nobody uses proves the wildcard; the service names must resolve too, by wildcard or their own record.
+                const hosts = [`wildcard-${randomBytes(4).toString("hex")}`, "app", "auth", "grafana", "www", kit.get("DOKPLOY_PANEL_HOST").split(".")[0] || "deploy"];
+                const bad = [];
+                for (const h of hosts) if (!(await r.resolve4(`${h}.${domain}`).catch(() => [])).includes(value)) bad.push(h);
+                found = bad.length === 0;
+                if (!found) warn(`not resolving to ${value}: ${bad.map(h => `${h}.${domain}`).join(", ")}`);
+            } else if (type === "A") found = (await r.resolve4(fqdn(name))).includes(value);
             else {
                 const txt = (await r.resolveTxt(fqdn(name))).map(c => c.join(""));
                 found = value.startsWith("v=spf1")
@@ -124,8 +133,17 @@ function github() {
     const api = (method, p, body) => capture("gh", ["api", "-X", method, `repos/${repo}/${p}`, ...(body ? ["--input", "-"] : [])], { input: body && JSON.stringify(body) });
     const env = api("PUT", "environments/production", { deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } });
     if (env.code !== 0) fail(env.err);
-    const policies = JSON.parse(api("GET", "environments/production/deployment-branch-policies").out || "{}").branch_policies ?? [];
-    if (!policies.some(p => p.name === "main")) api("POST", "environments/production/deployment-branch-policies", { name: "main", type: "branch" });
+    // Exactly one policy: branch main. Anything else would let other refs deploy.
+    const must = r => (r.code === 0 ? r : fail(`gh api: ${r.err}`));
+    const list = must(api("GET", "environments/production/deployment-branch-policies"));
+    const policies = JSON.parse(list.out || "{}").branch_policies ?? [];
+    for (const p of policies.filter(p => !(p.name === "main" && p.type === "branch"))) {
+        must(api("DELETE", `environments/production/deployment-branch-policies/${p.id}`));
+        log(`removed deployment policy ${p.type} ${p.name}`);
+    }
+    if (!policies.some(p => p.name === "main" && p.type === "branch")) {
+        must(api("POST", "environments/production/deployment-branch-policies", { name: "main", type: "branch" }));
+    }
     ok("environment production, deploys from main only");
     const secret = (name, value, scope) => {
         if (capture("gh", ["secret", "set", name, "--repo", repo, ...scope], { input: value }).code !== 0) fail(`gh secret set ${name}`);
@@ -143,35 +161,46 @@ async function keycloak(deleteBootstrap) {
         form: { grant_type: "password", client_id: "admin-cli", username: "admin", password: prod.need("KEYCLOAK_PASSWORD") },
         allow: [401],
     }));
-    if (token.status === 401) return ok("the bootstrap admin is gone already");
+    // A 401 can't tell a wrong password from a deleted account, so it is never reported as success.
+    if (token.status === 401) {
+        fail("admin / KEYCLOAK_PASSWORD does not sign in. Either the bootstrap admin is deleted already (then you are done), or the password in production.env is wrong.");
+    }
     const headers = { Authorization: `Bearer ${token.data.access_token}` };
     const kc = async (method, p, body, allow) => (await http(method, `${base}/admin/realms/master${p}`, { headers, body, allow })).data;
     const username = kit.need("KC_ADMIN_USER");
+    if (username.toLowerCase() === "admin") fail("KC_ADMIN_USER must not be 'admin': that is the bootstrap account this replaces");
     const find = async () => (await kc("GET", `/users?exact=true&username=${encodeURIComponent(username)}`))[0];
+    const isAdmin = async id => (await kc("GET", `/users/${id}/role-mappings/realm`)).some(r => r.name === "admin");
 
     step(`Keycloak admin ${username}`);
     let user = await find();
     if (deleteBootstrap) {
         if (!user) fail(`${username} does not exist; run 'keycloak' first`);
+        if (!(await isAdmin(user.id))) fail(`${username} lacks the admin role; run 'keycloak' first`);
         const creds = await kc("GET", `/users/${user.id}/credentials`);
         if (!creds.some(c => c.type === "otp") || user.requiredActions?.length) {
             fail(`${username} has not finished setting up 2FA and a password. Sign in at ${base}/admin first.`);
         }
-        const bootstrap = await kc("GET", "/users?exact=true&username=admin");
-        if (bootstrap[0]) await kc("DELETE", `/users/${bootstrap[0].id}`);
+        const bootstrap = (await kc("GET", "/users?exact=true&username=admin"))[0];
+        if (bootstrap && bootstrap.id !== user.id) await kc("DELETE", `/users/${bootstrap.id}`);
         return ok("bootstrap admin deleted. KEYCLOAK_PASSWORD no longer signs in anywhere.");
     }
-    if (user) return ok(`exists. After signing in with 2FA, run: keycloak --delete-bootstrap`);
+    if (!user) {
+        await kc("POST", "/users", {
+            username, email: kit.need("KC_ADMIN_EMAIL"), emailVerified: true, enabled: true,
+            requiredActions: ["CONFIGURE_TOTP", "UPDATE_PASSWORD"],
+        });
+        user = await find();
+        log("user created");
+    }
+    // Resumes a run that stopped halfway: the role is added again (a no-op if present).
+    if (!(await isAdmin(user.id))) await kc("POST", `/users/${user.id}/role-mappings/realm`, [await kc("GET", "/roles/admin")]);
+    ok("has the admin role");
+    // A user who finished setup keeps their password; one who hasn't gets a fresh one-time password.
+    if (!user.requiredActions?.length) return ok(`set up already. Run: keycloak --delete-bootstrap`);
     const temp = randomBytes(12).toString("base64url");
-    await kc("POST", "/users", {
-        username, email: kit.need("KC_ADMIN_EMAIL"), emailVerified: true, enabled: true,
-        requiredActions: ["CONFIGURE_TOTP", "UPDATE_PASSWORD"],
-        credentials: [{ type: "password", value: temp, temporary: true }],
-    });
-    user = await find();
-    const role = await kc("GET", "/roles/admin");
-    await kc("POST", `/users/${user.id}/role-mappings/realm`, [role]);
-    ok(`created with the admin role. One-time password: ${temp}`);
+    await kc("PUT", `/users/${user.id}/reset-password`, { type: "password", value: temp, temporary: true });
+    ok(`one-time password: ${temp}`);
     log(`Sign in at ${base}/admin: set a password and scan the 2FA code. Then run: keycloak --delete-bootstrap`);
 }
 
