@@ -90,8 +90,13 @@ ADR-010's budget is p50 < 100 ms and p99 < 500 ms; the latency graphs draw both 
 
 ## Querying from an agent
 
-`.mcp.json` registers [mcp-grafana](https://github.com/grafana/mcp-grafana) (Docker, read-only). By default it
-talks to the local Grafana at `http://host.docker.internal:3180` and needs no token. For production, create a
-service account with role **Viewer** and a token, then start the agent with `GRAFANA_URL=https://grafana.<domain>`
-and `GRAFANA_SERVICE_ACCOUNT_TOKEN=<token>`. Agents can query Loki (selector `{service_namespace="kupro"}`),
+`.mcp.json` registers [mcp-grafana](https://github.com/grafana/mcp-grafana) twice (Docker, read-only). Each needs a
+service account with role **Viewer** and a token, set as environment variables before the agent starts:
+
+| Server | URL variable | Token variable |
+|---|---|---|
+| `grafana-kupro` (self-hosted) | `KUPRO_GRAFANA_URL`, default `https://grafana.kupro.dk` | `KUPRO_GRAFANA_TOKEN` |
+| `grafana-cloud` | `GRAFANA_CLOUD_URL`, e.g. `https://<stack>.grafana.net` | `GRAFANA_CLOUD_TOKEN` |
+
+For the local stack, set `KUPRO_GRAFANA_URL=http://host.docker.internal:3180` (no token needed). Agents can query Loki (selector `{service_namespace="kupro"}`),
 Tempo (search, trace by id, TraceQL metrics) and Prometheus, e.g. to diagnose a failed deploy from the error logs.
