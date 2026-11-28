@@ -37,8 +37,11 @@ export async function dokploy(kit, prod) {
         if (kit.get("DOKPLOY_URL") === `https://${host}`) ok("already");
         else {
             await api.post("settings.assignDomainServer", { host, https: true, certificateType: "letsencrypt", letsEncryptEmail: kit.need("LETSENCRYPT_EMAIL") });
-            ok(`assigned. Once https://${host} loads, set DOKPLOY_URL=https://${host} in go-live.env`);
+            ok("assigned");
+            log(`Once https://${host} loads, set DOKPLOY_URL=https://${host} in go-live.env and run 'dokploy' again.`);
             warn("Then close the panel's IP port: ssh to the VPS and run: docker service update --publish-rm 3000 dokploy");
+            // Secrets go out only over the panel's own HTTPS, never through the bootstrap tunnel.
+            return;
         }
     }
 

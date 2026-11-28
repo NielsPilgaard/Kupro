@@ -154,10 +154,16 @@ gitignored. Every command is safe to rerun.
 | `storage` | Creates five encrypted buckets through the OVHcloud API (attachments, keys with versioning, backup repo, ops, CLI downloads), each with its own S3 user limited to that bucket, and sets the attachments CORS. Writes the keys. | step 2, Backups step 1, CLI releases |
 | `email` | Adds the domain to Scaleway TEM, then creates two IAM applications with one permission set each (TEM, Generative APIs) and their keys. | `SMTP_*`, `SCALEWAY_AI_KEY` |
 | `dns` | Prints the A and mail records for the DNS host and shows which already resolve. | step 1 |
-| `dokploy` | Gives the panel its domain, creates the project and compose app (git source, autodeploy off), saves the environment, adds the domains. Refuses while a value is `TODO` or a compose variable is missing. Keeps the image tags CD set. | step 4 |
+| `dokploy` | First run: gives the panel its domain and stops. Run it again with `DOKPLOY_URL` set to that HTTPS domain: it creates the project and compose app (git source, autodeploy off), saves the environment, adds the domains. Refuses while a value is `TODO` or a compose variable is missing. Keeps the image tags CD set. | step 4 |
 | `github` | Creates the `production` environment (deploys from `main` only) with the three Dokploy secrets, plus the CLI download secrets. | [GitHub configuration](#github-configuration) |
 | `keycloak` | Creates your permanent master-realm admin, who must set a password and 2FA on first sign-in. `--delete-bootstrap` then deletes `admin`, but only after that. | step 5 |
 | `check` | Lists what is still `TODO`, the DNS state, and whether the site, app, realm, Grafana and panel answer. `--test-email` sends Grafana's test alert. | steps 6–7 |
+
+The panel has no TLS until it has its domain, so its first use goes through an SSH tunnel:
+`ssh -L 3000:127.0.0.1:3000 <user>@<vps>`, then `http://localhost:3000` (`vps` prints this). Create the Dokploy admin
+right after `vps`, because the first visitor gets the account. Create an API key there too and set
+`DOKPLOY_URL=http://localhost:3000` for the first `dokploy` run. The kit sends Dokploy credentials only over HTTPS or a
+loopback address. Once the panel domain loads, close port 3000: `docker service update --publish-rm 3000 dokploy`.
 
 Still by hand: ordering the VPS, the DNS records, the Dokploy admin account and API key, elmah.io, PingPuffin, the
 password manager and the smoke test. The `www.` redirect to the apex is a Dokploy middleware; the kit routes `www.` to
