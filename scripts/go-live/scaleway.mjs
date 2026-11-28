@@ -41,7 +41,11 @@ export async function email(kit, prod) {
 export async function emailRecords(kit) {
     if (!kit.isSet("SCW_TEM_DOMAIN_ID") || !kit.isSet("SCW_SECRET_KEY")) return [];
     const d = await client(kit)("GET", `${TEM}/domains/${kit.get("SCW_TEM_DOMAIN_ID")}`);
-    const rel = n => n.replace(new RegExp(`\\.?${d.name.replace(/\./g, "\\.")}\\.?$`), "") || "@";
+    const rel = n => {
+        const s = n.replace(/\.$/, "");
+        if (s === d.name) return "@";
+        return s.endsWith(`.${d.name}`) ? s.slice(0, -d.name.length - 1) : s;
+    };
     const r = d.records ?? {};
     return [
         ["@", "TXT", r.spf?.value ?? `v=spf1 ${d.spf_config} -all`],
