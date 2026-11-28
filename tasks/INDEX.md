@@ -46,8 +46,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 034's site lines (landing page,
-pricing FAQ, the switch pages' "No time tracking" line, task 034 Site). Then 039 parts A to C, once ADR-023 is
+Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 039 parts A to C, once ADR-023 is
 accepted. Every other open row waits on a person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -61,7 +60,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 023 | Built, web wizard and Hierarchy trees included. Left: three official product marks (manual) and the production run | The owner for the marks; 013 Done for the run |
 | 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras, Trello's authorize link and all four site pages done. Left: recorded fixtures and the close (sandbox accounts, manual steps) | The sandboxes |
 | 027 | GitHub (with Projects (v2) boards), YouTrack and Monday done, site pages included. Left: the recorded fixtures and live runs | Nothing for those; the sandboxes for the close |
-| 034 | ADR-021 accepted; API, CLI, MCP, the web UI (prototype 01) and the Jira and YouTrack worklog import done | Nothing for the site lines; the legal check (manual step) before claiming compliance |
+| 034 | ADR-021 accepted; API, CLI, MCP, the web UI (prototype 01), the Jira and YouTrack worklog import and the site lines done | The legal check (manual step) before claiming compliance; a Jira sandbox for the live run |
 | 039 | ADR-023 proposed; nothing built | The owner accepting ADR-023 for parts A to C; 013 live for part D |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 | 035 | ADR-022 accepted; everything built and tested, the key-leak tests included | A second Scaleway account (manual step) for the end-to-end try; the legal review |

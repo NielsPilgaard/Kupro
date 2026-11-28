@@ -105,7 +105,7 @@ export const da: Copy = {
   plan: {
     eyebrow: 'Leveranceplan',
     title: 'Planlæg året. Lever ugen.',
-    sub: 'Alle projekters epics på én plan, med milepæle og et kapacitetsbånd, der for hver måned siger “behov 4,5, har 3”. Tegn en epic på planen, og den ligger i backloggen. Luk den sidste task, og planen flytter sig.',
+    sub: 'Alle projekters epics på én plan, med milepæle og et kapacitetsbånd, der for hver måned siger “behov 4,5, har 3”. Tegn en epic på planen, og den ligger i backloggen. Luk den sidste task, og planen flytter sig. Slå tidsregistrering til, så registrerer alle deres timer på den opgave, de har arbejdet på.',
     mockLabel: 'Leveranceplan: tre projekter fra januar til juni, en lanceringsmilepæl i april og maj over kapacitet',
     mockTitle: 'Leveranceplan · 2027',
     viewList: 'Liste',
@@ -208,6 +208,7 @@ export const da: Copy = {
       { q: 'Kræver agenter og gæster en plads?', a: 'Nej. Agenter får deres eget navn og token og tager ingen plads. Gæster kan læse, kommentere og vedhæfte filer, gratis for op til 5 pr. plads.' },
       { q: 'Hvad sker der, når prøveperioden slutter?', a: 'Arbejdsområdet bliver skrivebeskyttet, indtil I tegner abonnement. I kan stadig eksportere det hele. Tegner I ikke abonnement, slettes det 30 dage senere, og vi skriver til jer før hvert skridt.' },
       { q: 'Hvad hvis vi bruger mødetimerne op?', a: 'Mikrofonen stopper til næste måned. Tekst sendt via API, CLI eller MCP bliver stadig til forslag med en enklere søgning på nøgleord.' },
+      { q: 'Kan vi registrere arbejdstid?', a: 'Ja. En ejer slår tidsregistrering til for arbejdsområdet. Så registrerer alle tid på de opgaver, de har arbejdet på, i appen, i CLI’en eller gennem en agent, og ser deres uge. Alle rettelser gemmes, og ejere eksporterer en måned som CSV.' },
       { q: 'Kan vi opsige?', a: 'Ja, i appen, når som helst. Planen løber til slutningen af den måned eller det år, I har betalt for. Vi refunderer ikke dele af en periode.' },
       { q: 'Foreninger og uddannelse?', a: 'Den betalte plan er gratis efter aftale, men uden mødeagenten: hver mødetime koster os omkring 5 kr. i AI-gebyrer, og en gratis plan betaler intet af det tilbage.' },
       { q: 'Kan vi selv hoste det?', a: 'Ja. Kupro er open source under AGPL. Selvhostet har ingen grænse for pladser; I står selv for servere og AI-nøgler.' },
@@ -246,11 +247,11 @@ export const da: Copy = {
           { t: 'Kommentarer, filer og links', d: 'Omtaler, links til andre opgaver og billeder i teksten peger bagefter ind i Kupro.' },
           { t: 'Historik', d: 'Ændringer af status, ansvarlig, sprint og prioritet vises med den oprindelige person og tid.' },
           { t: 'Labels og komponenter', d: 'Labels forbliver labels. Komponenter bliver også labels, medmindre I fravælger det.' },
+          { t: 'Worklogs', d: 'Med tidsregistrering slået til bliver hver worklog en tidsregistrering for den, der loggede den, på den dag, den blev logget. Ellers lægges den loggede tid sammen i detaljeblokken.' },
         ],
         changes: [
           { t: 'Ét workflow', d: 'Backlog, Klar, I gang, Til review, Færdig, Annulleret. Jeres egne statusser placeres i dem.' },
           { t: 'Ingen egne felter', d: 'Værdierne fra jeres egne felter kan stadig læses i en detaljeblok på hver opgave, og deres historik følger med.' },
-          { t: 'Ingen tidsregistrering', d: 'Registreret tid lægges sammen i detaljeblokken.' },
           { t: 'Service Management', d: 'Request types, køer og SLA’er bliver i Jira.' },
         ],
         steps: [
@@ -406,7 +407,7 @@ export const da: Copy = {
           { t: 'Typer og subtasks', d: 'Hver type bliver til Epic, Feature eller Task; bugs beholder en bug-label. Subtask-links bliver hierarkiet.' },
           { t: 'Statusser og prioriteter', d: 'Løste statusser bliver Færdig, eller Annulleret, når navnet siger, at arbejdet er droppet, som Duplicate eller Won’t fix. Show-stopper og Critical bliver Akut.' },
           { t: 'Sprints', d: 'Sprints fra jeres agile boards beholder deres datoer. En opgave i flere sprints lander i den seneste.' },
-          { t: 'Estimater og datoer', d: 'Estimation og Due Date følger med. Den samlede brugte tid står i timer i en detaljeblok.' },
+          { t: 'Estimater og datoer', d: 'Estimation og Due Date følger med. Med tidsregistrering slået til bliver work items til tidsregistreringer for den, der loggede dem; ellers står den samlede brugte tid i timer i en detaljeblok.' },
           { t: 'Kommentarer, filer og links', d: 'Kommentarer beholder forfatter og tid. Filer kopieres til Kupro. Depends on bliver blokerer, dubletter forbliver dubletter, og andre links bliver relationer.' },
           { t: 'Historik', d: 'Ændringer af status, ansvarlig, prioritet og andre felter vises med den oprindelige person og tid.' },
         ],

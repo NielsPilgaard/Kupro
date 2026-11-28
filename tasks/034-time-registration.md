@@ -30,8 +30,9 @@ purpose: 'Implementation spec for task 034.'
 API, CLI and MCP are in (`Kupro.Api/Features/Time`, `kupro time`, the MCP `time` and `relations` tools), tested in
 `TimeTests`, `McpTests`, `CliTests` and `PerfBudgetTests`. The web UI (prototype 01) is in `web/src/features/time`,
 tested in `time.test.ts` and the E2E `time.spec.ts`. Jira worklogs and YouTrack work items import as entries (see
-Import below). Left: the site lines, a live run against a Jira sandbox (with 024's close), and the manual steps (legal
-check, privacy policy and DPA lines).
+Import below). The site has its lines: the delivery plan section, a pricing FAQ answer, and the Jira and YouTrack
+switch pages (no compliance claim until the legal check). Left: a live run against a Jira sandbox (with 024's close),
+and the manual steps (legal check, privacy policy and DPA lines).
 
 - **Web**: My time (`/w/:workspace/time`, the week grid with `?week=`), Team time (`/team-time`, Owners, with the
   export dialog), and workspace settings (`/settings`, Owners, the time registration switch). The Log time dialog opens
