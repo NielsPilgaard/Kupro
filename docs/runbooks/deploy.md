@@ -219,7 +219,8 @@ and starts `api` only if migrations succeeded. If a deploy fails:
 - `api` unhealthy: the healthcheck probes `/alive`, and Grafana's "API down" alert fires after 5 minutes.
 - The CD job summary holds the tail of the Dokploy log.
 - Roll back: Actions → CD → Run workflow with an earlier `sha-<commit>` tag. Migrations are forward-only, so a
-  rollback across a migration needs a backward-compatible schema.
+  rollback across a migration needs a backward-compatible schema. Automatic rollback is planned in
+  [ADR-023](../adr/ADR-023-safe-delivery.md).
 
 ## Open gaps
 

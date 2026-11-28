@@ -28,6 +28,7 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | # | Task | Priority | Phase | Depends on | Status |
 |---|---|---|---|---|---|
 | 3 | [013 Production deploy on OVHcloud + Dokploy](013-deploy.md) | P1 | 0 | 001, 002 | Todo |
+| 4 | [039 Safe delivery: merge queue, full parallel E2E, automatic rollback](039-safe-delivery.md) | P1 | 0 | 001 (013 to close) | Todo |
 | 15 | [015 Meeting agent — AI in the room](015-meeting-agent.md) | P1 | 2 | 004, 006, 010, 012 | In progress |
 | 20 | [020 CLI install script and `kupro install mcp`](020-cli-distribution.md) | P1 | 1 | 005, 006 (013 to close) | In progress |
 | 22 | [022 Open-source readiness](022-open-source-readiness.md) | P1 | 1 | — | In progress |
@@ -41,8 +42,8 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-25. The build order above is not the same as what is buildable. **Pick up next**: 034's web UI
-(prototype 01 picked), then its import of Jira worklogs and YouTrack work items. Every other open row waits on a
+Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 039 parts A to C
+(once ADR-023 is accepted), then 034's import of Jira worklogs and YouTrack work items. Every other open row waits on a
 person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -57,6 +58,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras, Trello's authorize link and all four site pages done. Left: recorded fixtures and the close (sandbox accounts, manual steps) | The sandboxes |
 | 027 | GitHub (with Projects (v2) boards), YouTrack and Monday done, site pages included. Left: the recorded fixtures and live runs | Nothing for those; the sandboxes for the close |
 | 034 | ADR-021 accepted, prototype 01 picked; API, CLI and MCP done | Nothing for the web UI and the worklog import; the legal check (manual step) before claiming compliance |
+| 039 | ADR-023 proposed; nothing built | The owner accepting ADR-023 for parts A to C; 013 live for part D |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 
 ## Completed
