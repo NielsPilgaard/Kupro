@@ -10451,7 +10451,7 @@
                 "type": "null"
               },
               {
-                "description": "`done` or `canceled`: also close the issue in the same save. Both commit or neither does, and the entry\nlocks with the issue afterwards.",
+                "description": "`done` or `canceled`: also close the issue in the same save. Both commit or neither does, and the entry\r\nlocks with the issue afterwards.",
                 "$ref": "#/components/schemas/IssueState"
               }
             ]
@@ -12052,6 +12052,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "sumsWorklogs": {
+            "type": "boolean",
+            "description": "The field sums the item's SourceWorklogs in hours. With time registration on, the worklogs become\ntime entries and this sum keeps only the time nobody in Kupro holds (ADR-021 Import)."
           }
         },
         "description": "A source field beyond the ones SourceItem has. Values in IReadOnlyDictionary&lt;string, JsonElement&gt; SourceItem.Fields are a\nstring (text, date as ISO 8601, select option, user ID), a number, or an array of strings (multi-select)."
