@@ -66,3 +66,4 @@ As above. Postgres and API on the same host for lowest latency.
 - [ADR-014](ADR-014-observability.md) — production observability
 - [ADR-016](ADR-016-postgres-backups.md) — Postgres backups and restores
 - [ADR-017](ADR-017-public-site.md) — the `site` service and the apex/app domain split
+- [ADR-023](ADR-023-safe-delivery.md) — how deploys are gated and rolled back

@@ -31,3 +31,4 @@ purpose: 'Lookup table from concept to the ADR that owns it.'
 | Sprint close outcomes, split carry-over, sprint ledger, burndown and sprint report | [ADR-020](ADR-020-sprint-close-burndown.md) | Accepted |
 | Time registration: time entries on work items, who sees what, lock on resolve, 5-year retention, export | [ADR-021](ADR-021-time-registration.md) | Accepted |
 | AI provider registry, capability routing, workspace AI connections (bring your own key) | [ADR-022](ADR-022-ai-providers-byok.md) | Accepted |
+| Safe delivery: merge queue, E2E flow coverage and parallelism, expand/contract migrations, N-1 test, smoke, bake, automatic rollback | [ADR-023](ADR-023-safe-delivery.md) | Proposed |

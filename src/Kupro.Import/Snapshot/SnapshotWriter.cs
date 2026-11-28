@@ -26,6 +26,7 @@ public sealed class SnapshotWriter : IAsyncDisposable
     private readonly Part _comments = new(SnapshotParts.Comments);
     private readonly Part _attachments = new(SnapshotParts.Attachments);
     private readonly Part _changes = new(SnapshotParts.Changes);
+    private readonly Part _worklogs = new(SnapshotParts.Worklogs);
     private string? _cursor;
     private int _files;
     private bool _completed;
@@ -75,6 +76,9 @@ public sealed class SnapshotWriter : IAsyncDisposable
             case SourceChange change:
                 await AppendAsync(_changes, change, SnapshotJson.Default.SourceChange, ct);
                 break;
+            case SourceWorklog worklog:
+                await AppendAsync(_worklogs, worklog, SnapshotJson.Default.SourceWorklog, ct);
+                break;
             default:
                 throw new ArgumentException($"Unknown snapshot record {record.GetType().Name}.", nameof(record));
         }
@@ -97,7 +101,7 @@ public sealed class SnapshotWriter : IAsyncDisposable
     public async Task CompleteAsync(DateTimeOffset createdAt, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_completed, this);
-        foreach (var part in new[] { _items, _relations, _comments, _attachments, _changes })
+        foreach (var part in new[] { _items, _relations, _comments, _attachments, _changes, _worklogs })
         {
             await FlushAsync(part, ct);
         }
@@ -123,6 +127,7 @@ public sealed class SnapshotWriter : IAsyncDisposable
                 Comments = _comments.Count,
                 Attachments = _attachments.Count,
                 Changes = _changes.Count,
+                Worklogs = _worklogs.Count,
             },
         };
         await using (var entry = await _zip.CreateEntry(HeaderEntry, CompressionLevel.Optimal).OpenAsync(ct))
@@ -192,5 +197,6 @@ public static class SnapshotParts
     public const string Comments = "comments";
     public const string Attachments = "attachments";
     public const string Changes = "changes";
+    public const string Worklogs = "worklogs";
     public const string Files = "files";
 }

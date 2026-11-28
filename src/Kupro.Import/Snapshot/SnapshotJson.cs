@@ -19,6 +19,7 @@ namespace Kupro.Import.Snapshot;
 [JsonSerializable(typeof(SourceComment))]
 [JsonSerializable(typeof(SourceAttachment))]
 [JsonSerializable(typeof(SourceChange))]
+[JsonSerializable(typeof(SourceWorklog))]
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(decimal))]
 [JsonSerializable(typeof(string[]))]
