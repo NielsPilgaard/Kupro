@@ -46,9 +46,9 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 
 ## What an agent can pick up
 
-Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 036's transcript
-on activity entries (P1); then 039 parts A to C (once ADR-023 is accepted), then 034's import of Jira worklogs
-(snapshot read started) and YouTrack work items. Every other open row waits on a
+Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 035's key-leak test
+over logs, traces and the export (P1); then 039 parts A to C (once ADR-023 is accepted), then 034's import of Jira
+worklogs (snapshot read started) and YouTrack work items. Every other open row waits on a
 person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -66,7 +66,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 039 | ADR-023 proposed; nothing built | The owner accepting ADR-023 for parts A to C; 013 live for part D |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
 | 035 | ADR-022 accepted; API, CLI, MCP, the web settings screen (prototype 03) and per-model approval stats built | A second Scaleway account (manual step) for the end-to-end try; the key-leak test over logs, traces and export can be written |
-| 036 | API, voice-button preference, `kupro say` and the web (both button styles, card, dictation) built | Nothing for the activity-feed snippet; a Scaleway key for the 3 s measurement; a Playwright mobile run |
+| 036 | API, voice-button preference, `kupro say`, the web (both button styles, card, dictation) and what was said on activity entries built | A Scaleway key for the 3 s measurement; a Playwright mobile run |
 | 037 | Spec written: the first run asks the voice question; 036's preference is built | Prototypes and the owner's pick |
 
 ## Completed

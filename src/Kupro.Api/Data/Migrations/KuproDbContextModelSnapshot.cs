@@ -111,6 +111,11 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("proposal_id");
 
+                    b.Property<string>("Said")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("said");
+
                     b.Property<string>("Via")
                         .IsRequired()
                         .HasMaxLength(8)

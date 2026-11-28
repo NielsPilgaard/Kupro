@@ -8762,6 +8762,13 @@
               "string"
             ],
             "description": "For an import: the source kind it came from (`jira`, `azure-devops`...), for \"via Jira import\"."
+          },
+          "said": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "For a change made by voice: the words the person said."
           }
         }
       },
