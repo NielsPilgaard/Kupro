@@ -208,6 +208,28 @@ internal sealed record JiraComment
     public string? Updated { get; init; }
 }
 
+internal sealed record JiraWorklogPage
+{
+    public IReadOnlyList<JiraWorklog> Worklogs { get; set; } = [];
+    public int StartAt { get; init; }
+    public int Total { get; init; }
+}
+
+internal sealed record JiraWorklog
+{
+    public required string Id { get; init; }
+    public JsonElement Author { get; init; }
+
+    /// <summary>ADF (an object) on v3, plain text on v2.</summary>
+    public JsonElement Comment { get; init; }
+
+    /// <summary>When the work started, in the offset Jira recorded.</summary>
+    public string? Started { get; init; }
+
+    public long TimeSpentSeconds { get; init; }
+    public string? Created { get; init; }
+}
+
 internal sealed record JiraSprint
 {
     public long Id { get; init; }
@@ -244,6 +266,7 @@ internal sealed record JiraIssueRef
 [JsonSerializable(typeof(JiraChangelogPage))]
 [JsonSerializable(typeof(JiraCommentPage))]
 [JsonSerializable(typeof(JiraComment))]
+[JsonSerializable(typeof(JiraWorklogPage))]
 [JsonSerializable(typeof(JiraSprint))]
 [JsonSerializable(typeof(JiraIssueRef))]
 internal sealed partial class JiraJson : JsonSerializerContext;

@@ -49,6 +49,9 @@ public sealed class ImportDescription
 
     public string SourceDisplayName => _sourceName;
 
+    /// <summary>Per item, the worklog minutes that became time entries; a field that sums worklogs shows only the rest.</summary>
+    public IReadOnlyDictionary<string, int> HeldMinutes { get; set; } = new Dictionary<string, int>();
+
     public static string SourceName(string kind) => kind switch
     {
         SourceKinds.Jira => "Jira",
@@ -145,11 +148,26 @@ public sealed class ImportDescription
             if (!_mapping.LabelFields.Contains(id))
             {
                 var field = _fields.GetValueOrDefault(id);
-                Add(field?.Name ?? id, Display(value, field));
+                if ((field is { SumsWorklogs: true } ? Unheld(item.Id, value) : value) is { } shown)
+                {
+                    Add(field?.Name ?? id, Display(shown, field));
+                }
             }
         }
 
         return rows;
+    }
+
+    /// <summary>Hours summed from worklogs, less those that became entries (ADR-021 Import); null when none are left.</summary>
+    private JsonElement? Unheld(string item, JsonElement hours)
+    {
+        if (!HeldMinutes.TryGetValue(item, out var minutes) || hours.ValueKind != JsonValueKind.Number)
+        {
+            return hours;
+        }
+
+        var left = Math.Round(hours.GetDecimal() - (minutes / 60m), 2);
+        return left > 0 ? FieldValue.Number(left) : null;
     }
 
     /// <summary>The whole description. Too long: the source text is cut, and the block still gets through with its link to the original.</summary>

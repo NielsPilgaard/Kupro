@@ -186,6 +186,11 @@ public sealed partial class ImportCommit(
         _counts = run.Counts is { } saved ? JsonSerializer.Deserialize<ImportRunCounts>(saved, Json) ?? new() : new();
 
         await LoadKnownAsync(ct);
+        var timeRegistration = await TimeRegistrationAsync(ct);
+        if (timeRegistration)
+        {
+            _description.HeldMinutes = await HeldMinutesAsync(snapshot, ct);
+        }
 
         var read = await SourceRead.ReadAsync(snapshot, _source, Tree, counting: false, ct);
         var fit = read.Fit;
@@ -212,7 +217,10 @@ public sealed partial class ImportCommit(
         var projectOf = read.Refs.ToDictionary(r => r.Id, r => r.ProjectKey, StringComparer.Ordinal);
         await WriteAttachmentsAsync(snapshot, ct);
         await WriteCommentsAsync(snapshot, references, ct);
-        await WriteWorklogsAsync(snapshot, ct);
+        if (timeRegistration)
+        {
+            await WriteWorklogsAsync(snapshot, ct);
+        }
         var marks = await ReplayChangesAsync(snapshot, projectOf, ct);
         await MarkChangesSeenAsync(marks, ct);
 

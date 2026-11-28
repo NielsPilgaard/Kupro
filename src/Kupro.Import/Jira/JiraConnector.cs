@@ -20,7 +20,7 @@ public sealed class JiraConnector : ISourceConnector
     internal const string SprintSchema = "com.pyxis.greenhopper.jira:gh-sprint";
     internal const string EpicLinkSchema = "com.pyxis.greenhopper.jira:gh-epic-link";
 
-    /// <summary>Sums of the worklogs (time tracking is out of v1), in hours, for the details block.</summary>
+    /// <summary>The sum of the worklogs, in hours, for the details block (<see cref="SourceField.SumsWorklogs"/>).</summary>
     internal const string TimeLoggedField = "timespent";
 
     internal const string ComponentsField = "components";
@@ -34,7 +34,7 @@ public sealed class JiraConnector : ISourceConnector
     [
         "summary", "description", "issuetype", "status", "priority", "assignee", "reporter", "creator", "created", "updated",
         "resolutiondate", "resolution", "labels", "components", "fixVersions", "duedate", "timeoriginalestimate", "timespent",
-        "parent", "issuelinks", "attachment", "comment",
+        "parent", "issuelinks", "attachment", "comment", "worklog",
     ];
 
     private readonly JiraClient _client;
@@ -123,6 +123,7 @@ public sealed class JiraConnector : ISourceConnector
             {
                 var histories = await HistoriesAsync(catalog, issue, ct);
                 var comments = await CommentsAsync(catalog, issue, ct);
+                var worklogs = await WorklogsAsync(catalog, issue, ct);
                 var epic = await EpicAsync(catalog, reading, issue, ct);
                 var sprint = await SprintAsync(catalog, issue, sprints, ct);
                 if (sprint.New is { } newSprint)
@@ -143,6 +144,7 @@ public sealed class JiraConnector : ISourceConnector
                 var files = Jira.Array(issue.Fields, "attachment").ToList();
                 var sourceComments = comments.Select(c => reading.Comment(item, c, files)).ToList();
                 var changes = reading.Changes(item, histories).ToList();
+                var sourceWorklogs = worklogs.Select(w => reading.Worklog(item, w)).OfType<SourceWorklog>().ToList();
                 foreach (var person in reading.TakePeople())
                 {
                     yield return person;
@@ -167,6 +169,11 @@ public sealed class JiraConnector : ISourceConnector
                 foreach (var change in changes)
                 {
                     yield return change;
+                }
+
+                foreach (var worklog in sourceWorklogs)
+                {
+                    yield return worklog;
                 }
             }
         }
@@ -301,6 +308,31 @@ public sealed class JiraConnector : ISourceConnector
             if (page.Comments.Count == 0 || startAt >= page.Total)
             {
                 return comments;
+            }
+        }
+    }
+
+    /// <summary>All worklogs. A search embeds the first 20; the rest is paged in.</summary>
+    private async Task<IReadOnlyList<JiraWorklog>> WorklogsAsync(Catalog catalog, JiraIssue issue, CancellationToken ct)
+    {
+        var embedded = issue.Fields.TryGetValue("worklog", out var value) && value.ValueKind == JsonValueKind.Object
+            ? value.Deserialize(JiraJson.Default.JiraWorklogPage)
+            : null;
+        if (embedded is not null && embedded.StartAt == 0 && embedded.Worklogs.Count >= embedded.Total)
+        {
+            return embedded.Worklogs;
+        }
+
+        var worklogs = new List<JiraWorklog>();
+        for (var startAt = 0; ;)
+        {
+            var page = await _client.GetAsync(
+                $"rest/api/{catalog.Api}/issue/{issue.Id}/worklog?startAt={startAt}&maxResults={PageSize}", JiraJson.Default.JiraWorklogPage, ct);
+            worklogs.AddRange(page.Worklogs);
+            startAt += page.Worklogs.Count;
+            if (page.Worklogs.Count == 0 || startAt >= page.Total)
+            {
+                return worklogs;
             }
         }
     }
@@ -538,7 +570,7 @@ public sealed class JiraConnector : ISourceConnector
                 [
                     new SourceField { Id = ComponentsField, Name = "Components", Kind = FieldKind.MultiSelect },
                     new SourceField { Id = ResolutionField, Name = "Resolution", Kind = FieldKind.Select, Options = resolutions },
-                    new SourceField { Id = TimeLoggedField, Name = "Time logged (hours)", Kind = FieldKind.Number },
+                    new SourceField { Id = TimeLoggedField, Name = "Time logged (hours)", Kind = FieldKind.Number, SumsWorklogs = true },
                     .. Exported.Values.Select(f => new SourceField { Id = f.Id, Name = f.Name, Kind = Jira.Kind(f)!.Value }),
                 ],
             };

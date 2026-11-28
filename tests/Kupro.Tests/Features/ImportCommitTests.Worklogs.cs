@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Kupro.Api.Features.Activity;
 using Kupro.Api.Features.Imports;
 using Kupro.Api.Features.Time;
@@ -16,7 +17,9 @@ public sealed partial class ImportCommitTests
 
     private static FakeConnector Worklogged()
     {
-        var source = Source(Item("a", key: "WEB-1"));
+        var logged = new SourceField { Id = "timespent", Name = "Time logged (hours)", Kind = FieldKind.Number, SumsWorklogs = true };
+        var source = new FakeConnector(Description() with { Fields = [logged] });
+        source.Records.Add(Item("a", key: "WEB-1") with { Fields = new Dictionary<string, JsonElement> { ["timespent"] = FieldValue.Number(43.5m) } });
         source.Records.InsertRange(0, [new SourcePerson { Id = "u1", Name = "Sofie Larsen" }, new SourcePerson { Id = "bot", Name = "Jira Automation" }]);
         source.Records.AddRange(
         [
@@ -60,6 +63,7 @@ public sealed partial class ImportCommitTests
             ]);
             (await db.TimeEntryChanges.CountAsync(Ct)).ShouldBe(2);
         });
+        (await IssueAsync("WEB-1")).Description!.ShouldContain("| Time logged (hours) | 1.5 |", Case.Sensitive, "only the skipped person's and the authorless hour and a half");
 
         var again = await RunAsync(import, ImportRunKind.Commit);
         again.State.ShouldBe(ImportRunState.Succeeded, again.Error);
@@ -82,6 +86,7 @@ public sealed partial class ImportCommitTests
         run.State.ShouldBe(ImportRunState.Succeeded, run.Error);
         Counts(run).TimeEntries.ShouldBe(0);
         await WithDbAsync(async db => (await db.TimeEntries.CountAsync(Ct)).ShouldBe(0));
+        (await IssueAsync("WEB-1")).Description!.ShouldContain("| Time logged (hours) | 43.5 |");
     }
 
     [Fact]

@@ -327,11 +327,6 @@ public sealed partial class ImportCommit
     /// </summary>
     private async Task WriteWorklogsAsync(SnapshotReader snapshot, CancellationToken ct)
     {
-        if (!await TimeRegistrationAsync(ct))
-        {
-            return;
-        }
-
         var batch = new List<SourceWorklog>(BatchSize);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         await foreach (var worklog in snapshot.ReadWorklogsAsync(ct))
@@ -353,6 +348,30 @@ public sealed partial class ImportCommit
         {
             await WriteWorklogBatchAsync(batch, ct);
         }
+    }
+
+    /// <summary>
+    /// Per item, the minutes of the worklogs that become entries: by someone the owner didn't skip, as
+    /// <see cref="WriteWorklogsAsync"/> writes them. Known before the items are written, so their summed field keeps
+    /// only the rest.
+    /// </summary>
+    private async Task<Dictionary<string, int>> HeldMinutesAsync(SnapshotReader snapshot, CancellationToken ct)
+    {
+        var people = _header.People.DistinctBy(p => p.Id).ToDictionary(p => p.Id, StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var held = new Dictionary<string, int>(StringComparer.Ordinal);
+        await foreach (var worklog in snapshot.ReadWorklogsAsync(ct))
+        {
+            if (seen.Add(worklog.Id) && worklog.Author is { } author
+                && (_mapping.People.TryGetValue(author, out var target)
+                    ? target.Action != PersonAction.Skip
+                    : people.GetValueOrDefault(author) is { Bot: false }))
+            {
+                held[worklog.Item] = held.GetValueOrDefault(worklog.Item) + worklog.Minutes;
+            }
+        }
+
+        return held;
     }
 
     private async Task<bool> TimeRegistrationAsync(CancellationToken ct)
