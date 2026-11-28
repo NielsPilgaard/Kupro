@@ -97,6 +97,27 @@ internal sealed record YtComment
     public bool Deleted { get; init; }
 }
 
+internal sealed record YtDuration
+{
+    public int Minutes { get; init; }
+}
+
+/// <summary>Time logged on an issue. <see cref="Date"/> is the work day, as midnight UTC.</summary>
+internal sealed record YtWorkItem
+{
+    public required string Id { get; init; }
+    public YtUser? Author { get; init; }
+    public required long Date { get; init; }
+    public YtDuration? Duration { get; init; }
+    public string? Text { get; init; }
+    public long? Created { get; init; }
+}
+
+internal sealed record YtTimeTracking
+{
+    public IReadOnlyList<YtWorkItem> WorkItems { get; set; } = [];
+}
+
 internal sealed record YtAttachment
 {
     public required string Id { get; init; }
@@ -125,6 +146,9 @@ internal sealed record YtIssue
     public IReadOnlyList<YtLink> Links { get; set; } = [];
     public IReadOnlyList<YtComment> Comments { get; set; } = [];
     public IReadOnlyList<YtAttachment> Attachments { get; set; } = [];
+
+    /// <summary>Null when the project doesn't track time.</summary>
+    public YtTimeTracking? TimeTracking { get; init; }
 }
 
 internal sealed record YtActivityField
