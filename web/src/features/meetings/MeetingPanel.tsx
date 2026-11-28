@@ -262,7 +262,9 @@ function ModeBar({
       <p className="text-xs text-mute">
         {t(`meeting.modeHelp.${meeting.mode}`)}
       </p>
-      {settings && <TrustStats settings={settings} />}
+      {settings && (
+        <TrustStats settings={settings} language={meeting.language} />
+      )}
       {isOwner && settings && (
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -287,12 +289,19 @@ function ModeBar({
  * "You approved 47 of 50 status changes unchanged": suggest mode earning trust before full auto (task 015). A model
  * Kupro hasn't tested gets a mark and only its own history (task 035).
  */
-function TrustStats({ settings }: { settings: MeetingSettingsResponse }) {
+function TrustStats({
+  settings,
+  language,
+}: {
+  settings: MeetingSettingsResponse;
+  language: string;
+}) {
   const { t } = useTranslation();
-  const untested =
-    settings.proposalModel && !settings.proposalModel.tested
-      ? settings.proposalModel.model
-      : null;
+  const proposing =
+    language in settings.proposalModelByLanguage
+      ? settings.proposalModelByLanguage[language]
+      : settings.proposalModel;
+  const untested = proposing && !proposing.tested ? proposing.model : null;
   const stats = untested
     ? (settings.statsByModel.find((m) => m.model === untested)?.operations ??
       [])

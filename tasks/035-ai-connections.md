@@ -49,7 +49,8 @@ needs a person: a second Scaleway account for the end-to-end try, and the legal 
       command palette and the account settings page. Usage first, "Go unlimited" wizard, connection cards, the
       rejected-key banner, read-only for members without billing access. Tests in `AiSettingsPage.test.tsx`.
 - [x] Each proposal records the model that made it (`meeting_proposals.model`, null for keyword matching). Meeting
-      settings return `statsByModel` and the `proposalModel` now in use, each with `tested`. The CLI's
+      settings return `statsByModel`, the `proposalModel` now in use, and `proposalModelByLanguage` for languages routed
+      to another model, each with `tested`. The CLI's
       `kupro meeting settings` shows both. The meeting panel marks a model Kupro hasn't tested next to the full-auto
       toggle and shows that model's own history.
 

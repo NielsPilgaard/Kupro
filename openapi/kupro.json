@@ -10585,6 +10585,7 @@
           "stats",
           "statsByModel",
           "proposalModel",
+          "proposalModelByLanguage",
           "usage"
         ],
         "type": "object",
@@ -10631,6 +10632,13 @@
                 "$ref": "#/components/schemas/ProposalModelInfo"
               }
             ]
+          },
+          "proposalModelByLanguage": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProposalModelInfo"
+            },
+            "description": "Languages whose meetings propose with another model than `ProposalModel`."
           },
           "usage": {
             "oneOf": [

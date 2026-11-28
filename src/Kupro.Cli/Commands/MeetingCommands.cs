@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
 using Kupro.Cli.Api.Models;
+using Microsoft.Kiota.Abstractions.Serialization;
 
 namespace Kupro.Cli.Commands;
 
@@ -214,12 +215,33 @@ internal static class MeetingCommands
                     ("Meeting hours", s.Usage is { } u
                         ? $"{u.HoursUsed?.ToString("0.#", CultureInfo.InvariantCulture)} of {u.HoursIncluded?.ToString("0.#", CultureInfo.InvariantCulture)} used, resets {u.ResetsOn}{(u.Spent == true ? " (used up: microphone off, keyword proposals only)" : "")}"
                         : "no limit"),
-                    ("Proposal model", s.ProposalModel is { } m ? $"{m.Model}{(m.Tested == true ? "" : " (not tested by Kupro)")}" : "keyword matching"),
+                    ("Proposal model", string.Join("; ", new[] { ProposalModel(s.ProposalModel) }.Concat(
+                        (s.ProposalModelByLanguage?.AdditionalData ?? new Dictionary<string, object>())
+                        .Select(l => $"{l.Key}: {ProposalModel(Untyped(l.Value))}")))),
                     ("Approved unchanged", Approved(s.Stats)),
                     ("By model", string.Join("; ", (s.StatsByModel ?? [])
                         .Select(x => $"{x.Model ?? "keyword matching"}{(x.Model is null || x.Tested == true ? "" : " (not tested)")}: {Approved(x.Operations)}"))));
             });
     }
+
+    /// <summary>Kiota leaves a map's values untyped.</summary>
+    private static ProposalModelInfo? Untyped(object? value)
+    {
+        if (value is not UntypedObject o)
+        {
+            return null;
+        }
+
+        var fields = o.GetValue();
+        return new ProposalModelInfo
+        {
+            Model = fields.TryGetValue("model", out var m) && m is UntypedString model ? model.GetValue() : null,
+            Tested = fields.TryGetValue("tested", out var t) && t is UntypedBoolean tested && tested.GetValue(),
+        };
+    }
+
+    private static string ProposalModel(ProposalModelInfo? m) =>
+        m is null ? "keyword matching" : $"{m.Model}{(m.Tested == true ? "" : " (not tested by Kupro)")}";
 
     private static string Approved(IEnumerable<OperationStats>? stats) => string.Join(", ", (stats ?? []).Where(x => x.Decided > 0)
         .Select(x => $"{Cli.Dashed(x.Operation.ToString()!)} {x.ApprovedUnchanged}/{x.Decided}"));

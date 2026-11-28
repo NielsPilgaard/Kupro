@@ -68,6 +68,14 @@ public sealed class AiRouter(WorkspaceCache cache, AiKeys keys, IOptions<Meeting
                || server.Model == model || server.Languages.Values.Any(r => r.Model == model);
     }
 
+    /// <summary>Languages with a route of their own for the capability, the workspace's or the server's.</summary>
+    public async Task<IReadOnlyList<string>> LanguagesAsync(AiCapability capability, CancellationToken ct)
+    {
+        var server = capability == AiCapability.Transcription ? options.Value.Transcription : options.Value.Extraction;
+        return (await RowsAsync(ct)).Where(r => r.Capability == capability && r.Language.Length > 0).Select(r => r.Language)
+            .Concat(server.Languages.Keys).Distinct().Order(StringComparer.Ordinal).ToList();
+    }
+
     /// <summary>True when the capability has a working route for the language, own or Kupro's.</summary>
     public async Task<bool> AvailableAsync(AiCapability capability, string language, CancellationToken ct) =>
         await ResolveAsync(capability, language, ct) is { Rejected: false };

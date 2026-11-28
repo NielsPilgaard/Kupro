@@ -267,6 +267,21 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
     }
 
     [Fact]
+    public async Task A_language_routed_to_its_own_model_reports_that_model()
+    {
+        var (client, ws) = await WorkspaceAsync();
+        var added = await AddAsync(client, ws, new AddAiConnectionRequest(AiProviders.ScalewayId, "scw-secret-0007"));
+        (await client.PutAsJsonAsync($"/api/v1/workspaces/{ws}/ai/routes",
+            new SetAiRouteRequest(AiCapability.MeetingProposals, added.Id, Language: "da", Model: "own-llm"), Json.Options, Ct))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var settings = await GetAsync<MeetingSettingsResponse>(client, $"/api/v1/workspaces/{ws}/meeting-settings");
+
+        settings.ProposalModel.ShouldBe(new ProposalModelInfo("llm", Tested: true));
+        settings.ProposalModelByLanguage.ShouldBe(new Dictionary<string, ProposalModelInfo> { ["da"] = new("own-llm", Tested: false) });
+    }
+
+    [Fact]
     public async Task Keys_are_never_returned()
     {
         const string secret = "scw-very-secret-key-9876";

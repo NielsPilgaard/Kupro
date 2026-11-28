@@ -127,6 +127,7 @@ public sealed record ProposalModelInfo(string Model, bool Tested);
 /// <param name="Stats">Suggest-mode history per operation, every model together.</param>
 /// <param name="StatsByModel">The same history split by the model that made each proposal; only models with decisions.</param>
 /// <param name="ProposalModel">Null when no model is set up and proposals come from keyword matching.</param>
+/// <param name="ProposalModelByLanguage">Languages whose meetings propose with another model than <c>ProposalModel</c>.</param>
 /// <param name="Usage">This month's meeting hours; null when the server sets no AI budget (self-hosted).</param>
 public sealed record MeetingSettingsResponse(
     MeetingMode DefaultMode,
@@ -136,6 +137,7 @@ public sealed record MeetingSettingsResponse(
     IReadOnlyList<OperationStats> Stats,
     IReadOnlyList<ModelStats> StatsByModel,
     ProposalModelInfo? ProposalModel,
+    IReadOnlyDictionary<string, ProposalModelInfo> ProposalModelByLanguage,
     MeetingUsageResponse? Usage);
 
 /// <param name="FullAutoEnabled">Allow full auto in this workspace.</param>

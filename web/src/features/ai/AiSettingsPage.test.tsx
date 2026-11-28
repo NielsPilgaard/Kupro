@@ -43,6 +43,7 @@ const settings: MeetingSettingsResponse = {
   stats: [],
   statsByModel: [],
   proposalModel: null,
+  proposalModelByLanguage: {},
   usage: { hoursUsed: 3.5, hoursIncluded: 12, resetsOn: '2026-12-01', spent: false },
 };
 

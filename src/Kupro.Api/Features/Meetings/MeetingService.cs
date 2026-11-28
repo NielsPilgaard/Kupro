@@ -462,12 +462,25 @@ public sealed partial class MeetingService(
         var byModel = decided.GroupBy(d => d.Model).OrderBy(g => g.Key is null).ThenBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => new ModelStats(g.Key, g.Key is { } m && router.Tested(m), AllOperations(g.Select(d => d.Stats))))
             .ToList();
-        var current = await router.ResolveAsync(AiCapability.MeetingProposals, "", ct) is { Rejected: false, Route.Model: { } model }
+        var current = await ProposalModelAsync("", ct);
+        var byLanguage = new Dictionary<string, ProposalModelInfo>();
+        foreach (var language in await router.LanguagesAsync(AiCapability.MeetingProposals, ct))
+        {
+            if (await ProposalModelAsync(language, ct) is { } info && info != current)
+            {
+                byLanguage[language] = info;
+            }
+        }
+
+        return new MeetingSettingsResponse(settings.DefaultMode, settings.FullAutoEnabled, settings.FullAutoOperations,
+            settings.TranscriptRetentionDays, stats, byModel, current, byLanguage, await budget.UsageAsync(ct));
+    }
+
+    /// <summary>The model a meeting in this language proposes with; null for keyword matching.</summary>
+    private async Task<ProposalModelInfo?> ProposalModelAsync(string language, CancellationToken ct) =>
+        await router.ResolveAsync(AiCapability.MeetingProposals, language, ct) is { Rejected: false, Route.Model: { } model }
             ? new ProposalModelInfo(model, router.Tested(model))
             : null;
-        return new MeetingSettingsResponse(settings.DefaultMode, settings.FullAutoEnabled, settings.FullAutoOperations,
-            settings.TranscriptRetentionDays, stats, byModel, current, await budget.UsageAsync(ct));
-    }
 
     /// <summary>One row per operation, in enum order, zeros where nothing was decided.</summary>
     private static List<OperationStats> AllOperations(IEnumerable<OperationStats> decided) =>
