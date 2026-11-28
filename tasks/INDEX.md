@@ -55,7 +55,7 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 
 | Task | State | What unblocks an agent |
 |---|---|---|
-| 013 | Code is in the repo; everything left is manual steps (domain, VPS, Dokploy, first deploy) | The owner working through go-live |
+| 013 | Code is in the repo, and so is the go-live kit (`scripts/go-live/`), which scripts the setup. Left: the owner runs it and does the few console steps it can't | The owner working through go-live |
 | 015 | Built; the accuracy check and real-meeting trial are manual steps | Recorded standups |
 | 022 | Only manual steps left: the CLA test from a second account, and the social preview upload | Both are the owner's |
 | 020 | Code is in the repo; what is left needs the public bucket, a first release and the production realm | 013 Done and the bucket (manual steps) |

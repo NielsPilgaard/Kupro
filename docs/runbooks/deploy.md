@@ -21,6 +21,7 @@ purpose: 'Checklist for setting up and operating a Kupro production environment 
   email settings come from the environment on first start. Afterwards only the permanent admin is manual.
 - Postgres runs on external data volumes next to the backup agent ([ADR-016](../adr/ADR-016-postgres-backups.md)): create
   the volumes and the two backup buckets before the first deploy. Incidents: the [restore runbook](restore.md).
+- The [go-live kit](#go-live-kit) scripts most of the first deploy: the VPS, buckets, email, Dokploy and GitHub.
 - Several items in [Open gaps](#open-gaps) block the first external user.
 
 ## Environment variables
@@ -139,6 +140,28 @@ uploaded twice.
 
 **Breaking the API for old CLIs**: raise `StatusController.MinCliVersion` to the first CLI version that works. Older
 CLIs then warn and point to `kupro update`. Release that CLI before deploying the API.
+
+## Go-live kit
+
+`node scripts/go-live/go-live.mjs <command>` scripts the steps below. It needs Node 24, `ssh`/`scp` and a signed-in `gh`.
+It reads credentials from `notes/go-live.env`, which `init` creates, and fills `notes/production.env`. Both files are
+gitignored. Every command is safe to rerun.
+
+| Command | Does | Covers |
+|---|---|---|
+| `init` | Creates `notes/go-live.env` and prints where each credential comes from, including an OVHcloud token URL with the rights pre-filled. | |
+| `vps` | Copies and runs `infrastructure/vps/harden.sh` and `dokploy.sh`: hardening, Dokploy, the five data volumes. Sets `BACKUP_CONSOLE_SSH`. | step 0, G4, Backups step 4 |
+| `storage` | Creates five encrypted buckets through the OVHcloud API (attachments, keys with versioning, backup repo, ops, CLI downloads), each with its own S3 user limited to that bucket, and sets the attachments CORS. Writes the keys. | step 2, Backups step 1, CLI releases |
+| `email` | Adds the domain to Scaleway TEM, then creates two IAM applications with one permission set each (TEM, Generative APIs) and their keys. | `SMTP_*`, `SCALEWAY_AI_KEY` |
+| `dns` | Prints the A and mail records for the DNS host and shows which already resolve. | step 1 |
+| `dokploy` | Gives the panel its domain, creates the project and compose app (git source, autodeploy off), saves the environment, adds the domains. Refuses while a value is `TODO` or a compose variable is missing. Keeps the image tags CD set. | step 4 |
+| `github` | Creates the `production` environment (deploys from `main` only) with the three Dokploy secrets, plus the CLI download secrets. | [GitHub configuration](#github-configuration) |
+| `keycloak` | Creates your permanent master-realm admin, who must set a password and 2FA on first sign-in. `--delete-bootstrap` then deletes `admin`, but only after that. | step 5 |
+| `check` | Lists what is still `TODO`, the DNS state, and whether the site, app, realm, Grafana and panel answer. `--test-email` sends Grafana's test alert. | steps 6–7 |
+
+Still by hand: ordering the VPS, the DNS records, the Dokploy admin account and API key, elmah.io, PingPuffin, the
+password manager and the smoke test. The `www.` redirect to the apex is a Dokploy middleware; the kit routes `www.` to
+the site.
 
 ## First deploy (once per environment)
 
