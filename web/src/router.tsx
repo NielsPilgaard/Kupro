@@ -10,6 +10,7 @@ import { MembersPage } from './features/members/MembersPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { WorkspaceSettingsPage } from './features/settings/WorkspaceSettingsPage';
 import { MyTimePage, type TimeSearch } from './features/time/MyTimePage';
+import { isCalendarDay } from './lib/time';
 import { TeamTimePage } from './features/time/TeamTimePage';
 import { PlanPage, type Zoom } from './features/plan/PlanPage';
 import { SprintReportPage } from './features/sprints/SprintReportPage';
@@ -125,7 +126,7 @@ const planRoute = createRoute({
 });
 /** `?week=` is any day of the week shown; the pages clamp it to this week at the latest. */
 const timeSearch = (search: Record<string, unknown>): TimeSearch => ({
-  ...(typeof search.week === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.week) ? { week: search.week } : {}),
+  ...(typeof search.week === 'string' && isCalendarDay(search.week) ? { week: search.week } : {}),
   ...withIssue(search),
 });
 const myTimeRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/time', component: MyTimePage, validateSearch: timeSearch });

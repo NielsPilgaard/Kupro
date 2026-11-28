@@ -23,6 +23,13 @@ test('turn on time registration, log time, close an issue with time, export', as
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('link', { name: 'My time' })).toBeVisible();
 
+  // The stack may keep data from earlier runs: Team time is checked against what today held before this one.
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Copenhagen' }).format(new Date());
+  const mine = await page.request.get(`/api/v1/workspaces/${workspace}/time/mine?from=${day}&to=${day}`, { headers: { authorization: bearer } });
+  expect(mine.ok(), await mine.text()).toBe(true);
+  const before = ((await mine.json()) as { totalMinutes: number }).totalMinutes;
+  const hm = (m: number) => (m % 60 ? (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`) : `${m / 60}h`);
+
   const project = `T${Date.now().toString(36).toUpperCase().slice(-6)}`;
   await post('/projects', { key: project, name: `Time ${project}` });
   const [worked, closing] = ((await post('/issues/bulk', {
@@ -48,7 +55,7 @@ test('turn on time registration, log time, close an issue with time, export', as
   await expect(cell).toHaveValue('1h 30m');
   await cell.fill('2h');
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('table', { name: 'Time per issue and day' }).locator('tfoot')).toContainText('2h');
+  await expect(page.getByRole('table', { name: 'Time per issue and day' }).locator('tfoot')).toContainText(hm(before + 120));
 
   // Marking Done with no time logged asks for it, and saves both together.
   await page.goto(`/w/${workspace}/p/${project}?view=list&issue=${closing}`);
@@ -63,7 +70,7 @@ test('turn on time registration, log time, close an issue with time, export', as
 
   // Team time: the Owner sees day totals and downloads the export.
   await page.getByRole('link', { name: 'Team time' }).click();
-  await expect(page.getByRole('table', { name: 'Team time' })).toContainText('2h 30m');
+  await expect(page.getByRole('table', { name: 'Team time' })).toContainText(hm(before + 150));
   await page.getByRole('button', { name: 'Export…' }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('dialog', { name: 'Export time' }).getByRole('button', { name: 'Download' }).click();

@@ -59,6 +59,7 @@ function LogTimeForm({ workspace }: { workspace: string }) {
   const minutes = parseDuration(text);
 
   const submit = () => {
+    setError('');
     if (!issue) return setError(t('time.log.pickIssue'));
     if (!minutes || Number.isNaN(minutes) || minutes > 1440) return setError(t('time.errors.duration'));
     if (date > now) return setError(t('time.errors.future_date'));
@@ -67,6 +68,7 @@ function LogTimeForm({ workspace }: { workspace: string }) {
       {
         onSuccess: () => {
           ui.closeLogTime();
+          request.onSaved?.();
           toast.info(
             state
               ? t('time.log.savedAndClosed', { duration: duration(minutes), key: issue, state: t(`state.${state}`) })
@@ -103,7 +105,10 @@ function LogTimeForm({ workspace }: { workspace: string }) {
         {request.issue ? (
           <span className="flex h-[var(--control)] items-center rounded-r1 bg-sunk px-2 font-mono text-sm">{request.issue}</span>
         ) : (
-          <IssueSearch autoFocus workspace={workspace} value={issue} onPick={(i) => setIssue(i.key)} />
+          <IssueSearch autoFocus workspace={workspace} value={issue} onPick={(i) => {
+              setIssue(i.key);
+              setError('');
+            }} />
         )}
       </label>
       <div className="flex flex-wrap items-start gap-3">
@@ -133,7 +138,10 @@ function LogTimeForm({ workspace }: { workspace: string }) {
                   key={d}
                   type="button"
                   aria-pressed={date === d}
-                  onClick={() => setDate(d)}
+                  onClick={() => {
+                    setDate(d);
+                    setError('');
+                  }}
                   className="h-[calc(var(--control)-2px)] px-2.5 aria-pressed:bg-sel aria-pressed:font-semibold aria-pressed:text-acc-ink"
                 >
                   {d === now ? t('time.today') : days.weekday(d)}
@@ -145,7 +153,11 @@ function LogTimeForm({ workspace }: { workspace: string }) {
               value={date}
               max={now}
               aria-label={t('time.log.date')}
-              onChange={(e) => e.target.value && setDate(e.target.value)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                setDate(e.target.value);
+                setError('');
+              }}
               className="h-[var(--control)] rounded-r1 border border-line bg-panel px-2 font-mono text-sm"
             />
           </div>

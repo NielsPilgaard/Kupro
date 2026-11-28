@@ -27,6 +27,9 @@ export function AppShell() {
   const { data: me } = useQuery(getMeOptions());
   useRealtime(workspace, search.issue);
   const time = useTimeRegistration(workspace);
+  // A pending Log time request names an issue key, and keys repeat across workspaces.
+  const { closeLogTime } = ui;
+  useEffect(() => closeLogTime(), [workspace, closeLogTime]);
 
   // The profile's language wins over the browser's (ADR-011).
   useEffect(() => {
@@ -123,13 +126,13 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           {!collapsed && t('nav.sprints')}
         </Link>
         {info?.timeRegistration && info.role !== 'guest' && (
-          <Link to="/w/$workspace/time" params={{ workspace }} className={nav} activeProps={active}>
+          <Link to="/w/$workspace/time" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.myTime')}>
             <Clock size={16} strokeWidth={1.5} aria-hidden="true" />
             {!collapsed && t('nav.myTime')}
           </Link>
         )}
         {info?.timeRegistration && info.role === 'owner' && (
-          <Link to="/w/$workspace/team-time" params={{ workspace }} className={nav} activeProps={active}>
+          <Link to="/w/$workspace/team-time" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.teamTime')}>
             <UsersRound size={16} strokeWidth={1.5} aria-hidden="true" />
             {!collapsed && t('nav.teamTime')}
           </Link>
@@ -185,7 +188,7 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           </Link>
         )}
         {info?.role === 'owner' && (
-          <Link to="/w/$workspace/settings" params={{ workspace }} className={nav} activeProps={active}>
+          <Link to="/w/$workspace/settings" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.workspaceSettings')}>
             <Settings size={16} strokeWidth={1.5} aria-hidden="true" />
             {!collapsed && t('nav.workspaceSettings')}
           </Link>

@@ -11,6 +11,8 @@ export interface LogTimeRequest {
   state?: 'done' | 'canceled';
   /** "Mark Done without time": the move the dialog interrupted. */
   onSkip?(): void;
+  /** After the entry and the close are saved: a board drop applies its position here. */
+  onSaved?(): void;
 }
 
 interface UiState {
@@ -55,6 +57,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [pickerOverride, setPicker] = useState<((page: PalettePage) => boolean) | null>(null);
   const setPickerOverride = useCallback((fn: ((page: PalettePage) => boolean) | null) => setPicker(() => fn), []);
   const [logTime, setLogTime] = useState<LogTimeRequest | null>(null);
+  // Stable, so the shell can close the dialog when the workspace changes without closing it on every open.
+  const closeLogTime = useCallback(() => setLogTime(null), []);
 
   const value = useMemo<UiState>(
     () => ({
@@ -73,9 +77,9 @@ export function UiProvider({ children }: { children: ReactNode }) {
       setPickerOverride,
       logTime,
       openLogTime: (request = {}) => setLogTime(request),
-      closeLogTime: () => setLogTime(null),
+      closeLogTime,
     }),
-    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride, pickerOverride, setPickerOverride, logTime],
+    [activeKey, palette, createOpen, sidebarCollapsed, createOverride, setCreateOverride, pickerOverride, setPickerOverride, logTime, closeLogTime],
   );
 
   return <UiContext.Provider value={value}>{children}</UiContext.Provider>;

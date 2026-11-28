@@ -11,7 +11,7 @@ import { useTimeRegistration } from '../../api/time';
 import { Topbar } from '../../app/AppShell';
 import { Button } from '../../components/ui';
 import { useToast } from '../../components/Toasts';
-import { addDays, isoWeek, mondayOf, today, useDayFormat, useDuration, weekDays } from '../../lib/time';
+import { addDays, isCalendarDay, isoWeek, mondayOf, today, useDayFormat, useDuration, weekDays } from '../../lib/time';
 import { WeekNav, type TimeSearch } from './MyTimePage';
 
 /**
@@ -29,7 +29,7 @@ export function TeamTimePage() {
   const monday = mondayOf(search.week && search.week <= now ? search.week : now);
   const week = weekDays(monday);
   const { data: members } = useMembers(workspace);
-  const { data } = useQuery({ ...listTimeEntriesOptions({ path: { workspace }, query: { from: monday, to: week[6] } }), enabled: time.owner });
+  const { data, isError, refetch } = useQuery({ ...listTimeEntriesOptions({ path: { workspace }, query: { from: monday, to: week[6] } }), enabled: time.owner });
   const [exporting, setExporting] = useState(false);
 
   const entries = data?.items ?? [];
@@ -37,6 +37,10 @@ export function TeamTimePage() {
   // Everyone who logs time (Owners and Members), plus anyone with entries: placeholders and people who have left.
   const people = (members ?? [])
     .filter((m) => m.kind === 'human' && ((m.status === 'active' && m.role !== 'guest') || withTime.has(m.id)))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // The export reaches back up to a year, so it offers anyone who could have entries, not only this week's.
+  const exportable = (members ?? [])
+    .filter((m) => m.kind === 'human' && m.status !== 'invited' && (m.role !== 'guest' || withTime.has(m.id)))
     .sort((a, b) => a.name.localeCompare(b.name));
   const minutes = (member: string, date?: string) =>
     entries.filter((e) => e.member.id === member && (!date || e.date === date)).reduce((a, e) => a + e.minutes, 0);
@@ -85,7 +89,7 @@ export function TeamTimePage() {
               </tr>
             </thead>
             <tbody>
-              {people.map((m) => (
+              {data && people.map((m) => (
                 <tr key={m.id} className="h-[var(--row)] border-t border-line">
                   <td className="px-2.5">
                     {m.name}
@@ -99,10 +103,17 @@ export function TeamTimePage() {
                   <td className="px-2.5 text-right font-mono font-semibold tabular-nums">{duration(minutes(m.id)) || '–'}</td>
                 </tr>
               ))}
-              {people.length === 0 && (
+              {(!data || people.length === 0) && (
                 <tr>
                   <td colSpan={9} className="p-6 text-center text-mute">
-                    {t('common.loading')}
+                    {isError ? (
+                      <span className="flex items-center justify-center gap-3">
+                        {t('time.errors.load')}
+                        <Button onClick={() => void refetch()}>{t('common.retry')}</Button>
+                      </span>
+                    ) : (
+                      t('common.loading')
+                    )}
                   </td>
                 </tr>
               )}
@@ -111,7 +122,7 @@ export function TeamTimePage() {
         </div>
         <p className="max-w-2xl text-sm text-mute">{t('time.team.note')}</p>
       </main>
-      {exporting && <ExportDialog workspace={workspace} people={people} onClose={() => setExporting(false)} />}
+      {exporting && <ExportDialog workspace={workspace} people={exportable} onClose={() => setExporting(false)} />}
     </>
   );
 }
@@ -129,7 +140,8 @@ function ExportDialog({ workspace, people, onClose }: { workspace: string; peopl
   const [busy, setBusy] = useState(false);
   useEffect(() => dialog.current?.showModal(), []);
   const left = people.filter((p) => p.status === 'deactivated').length;
-  const tooLong = from > to || addDays(from, 365) < to;
+  // A cleared date input gives '', which date arithmetic can't take.
+  const tooLong = !isCalendarDay(from) || !isCalendarDay(to) || from > to || addDays(from, 365) < to;
 
   const download = async () => {
     setBusy(true);
@@ -182,7 +194,7 @@ function ExportDialog({ workspace, people, onClose }: { workspace: string; peopl
         <label className="flex flex-col gap-1">
           <span className="text-xs text-mute">{t('time.export.people')}</span>
           <select value={member} onChange={(e) => setMember(e.target.value)} className={field}>
-            <option value="">{left ? t('time.export.everyoneLeft', { count: people.length, left }) : t('time.export.everyone', { count: people.length })}</option>
+            <option value="">{left ? t('time.export.everyoneLeft', { count: left, total: people.length }) : t('time.export.everyone', { count: people.length })}</option>
             {people.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

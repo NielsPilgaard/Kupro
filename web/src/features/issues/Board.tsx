@@ -83,7 +83,8 @@ export function Board({ workspace, filters }: { workspace: string; filters: Issu
     if (state === issue.state && after === prevKey(columns, issue) && before === nextKey(columns, issue)) return;
     const doMove = () => move.mutate({ path: { workspace, key: issue.key }, body: { state, after, before } });
     // Dropping on Done or Canceled asks for time first when you have logged none (ADR-021 Locking).
-    if (state !== issue.state) void closeWithTime(issue.key, state, doMove);
+    // Saving time closes the issue without a position, so the drop's gap is applied after the save.
+    if (state !== issue.state) void closeWithTime(issue.key, state, doMove, doMove);
     else doMove();
   }
 

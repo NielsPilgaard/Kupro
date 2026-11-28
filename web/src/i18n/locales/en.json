@@ -1169,13 +1169,13 @@
       "people": "People",
       "everyone_one": "Everyone ({{count}})",
       "everyone_other": "Everyone ({{count}})",
-      "everyoneLeft_one": "Everyone ({{count}}, including {{left}} who has left)",
-      "everyoneLeft_other": "Everyone ({{count}}, including {{left}} who have left)",
+      "everyoneLeft_one": "Everyone ({{total}}, including {{count}} who has left)",
+      "everyoneLeft_other": "Everyone ({{total}}, including {{count}} who have left)",
       "from": "From",
       "to": "To",
       "format": "Format",
       "hint": "One row per entry: date, person, minutes, issue key, issue title, note.",
-      "tooLong": "Pick a period of at most 366 days, with From before To.",
+      "tooLong": "Pick a From and a To date, at most 366 days apart, with From first.",
       "download": "Download",
       "failed": "Couldn’t export the time. Try again."
     },
@@ -1187,7 +1187,8 @@
       "not_your_entry": "Only the person whose time it is can change it.",
       "time_entry_not_found": "That entry is gone. The week has been reloaded.",
       "time_registration_off": "Time registration is off in this workspace. An Owner can turn it on in workspace settings.",
-      "failed": "Couldn’t save the time. Try again."
+      "failed": "Couldn’t save the time. Try again.",
+      "load": "Couldn’t load the time."
     }
   },
   "workspaceSettings": {

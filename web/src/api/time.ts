@@ -9,6 +9,7 @@ import {
   getIssueQueryKey,
   getIssueTimeOptions,
   getWorkspaceOptions,
+  getWorkspaceQueryKey,
   listIssueActivityQueryKey,
   logTimeMutation,
   updateTimeEntryMutation,
@@ -76,15 +77,17 @@ export function useTimeWrites(workspace: string) {
 export function useCloseWithTime(workspace: string) {
   const qc = useQueryClient();
   const ui = useUi();
-  const time = useTimeRegistration(workspace);
-  return async (key: string, state: IssueState, proceed: () => void) => {
-    if (!time.canLog || !closed(state)) return proceed();
+  return async (key: string, state: IssueState, proceed: () => void, onSaved?: () => void) => {
+    if (!closed(state)) return proceed();
     try {
+      // Fetched, not read from the hook: a close before the workspace has loaded must still ask.
+      const info = await qc.fetchQuery({ ...getWorkspaceOptions({ path: { workspace } }), queryKey: getWorkspaceQueryKey({ path: { workspace } }), staleTime: 60_000 });
+      if (!info.timeRegistration || info.role === 'guest') return proceed();
       const mine = await qc.fetchQuery({ ...getIssueTimeOptions({ path: { workspace, key } }), staleTime: 10_000 });
       if (mine.myMinutes > 0 || mine.locked) return proceed();
     } catch {
       return proceed();
     }
-    ui.openLogTime({ issue: key, state: state as 'done' | 'canceled', onSkip: proceed });
+    ui.openLogTime({ issue: key, state: state as 'done' | 'canceled', onSkip: proceed, onSaved });
   };
 }

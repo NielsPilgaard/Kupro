@@ -42,7 +42,7 @@ export function MyTimePage() {
   const monday = mondayOf(search.week && search.week <= now ? search.week : now);
   const week = weekDays(monday);
   const thisWeek = monday === mondayOf(now);
-  const { data } = useQuery(listMyTimeOptions({ path: { workspace }, query: { from: monday, to: week[6] } }));
+  const { data, isError, refetch } = useQuery(listMyTimeOptions({ path: { workspace }, query: { from: monday, to: week[6] } }));
   const { data: projects } = useQuery(listProjectsOptions({ path: { workspace } }));
   // Rows added by hand stay for this visit, per week, until time is logged on them.
   const [added, setAdded] = useState<Record<string, Row[]>>({});
@@ -149,7 +149,8 @@ export function MyTimePage() {
                           row={r}
                           date={d}
                           entries={cell(r.issue.key, d)}
-                          disabled={r.locked || d > now || !time.canLog}
+                          disabled={d > now || !time.canLog}
+                          locked={r.locked}
                           dayOther={dayTotal(d) - sum(cell(r.issue.key, d))}
                           today={d === now}
                           edge={i === 0 || i === 5}
@@ -167,7 +168,16 @@ export function MyTimePage() {
               {groups.length === 0 && (
                 <tr>
                   <td colSpan={9} className="p-6 text-center text-mute">
-                    {data ? t('time.week.empty') : t('common.loading')}
+                    {isError ? (
+                      <span className="flex items-center justify-center gap-3">
+                        {t('time.errors.load')}
+                        <Button onClick={() => void refetch()}>{t('common.retry')}</Button>
+                      </span>
+                    ) : data ? (
+                      t('time.week.empty')
+                    ) : (
+                      t('common.loading')
+                    )}
                   </td>
                 </tr>
               )}
@@ -323,6 +333,8 @@ function TimeCell(props: {
   date: string;
   entries: TimeEntryResponse[];
   disabled: boolean;
+  /** Done or Canceled: the cell can be selected to read its entries, not changed. */
+  locked: boolean;
   /** The day's minutes on other issues, for the 24-hour check. */
   dayOther: number;
   today: boolean;
@@ -330,7 +342,7 @@ function TimeCell(props: {
   weekend: boolean;
   onFocus(): void;
 }) {
-  const { workspace, row, date, entries, disabled, dayOther } = props;
+  const { workspace, row, date, entries, disabled, locked, dayOther } = props;
   const { t } = useTranslation();
   const toast = useToast();
   const message = useTimeError();
@@ -346,9 +358,14 @@ function TimeCell(props: {
     setText(shown);
   }
   const several = entries.length > 1;
+  const readOnly = several || locked;
   const hasNote = entries.some((e) => e.note);
 
   const commit = () => {
+    if (readOnly) return;
+    const [entry] = entries;
+    // Enter then Tab would log the same time twice while the first log is on its way.
+    if (!entry && log.isPending) return;
     const m = parseDuration(text);
     if (m === minutes) return setText(shown);
     const fail = (msg: string) => {
@@ -358,10 +375,11 @@ function TimeCell(props: {
     if (Number.isNaN(m) || m > 1440) return fail(t('time.errors.duration'));
     if (dayOther + m > 1440) return fail(t('time.errors.day_full'));
     const onError = (e: unknown) => fail(message(e));
-    const [entry] = entries;
+    // Update and delete toast through the shared handler; the cell only goes back to what is saved.
+    const restore = { onError: () => setText(shown) };
     if (!entry) log.mutate({ path: { workspace }, body: { issue: row.issue.key, minutes: m, date } }, { onError });
-    else if (m === 0) remove.mutate({ path: { workspace, id: entry.id } });
-    else update.mutate({ path: { workspace, id: entry.id }, body: { minutes: m } });
+    else if (m === 0) remove.mutate({ path: { workspace, id: entry.id } }, restore);
+    else update.mutate({ path: { workspace, id: entry.id }, body: { minutes: m } }, restore);
   };
 
   return (
@@ -374,24 +392,24 @@ function TimeCell(props: {
         aria-label={t('time.week.cellLabel', { key: row.issue.key, day: date })}
         value={text}
         disabled={disabled}
-        readOnly={several}
-        title={several ? t('time.week.severalHint') : undefined}
+        readOnly={readOnly}
+        title={several && !locked ? t('time.week.severalHint') : undefined}
         placeholder={disabled ? '' : '–'}
         onChange={(e) => setText(e.target.value)}
         onFocus={(e) => {
           props.onFocus();
           e.currentTarget.select();
         }}
-        onBlur={() => !several && commit()}
+        onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
-            if (!several) commit();
+            commit();
           } else if (e.key === 'Escape') {
             setText(shown);
           } else move(e);
         }}
-        className="h-12 w-full bg-transparent px-3.5 text-right font-mono text-ink tabular-nums placeholder:text-line focus:bg-sel focus:outline-2 focus:-outline-offset-2 focus:outline-acc disabled:cursor-not-allowed disabled:text-mute"
+        className={`h-12 w-full bg-transparent px-3.5 text-right font-mono tabular-nums placeholder:text-line focus:bg-sel focus:outline-2 focus:-outline-offset-2 focus:outline-acc disabled:cursor-not-allowed disabled:text-mute ${locked ? 'cursor-default text-mute' : 'text-ink'}`}
       />
       {hasNote && <span className="pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-prog" aria-hidden="true" />}
     </td>
@@ -438,6 +456,13 @@ function EntryRow({ workspace, entry, editable }: { workspace: string; entry: Ti
   const { update, remove } = useTimeWrites(workspace);
   const [note, setNote] = useState(entry.note ?? '');
   const [minutes, setMinutes] = useState(duration(entry.minutes));
+  // An edit elsewhere (the grid cell, another tab) replaces a draft nobody has touched, never one being typed.
+  const [saved, setSaved] = useState({ minutes: entry.minutes, note: entry.note ?? '' });
+  if (saved.minutes !== entry.minutes || saved.note !== (entry.note ?? '')) {
+    if (minutes === duration(saved.minutes)) setMinutes(duration(entry.minutes));
+    if (note === saved.note) setNote(entry.note ?? '');
+    setSaved({ minutes: entry.minutes, note: entry.note ?? '' });
+  }
   const field = 'h-[var(--control)] rounded-r1 border border-line bg-panel px-2';
   if (!editable) {
     return (
