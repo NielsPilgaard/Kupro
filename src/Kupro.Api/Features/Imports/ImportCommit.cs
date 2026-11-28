@@ -10,6 +10,7 @@ using Kupro.Api.Features.Plan;
 using Kupro.Api.Features.Projects;
 using Kupro.Api.Features.Realtime;
 using Kupro.Api.Features.Sprints;
+using Kupro.Api.Features.Time;
 using Kupro.Api.Features.Workspaces;
 using Kupro.Api.Tenancy;
 using Kupro.Import.Snapshot;
@@ -41,6 +42,9 @@ public sealed class ImportRunCounts
 
     public int Comments { get; set; }
     public int Attachments { get; set; }
+
+    /// <summary>Worklogs that became time entries (ADR-021 Import): only with time registration on.</summary>
+    public int TimeEntries { get; set; }
 
     /// <summary>Attachments with no bytes in the snapshot and no connector to fetch them from; their source link stays in the text.</summary>
     public int AttachmentsMissing { get; set; }
@@ -80,6 +84,7 @@ public sealed class ImportRunCounts
         NotInvited += other.NotInvited;
         Comments += other.Comments;
         Attachments += other.Attachments;
+        TimeEntries += other.TimeEntries;
         Changes += other.Changes;
         SourceChanges += other.SourceChanges;
         ChangesRead += other.ChangesRead;
@@ -124,6 +129,7 @@ public sealed partial class ImportCommit(
     WorkspaceService workspaces,
     CommentService comments,
     AttachmentService attachments,
+    TimeService time,
     ActivityLog activity,
     RealtimeEvents realtime,
     ImportMetrics metrics,
@@ -206,6 +212,7 @@ public sealed partial class ImportCommit(
         var projectOf = read.Refs.ToDictionary(r => r.Id, r => r.ProjectKey, StringComparer.Ordinal);
         await WriteAttachmentsAsync(snapshot, ct);
         await WriteCommentsAsync(snapshot, references, ct);
+        await WriteWorklogsAsync(snapshot, ct);
         var marks = await ReplayChangesAsync(snapshot, projectOf, ct);
         await MarkChangesSeenAsync(marks, ct);
 
@@ -1139,4 +1146,5 @@ internal static class ImportedKinds
     public const string Comment = "comment";
     public const string Attachment = "attachment";
     public const string Relation = "relation";
+    public const string Worklog = "worklog";
 }

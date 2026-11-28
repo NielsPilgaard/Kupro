@@ -9500,6 +9500,11 @@
             "type": "integer",
             "format": "int32"
           },
+          "timeEntries": {
+            "type": "integer",
+            "description": "Worklogs that became time entries (ADR-021 Import): only with time registration on.",
+            "format": "int32"
+          },
           "attachmentsMissing": {
             "type": "integer",
             "description": "Attachments with no bytes in the snapshot and no connector to fetch them from; their source link stays in the text.",
@@ -13105,7 +13110,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "description": "`comment`, `attachment`, `relation` or `child`."
+            "description": "`comment`, `attachment`, `relation`, `child` or `time`."
           },
           "issueKey": {
             "type": "string"

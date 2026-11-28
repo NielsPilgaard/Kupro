@@ -29,8 +29,9 @@ purpose: 'Implementation spec for task 034.'
 
 API, CLI and MCP are in (`Kupro.Api/Features/Time`, `kupro time`, the MCP `time` and `relations` tools), tested in
 `TimeTests`, `McpTests`, `CliTests` and `PerfBudgetTests`. The web UI (prototype 01) is in `web/src/features/time`,
-tested in `time.test.ts` and the E2E `time.spec.ts`. Left: the import of Jira worklogs and YouTrack work items, the
-site lines, and the manual steps (legal check, privacy policy and DPA lines).
+tested in `time.test.ts` and the E2E `time.spec.ts`. The import commit turns snapshot worklogs into entries. Left:
+the connectors reading Jira worklogs and YouTrack work items, the summed field and the plan's warning (see Import
+below), the site lines, and the manual steps (legal check, privacy policy and DPA lines).
 
 - **Web**: My time (`/w/:workspace/time`, the week grid with `?week=`), Team time (`/team-time`, Owners, with the
   export dialog), and workspace settings (`/settings`, Owners, the time registration switch). The Log time dialog opens
@@ -60,6 +61,14 @@ site lines, and the manual steps (legal check, privacy policy and DPA lines).
   `time/export` are MCP opt-outs.
 - **Retention**: `TimeRetentionJob` applies [ADR-021 Retention and privacy](../docs/adr/ADR-021-time-registration.md#retention-and-privacy),
   10 minutes after startup and then every 6 hours.
+- **Import** (commit side): snapshots carry worklogs (`SourceWorklog`, the `worklogs` part). With the setting on, the
+  commit writes one entry per worklog for a mapped person or their own placeholder (`TimeService.AddImported`,
+  `ImportedKinds.Worklog`, counted as `timeEntries`), and a re-run writes none twice. Worklogs by a skipped person or
+  by nobody are not written. Undo deletes the imported entries and their history, and waits (blocker `time`) while
+  the issues hold time logged in Kupro or an imported entry changed since. Tested in `ImportCommitTests.Worklogs.cs`.
+  Not yet: the Jira and YouTrack connectors don't read worklogs; the summed field (`SourceField.SumsWorklogs`) still
+  shows the whole sum rather than only the time nobody in Kupro holds; the plan doesn't count worklogs or warn about
+  days over 24 hours; the run report and the runs table don't show `timeEntries`.
 - **Speed**: with a year of workday entries for 50 people, the week, an issue's time and the Owners' week list answer in
   under 8 ms p50, and logging in under 10 ms p50 (`PerfBudgetTests`).
 
