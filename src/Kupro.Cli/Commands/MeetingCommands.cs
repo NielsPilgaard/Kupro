@@ -214,10 +214,15 @@ internal static class MeetingCommands
                     ("Meeting hours", s.Usage is { } u
                         ? $"{u.HoursUsed?.ToString("0.#", CultureInfo.InvariantCulture)} of {u.HoursIncluded?.ToString("0.#", CultureInfo.InvariantCulture)} used, resets {u.ResetsOn}{(u.Spent == true ? " (used up: microphone off, keyword proposals only)" : "")}"
                         : "no limit"),
-                    ("Approved unchanged", string.Join(", ", (s.Stats ?? []).Where(x => x.Decided > 0)
-                        .Select(x => $"{Cli.Dashed(x.Operation.ToString()!)} {x.ApprovedUnchanged}/{x.Decided}"))));
+                    ("Proposal model", s.ProposalModel is { } m ? $"{m.Model}{(m.Tested == true ? "" : " (not tested by Kupro)")}" : "keyword matching"),
+                    ("Approved unchanged", Approved(s.Stats)),
+                    ("By model", string.Join("; ", (s.StatsByModel ?? [])
+                        .Select(x => $"{x.Model ?? "keyword matching"}{(x.Model is null || x.Tested == true ? "" : " (not tested)")}: {Approved(x.Operations)}"))));
             });
     }
+
+    private static string Approved(IEnumerable<OperationStats>? stats) => string.Join(", ", (stats ?? []).Where(x => x.Decided > 0)
+        .Select(x => $"{Cli.Dashed(x.Operation.ToString()!)} {x.ApprovedUnchanged}/{x.Decided}"));
 
     private static readonly string[] ProposalHeaders = ["ID", "ISSUE", "CHANGE", "CONFIDENCE", "STATUS", "SAID"];
 

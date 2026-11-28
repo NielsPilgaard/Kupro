@@ -10571,6 +10571,8 @@
           "fullAutoOperations",
           "transcriptRetentionDays",
           "stats",
+          "statsByModel",
+          "proposalModel",
           "usage"
         ],
         "type": "object",
@@ -10598,7 +10600,25 @@
             "items": {
               "$ref": "#/components/schemas/OperationStats"
             },
-            "description": "Suggest-mode history per operation."
+            "description": "Suggest-mode history per operation, every model together."
+          },
+          "statsByModel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelStats"
+            },
+            "description": "The same history split by the model that made each proposal; only models with decisions."
+          },
+          "proposalModel": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Null when no model is set up and proposals come from keyword matching.",
+                "$ref": "#/components/schemas/ProposalModelInfo"
+              }
+            ]
           },
           "usage": {
             "oneOf": [
@@ -10868,6 +10888,34 @@
             "description": "Project key, or null for a workspace-wide milestone."
           }
         }
+      },
+      "ModelStats": {
+        "required": [
+          "model",
+          "tested",
+          "operations"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Null: keyword matching, or a proposal made before Kupro recorded the model."
+          },
+          "tested": {
+            "type": "boolean",
+            "description": "Kupro tested this model. False shows \"Not tested by Kupro\" next to the full-auto toggle."
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OperationStats"
+            }
+          }
+        },
+        "description": "Suggest-mode history of the proposals one model made."
       },
       "MoveIssueRequest": {
         "type": "object",
@@ -11458,6 +11506,23 @@
           }
         },
         "description": "Where a source project lands. Several source projects with the same key merge into one project."
+      },
+      "ProposalModelInfo": {
+        "required": [
+          "model",
+          "tested"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "tested": {
+            "type": "boolean",
+            "description": "False when it isn't a model Kupro tested (ADR-022): judge full auto by its own stats."
+          }
+        },
+        "description": "The model that turns what is said into proposals now: the workspace's own route for every language, or Kupro's."
       },
       "ProposalOperation": {
         "enum": [

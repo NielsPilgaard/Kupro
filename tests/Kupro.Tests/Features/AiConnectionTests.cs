@@ -244,6 +244,27 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
     }
 
     [Fact]
+    public async Task Approval_stats_split_by_the_model_that_proposed_and_mark_an_untested_one()
+    {
+        var (client, ws) = await WorkspaceAsync();
+        var meeting = await StartAsync(client, ws);
+        var kupros = (await SayAsync(client, ws, meeting, "KUP-1 is done.")).Proposals.ShouldHaveSingleItem();
+        await ReviewAsync(client, ws, meeting, kupros, ReviewDecision.Reject);
+        await AddAsync(client, ws, new AddAiConnectionRequest(AiProviders.ScalewayId, "scw-secret-0006",
+            UseFor: [AiCapability.MeetingProposals], ChatModel: "own-llm"));
+        var own = (await SayAsync(client, ws, meeting, "KUP-1 is done.")).Proposals.ShouldHaveSingleItem();
+        await ReviewAsync(client, ws, meeting, own, ReviewDecision.Approve);
+
+        var settings = await GetAsync<MeetingSettingsResponse>(client, $"/api/v1/workspaces/{ws}/meeting-settings");
+
+        settings.ProposalModel.ShouldBe(new ProposalModelInfo("own-llm", Tested: false));
+        settings.Stats.Single(s => s.Operation == ProposalOperation.State).ShouldBe(new OperationStats(ProposalOperation.State, 2, 1, 0, 1));
+        settings.StatsByModel.Select(m => (m.Model, m.Tested)).ShouldBe([("llm", true), ("own-llm", false)]);
+        settings.StatsByModel[0].Operations.Single(s => s.Operation == ProposalOperation.State).Rejected.ShouldBe(1);
+        settings.StatsByModel[1].Operations.Single(s => s.Operation == ProposalOperation.State).ApprovedUnchanged.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Keys_are_never_returned()
     {
         const string secret = "scw-very-secret-key-9876";
@@ -359,6 +380,10 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
         await ReadAsync<TranscriptResult>(await client.PostAsJsonAsync($"/api/v1/workspaces/{ws}/meetings/{meeting.Id}/transcript",
             new TranscriptRequest(text), Json.Options, Ct));
 
+    private static async Task ReviewAsync(HttpClient client, string ws, MeetingResponse meeting, ProposalResponse proposal, ReviewDecision decision) =>
+        (await ReadAsync<List<ProposalReviewResult>>(await client.PostAsJsonAsync($"/api/v1/workspaces/{ws}/meetings/{meeting.Id}/proposals/review",
+            new ReviewProposalsRequest([new ProposalReview(proposal.Id, decision)]), Json.Options, Ct))).ShouldHaveSingleItem().Error.ShouldBeNull();
+
     private static Task<HttpResponseMessage> PostAudioAsync(HttpClient client, string ws, MeetingResponse meeting)
     {
         var body = new ByteArrayContent(new byte[64]);
@@ -426,7 +451,7 @@ public sealed class AiConnectionTests(PostgresFixture postgres, StorageFixture s
         public Task<IReadOnlyList<string>> ListAsync(string baseUrl, string key, CancellationToken ct) =>
             key.Contains("bad", StringComparison.Ordinal)
                 ? throw Refused()
-                : Task.FromResult<IReadOnlyList<string>>(["whisper-large-v3", "deepseek-v4.1-flash", "hviske-v3"]);
+                : Task.FromResult<IReadOnlyList<string>>(["whisper-large-v3", "deepseek-v4.1-flash", "hviske-v3", "own-llm"]);
     }
 
     private sealed class RecordingEmail : IEmailSender

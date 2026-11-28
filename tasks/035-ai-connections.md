@@ -29,8 +29,9 @@ The meeting agent is the first feature on it. Voice control ([task 036](036-voic
 
 ## Progress
 
-The backend and the web settings screen (prototype 03) are built against ADR-022 (accepted 2026-11-27). Per-model
-approval stats are next.
+Built against ADR-022 (accepted 2026-11-27), per-model approval stats included. Left for an agent: the key-leak
+test over logs, traces and the export. Left for a person: a second Scaleway account for the end-to-end try, and the
+legal review.
 
 - [x] Provider registry and capabilities (`Features/Ai/AiProviders.cs`), connections and routes with a migration,
       keys encrypted with Data Protection (`AiKeys`), the router (`AiRouter`) with Kupro's server route as the default
@@ -48,7 +49,10 @@ approval stats are next.
 - [x] Web settings screen, on prototype 03 (see [UI](#ui)): `/w/:workspace/settings/ai`, linked from the sidebar, the
       command palette and the account settings page. Usage first, "Go unlimited" wizard, connection cards, the
       rejected-key banner, read-only for members without billing access. Tests in `AiSettingsPage.test.tsx`.
-- [ ] Each proposal records the model that made it, and suggest-mode stats split by model.
+- [x] Each proposal records the model that made it (`meeting_proposals.model`, null for keyword matching). Meeting
+      settings return `statsByModel` and the `proposalModel` now in use, each with `tested`. The CLI's
+      `kupro meeting settings` shows both. The meeting panel marks a model Kupro hasn't tested next to the full-auto
+      toggle and shows that model's own history.
 
 Different from the spec, on purpose:
 
@@ -72,8 +76,10 @@ Web screen, different from prototype 03:
 - **Custom endpoint**: one form opened from step 1. "Check and save" adds it with what was ticked, so the API routes
   only when the check passes. A key is required, as the API requires one.
 - **No "Advanced" section**: a model other than Scaleway's tested one, and per-language routes, are set with the CLI
-  (`kupro ai routes set --model`); the page shows them, with "Not tested by Kupro". The mark next to the full-auto
-  toggle comes with the per-model stats.
+  (`kupro ai routes set --model`); the page shows them, with "Not tested by Kupro".
+- **Stats by model**: "filtered" is a split in the settings response, not a query parameter. A tested model shows
+  the history of every model together; an untested one shows only its own, so trust earned on Kupro's model doesn't
+  carry over. Proposals made before the column existed count as keyword matching.
 - **Rejected state**: "Go back to included hours" is "Disconnect and use included hours", behind the same in-page
   confirmation as Disconnect.
 

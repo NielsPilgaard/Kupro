@@ -548,6 +548,7 @@
       "fullAuto": "Klare ændringer sker med det samme og kan fortrydes. Nye opgaver, uklare match og annulleringer venter stadig på dig."
     },
     "allowFullAuto": "Tillad fuld auto i dette arbejdsområde ({{ops}})",
+    "modelUntested": "Forslagene kommer fra {{model}}, som Kupro ikke har testet. Tallene herunder gælder kun den model.",
     "noHistory": "Ingen beslutninger endnu. Godkend forslag i foreslå-tilstand for at se, hvordan agenten klarer sig.",
     "stat": "Du godkendte {{approved}} af {{decided}} ændringer af {{op}} uændret",
     "op": {

@@ -113,9 +113,20 @@ public sealed record ProposalReviewResult(ProposalResponse Proposal, IssueError?
 /// <summary>How suggest-mode proposals of one operation fared: the trust signal next to the full-auto toggle.</summary>
 public sealed record OperationStats(ProposalOperation Operation, int Decided, int ApprovedUnchanged, int Edited, int Rejected);
 
+/// <summary>Suggest-mode history of the proposals one model made.</summary>
+/// <param name="Model">Null: keyword matching, or a proposal made before Kupro recorded the model.</param>
+/// <param name="Tested">Kupro tested this model. False shows "Not tested by Kupro" next to the full-auto toggle.</param>
+public sealed record ModelStats(string? Model, bool Tested, IReadOnlyList<OperationStats> Operations);
+
+/// <summary>The model that turns what is said into proposals now: the workspace's own route for every language, or Kupro's.</summary>
+/// <param name="Tested">False when it isn't a model Kupro tested (ADR-022): judge full auto by its own stats.</param>
+public sealed record ProposalModelInfo(string Model, bool Tested);
+
 /// <param name="FullAutoOperations">Operations full auto applies without approval.</param>
 /// <param name="TranscriptRetentionDays">Days transcripts and snippets are kept; 0 means until the meeting ends.</param>
-/// <param name="Stats">Suggest-mode history per operation.</param>
+/// <param name="Stats">Suggest-mode history per operation, every model together.</param>
+/// <param name="StatsByModel">The same history split by the model that made each proposal; only models with decisions.</param>
+/// <param name="ProposalModel">Null when no model is set up and proposals come from keyword matching.</param>
 /// <param name="Usage">This month's meeting hours; null when the server sets no AI budget (self-hosted).</param>
 public sealed record MeetingSettingsResponse(
     MeetingMode DefaultMode,
@@ -123,6 +134,8 @@ public sealed record MeetingSettingsResponse(
     IReadOnlyList<ProposalOperation> FullAutoOperations,
     int TranscriptRetentionDays,
     IReadOnlyList<OperationStats> Stats,
+    IReadOnlyList<ModelStats> StatsByModel,
+    ProposalModelInfo? ProposalModel,
     MeetingUsageResponse? Usage);
 
 /// <param name="FullAutoEnabled">Allow full auto in this workspace.</param>

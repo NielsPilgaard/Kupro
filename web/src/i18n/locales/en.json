@@ -548,6 +548,7 @@
       "fullAuto": "Clear changes apply at once and can be undone. New issues, unclear matches and cancelling still wait for you."
     },
     "allowFullAuto": "Allow full auto in this workspace ({{ops}})",
+    "modelUntested": "Proposals come from {{model}}, which Kupro hasn't tested. The numbers below are for that model only.",
     "noHistory": "No decisions yet. Approve proposals in suggest mode to see how the agent does.",
     "stat": "You approved {{approved}} of {{decided}} {{op}} changes unchanged",
     "op": {
