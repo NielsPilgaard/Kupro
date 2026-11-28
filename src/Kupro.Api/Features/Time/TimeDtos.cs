@@ -8,10 +8,7 @@ namespace Kupro.Api.Features.Time;
 /// <param name="Minutes">Time spent, 1-1440 minutes.</param>
 /// <param name="Date">Day it was spent, YYYY-MM-DD; today (Europe/Copenhagen) when omitted. Not later than today.</param>
 /// <param name="Note">What it went on, plain text.</param>
-/// <param name="State">
-/// <c>done</c> or <c>canceled</c>: also close the issue in the same save. Both commit or neither does, and the entry
-/// locks with the issue afterwards.
-/// </param>
+/// <param name="State"><c>done</c> or <c>canceled</c>: close the issue in the same save (both or neither); the entry then locks with it.</param>
 public sealed record LogTimeRequest(
     [Required, StringLength(40, MinimumLength = 1)] string Issue,
     [Range(1, TimeLimits.MinutesPerDay)] int Minutes,

@@ -10451,7 +10451,7 @@
                 "type": "null"
               },
               {
-                "description": "`done` or `canceled`: also close the issue in the same save. Both commit or neither does, and the entry\r\nlocks with the issue afterwards.",
+                "description": "`done` or `canceled`: close the issue in the same save (both or neither); the entry then locks with it.",
                 "$ref": "#/components/schemas/IssueState"
               }
             ]
