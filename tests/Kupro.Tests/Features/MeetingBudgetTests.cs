@@ -28,6 +28,13 @@ public sealed class MeetingBudgetTests(PostgresFixture postgres) : ApiTestBase(p
         ["MeetingAgent:Budget:HoursPerSeat"] = "1",
         ["MeetingAgent:Budget:EuroPerHour"] = "1",
         ["MeetingAgent:Budget:DailyCeilingEuro"] = "100",
+        // Kupro's own routes, so the router sends calls to the fake seams below.
+        ["MeetingAgent:Transcription:Endpoint"] = "https://speech.test/v1",
+        ["MeetingAgent:Transcription:Model"] = "speech",
+        ["MeetingAgent:Transcription:ApiKey"] = "kupro-key",
+        ["MeetingAgent:Extraction:Endpoint"] = "https://llm.test/v1",
+        ["MeetingAgent:Extraction:Model"] = "llm",
+        ["MeetingAgent:Extraction:ApiKey"] = "kupro-key",
         ["MeetingAgent:Transcription:EuroPerAudioMinute"] = "3",
         ["MeetingAgent:Extraction:EuroPerMillionInputTokens"] = "10",
         ["MeetingAgent:Extraction:EuroPerMillionOutputTokens"] = "20",
@@ -328,15 +335,13 @@ public sealed class MeetingBudgetTests(PostgresFixture postgres) : ApiTestBase(p
     {
         private static readonly KeywordProposalExtractor Keywords = new();
 
-        public async Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct) =>
+        public async Task<Extraction> ExtractAsync(ExtractionContext context, ModelRoute route, CancellationToken ct) =>
             new((await Keywords.ExtractAsync(context, ct)).Actions, new ModelUsage(1000, 0, 500));
     }
 
     private sealed class TenSecondSpeech : ISpeechToText
     {
-        public bool Supports(string language) => true;
-
-        public Task<Transcription> TranscribeAsync(Stream wav, string language, CancellationToken ct) =>
+        public Task<Transcription> TranscribeAsync(Stream wav, string language, ModelRoute route, CancellationToken ct) =>
             Task.FromResult(new Transcription("KUP-1 is done.", 10));
     }
 

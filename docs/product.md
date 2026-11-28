@@ -47,9 +47,11 @@ and delivery dates over the year and shows whether the team you have can deliver
 | Time registration on work items, off by default ([ADR-021](adr/ADR-021-time-registration.md)) | |
 | List, board, delivery plan views | Dashboards / reports |
 | Search, command palette, keyboard-first | Per-project permissions |
-| Web, REST API, CLI, MCP; one-line CLI install, `kupro install mcp` ([ADR-018](adr/ADR-018-cli-distribution.md)) | AI beyond the meeting agent (chat, summaries, voice control) |
+| Web, REST API, CLI, MCP; one-line CLI install, `kupro install mcp` ([ADR-018](adr/ADR-018-cli-distribution.md)) | AI beyond the meeting agent and voice control (chat, summaries) |
 | Meeting agent: suggest mode by default, full auto opt-in, within a monthly AI budget ([task 015](../tasks/015-meeting-agent.md), [ADR-013](adr/ADR-013-seats-billing.md)) | Self-hosting package |
 | Members page: roles, free guests, billing access ([ADR-013](adr/ADR-013-seats-billing.md)) | Billing (subscriptions, invoices) |
+| Voice control: push to talk for changes, navigation and dictation ([task 036](../tasks/036-voice-control.md)) | |
+| A workspace's own AI key or EU endpoint, unlimited voice ([ADR-022](adr/ADR-022-ai-providers-byok.md)) | |
 | Workspace export: everything, at any time ([task 016](../tasks/completed/016-workspace-export.md)) | |
 | Import from Jira, Azure DevOps and CSV, re-runnable until cutover ([ADR-019](adr/ADR-019-import.md)) | Two-way sync with other trackers |
 | Public website: landing, pricing, legal pages ([ADR-017](adr/ADR-017-public-site.md)) | |
@@ -62,7 +64,5 @@ and delivery dates over the year and shows whether the team you have can deliver
 
 ## After v1
 
-- Voice control of the UI outside meetings ("move KUP-12 to next sprint"), on the meeting agent's vendors
-  ([ADR-015](adr/ADR-015-meeting-agent-vendors.md)).
 - Self-hosting package (single compose file).
 - Webhooks, billing ([ADR-013](adr/ADR-013-seats-billing.md)), enterprise SSO (open-core, see [ADR-007](adr/ADR-007-licensing.md)).

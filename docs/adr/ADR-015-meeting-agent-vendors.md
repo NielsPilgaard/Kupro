@@ -60,7 +60,8 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
    tests replace). Both default to an OpenAI-compatible HTTP implementation.
 4. **Per-language routing**: configuration maps a meeting language to endpoint + model for each seam, with a default
    (`MeetingAgent:Transcription:Languages:da = { Endpoint, Model, ApiKey }`). Danish can move to Hviske, or English to
-   another model, without touching the feature code.
+   another model, without touching the feature code. These server routes are Kupro's default; a workspace can
+   route a capability to its own connection instead ([ADR-022](ADR-022-ai-providers-byok.md)).
 
 ## Consequences
 
@@ -138,6 +139,7 @@ Scaleway for speech, and Mistral, Scaleway-hosted models or syv.ai for the LLM, 
 - [ADR-001](ADR-001-agent-parity.md): proposals are API resources with CLI and MCP parity.
 - [ADR-006](ADR-006-eu-vendor-policy.md): vendor register.
 - [ADR-013](ADR-013-seats-billing.md): the monthly AI budget that limits what these vendors cost per workspace.
+- [ADR-022](ADR-022-ai-providers-byok.md): provider registry, capability routing and workspace AI connections on top of these seams.
 
 ## References
 

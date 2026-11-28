@@ -711,6 +711,240 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspace}/voice/interpret": {
+      "post": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Read one utterance as text: proposed issue changes (`operations`), a place to open (`navigate`), or\n`none` with the reason. Nothing is applied; apply proposals through the issue endpoints.",
+        "operationId": "interpretVoice",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceInterpretRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceInterpretRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceInterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceInterpretation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/voice/interpret/audio": {
+      "post": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "One spoken utterance as WAV (16 kHz mono, under 30 s), transcribed and read like text. The audio isn't kept.",
+        "operationId": "interpretVoiceAudio",
+        "parameters": [
+          {
+            "name": "issue",
+            "in": "query",
+            "description": "Key of the issue on screen: what \"this one\" means.",
+            "schema": {
+              "maxLength": 24,
+              "minLength": 0,
+              "type": "string"
+            }
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "description": "Key of the project on screen.",
+            "schema": {
+              "maxLength": 10,
+              "minLength": 0,
+              "type": "string"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "Spoken language, `en` or `da`; default the caller's UI language.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceInterpretation"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/voice/transcribe": {
+      "post": {
+        "tags": [
+          "Voice"
+        ],
+        "summary": "Dictation: one utterance as WAV to text, for the focused field. With `tidy`, also a suggestion that only fixes spelling and punctuation.",
+        "operationId": "transcribeVoice",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "description": "Spoken language, `en` or `da`; default the caller's UI language.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tidy",
+            "in": "query",
+            "description": "Also suggest the text with spelling and punctuation fixed, and nothing else.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceTranscription"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -736,7 +970,7 @@
         "tags": [
           "Me"
         ],
-        "summary": "Update the current user's profile (display name, language, time zone).",
+        "summary": "Update the current user's profile (display name, language, time zone, voice button).",
         "operationId": "updateMe",
         "parameters": [
           {
@@ -6479,10 +6713,567 @@
           }
         }
       }
+    },
+    "/api/v1/workspaces/{workspace}/ai/providers": {
+      "get": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "The provider types a workspace can connect, with Kupro's tested default models.",
+        "operationId": "listAiProviders",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AiProviderResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/ai": {
+      "get": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Connections (never their keys), what runs where, and this month's usage by who paid.",
+        "operationId": "getAiStatus",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/ai/connections": {
+      "post": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Connect a provider with the workspace's own key. The key is checked with the vendor before anything uses it.",
+        "operationId": "addAiConnection",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAiConnectionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAiConnectionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAiConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/ai/connections/{id}/key": {
+      "put": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Replace a connection's key. It is checked with the vendor; a key that works turns a rejected connection back on.",
+        "operationId": "setAiConnectionKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiConnectionKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiConnectionKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiConnectionKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConnectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/ai/connections/{id}/check": {
+      "post": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Check a connection's key with the vendor again.",
+        "operationId": "checkAiConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/ai/connections/{id}": {
+      "delete": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Remove a connection and its routes. Those capabilities go back to Kupro's included hours.",
+        "operationId": "removeAiConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspace}/ai/routes": {
+      "put": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Route a capability, for every language or one, to a connection.",
+        "operationId": "setAiRoute",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiRouteRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiRouteRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiRouteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Ai"
+        ],
+        "summary": "Remove a route: the capability goes back to the every-language route, or to Kupro's.",
+        "operationId": "removeAiRoute",
+        "parameters": [
+          {
+            "name": "capability",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AiCapability"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Retry-safe key: repeating a request with the same key replays the first response.",
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AddAiConnectionRequest": {
+        "required": [
+          "providerType",
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "providerType": {
+            "type": "string",
+            "description": "`scaleway` or `openai-compatible`."
+          },
+          "key": {
+            "type": "string",
+            "description": "The secret key. Stored encrypted; never returned."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endpoint": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Custom endpoints only: the OpenAI-compatible base URL, https."
+          },
+          "projectId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Scaleway only, optional."
+          },
+          "euConfirmed": {
+            "type": "boolean",
+            "description": "Custom endpoints only, required: the endpoint is in the EU/EEA and run by the workspace or its processor.",
+            "default": false
+          },
+          "useFor": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AiCapability"
+            },
+            "description": "Capabilities to route here (every language) once the check passes."
+          },
+          "transcriptionModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With UseFor: the model for transcription, if not the tested default."
+          },
+          "chatModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With UseFor: the model for proposals and voice commands, if not the tested default."
+          }
+        },
+        "description": "Connect a provider. The key is checked with the vendor before anything is routed to it."
+      },
       "AddRelationRequest": {
         "required": [
           "type",
@@ -6499,6 +7290,274 @@
             "description": "Key of the other issue."
           }
         }
+      },
+      "AiCapability": {
+        "enum": [
+          "transcription",
+          "meetingProposals",
+          "voiceCommands"
+        ],
+        "description": "A feature's need for a model, named once (ADR-022 decision 2). A feature asks AiRouter for its\ncapability and never reads keys or configuration itself."
+      },
+      "AiConnectionResponse": {
+        "required": [
+          "id",
+          "providerType",
+          "name",
+          "endpoint",
+          "projectId",
+          "keyHint",
+          "status",
+          "lastError",
+          "lastCheckedAt",
+          "euConfirmedById",
+          "euConfirmedAt",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "projectId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "keyHint": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AiConnectionStatus"
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastCheckedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "euConfirmedById": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "euConfirmedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "A workspace's own connection. The key is never returned: only its last four characters."
+      },
+      "AiConnectionStatus": {
+        "enum": [
+          "unverified",
+          "healthy",
+          "rejected"
+        ]
+      },
+      "AiPaidBy": {
+        "enum": [
+          "kupro",
+          "workspace"
+        ],
+        "description": "Who pays for a call: Kupro's own key within the AI budget, or the workspace's own connection, unlimited."
+      },
+      "AiProviderResponse": {
+        "required": [
+          "id",
+          "name",
+          "customEndpoint",
+          "capabilities",
+          "transcriptionModel",
+          "chatModel"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "customEndpoint": {
+            "type": "boolean",
+            "description": "True when the workspace enters the endpoint itself."
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiCapability"
+            }
+          },
+          "transcriptionModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Kupro's tested default; null means a route must name one."
+          },
+          "chatModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Kupro's tested default for proposals and voice commands; null means a route must name one."
+          }
+        },
+        "description": "A provider type a workspace can connect (ADR-022 decision 1)."
+      },
+      "AiRouteResponse": {
+        "required": [
+          "capability",
+          "language",
+          "connectionId",
+          "connectionName",
+          "model",
+          "testedModel",
+          "paidBy",
+          "available"
+        ],
+        "type": "object",
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/AiCapability"
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Null for every language."
+          },
+          "connectionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Null when Kupro's own route serves it, within the AI budget.",
+            "format": "uuid"
+          },
+          "connectionName": {
+            "type": "string",
+            "description": "\"Kupro\" for Kupro's own route."
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Null when nothing serves the capability."
+          },
+          "testedModel": {
+            "type": "boolean",
+            "description": "False when a route names a model other than the provider type's tested default."
+          },
+          "paidBy": {
+            "$ref": "#/components/schemas/AiPaidBy"
+          },
+          "available": {
+            "type": "boolean",
+            "description": "False when nothing serves it, or the workspace's connection was rejected."
+          }
+        },
+        "description": "What serves a capability."
+      },
+      "AiStatusResponse": {
+        "required": [
+          "connections",
+          "routes",
+          "usage",
+          "period"
+        ],
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiConnectionResponse"
+            }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiRouteResponse"
+            }
+          },
+          "usage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiUsageResponse"
+            }
+          },
+          "period": {
+            "type": "string",
+            "description": "First day of the month the usage is for.",
+            "format": "date"
+          }
+        }
+      },
+      "AiUsageResponse": {
+        "required": [
+          "paidBy",
+          "audioMinutes",
+          "inputTokens",
+          "outputTokens",
+          "estimatedEuro"
+        ],
+        "type": "object",
+        "properties": {
+          "paidBy": {
+            "$ref": "#/components/schemas/AiPaidBy"
+          },
+          "audioMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "inputTokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "outputTokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estimatedEuro": {
+            "type": "number",
+            "description": "At the provider types' list prices; zero for custom endpoints, which have none.",
+            "format": "double"
+          }
+        },
+        "description": "This month's metered use, by who paid."
       },
       "ApiTokenKind": {
         "enum": [
@@ -9724,7 +10783,9 @@
           "displayName",
           "locale",
           "timeZone",
-          "agent"
+          "agent",
+          "voiceButton",
+          "voiceAutoApply"
         ],
         "type": "object",
         "properties": {
@@ -9755,6 +10816,14 @@
               "string"
             ],
             "description": "Agent name when the caller is an agent token acting for this user; otherwise null."
+          },
+          "voiceButton": {
+            "description": "Push-to-talk button style in the web app: `topBar` (default) or `thumb`.",
+            "$ref": "#/components/schemas/VoiceButton"
+          },
+          "voiceAutoApply": {
+            "type": "boolean",
+            "description": "Voice control applies sure changes without asking."
           }
         }
       },
@@ -10722,6 +11791,48 @@
         },
         "description": "A sampled item as the source shows it. string SampleSourceNode.Type is the source type's name."
       },
+      "SetAiConnectionKeyRequest": {
+        "required": [
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        }
+      },
+      "SetAiRouteRequest": {
+        "required": [
+          "capability",
+          "connectionId"
+        ],
+        "type": "object",
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/AiCapability"
+          },
+          "connectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Only this meeting language (e.g. `da`); left out, every language."
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Left out, the provider type's tested default."
+          }
+        },
+        "description": "Route a capability to a connection."
+      },
       "SetCapacityRequest": {
         "required": [
           "entries"
@@ -11523,7 +12634,8 @@
           "cli",
           "mcp",
           "meeting",
-          "import"
+          "import",
+          "voice"
         ],
         "description": "Where an action came from; shown as \"via MCP\" in the UI (design guide, toasts)."
       },
@@ -12229,6 +13341,24 @@
               "string"
             ],
             "description": "IANA time zone id, e.g. `Europe/Copenhagen`."
+          },
+          "voiceButton": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Push-to-talk button style: `topBar` or `thumb`.",
+                "$ref": "#/components/schemas/VoiceButton"
+              }
+            ]
+          },
+          "voiceAutoApply": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Apply sure voice changes without asking. Held ones (unsure, ambiguous, cancelling, new issues) still wait."
           }
         }
       },
@@ -12379,6 +13509,342 @@
           }
         }
       },
+      "VoiceButton": {
+        "enum": [
+          "topBar",
+          "thumb"
+        ],
+        "description": "The push-to-talk button's style, each person's choice (task 036)."
+      },
+      "VoiceHold": {
+        "enum": [
+          "lowConfidence",
+          "ambiguous",
+          "destructive",
+          "createIssue"
+        ],
+        "description": "Why a proposed change waits for a tap even when the person lets Kupro apply without asking."
+      },
+      "VoiceInterpretation": {
+        "required": [
+          "kind",
+          "text",
+          "operations",
+          "navigate",
+          "reason",
+          "extractor",
+          "budgetSpent"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/VoiceKind"
+          },
+          "text": {
+            "type": "string",
+            "description": "What was heard (the transcription, for audio)."
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoiceOperation"
+            },
+            "description": "For `operations`: the proposed changes."
+          },
+          "navigate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For `navigate`: where to go.",
+                "$ref": "#/components/schemas/VoiceTarget"
+              }
+            ]
+          },
+          "reason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For `none`: why.",
+                "$ref": "#/components/schemas/VoiceReason"
+              }
+            ]
+          },
+          "extractor": {
+            "description": "What read it. `keyword` understands only clear commands.",
+            "$ref": "#/components/schemas/ExtractorKind"
+          },
+          "budgetSpent": {
+            "type": "boolean",
+            "description": "The workspace's AI hours are used up, so keyword matching was used."
+          }
+        },
+        "description": "What one utterance means. Interpreting changes nothing."
+      },
+      "VoiceInterpretRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "What was said or typed: one utterance."
+          },
+          "issue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the issue on screen: what \"this one\" means."
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Key of the project on screen: where \"next sprint\", boards and new issues go when none is said."
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Spoken language, `en` or `da`; default the caller's UI language."
+          }
+        }
+      },
+      "VoiceKind": {
+        "enum": [
+          "operations",
+          "navigate",
+          "none"
+        ],
+        "description": "What one utterance does (task 036)."
+      },
+      "VoiceOperation": {
+        "required": [
+          "issue",
+          "candidates",
+          "operation",
+          "value",
+          "valueDisplay",
+          "before",
+          "beforeDisplay",
+          "snippet",
+          "confidence",
+          "needsIssue",
+          "held",
+          "update",
+          "undo",
+          "create"
+        ],
+        "type": "object",
+        "properties": {
+          "issue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Target issue; null when the reference was ambiguous (see `Candidates`) or for a new issue.",
+                "$ref": "#/components/schemas/IssueRef"
+              }
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssueRef"
+            },
+            "description": "Issues a vague reference matched; applying needs one picked."
+          },
+          "operation": {
+            "$ref": "#/components/schemas/ProposalOperation"
+          },
+          "value": {
+            "type": "string",
+            "description": "Canonical new value: state name, sprint id, member id, hours, comment text or new issue title."
+          },
+          "valueDisplay": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The new value as people read it (sprint and member names)."
+          },
+          "before": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The field's current canonical value."
+          },
+          "beforeDisplay": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The current value as people read it."
+          },
+          "snippet": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The words that triggered it."
+          },
+          "confidence": {
+            "type": "number",
+            "description": "0–1.",
+            "format": "double"
+          },
+          "needsIssue": {
+            "type": "boolean",
+            "description": "True while no single issue is chosen."
+          },
+          "held": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoiceHold"
+            },
+            "description": "Why it waits for a tap even with \"apply without asking\" on; empty means it may apply at once."
+          },
+          "update": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a field change: the body for `PATCH issues/{key}`.",
+                "$ref": "#/components/schemas/UpdateIssueRequest"
+              }
+            ]
+          },
+          "undo": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a field change: the body that puts the field back.",
+                "$ref": "#/components/schemas/UpdateIssueRequest"
+              }
+            ]
+          },
+          "create": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "For a new issue: the body for `POST issues`.",
+                "$ref": "#/components/schemas/CreateIssueRequest"
+              }
+            ]
+          }
+        },
+        "description": "One proposed change, in the meeting proposal's shape. Nothing is applied: the client applies it through the issue\nendpoints with `update`, `create` or a comment of `value`, and undoes it with `undo`."
+      },
+      "VoiceReason": {
+        "enum": [
+          "nothingHeard",
+          "notUnderstood",
+          "notFound",
+          "projectNeeded"
+        ]
+      },
+      "VoiceTarget": {
+        "required": [
+          "view",
+          "issue",
+          "project",
+          "assignee",
+          "sprint",
+          "sprintName"
+        ],
+        "type": "object",
+        "properties": {
+          "view": {
+            "$ref": "#/components/schemas/VoiceView"
+          },
+          "issue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Issue key, for `issue`."
+          },
+          "project": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Project key."
+          },
+          "assignee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only this person's issues.",
+                "$ref": "#/components/schemas/MemberRef"
+              }
+            ]
+          },
+          "sprint": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The sprint that was asked for (\"next sprint\").",
+            "format": "uuid"
+          },
+          "sprintName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Its name, for the confirmation line."
+          }
+        },
+        "description": "A place to open: structured, checked against this workspace, never a URL from the model."
+      },
+      "VoiceTranscription": {
+        "required": [
+          "text",
+          "tidied"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "What was said, as transcribed: inserted at the cursor as is."
+          },
+          "tidied": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "With `tidy`: the same words with spelling and punctuation fixed, as a suggestion; null when\n    nothing needed fixing or no model could check it."
+          }
+        }
+      },
+      "VoiceView": {
+        "enum": [
+          "issue",
+          "myIssues",
+          "list",
+          "board",
+          "sprints",
+          "plan"
+        ],
+        "description": "Where a navigation goes. Every view is in the person's own workspace."
+      },
       "WorkspaceResponse": {
         "required": [
           "id",
@@ -12496,6 +13962,9 @@
   ],
   "tags": [
     {
+      "name": "Ai"
+    },
+    {
       "name": "Attachments"
     },
     {
@@ -12542,6 +14011,9 @@
     },
     {
       "name": "Tokens"
+    },
+    {
+      "name": "Voice"
     },
     {
       "name": "Workspaces"

@@ -37,13 +37,18 @@ P2 = v1 scope, but can ship last. P3 = after v1. Work rows top to bottom; status
 | 25 | [025 Import from Azure DevOps (Services and Server)](025-import-azure-devops.md) | P1 | 1 | 023 | In progress |
 | 26 | [026 Import from Linear and Trello](026-import-linear-trello.md) | P2 | 1 | 023 | In progress |
 | 27 | [027 Import from GitHub Issues, Monday and YouTrack](027-import-github-monday-youtrack.md) | P2 | 1 | 023 | In progress |
+| 35 | [035 Workspace AI connections (bring your own key)](035-ai-connections.md) | P1 | 2 | 015, 017, 018 | In progress |
+| 36 | [036 Voice control](036-voice-control.md) | P1 | 2 | 035 | In progress |
+| 37 | [037 First-run onboarding](037-onboarding.md) | P2 | 2 | 036 | Todo |
+| 38 | [038 On-device transcription (proposal)](038-on-device-transcription.md) | P3 | 2 | 036 | Proposed: waits for a customer ask |
 | 34 | [034 Time registration](034-time-registration.md) | P2 | 2 | 003, 004 | In progress |
 | 32 | [032 PgBouncer in Aspire and the compose stack](032-pgbouncer.md) | P3 | 1 | 013 | Todo |
 
 ## What an agent can pick up
 
-Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 039 parts A to C
-(once ADR-023 is accepted), then 034's import of Jira worklogs and YouTrack work items. Every other open row waits on a
+Checked 2026-11-28. The build order above is not the same as what is buildable. **Pick up next**: 035's per-model
+approval stats and 036's transcript on activity entries, both P1; then 039 parts A to C (once ADR-023 is accepted),
+then 034's import of Jira worklogs (snapshot read started) and YouTrack work items. Every other open row waits on a
 person.
 Don't spend a session re-deriving this; read this table, and update it when a step is done. "Depends on" lists what
 blocks *starting*; a dependency that only blocks closing a task is written "(N to close)".
@@ -57,9 +62,12 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 | 023 | Built, web wizard and Hierarchy trees included. Left: three official product marks (manual) and the production run | The owner for the marks; 013 Done for the run |
 | 024, 025, 026 | Connectors, default mappings, `--local`, wizard extras, Trello's authorize link and all four site pages done. Left: recorded fixtures and the close (sandbox accounts, manual steps) | The sandboxes |
 | 027 | GitHub (with Projects (v2) boards), YouTrack and Monday done, site pages included. Left: the recorded fixtures and live runs | Nothing for those; the sandboxes for the close |
-| 034 | ADR-021 accepted, prototype 01 picked; API, CLI and MCP done | Nothing for the web UI and the worklog import; the legal check (manual step) before claiming compliance |
+| 034 | ADR-021 accepted; API, CLI, MCP and the web UI (prototype 01) done; Jira worklogs read from snapshots | Nothing for the rest of the worklog import and the site lines; the legal check (manual step) before claiming compliance |
 | 039 | ADR-023 proposed; nothing built | The owner accepting ADR-023 for parts A to C; 013 live for part D |
 | 032 | P3, and starts only on a production measure | v1 in prod and a trigger from the task |
+| 035 | ADR-022 accepted; API, CLI, MCP and the web settings screen (prototype 03) built | Nothing for per-model approval stats; a second Scaleway account (manual step) for the end-to-end try |
+| 036 | API, voice-button preference, `kupro say` and the web (both button styles, card, dictation) built | Nothing for the activity-feed snippet; a Scaleway key for the 3 s measurement; a Playwright mobile run |
+| 037 | Spec written: the first run asks the voice question; 036's preference is built | Prototypes and the owner's pick |
 
 ## Completed
 
@@ -97,6 +105,8 @@ blocks *starting*; a dependency that only blocks closing a task is written "(N t
 - **014 before UI**: budget enforced from the first endpoints, not retrofitted ([ADR-010](../docs/adr/ADR-010-performance-budget.md)).
 - **010 is P1** only because 011 (the differentiator) depends on it.
 - **015 is P1**: the meeting agent leads the public site ([ADR-017](../docs/adr/ADR-017-public-site.md)) and 017 depends on it.
+- **035, 036 are P1** ([ADR-022](../docs/adr/ADR-022-ai-providers-byok.md)): a workspace's own key gives unlimited
+  voice, and voice control lowers friction for people who find typing or spelling hard, or work in the field.
 - **Import is P1** ([ADR-019](../docs/adr/ADR-019-import.md)): teams with history in another tool don't switch
   without it. 023 is built ahead of 013, but closes only after one run against production storage and jobs; Jira and Azure DevOps
   (024, 025) are the largest switcher pools. Linear, Trello and the rest (026, 027) are P2.

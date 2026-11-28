@@ -35,7 +35,8 @@ public sealed partial class KuproTools(
     UserService users,
     MeetingService meetings,
     Features.Imports.ImportService importService,
-    TimeService time)
+    TimeService time,
+    Features.Ai.AiConnectionService ai)
 {
     // Every tool takes an optional `workspace` slug. It has no description: the server instructions explain it once,
     // rather than every tool's schema repeating it (ADR-001 IMP-004).

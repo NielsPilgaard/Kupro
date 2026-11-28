@@ -39,6 +39,7 @@
     "plan": "Leveranceplan",
     "members": "Medlemmer",
     "imports": "Import",
+    "ai": "AI",
     "myTime": "Min tid",
     "teamTime": "Teamets tid",
     "workspaceSettings": "Indstillinger for arbejdsområdet"
@@ -222,7 +223,153 @@
     "exportFailed": "Eksporten mislykkedes. Prøv igen.",
     "exportDownload": "Hent ({{size}})",
     "workspaces": "Arbejdsområder",
-    "membersOf": "Medlemmer i {{name}}"
+    "membersOf": "Medlemmer i {{name}}",
+    "aiOf": "AI i {{name}}"
+  },
+  "ai": {
+    "title": "AI",
+    "palette": "AI: forbrug og egen nøgle",
+    "lede": "Hvor meget mødeagenten og stemmestyring bruges denne måned, og hvem der betaler.",
+    "guest": "Kun medlemmer kan se arbejdsområdets AI-forbrug.",
+    "loadFailed": "Kunne ikke hente AI-indstillingerne. Prøv igen.",
+    "minutes": "{{value}} min.",
+    "readOnly": "Kun ejere og medlemmer med adgang til fakturering kan ændre det her, fordi en nøgle flytter udgiften til AI over på arbejdsområdets egen konto.",
+    "askBilling": "Spørg {{names}}.",
+    "usage": {
+      "included": "Inkluderede timer",
+      "unlimited": "Ubegrænset · egen nøgle",
+      "kupro": "På Kupros inkluderede timer",
+      "ofHours": "af {{hours}}",
+      "meter": "{{used}} af {{included}} brugt",
+      "resets": "Fælles for hele arbejdsområdet. Nulstilles {{date}}",
+      "spent": "Brugt op. Hvor Kupros timer bruges, er mikrofonen slået fra, og skrevet tekst bliver til forslag med søgning på nøgleord. Nulstilles {{date}}",
+      "noBudget": "Ingen timegrænse på denne server.",
+      "own": "På arbejdsområdets egen nøgle",
+      "audio": "lyd",
+      "ownHint": "Og {{tokens}} tokens tekst. Ingen timegrænse: jeres udbyder fakturerer arbejdsområdet direkte."
+    },
+    "unlimited": {
+      "title": "Brug for mere end {{hours}} om måneden?",
+      "titleNoBudget": "Brug jeres egen AI-nøgle",
+      "body": "Forbind jeres egen Scaleway-nøgle, og brug mødeagenten og stemmestyring så meget, I vil. Scaleway fakturerer jeres konto direkte. Det tager omkring to minutter.",
+      "start": "Fjern grænsen"
+    },
+    "rejected": {
+      "title": "{{name}} afviste arbejdsområdets nøgle",
+      "seen": "{{error}} Set {{date}}.",
+      "body": "Mikrofonen er slået fra, og skrevet tekst bliver til forslag med søgning på nøgleord. Kupro skifter ikke til sin egen nøgle. Udskift nøglen, eller fjern forbindelsen for at gå tilbage til de inkluderede timer. Alle med adgang til fakturering har fået en mail.",
+      "goBack": "Fjern og brug inkluderede timer",
+      "ask": "Bed {{names}} om at udskifte nøglen."
+    },
+    "status": {
+      "healthy": "Virker",
+      "rejected": "Afvist",
+      "unverified": "Ikke tjekket"
+    },
+    "capability": {
+      "transcription": "Transskription",
+      "meetingProposals": "Mødeforslag",
+      "voiceCommands": "Stemmekommandoer"
+    },
+    "capabilityHint": {
+      "transcription": "Mødelyd, stemmekommandoer og diktat",
+      "meetingProposals": "Gør det, der blev sagt på mødet, til ændringer i opgaver",
+      "voiceCommands": "Tryk for at tale uden for møder"
+    },
+    "connection": {
+      "key": "Nøgle, der slutter på {{hint}}",
+      "keySaved": "Nøgle gemt",
+      "lastError": "Sidste tjek {{date}}: {{error}}",
+      "runs": "Kører",
+      "runsNothing": "Intet kører på den endnu.",
+      "language": "kun {{language}}",
+      "untested": "Ikke testet af Kupro",
+      "untestedHint": "{{model}} er ikke den model, Kupro har testet. Tjek dens forslag i foreslå-tilstand, før du slår fuld auto til.",
+      "replaceKey": "Udskift nøgle",
+      "check": "Tjek igen",
+      "checking": "Tjekker…",
+      "routes": "Skift, hvad der kører hvor",
+      "disconnect": "Fjern forbindelse",
+      "disconnectTitle": "Fjern {{name}}",
+      "disconnectConfirm": "Fjern {{name}}? Nøglen slettes, og det, der kører på den, går tilbage til Kupros inkluderede timer.",
+      "disconnected": "{{name}} er fjernet",
+      "works": "{{name}} virker",
+      "add": "Forbind en anden udbyder"
+    },
+    "wizard": {
+      "label": "Forbind jeres egen nøgle",
+      "step": "Trin {{step}} af {{total}}",
+      "guideTitle": "Lav en nøgle i Scaleway",
+      "guideIntro": "Du skal have en Scaleway-konto. Kupro ser aldrig dit Scaleway-login.",
+      "guide1": "Åbn IAM i Scaleways konsol, gå til API keys, og vælg Generate API key.",
+      "guide2": "Vælg An application som bearer, og opret en, der hedder Kupro.",
+      "guide3": "Giv applikationen en policy med adgang til Generative APIs i dit projekt.",
+      "guide4": "Kopiér den hemmelige nøgle (secret key). Scaleway viser den kun én gang.",
+      "console": "Åbn Scaleways konsol",
+      "custom": "Brug et andet EU-endpoint i stedet",
+      "haveKey": "Jeg har en nøgle",
+      "keyTitle": "Indsæt og tjek",
+      "secretKey": "Hemmelig nøgle",
+      "secretKeyHint": "Gemmes krypteret. Kupro viser kun de sidste 4 tegn.",
+      "projectId": "Projekt-ID (valgfrit)",
+      "projectIdHint": "Lad feltet være tomt for at bruge dit standardprojekt.",
+      "check": "Tjek nøgle",
+      "checkAgain": "Tjek igen",
+      "continue": "Fortsæt",
+      "back": "Tilbage",
+      "checking": "Spørger {{name}}, hvilke modeller nøglen kan bruge…",
+      "routesTitle": "Hvad skal køre på {{name}}?",
+      "routesExplain": "Det, du sætter flueben ved, har ingen timegrænse, og {{name}} fakturerer arbejdsområdet direkte. Holder nøglen op med at virke, sættes de dele på pause: Kupro skifter ikke tilbage til sin egen nøgle.",
+      "nowOn": "Kører på {{name}} nu",
+      "model": "Model ({{capability}})",
+      "done": "Gem",
+      "live": "{{name}} er i brug. Det, der kører på den, har ingen timegrænse.",
+      "nothingRuns": "Gemt. Intet kører på {{name}} endnu.",
+      "replaceTitle": "Udskift nøglen til {{name}}",
+      "replaceSave": "Tjek og gem",
+      "replaced": "Nøglen er udskiftet. {{name}} virker."
+    },
+    "check": {
+      "works": "{{name}} godkendte nøglen, og de modeller, Kupro skal bruge, er tilgængelige.",
+      "rejected": "{{name}} afviste nøglen: {{error}}",
+      "rejectedHint": "Tjek, at du kopierede den hemmelige nøgle, og indsæt den igen.",
+      "unverified": "Tjekket gik ikke igennem: {{error}}",
+      "unverifiedHint": "Intet kører på den, før et tjek går igennem. Prøv igen om lidt."
+    },
+    "custom": {
+      "title": "Jeres eget EU-endpoint",
+      "intro": "Et hvilket som helst OpenAI-kompatibelt API, fx jeres egen Whisper- eller vLLM-server. Kupro sender mødelyd og tekst dertil.",
+      "name": "Navn",
+      "namePlaceholder": "fx Vores Whisper-server",
+      "theEndpoint": "endpointet",
+      "endpoint": "Adresse",
+      "key": "Nøgle",
+      "keyHint": "Endpointets API-nøgle eller bearer token. Gemmes krypteret.",
+      "serves": "Det kan køre",
+      "transcription": "Transskription",
+      "chat": "Mødeforslag og stemmekommandoer (chat med struktureret output)",
+      "transcriptionModel": "Model til transskription",
+      "chatModel": "Model til chat",
+      "modelPlaceholder": "model-id",
+      "eu": "Endpointet er i EU/EØS og drives af os eller vores databehandler.",
+      "euHint": "Kupro gemmer dit navn og tidspunktet sammen med forbindelsen. Kupro tjekker det ikke.",
+      "movesHint": "Det, du sætter flueben ved, flytter hertil, når tjekket går igennem.",
+      "save": "Tjek og gem",
+      "saved": "{{name}} er gemt. Det, du satte flueben ved, kører på den nu.",
+      "needServes": "Sæt flueben ved det, endpointet kan køre, og angiv modellen til hver."
+    },
+    "errors": {
+      "failed": "Det virkede ikke. Prøv igen.",
+      "key_required": "Indsæt den hemmelige nøgle.",
+      "key_storage_not_configured": "Serveren kan ikke gemme AI-nøgler, fordi den ikke har et nøglelager. Bed den, der driver jeres Kupro-server, om at sætte det op.",
+      "endpoint_not_https": "Angiv endpointets fulde https://-adresse, fx https://ai.example.eu/v1. Kupro sender mødelyd dertil.",
+      "endpoint_not_public": "Adressen er ikke på det offentlige internet, så Kupro kan ikke nå den fra sine servere.",
+      "endpoint_not_found": "Adressen findes ikke. Tjek stavningen.",
+      "eu_confirmation_required": "Bekræft først, hvor endpointet kører.",
+      "model_required": "Angiv modellen til hver del, du sætter flueben ved.",
+      "capability_unsupported": "Forbindelsen kan ikke køre det.",
+      "ai_connection_not_found": "Forbindelsen findes ikke længere. Nogen har måske fjernet den."
+    }
   },
   "sprint": {
     "title": "Sprints",
@@ -329,7 +476,8 @@
       "mcp": "MCP",
       "api": "API",
       "meeting": "møde",
-      "import": "import"
+      "import": "import",
+      "voice": "tale"
     },
     "sprintClosed": {
       "carry": "{{name}} overførte dette fra {{sprint}} til {{target}} ved afslutning",
@@ -1077,6 +1225,84 @@
     "lede": "Personer, en import ikke kunne matche med et medlem. Inviter dem, eller flet dem ind i et medlem; historikken følger med.",
     "none": "Ingen pladsholdere tilbage."
   },
+  "voice": {
+    "talk": "Tal",
+    "button": {
+      "idle": "Tal til Kupro. Hold knappen nede, eller hold Ctrl+Mellemrum.",
+      "listening": "Lytter. Slip for at sende.",
+      "thinking": "Finder ud af, hvad du sagde"
+    },
+    "status": {
+      "listening": "Lytter …",
+      "dictating": "Lytter. Dine ord kommer i feltet.",
+      "thinking": "Tænker …"
+    },
+    "said": "Du sagde",
+    "close": "Luk",
+    "apply": "Udfør",
+    "applyCount_one": "Udfør {{count}} ændring",
+    "applyCount_other": "Udfør {{count}} ændringer",
+    "pick": "Hvilken opgave?",
+    "newIssue": "Ny opgave",
+    "typeLabel": "Eller skriv det",
+    "typePlaceholder": "Flyt KUP-12 til næste sprint",
+    "send": "Send",
+    "held": {
+      "lowConfidence": "Ikke sikker på, at jeg hørte rigtigt",
+      "ambiguous": "Vælg opgaven",
+      "destructive": "Annullerer opgaven, så den spørger først",
+      "createIssue": "Nye opgaver spørger altid først"
+    },
+    "applied_one": "Ændrede {{keys}}",
+    "applied_other": "Lavede {{count}} ændringer på {{keys}}",
+    "undo": "Fortryd",
+    "undone": "Fortrudt",
+    "undoFailed": "Kunne ikke fortryde: opgaven er ændret siden. Fortryd den i hånden.",
+    "applyFailed": "Ændringen gik ikke igennem. {{detail}}",
+    "opened": "Åbnede {{place}}",
+    "place": {
+      "myIssues": "Mine opgaver",
+      "list": "Opgaver i {{project}}",
+      "board": "Tavlen for {{project}}",
+      "sprints": "Sprints",
+      "plan": "Leveranceplan",
+      "for": "{{place}} for {{name}}"
+    },
+    "none": {
+      "nothingHeard": "Jeg hørte ikke noget. Hold knappen nede, mens du taler.",
+      "notUnderstood": "Jeg fangede ikke en ændring eller et sted at gå hen. Prøv „flyt KUP-12 til næste sprint“ eller „åbn KUP-12“.",
+      "notFound": "Jeg kunne ikke finde den opgave, person eller det sprint i dette arbejdsområde.",
+      "projectNeeded": "Sig hvilket projekt, for eksempel „tavlen for Kupro“."
+    },
+    "keyword": "Månedens AI-timer er brugt, så kun tydelige kommandoer virker.",
+    "blocked": {
+      "budgetTitle": "Månedens AI-timer er brugt",
+      "budget": "Mikrofonen er slået fra til næste måned. Du kan stadig skrive, og en ejer kan forbinde arbejdsområdets egen AI-nøgle for ubegrænset tale.",
+      "rejectedTitle": "AI-udbyderen afviste arbejdsområdets nøgle",
+      "rejected": "Mikrofonen er slået fra, til en ejer udskifter nøglen i AI-indstillingerne. Kupros inkluderede timer bruges ikke imens. Du kan stadig skrive.",
+      "unavailableTitle": "Tale er ikke sat op på denne server",
+      "unavailable": "Du kan stadig skrive.",
+      "microphoneTitle": "Kupro kan ikke bruge mikrofonen",
+      "microphone": "Tillad mikrofonen for denne side i din browser, og prøv igen.",
+      "failed": "Det virkede ikke. Prøv igen."
+    },
+    "dictated": "Tilføjet i feltet",
+    "tidy": {
+      "title": "Ret til?",
+      "hint": "Retter stavning og tegnsætning, intet andet.",
+      "accept": "Brug den rettede tekst",
+      "keep": "Behold som sagt",
+      "gone": "Teksten er ændret siden, så den blev ladt, som den er."
+    },
+    "settings": {
+      "title": "Tale",
+      "button": "Taleknap",
+      "topBar": "I topbjælken, ved siden af søgning",
+      "thumb": "Stor rund knap inden for tommelfingerens rækkevidde",
+      "autoApply": "Udfør sikre ændringer uden at spørge",
+      "autoApplyHint": "Usikre match, annulleringer og nye opgaver spørger stadig først. Alle ændringer kan fortrydes."
+    }
+  },
   "time": {
     "unit": {
       "hm": "{{h}}t {{m}}m",
@@ -1202,6 +1428,7 @@
       "kept": "Registreringerne gemmes i 5 år, også når en person stopper, og også hvis I slår funktionen fra.",
       "turnedOn": "Tidsregistrering er slået til for {{name}}.",
       "turnedOff": "Tidsregistrering er slået fra. Registreringerne gemmes."
-    }
+    },
+    "aiOpen": "Åbn AI-indstillinger"
   }
 }

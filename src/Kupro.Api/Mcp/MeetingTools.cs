@@ -19,13 +19,15 @@ public sealed partial class KuproTools
         "start (project, type?, mode?, language?) | say (text): add what was said, returns proposals | " +
         "proposals (status?): before/after, transcript snippet, confidence; needsIssue=true means pick one of candidates | " +
         "get (transcript?) | list (state?) | update (state: live|paused|ended, mode: suggest|fullAuto) | " +
-        "usage: this month's meeting hours (null without a budget). say returns extractor=keyword and budgetSpent=true " +
+        "usage: this month's meeting hours (null without a budget) | ai: the workspace's AI setup, read-only: what runs " +
+        "transcription and proposals, who pays (workspace = its own key, no limit), connection health; never keys. " +
+        "say returns extractor=keyword and budgetSpent=true " +
         "when the hours are used up: only clear commands then become proposals. " +
         "Without meeting, say/update use the most recent live meeting and proposals/get the most recent one.")]
     [CoversOperations("startMeeting", "listMeetings", "getMeeting", "getMeetingTranscript", "updateMeeting",
-        "addMeetingTranscript", "listMeetingProposals")]
+        "addMeetingTranscript", "listMeetingProposals", "getAiStatus", "listAiProviders")]
     public async Task<object> Meeting(
-        [Description("start, say, proposals, get, list, update or usage.")] string action,
+        [Description("start, say, proposals, get, list, update, usage or ai.")] string action,
         [Description(MeetingHelp)] Guid? meeting = null,
         [Description("start: project key.")] string? project = null,
         [Description("start: standup, planning, refinement or other.")] MeetingType? type = null,
@@ -38,8 +40,8 @@ public sealed partial class KuproTools
         string? workspace = null,
         CancellationToken ct = default)
     {
-        var reads = action is "proposals" or "get" or "list" or "usage";
-        await scope.EnterAsync(workspace, reads ? WorkspaceRole.Guest : WorkspaceRole.Member, ct);
+        var reads = action is "proposals" or "get" or "list" or "usage" or "ai";
+        await scope.EnterAsync(workspace, reads && action != "ai" ? WorkspaceRole.Guest : WorkspaceRole.Member, ct);
         switch (action)
         {
             case "start" when project is not null:
@@ -58,6 +60,9 @@ public sealed partial class KuproTools
             case "usage":
                 // The settings operation is UI/CLI-only (owner configuration); agents still see what they may spend.
                 return new { usage = await meetings.UsageAsync(ct) };
+            case "ai":
+                // Read-only (ADR-022): changing connections moves keys, which stay off MCP.
+                return new { status = await ai.StatusAsync(ct), providers = Features.Ai.AiConnectionService.Providers() };
             case "update" when state is not null || mode is not null:
                 return Unwrap(await meetings.UpdateAsync(await MeetingIdAsync(meeting, live: true, ct), new UpdateMeetingRequest(state, mode), ct));
             default:

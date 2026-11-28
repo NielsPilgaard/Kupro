@@ -292,7 +292,11 @@ public sealed class MeetingTests(PostgresFixture postgres) : ApiTestBase(postgre
     [Fact]
     public async Task A_failing_model_keeps_the_utterance_and_falls_back_to_keywords()
     {
-        await using var factory = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<IProposalExtractor, FailingExtractor>()));
+        await using var factory = Factory.WithWebHostBuilder(b => b.ConfigureTestServices(s =>
+        {
+            s.AddSingleton<IProposalExtractor, FailingExtractor>();
+            s.PostConfigure<MeetingAgentOptions>(o => o.Extraction = new ModelRoute { Endpoint = "https://llm.test/v1", Model = "m", ApiKey = "k" });
+        }));
         var meeting = await StartAsync();
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = _client.DefaultRequestHeaders.Authorization;
@@ -318,7 +322,7 @@ public sealed class MeetingTests(PostgresFixture postgres) : ApiTestBase(postgre
 
     private sealed class FailingExtractor : IProposalExtractor
     {
-        public Task<Extraction> ExtractAsync(ExtractionContext context, CancellationToken ct) =>
+        public Task<Extraction> ExtractAsync(ExtractionContext context, ModelRoute route, CancellationToken ct) =>
             throw new HttpRequestException("model vendor unavailable");
     }
 

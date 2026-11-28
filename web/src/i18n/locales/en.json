@@ -39,6 +39,7 @@
     "plan": "Delivery plan",
     "members": "Members",
     "imports": "Import",
+    "ai": "AI",
     "myTime": "My time",
     "teamTime": "Team time",
     "workspaceSettings": "Workspace settings"
@@ -222,7 +223,153 @@
     "exportFailed": "The export failed. Try again.",
     "exportDownload": "Download ({{size}})",
     "workspaces": "Workspaces",
-    "membersOf": "Members of {{name}}"
+    "membersOf": "Members of {{name}}",
+    "aiOf": "AI in {{name}}"
+  },
+  "ai": {
+    "title": "AI",
+    "palette": "AI: usage and own key",
+    "lede": "How much the meeting agent and voice control are used this month, and who pays for it.",
+    "guest": "Only members can see the workspace's AI usage.",
+    "loadFailed": "Couldn't load the AI settings. Try again.",
+    "minutes": "{{value}} min",
+    "readOnly": "Only Owners and members with billing access can change this, because a key moves the cost of AI to the workspace's own account.",
+    "askBilling": "Ask {{names}}.",
+    "usage": {
+      "included": "Included hours",
+      "unlimited": "Unlimited · own key",
+      "kupro": "On Kupro's included hours",
+      "ofHours": "of {{hours}}",
+      "meter": "{{used}} of {{included}} used",
+      "resets": "Pooled for the whole workspace. Resets {{date}}.",
+      "spent": "Used up. Where Kupro's hours run things, the microphone is off and typed text uses keyword matching. Resets {{date}}.",
+      "noBudget": "No hour limit on this server.",
+      "own": "On the workspace's own key",
+      "audio": "of audio",
+      "ownHint": "And {{tokens}} tokens of text. No hour limit: your provider bills the workspace directly."
+    },
+    "unlimited": {
+      "title": "Want more than {{hours}} a month?",
+      "titleNoBudget": "Use your own AI key",
+      "body": "Connect your own Scaleway key and use the meeting agent and voice control as much as you like. Scaleway bills your account directly. It takes about two minutes.",
+      "start": "Go unlimited"
+    },
+    "rejected": {
+      "title": "{{name}} rejected the workspace's key",
+      "seen": "{{error}} Seen {{date}}.",
+      "body": "The microphone is off, and typed text uses keyword matching. Kupro doesn't switch to its own key. Replace the key, or disconnect to go back to the included hours. Everyone with billing access got an email.",
+      "goBack": "Disconnect and use included hours",
+      "ask": "Ask {{names}} to replace the key."
+    },
+    "status": {
+      "healthy": "Working",
+      "rejected": "Rejected",
+      "unverified": "Not checked"
+    },
+    "capability": {
+      "transcription": "Transcription",
+      "meetingProposals": "Meeting proposals",
+      "voiceCommands": "Voice commands"
+    },
+    "capabilityHint": {
+      "transcription": "Meeting audio, voice commands and dictation",
+      "meetingProposals": "Turns what was said in a meeting into issue changes",
+      "voiceCommands": "Push to talk outside meetings"
+    },
+    "connection": {
+      "key": "Key ending in {{hint}}",
+      "keySaved": "Key saved",
+      "lastError": "Last check {{date}}: {{error}}",
+      "runs": "Runs",
+      "runsNothing": "Nothing runs on it yet.",
+      "language": "{{language}} only",
+      "untested": "Not tested by Kupro",
+      "untestedHint": "{{model}} isn't the model Kupro tested. Check its proposals in suggest mode before you turn on full auto.",
+      "replaceKey": "Replace key",
+      "check": "Check again",
+      "checking": "Checking…",
+      "routes": "Change what runs where",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect {{name}}",
+      "disconnectConfirm": "Disconnect {{name}}? The key is deleted, and what runs on it goes back to Kupro's included hours.",
+      "disconnected": "Disconnected {{name}}",
+      "works": "{{name}} works",
+      "add": "Connect another provider"
+    },
+    "wizard": {
+      "label": "Connect your own key",
+      "step": "Step {{step}} of {{total}}",
+      "guideTitle": "Make a key in Scaleway",
+      "guideIntro": "You need a Scaleway account. Kupro never sees your Scaleway login.",
+      "guide1": "In the Scaleway console, open IAM, then API keys, and choose Generate API key.",
+      "guide2": "As the bearer, choose An application, and create one called Kupro.",
+      "guide3": "Give the application a policy with access to Generative APIs in your project.",
+      "guide4": "Copy the secret key. Scaleway shows it only once.",
+      "console": "Open the Scaleway console",
+      "custom": "Use another EU endpoint instead",
+      "haveKey": "I have a key",
+      "keyTitle": "Paste and check",
+      "secretKey": "Secret key",
+      "secretKeyHint": "Stored encrypted. Kupro only shows the last 4 characters.",
+      "projectId": "Project ID (optional)",
+      "projectIdHint": "Leave it empty to use your default project.",
+      "check": "Check key",
+      "checkAgain": "Check again",
+      "continue": "Continue",
+      "back": "Back",
+      "checking": "Asking {{name}} which models this key can use…",
+      "routesTitle": "What should run on {{name}}?",
+      "routesExplain": "What you tick has no hour limit, and {{name}} bills the workspace directly. If the key stops working, those parts pause: Kupro won't switch back to its own key.",
+      "nowOn": "Runs on {{name}} now",
+      "model": "Model ({{capability}})",
+      "done": "Save",
+      "live": "{{name}} is live. What runs on it has no hour limit.",
+      "nothingRuns": "Saved. Nothing runs on {{name}} yet.",
+      "replaceTitle": "Replace the key for {{name}}",
+      "replaceSave": "Check and save",
+      "replaced": "Key replaced. {{name}} works."
+    },
+    "check": {
+      "works": "{{name}} accepted the key, and the models Kupro needs are available.",
+      "rejected": "{{name}} refused the key: {{error}}",
+      "rejectedHint": "Check that you copied the secret key, and paste it again.",
+      "unverified": "The check didn't pass: {{error}}",
+      "unverifiedHint": "Nothing runs on it until a check passes. Try again in a moment."
+    },
+    "custom": {
+      "title": "Your own EU endpoint",
+      "intro": "Any OpenAI-compatible API, such as your own Whisper or vLLM server. Kupro sends meeting audio and text to it.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Our Whisper server",
+      "theEndpoint": "the endpoint",
+      "endpoint": "Address",
+      "key": "Key",
+      "keyHint": "The endpoint's API key or bearer token. Stored encrypted.",
+      "serves": "It can run",
+      "transcription": "Transcription",
+      "chat": "Meeting proposals and voice commands (chat with structured output)",
+      "transcriptionModel": "Transcription model",
+      "chatModel": "Chat model",
+      "modelPlaceholder": "model id",
+      "eu": "This endpoint is in the EU/EEA and run by us or our processor.",
+      "euHint": "Kupro keeps your name and the time with the connection. Kupro doesn't check it.",
+      "movesHint": "What you tick moves to this endpoint once the check passes.",
+      "save": "Check and save",
+      "saved": "Saved {{name}}. What you ticked runs on it now.",
+      "needServes": "Tick what the endpoint can run, and name the model for each."
+    },
+    "errors": {
+      "failed": "That didn't work. Try again.",
+      "key_required": "Paste the secret key.",
+      "key_storage_not_configured": "This server can't keep AI keys: it has no key storage. Ask whoever runs your Kupro server to set it up.",
+      "endpoint_not_https": "Give the endpoint's full https:// address, such as https://ai.example.eu/v1. Kupro sends meeting audio to it.",
+      "endpoint_not_public": "That address isn't on the public internet, so Kupro can't reach it from its servers.",
+      "endpoint_not_found": "That address doesn't resolve. Check the spelling.",
+      "eu_confirmation_required": "Confirm where the endpoint runs first.",
+      "model_required": "Name the model for each part you tick.",
+      "capability_unsupported": "This connection can't run that.",
+      "ai_connection_not_found": "The connection is gone. Someone may have removed it."
+    }
   },
   "sprint": {
     "title": "Sprints",
@@ -329,7 +476,8 @@
       "mcp": "MCP",
       "api": "API",
       "meeting": "meeting",
-      "import": "import"
+      "import": "import",
+      "voice": "voice"
     },
     "sprintClosed": {
       "carry": "{{name}} carried this from {{sprint}} to {{target}} on close",
@@ -1077,6 +1225,84 @@
     "lede": "People an import couldn't match to a member. Invite them, or merge them into a member; their history follows.",
     "none": "No placeholders left."
   },
+  "voice": {
+    "talk": "Talk",
+    "button": {
+      "idle": "Talk to Kupro. Hold to talk, or hold Ctrl+Space.",
+      "listening": "Listening. Release to send.",
+      "thinking": "Working out what you said"
+    },
+    "status": {
+      "listening": "Listening…",
+      "dictating": "Listening. Your words go into the field.",
+      "thinking": "Thinking…"
+    },
+    "said": "You said",
+    "close": "Close",
+    "apply": "Apply",
+    "applyCount_one": "Apply {{count}} change",
+    "applyCount_other": "Apply {{count}} changes",
+    "pick": "Which issue?",
+    "newIssue": "New issue",
+    "typeLabel": "Or type it",
+    "typePlaceholder": "Move KUP-12 to next sprint",
+    "send": "Send",
+    "held": {
+      "lowConfidence": "Not sure I heard right",
+      "ambiguous": "Pick the issue",
+      "destructive": "Cancels the issue, so it asks first",
+      "createIssue": "New issues always ask first"
+    },
+    "applied_one": "Changed {{keys}}",
+    "applied_other": "Made {{count}} changes on {{keys}}",
+    "undo": "Undo",
+    "undone": "Undone",
+    "undoFailed": "Couldn’t undo: the issue was changed since. Undo it by hand.",
+    "applyFailed": "That change didn’t go through. {{detail}}",
+    "opened": "Opened {{place}}",
+    "place": {
+      "myIssues": "My issues",
+      "list": "{{project}} issues",
+      "board": "{{project}} board",
+      "sprints": "Sprints",
+      "plan": "Delivery plan",
+      "for": "{{place}} for {{name}}"
+    },
+    "none": {
+      "nothingHeard": "I didn’t hear anything. Hold the button while you talk.",
+      "notUnderstood": "I didn’t catch a change or a place to go. Try “move KUP-12 to next sprint” or “open KUP-12”.",
+      "notFound": "I couldn’t find that issue, person or sprint in this workspace.",
+      "projectNeeded": "Say which project, for example “board for Kupro”."
+    },
+    "keyword": "This month’s AI hours are used up, so only clear commands work.",
+    "blocked": {
+      "budgetTitle": "This month’s AI hours are used up",
+      "budget": "The microphone is off until next month. Typing still works, and an Owner can connect the workspace’s own AI key for unlimited voice.",
+      "rejectedTitle": "The AI provider rejected the workspace’s key",
+      "rejected": "The microphone is off until an Owner replaces the key in the AI settings. Kupro’s included hours aren’t used meanwhile. Typing still works.",
+      "unavailableTitle": "Voice isn’t set up on this server",
+      "unavailable": "Typing still works.",
+      "microphoneTitle": "Kupro can’t use the microphone",
+      "microphone": "Allow the microphone for this site in your browser, then try again.",
+      "failed": "That didn’t work. Try again."
+    },
+    "dictated": "Added to the field",
+    "tidy": {
+      "title": "Tidy up?",
+      "hint": "Fixes spelling and punctuation, nothing else.",
+      "accept": "Use tidied text",
+      "keep": "Keep as said",
+      "gone": "The text was changed since, so it was left as it is."
+    },
+    "settings": {
+      "title": "Voice",
+      "button": "Talk button",
+      "topBar": "In the top bar, next to search",
+      "thumb": "Large round button within thumb reach",
+      "autoApply": "Apply sure changes without asking",
+      "autoApplyHint": "Unsure matches, cancelling and new issues still ask first. Every change can be undone."
+    }
+  },
   "time": {
     "unit": {
       "hm": "{{h}}h {{m}}m",
@@ -1202,6 +1428,7 @@
       "kept": "Records are kept for 5 years, also after someone leaves, and also if you turn this off.",
       "turnedOn": "Time registration is on for {{name}}.",
       "turnedOff": "Time registration is off. Records are kept."
-    }
+    },
+    "aiOpen": "Open AI settings"
   }
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { getWorkspaceOptions, getWorkspaceQueryKey, updateWorkspaceMutation } from '../../api/gen/@tanstack/react-query.gen';
 import { Topbar } from '../../app/AppShell';
@@ -57,6 +57,15 @@ export function WorkspaceSettingsPage() {
               <li>{t('workspaceSettings.time.locked')}</li>
               <li>{t('workspaceSettings.time.kept')}</li>
             </ul>
+          </section>
+        )}
+        {owner && (
+          <section className="flex flex-col gap-2 rounded-r2 border border-line bg-panel p-4">
+            <h2 className="font-display text-lg font-semibold">{t('ai.title')}</h2>
+            <p className="text-sm text-mute">{t('ai.lede')}</p>
+            <Link to="/w/$workspace/settings/ai" params={{ workspace }} className="text-acc-ink underline">
+              {t('workspaceSettings.aiOpen')}
+            </Link>
           </section>
         )}
       </main>

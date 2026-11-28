@@ -108,6 +108,8 @@ public static class Cli
                      .Concat(CommentCommands.Build())
                      .Concat(TimeCommands.Build())
                      .Concat(MeetingCommands.Build())
+                     .Concat(AiCommands.Build())
+                     .Concat(VoiceCommands.Build())
                      .Concat(ImportCommands.Build())
                      .Concat(InstallCommands.Build())
                      .Append(McpCommand.Build()))

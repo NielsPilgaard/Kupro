@@ -23,6 +23,9 @@ public enum Surface
 
     /// <summary>An import from another tracker (ADR-019): "via Jira import".</summary>
     Import,
+
+    /// <summary>A person applying what they said to voice control (task 036): the web sends it with the change.</summary>
+    Voice,
 }
 
 /// <summary>

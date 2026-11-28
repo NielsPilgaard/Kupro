@@ -243,3 +243,57 @@ export function encodeWav(samples: Float32Array, rate: number) {
   samples.forEach((s, i) => view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true));
   return new Blob([buffer], { type: 'audio/wav' });
 }
+
+/** Push to talk (task 036): one utterance is whatever is said while the button is held, up to this long. */
+export const MAX_PUSH_TO_TALK_MS = MAX_UTTERANCE_MS;
+
+export interface Recording {
+  /** Stops and returns the utterance as 16 kHz WAV; null when too little was recorded. */
+  stop(): Promise<Blob | null>;
+  /** Stops and drops what was recorded. */
+  cancel(): void;
+}
+
+/**
+ * Records the microphone from now until `stop()`, without voice detection: the person decides when the utterance ends.
+ * Calls `onLimit` after {@link MAX_PUSH_TO_TALK_MS}. The audio stays in memory until it is sent.
+ */
+export async function recordUtterance(onLimit?: () => void): Promise<Recording> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+  });
+  const context = new AudioContext();
+  const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+  await context.audioWorklet.addModule(url);
+  URL.revokeObjectURL(url);
+  const source = context.createMediaStreamSource(stream);
+  const tap = new AudioWorkletNode(context, 'kupro-tap');
+  source.connect(tap);
+  let frames: Float32Array[] = [];
+  tap.port.onmessage = (e: MessageEvent<Float32Array>) => frames.push(e.data);
+  const limit = setTimeout(() => onLimit?.(), MAX_PUSH_TO_TALK_MS);
+
+  const close = () => {
+    clearTimeout(limit);
+    tap.port.onmessage = null;
+    source.disconnect();
+    tap.disconnect();
+    for (const track of stream.getTracks()) track.stop();
+    void context.close();
+  };
+
+  return {
+    async stop() {
+      const recorded = frames;
+      const rate = context.sampleRate;
+      frames = [];
+      close();
+      const samples = concat(recorded);
+      return samples.length < (rate * MIN_SPEECH_MS) / 1000 ? null : encodeWav(resample(samples, rate, TARGET_RATE), TARGET_RATE);
+    },
+    cancel() {
+      frames = [];
+      close();
+    },
+  };
+}

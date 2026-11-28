@@ -20,6 +20,8 @@ description: >-
 - Exception: GitHub for source code + Actions (no customer data), and CI tooling that only sees the public source, such as Claude drafting the changelog.
 - Vendor register below is the source of truth; add a row before adopting a vendor.
 - Trackers a customer imports from are not vendors: Kupro only reads from the customer's own account ([ADR-019](ADR-019-import.md)).
+- An AI provider a workspace connects with its own key is the customer's processor, not Kupro's vendor. Named
+  provider types Kupro offers must still be Chosen in the register below ([ADR-022](ADR-022-ai-providers-byok.md)).
 
 ## Status
 
@@ -60,5 +62,6 @@ Sovereignty is a core selling point. Customers will ask for a sub-processor list
 - [ADR-013](ADR-013-seats-billing.md) — billing model using Alunta
 - [ADR-014](ADR-014-observability.md) — self-hosted telemetry, PingPuffin uptime check
 - [ADR-019](ADR-019-import.md) — import sources are not vendors
+- [ADR-022](ADR-022-ai-providers-byok.md) — workspace AI connections are the customer's processors
 - [ADR-016](ADR-016-postgres-backups.md) — Postgres backups, elmah.io heartbeats
 - [ADR-017](ADR-017-public-site.md) — the public site: no third-party fonts, analytics or embeds

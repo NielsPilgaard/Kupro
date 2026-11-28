@@ -420,13 +420,19 @@ public sealed partial class ImportJob(
             // Marks the workspace busy whether or not this run starts, so its later runs can't overtake it.
             if (room > 0 && busy.Add(run.WorkspaceId))
             {
-                _running[run.Id] = (run.WorkspaceId, RunAndSignalAsync(run.Id, run.WorkspaceId, ct));
+                var task = RunLoggedAsync(run.Id, run.WorkspaceId, ct);
+                _running[run.Id] = (run.WorkspaceId, task);
+                // Signal only once the task is complete: the loop frees a workspace by checking IsCompleted, and a
+                // signal sent from inside the run (before completion) let it wake, still see the run busy, and then
+                // sleep a full minute with the workspace's next run waiting.
+                _ = task.ContinueWith(static (_, s) => ((ImportSignal)s!).Signal(), signal, CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 room--;
             }
         }
     }
 
-    private async Task RunAndSignalAsync(Guid runId, Guid workspaceId, CancellationToken ct)
+    private async Task RunLoggedAsync(Guid runId, Guid workspaceId, CancellationToken ct)
     {
         // Off the loop: the first await inside a run can be a long way in.
         await Task.Yield();
@@ -441,10 +447,6 @@ public sealed partial class ImportJob(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogRunFailed(logger, runId, ex);
-        }
-        finally
-        {
-            signal.Signal();
         }
     }
 

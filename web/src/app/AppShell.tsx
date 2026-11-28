@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { ArrowDownToLine, CalendarRange, CircleUser, Clock, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, UsersRound, Users } from 'lucide-react';
+import { ArrowDownToLine, AudioLines, CalendarRange, CircleUser, Clock, IterationCw, Inbox, Layers, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, UsersRound, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getMeOptions, getWorkspaceOptions, listProjectsOptions, listWorkspacesOptions } from '../api/gen/@tanstack/react-query.gen';
@@ -11,6 +11,7 @@ import { CommandPalette } from '../features/palette/CommandPalette';
 import { CreateIssueDialog } from '../features/issues/CreateIssueDialog';
 import { IssuePanel } from '../features/issues/IssuePanel';
 import { MeetingPanel } from '../features/meetings/MeetingPanel';
+import { TopBarMic, VoiceProvider } from '../features/voice/VoiceControl';
 import { LogTimeDialog } from '../features/time/LogTimeDialog';
 import { useTimeRegistration } from '../api/time';
 import { useShortcuts } from '../lib/shortcuts';
@@ -53,17 +54,19 @@ export function AppShell() {
   });
 
   return (
-    <div className="flex h-full">
-      <Sidebar workspace={workspace} collapsed={ui.sidebarCollapsed} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Outlet />
+    <VoiceProvider workspace={workspace}>
+      <div className="flex h-full">
+        <Sidebar workspace={workspace} collapsed={ui.sidebarCollapsed} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Outlet />
+        </div>
+        {search.issue && <IssuePanel workspace={workspace} issueKey={search.issue} meName={me?.displayName} />}
+        {search.meeting && <MeetingPanel workspace={workspace} meetingId={search.meeting} />}
+        <CommandPalette workspace={workspace} />
+        <CreateIssueDialog workspace={workspace} />
+        <LogTimeDialog workspace={workspace} />
       </div>
-      {search.issue && <IssuePanel workspace={workspace} issueKey={search.issue} meName={me?.displayName} />}
-      {search.meeting && <MeetingPanel workspace={workspace} meetingId={search.meeting} />}
-      <CommandPalette workspace={workspace} />
-      <CreateIssueDialog workspace={workspace} />
-      <LogTimeDialog workspace={workspace} />
-    </div>
+    </VoiceProvider>
   );
 }
 
@@ -181,6 +184,12 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           <Users size={16} strokeWidth={1.5} aria-hidden="true" />
           {!collapsed && t('nav.members')}
         </Link>
+        {info && info.role !== 'guest' && (
+          <Link to="/w/$workspace/settings/ai" params={{ workspace }} className={nav} activeProps={active}>
+            <AudioLines size={16} strokeWidth={1.5} aria-hidden="true" />
+            {!collapsed && t('nav.ai')}
+          </Link>
+        )}
         {info?.role === 'owner' && (
           <Link to="/w/$workspace/imports" params={{ workspace }} className={nav} activeProps={active}>
             <ArrowDownToLine size={16} strokeWidth={1.5} aria-hidden="true" />
@@ -188,7 +197,7 @@ function Sidebar({ workspace, collapsed }: { workspace: string; collapsed: boole
           </Link>
         )}
         {info?.role === 'owner' && (
-          <Link to="/w/$workspace/settings" params={{ workspace }} className={nav} activeProps={active} aria-label={t('nav.workspaceSettings')}>
+          <Link to="/w/$workspace/settings" params={{ workspace }} className={nav} activeProps={active} activeOptions={{ exact: true }} aria-label={t('nav.workspaceSettings')}>
             <Settings size={16} strokeWidth={1.5} aria-hidden="true" />
             {!collapsed && t('nav.workspaceSettings')}
           </Link>
@@ -221,7 +230,10 @@ export function Topbar({ crumbs, tabs, actions }: { crumbs: string[]; tabs?: Rea
         ))}
       </h1>
       {tabs}
-      <div className="ml-auto flex items-center gap-2">{actions}</div>
+      <div className="ml-auto flex items-center gap-2">
+        <TopBarMic />
+        {actions}
+      </div>
       <button
         type="button"
         onClick={() => ui.setCreateOpen(true)}

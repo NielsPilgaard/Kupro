@@ -26,6 +26,8 @@ purpose: 'Explains what the prototypes folder is, how it is organised, and where
 | [switch/](switch/index.html) | Public-site `/switch/<source>` pages: three directions | [Task 024](../tasks/024-import-jira.md) |
 | [time/](time/index.html) | Time registration: three directions | [Task 034](../tasks/034-time-registration.md) |
 | [monday-columns/](monday-columns/index.html) | Import wizard: which Monday column holds what, per board: three directions | [Task 027](../tasks/027-import-github-monday-youtrack.md) |
+| [ai-connections/](ai-connections/index.html) | Workspace settings → AI: own Scaleway key, own EU endpoint, what runs where: three directions | [Task 035](../tasks/035-ai-connections.md) |
+| [voice-control/](voice-control/index.html) | Push to talk for changes, navigation and dictation: three directions | [Task 036](../tasks/036-voice-control.md) |
 
 ## Conventions
 

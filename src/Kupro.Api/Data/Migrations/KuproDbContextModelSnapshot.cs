@@ -136,6 +136,144 @@ namespace Kupro.Api.Data.Migrations
                     b.ToTable("activity", (string)null);
                 });
 
+            modelBuilder.Entity("Kupro.Api.Features.Ai.AiConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("EncryptedKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_key");
+
+                    b.Property<string>("Endpoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("endpoint");
+
+                    b.Property<DateTimeOffset?>("EuConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("eu_confirmed_at");
+
+                    b.Property<Guid?>("EuConfirmedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("eu_confirmed_by_id");
+
+                    b.Property<string>("KeyHint")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("key_hint");
+
+                    b.Property<DateTimeOffset?>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_checked_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("ProjectId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("ProviderType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("provider_type");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_connections");
+
+                    b.HasAlternateKey("WorkspaceId", "Id")
+                        .HasName("ak_ai_connections_workspace_id_id");
+
+                    b.HasIndex("WorkspaceId")
+                        .HasDatabaseName("ix_ai_connections_workspace_id");
+
+                    b.HasIndex("WorkspaceId", "CreatedById")
+                        .HasDatabaseName("ix_ai_connections_workspace_id_created_by_id");
+
+                    b.HasIndex("WorkspaceId", "EuConfirmedById")
+                        .HasDatabaseName("ix_ai_connections_workspace_id_eu_confirmed_by_id");
+
+                    b.ToTable("ai_connections", (string)null);
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Ai.AiRoute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Capability")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("capability");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("language");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("model");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ai_routes");
+
+                    b.HasIndex("WorkspaceId", "ConnectionId")
+                        .HasDatabaseName("ix_ai_routes_workspace_id_connection_id");
+
+                    b.HasIndex("WorkspaceId", "Capability", "Language")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ai_routes_workspace_id_capability_language");
+
+                    b.ToTable("ai_routes", (string)null);
+                });
+
             modelBuilder.Entity("Kupro.Api.Features.Attachments.Attachment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1162,6 +1300,16 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("date")
                         .HasColumnName("period");
 
+                    b.Property<string>("PaidBy")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("paid_by");
+
+                    b.Property<string>("Feature")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("feature");
+
                     b.Property<double>("AudioSeconds")
                         .HasColumnType("double precision")
                         .HasColumnName("audio_seconds");
@@ -1187,7 +1335,7 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("warned80at");
 
-                    b.HasKey("WorkspaceId", "Period")
+                    b.HasKey("WorkspaceId", "Period", "PaidBy", "Feature")
                         .HasName("pk_meeting_usage");
 
                     b.ToTable("meeting_usage", (string)null);
@@ -1765,6 +1913,20 @@ namespace Kupro.Api.Data.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("time_zone");
 
+                    b.Property<bool>("VoiceAutoApply")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("voice_auto_apply");
+
+                    b.Property<string>("VoiceButton")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasDefaultValue("TopBar")
+                        .HasColumnName("voice_button");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -1954,6 +2116,49 @@ namespace Kupro.Api.Data.Migrations
                         .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_activity_meeting_proposals_workspace_id_proposal_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Ai.AiConnection", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_connections_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "CreatedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_connections_members_workspace_id_created_by_id");
+
+                    b.HasOne("Kupro.Api.Features.Workspaces.Member", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "EuConfirmedById")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ai_connections_members_workspace_id_eu_confirmed_by_id");
+                });
+
+            modelBuilder.Entity("Kupro.Api.Features.Ai.AiRoute", b =>
+                {
+                    b.HasOne("Kupro.Api.Features.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_routes_workspaces_workspace_id");
+
+                    b.HasOne("Kupro.Api.Features.Ai.AiConnection", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ConnectionId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_ai_routes_ai_connections_workspace_id_connection_id");
                 });
 
             modelBuilder.Entity("Kupro.Api.Features.Attachments.Attachment", b =>

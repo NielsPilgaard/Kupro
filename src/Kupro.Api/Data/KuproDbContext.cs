@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Kupro.Api.Common;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Attachments;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Exports;
@@ -53,6 +54,8 @@ public sealed class KuproDbContext(DbContextOptions<KuproDbContext> options, Wor
     public DbSet<MeetingSettings> MeetingSettings => Set<MeetingSettings>();
     public DbSet<MeetingUsage> MeetingUsage => Set<MeetingUsage>();
     public DbSet<MeetingAgentSpend> MeetingAgentSpend => Set<MeetingAgentSpend>();
+    public DbSet<AiConnection> AiConnections => Set<AiConnection>();
+    public DbSet<AiRoute> AiRoutes => Set<AiRoute>();
     public DbSet<WorkspaceExport> WorkspaceExports => Set<WorkspaceExport>();
     public DbSet<WorkspaceImport> WorkspaceImports => Set<WorkspaceImport>();
     public DbSet<ImportRun> ImportRuns => Set<ImportRun>();

@@ -28,7 +28,8 @@ description: >-
   Imports add `placeholder` (no login, no seat).
 - No free plan: a 30-day trial of everything, then paid seats. The workspace is read-only (exportable) until it subscribes.
 - Meeting agent: in the trial and the paid plan. Monthly AI budget per workspace (2 h per seat pooled, 2 h for the
-  whole trial); when spent, the microphone stops and typed text uses keyword matching. No customer API keys on hosted.
+  whole trial); when spent, the microphone stops and typed text uses keyword matching. A workspace's own AI key
+  skips the budget, in every plan ([ADR-022](ADR-022-ai-providers-byok.md)).
 - Guests (view and comment) are free, up to 5 per seat. Billing access is a flag on any human member; Owners always have it.
 - Open: are agents free (OQ-2), and does billing code live in core or `ee/` (OQ-3)?
 - Billing implementation stays after v1 ([product.md](../product.md)); only the data model is decided now.
@@ -85,7 +86,8 @@ running a fleet of agents.
 - **Non-profits and education** (decided 2026-10-18): the paid plan free on request, without the meeting agent (an AI
   allowance of 0 hours). Seats cost us next to nothing, but every meeting hour is about €0.69 in vendor fees
   ([ADR-015](ADR-015-meeting-agent-vendors.md)) and a free workspace pays none of it back. Typed transcripts still get
-  keyword proposals, which use no LLM.
+  keyword proposals, which use no LLM, and a workspace with its own AI key gets the meeting agent at no cost to us
+  ([ADR-022](ADR-022-ai-providers-byok.md)).
 
 ### Meeting agent usage (decided 2026-10-15)
 
@@ -106,9 +108,11 @@ workspace leaving the agent on all day must not cost more than it pays.
   offline keyword extractor, which uses no LLM. The feature gets less clever; it never disappears. Resets each month.
 - **Guards on every call and meeting**: a `max_tokens` limit on LLM output, a pause after 10 minutes without speech, a
   3-hour meeting limit, and a server-wide daily spending ceiling that turns the agent off for everyone.
-- **Not now**: extra-hour packs (only if customers ask), customer API keys on hosted Kupro (secret storage, and a
-  key could point at a non-EU vendor), a higher seat tier with more hours (later, OQ-4). Self-hosters configure their
-  own endpoints and keys and have no budget.
+- **A workspace's own AI key** (decided 2026-11-26, changes the earlier "not now"): a workspace may connect its own
+  Scaleway key or EU endpoint in any plan, the trial and non-profits included. Calls on it skip the budget and the
+  daily ceiling, and a failing key never falls back to Kupro's ([ADR-022](ADR-022-ai-providers-byok.md)).
+- **Not now**: extra-hour packs (only if customers ask), a higher seat tier with more hours (later, OQ-4).
+  Self-hosters configure their own endpoints and keys and have no budget.
 
 ## Open questions
 
@@ -199,5 +203,6 @@ workspace leaving the agent on all day must not cost more than it pays.
 - [ADR-008](ADR-008-work-item-model.md) — agents as members
 - [ADR-009](ADR-009-multi-tenancy.md) — workspace as tenant and billing unit
 - [ADR-015](ADR-015-meeting-agent-vendors.md) — the speech and LLM vendors the AI budget pays for
+- [ADR-022](ADR-022-ai-providers-byok.md) — a workspace's own AI key, which skips the budget
 - [ADR-019](ADR-019-import.md) — placeholder members from imports
 - [ADR-021](ADR-021-time-registration.md) — time registration is included in the seat

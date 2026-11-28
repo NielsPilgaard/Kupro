@@ -1,9 +1,10 @@
-using System.Globalization;
 using System.Linq.Expressions;
+using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Kupro.Api.Data;
 using Kupro.Api.Features.Activity;
+using Kupro.Api.Features.Ai;
 using Kupro.Api.Features.Comments;
 using Kupro.Api.Features.Issues;
 using Kupro.Api.Features.Realtime;
@@ -28,6 +29,8 @@ public sealed partial class MeetingService(
     CommentService comments,
     IProposalExtractor extractor,
     ISpeechToText speech,
+    AiRouter router,
+    AiConnectionService connections,
     MeetingBudget budget,
     RealtimeEvents realtime,
     TimeProvider clock,
@@ -39,10 +42,12 @@ public sealed partial class MeetingService(
     public const double AutoApplyConfidence = 0.8;
 
     private const int RecentSegments = 6;
-    private const int MaxCandidates = 3;
     private const int IssueHintLimit = 60;
 
-    /// <summary>A meeting live longer than this is ended: a forgotten browser tab can't spend all day (ADR-013 guards).</summary>
+    /// <summary>
+    /// A meeting live longer than this is ended: a forgotten browser tab can't spend all day (ADR-013 guards). Not on a
+    /// workspace's own transcription key, which costs Kupro nothing (ADR-022 decision 5).
+    /// </summary>
     public static readonly TimeSpan MaxDuration = TimeSpan.FromHours(3);
 
     /// <summary>How far back an open proposal counts as the same one heard again, e.g. by a second microphone.</summary>
@@ -196,20 +201,36 @@ public sealed partial class MeetingService(
             language = meeting.Language;
         }
 
-        if (!speech.Supports(language))
+        if (await router.ResolveAsync(AiCapability.Transcription, language, ct) is not { } route)
         {
             return new IssueError("transcription_unavailable", $"No speech-to-text model is configured for '{language}'.");
         }
 
+        // A workspace's own key that its vendor refused stops the microphone; Kupro's key is never used instead (ADR-022).
+        if (route.Rejected)
+        {
+            return ConnectionRejected();
+        }
+
         // Speech has no free fallback, so a spent budget stops the microphone (ADR-013); text still works.
-        if (await budget.CheckAsync(ct) != BudgetState.Available)
+        if (!route.OwnKey && await budget.CheckAsync(ct) != BudgetState.Available)
         {
             return new IssueError("meeting_budget_spent",
                 "This workspace's meeting hours are used up for this month. Typed text still gets proposals from keyword matching.");
         }
 
-        var transcription = await speech.TranscribeAsync(wav, language, ct);
-        await budget.RecordAudioAsync(transcription.AudioSeconds, language, ct);
+        Transcription transcription;
+        try
+        {
+            transcription = await speech.TranscribeAsync(wav, language, route.Route, ct);
+        }
+        catch (HttpRequestException ex) when (route.OwnKey && Refused(ex))
+        {
+            await connections.RejectAsync(route.ConnectionId!.Value, $"{(int)ex.StatusCode!.Value} {ex.StatusCode}", ct);
+            return ConnectionRejected();
+        }
+
+        await budget.RecordAudioAsync(transcription.AudioSeconds, route, ct);
         return string.IsNullOrWhiteSpace(transcription.Text)
             ? new TranscriptResult("", [], ExtractorKind.Keyword, BudgetSpent: false)
             : await AddTranscriptAsync(id, new TranscriptRequest(transcription.Text), ct);
@@ -477,8 +498,12 @@ public sealed partial class MeetingService(
     {
         var startedBefore = now - MaxDuration;
         // System job across all tenants: no request workspace exists, and each meeting is judged on its own start time.
+        // A workspace that transcribes on its own key has no limit (ADR-022 decision 5).
+        var ownTranscription = db.AiRoutes.IgnoreQueryFilters([KuproDbContext.TenantFilter])
+            .Where(r => r.Capability == AiCapability.Transcription);
         return db.Meetings.IgnoreQueryFilters([KuproDbContext.TenantFilter])
-            .Where(m => m.State != MeetingState.Ended && m.StartedAt < startedBefore)
+            .Where(m => m.State != MeetingState.Ended && m.StartedAt < startedBefore
+                && !ownTranscription.Any(r => r.WorkspaceId == m.WorkspaceId))
             .ExecuteUpdateAsync(m => m.SetProperty(x => x.State, MeetingState.Ended).SetProperty(x => x.EndedAt, now), ct);
     }
 
@@ -656,17 +681,7 @@ public sealed partial class MeetingService(
         return null;
     }
 
-    private static UpdateIssueRequest Change(ProposalOperation operation, string value) => operation switch
-    {
-        ProposalOperation.State => new UpdateIssueRequest(State: Enum.Parse<IssueState>(value, ignoreCase: true)),
-        ProposalOperation.Sprint when value == "none" => new UpdateIssueRequest(Clear: [IssueField.Sprint]),
-        ProposalOperation.Sprint => new UpdateIssueRequest(Sprint: value),
-        ProposalOperation.Assignee when value == "none" => new UpdateIssueRequest(Clear: [IssueField.Assignee]),
-        ProposalOperation.Assignee => new UpdateIssueRequest(Assignee: value),
-        ProposalOperation.Estimate when value == "none" => new UpdateIssueRequest(Clear: [IssueField.Effort]),
-        ProposalOperation.Estimate => new UpdateIssueRequest(Effort: decimal.Parse(value, CultureInfo.InvariantCulture)),
-        _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Not a field change."),
-    };
+    private static UpdateIssueRequest Change(ProposalOperation operation, string value) => ProposalValues.Change(operation, value);
 
     private static bool AutoApplies(MeetingSession meeting, MeetingSettings settings, MeetingProposal p) =>
         meeting.Mode == MeetingMode.FullAuto
@@ -745,101 +760,14 @@ public sealed partial class MeetingService(
     }
 
     /// <summary>An exact key wins; otherwise search the project. Several matches become candidates, never a guess.</summary>
-    private async Task<(Guid? Id, List<string> Candidates)> ResolveIssueAsync(
-        KuproDbContext db, string projectKey, string reference, CancellationToken ct)
-    {
-        var text = reference.Trim();
-        if (IssueKey().IsMatch(text.ToUpperInvariant()))
-        {
-            var key = text.ToUpperInvariant();
-            if (await db.Issues.Where(i => i.Key == key).Select(i => (Guid?)i.Id).SingleOrDefaultAsync(ct) is { } exact)
-            {
-                return (exact, []);
-            }
-        }
-
-        var words = Article().Replace(text, "").Trim();
-        if (words.Length < 2)
-        {
-            return (null, []);
-        }
-
-        var found = await issues.ListAsync(new IssueQuery
-        {
-            Q = words,
-            Project = [projectKey],
-            State = [IssueState.Backlog, IssueState.Todo, IssueState.InProgress, IssueState.InReview],
-            Limit = MaxCandidates,
-        }, ct);
-        var items = found.Value?.Items ?? [];
-        return items.Count == 1 ? (items[0].Id, []) : (null, items.Select(i => i.Key).ToList());
-    }
+    private Task<(Guid? Id, List<string> Candidates)> ResolveIssueAsync(
+        KuproDbContext db, string projectKey, string reference, CancellationToken ct) =>
+        ProposalValues.ResolveIssueAsync(db, issues, projectKey, reference, ct);
 
     /// <summary>Canonical value for an operation, or null if it can't be resolved.</summary>
-    private async Task<string?> NormalizeValueAsync(KuproDbContext db, MeetingSession meeting, ProposalOperation operation,
-        string? raw, CancellationToken ct)
-    {
-        var value = raw?.Trim();
-        if (string.IsNullOrEmpty(value))
-        {
-            return null;
-        }
-
-        switch (operation)
-        {
-            case ProposalOperation.State:
-                return Enum.TryParse<IssueState>(value.Replace(" ", ""), ignoreCase: true, out var state) && Enum.IsDefined(state)
-                    ? Camel(state)
-                    : null;
-            case ProposalOperation.Estimate:
-                return value.Equals("none", StringComparison.OrdinalIgnoreCase) ? "none"
-                    : decimal.TryParse(value.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var hours) && hours is >= 0 and <= 100_000
-                        ? hours.ToString(CultureInfo.InvariantCulture)
-                        : null;
-            case ProposalOperation.Comment:
-                return Truncate(value, 4000);
-            case ProposalOperation.CreateIssue:
-                return Truncate(value, 500);
-            case ProposalOperation.Sprint:
-                if (value.Equals("none", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "none";
-                }
-
-                var sprints = db.Sprints.Where(s => s.ProjectId == meeting.ProjectId && s.State != SprintState.Closed);
-                var sprintId = value.ToLowerInvariant() switch
-                {
-                    "next" => await sprints.Where(s => s.State == SprintState.Planned).OrderBy(s => s.StartDate).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct),
-                    "current" or "active" => await sprints.Where(s => s.State == SprintState.Active).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct),
-                    _ when Guid.TryParse(value, out var id) => await sprints.Where(s => s.Id == id).Select(s => (Guid?)s.Id).SingleOrDefaultAsync(ct),
-                    _ => await sprints.Where(s => EF.Functions.ILike(s.Name, value)).Select(s => (Guid?)s.Id).FirstOrDefaultAsync(ct),
-                };
-                return sprintId?.ToString();
-            case ProposalOperation.Assignee:
-                if (value.Equals("none", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "none";
-                }
-
-                if (value.Equals("me", StringComparison.OrdinalIgnoreCase) || value.Equals("mig", StringComparison.OrdinalIgnoreCase))
-                {
-                    return workspace.MemberId.ToString();
-                }
-
-                var people = await PeopleAsync(db, ct);
-                if (Guid.TryParse(value, out var memberId))
-                {
-                    return people.Any(p => p.Id == memberId) ? memberId.ToString() : null;
-                }
-
-                // Full name first, then a unique first name ("give it to Anna").
-                var exact = people.Where(p => p.Name.Equals(value, StringComparison.OrdinalIgnoreCase)).ToList();
-                var first = people.Where(p => p.Name.Split(' ')[0].Equals(value.Split(' ')[0], StringComparison.OrdinalIgnoreCase)).ToList();
-                return (exact.Count == 1 ? exact : first.Count == 1 ? first : []).SingleOrDefault()?.Id.ToString();
-            default:
-                return null;
-        }
-    }
+    private Task<string?> NormalizeValueAsync(KuproDbContext db, MeetingSession meeting, ProposalOperation operation,
+        string? raw, CancellationToken ct) =>
+        ProposalValues.NormalizeAsync(db, meeting.ProjectId, workspace.MemberId, operation, raw, ct);
 
     /// <summary>
     /// The model vendor down or too slow must not lose what was said: the utterance is kept and proposals come from
@@ -849,20 +777,31 @@ public sealed partial class MeetingService(
     private async Task<(IReadOnlyList<ExtractedAction> Actions, ExtractorKind Kind, bool Spent)> ExtractAsync(
         ExtractionContext context, CancellationToken ct)
     {
-        if (await budget.CheckAsync(ct) != BudgetState.Available)
+        // No model anywhere, or the workspace's own key was refused: keyword matching, never Kupro's key (ADR-022).
+        if (await router.ResolveAsync(AiCapability.MeetingProposals, context.Language, ct) is not { Rejected: false } route)
+        {
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
+        }
+
+        if (!route.OwnKey && await budget.CheckAsync(ct) != BudgetState.Available)
         {
             return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, true);
         }
 
         try
         {
-            var extraction = await extractor.ExtractAsync(context, ct);
+            var extraction = await extractor.ExtractAsync(context, route.Route, ct);
             if (extraction.Usage is { } usage)
             {
-                await budget.RecordTokensAsync(usage, context.Language, ct);
+                await budget.RecordTokensAsync(usage, route, ct);
             }
 
             return (extraction.Actions, extraction.Usage is null ? ExtractorKind.Keyword : ExtractorKind.Model, false);
+        }
+        catch (HttpRequestException ex) when (route.OwnKey && Refused(ex))
+        {
+            await connections.RejectAsync(route.ConnectionId!.Value, $"{(int)ex.StatusCode!.Value} {ex.StatusCode}", ct);
+            return ((await Keywords.ExtractAsync(context, ct)).Actions, ExtractorKind.Keyword, false);
         }
         catch (Exception ex) when (ex is HttpRequestException or TimeoutRejectedException
             || (ex is OperationCanceledException && !ct.IsCancellationRequested))
@@ -872,10 +811,16 @@ public sealed partial class MeetingService(
         }
     }
 
+    private static bool Refused(HttpRequestException ex) => ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private static IssueError ConnectionRejected() => new("ai_connection_rejected",
+        "The workspace's own AI key was rejected by its provider. Replace it in Settings → AI, or remove the connection to use Kupro's included hours. Typed text still gets proposals from keyword matching.");
+
     /// <summary>Ends a meeting live past <see cref="MaxDuration"/>; the hourly job catches the ones nobody talks in.</summary>
     private async Task<IssueError?> TimeLimitAsync(MeetingSession meeting, CancellationToken ct)
     {
-        if (clock.GetUtcNow() - meeting.StartedAt <= MaxDuration)
+        if (clock.GetUtcNow() - meeting.StartedAt <= MaxDuration
+            || await router.ResolveAsync(AiCapability.Transcription, meeting.Language, ct) is { OwnKey: true })
         {
             return null;
         }
@@ -909,23 +854,11 @@ public sealed partial class MeetingService(
             sprints, recent, utterance);
     }
 
-    private static Task<List<MemberRef>> PeopleAsync(KuproDbContext db, CancellationToken ct) =>
-        db.Members.AsNoTracking().Where(m => m.Status == MemberStatus.Active).Select(MemberRefs.Projection(db)).ToListAsync(ct);
+    private static Task<List<MemberRef>> PeopleAsync(KuproDbContext db, CancellationToken ct) => ProposalValues.PeopleAsync(db, ct);
 
     /// <summary>The field's current canonical value, for diffs and undo.</summary>
-    private static async Task<string?> CurrentAsync(KuproDbContext db, Guid issueId, ProposalOperation operation, CancellationToken ct)
-    {
-        var issue = await db.Issues.AsNoTracking().Where(i => i.Id == issueId)
-            .Select(i => new { i.State, i.SprintId, i.AssigneeId, i.Effort }).SingleOrDefaultAsync(ct);
-        return issue is null ? null : operation switch
-        {
-            ProposalOperation.State => Camel(issue.State),
-            ProposalOperation.Sprint => issue.SprintId?.ToString() ?? "none",
-            ProposalOperation.Assignee => issue.AssigneeId?.ToString() ?? "none",
-            ProposalOperation.Estimate => issue.Effort?.ToString(CultureInfo.InvariantCulture) ?? "none",
-            _ => null,
-        };
-    }
+    private static Task<string?> CurrentAsync(KuproDbContext db, Guid issueId, ProposalOperation operation, CancellationToken ct) =>
+        ProposalValues.CurrentAsync(db, issueId, operation, ct);
 
     /// <summary>The <c>meeting-agent</c> member: reused if it exists, otherwise created for the person starting the meeting.</summary>
     private async Task<Guid?> AgentIdAsync(KuproDbContext db, CancellationToken ct)
@@ -966,10 +899,16 @@ public sealed partial class MeetingService(
         })
             .ToListAsync(ct);
         var members = await MemberRefs.ByIdAsync(db, rows.SelectMany(r => new[] { r.Meeting.StartedById, r.Meeting.AgentId }), ct);
+        var listening = new Dictionary<string, bool>();
+        foreach (var language in rows.Select(r => r.Meeting.Language).Distinct())
+        {
+            listening[language] = await router.AvailableAsync(AiCapability.Transcription, language, ct);
+        }
+
         return rows.Select(r => new MeetingResponse(
                 r.Meeting.Id, r.Project, r.Meeting.Type, r.Meeting.Mode, r.Meeting.Language, r.Meeting.State,
                 members[r.Meeting.StartedById], members[r.Meeting.AgentId], r.Meeting.StartedAt, r.Meeting.EndedAt, r.Counts,
-                speech.Supports(r.Meeting.Language)))
+                listening[r.Meeting.Language]))
             .ToList();
     }
 
@@ -1020,9 +959,7 @@ public sealed partial class MeetingService(
     }
 
     /// <summary>"kup 12" and "kup-12" in speech become KUP-12.</summary>
-    private static string NormalizeKeys(string text, string projectKey) =>
-        Regex.Replace(text, $@"\b{Regex.Escape(projectKey)}[\s-]?(\d+)\b", m => $"{projectKey}-{m.Groups[1].Value}",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    private static string NormalizeKeys(string text, string projectKey) => ProposalValues.NormalizeKeys(text, projectKey);
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];
 
@@ -1036,12 +973,6 @@ public sealed partial class MeetingService(
 
     private static IssueError FullAutoDisabled() =>
         new("full_auto_disabled", "Full auto is off in this workspace. An admin can enable it in meeting settings.");
-
-    [GeneratedRegex(@"^[A-Z][A-Z0-9]{1,9}-\d+$")]
-    private static partial Regex IssueKey();
-
-    [GeneratedRegex(@"^(?:the|den|det)\s+|\s+(?:issue|ticket|task|opgave|sag)$", RegexOptions.IgnoreCase)]
-    private static partial Regex Article();
 
     [GeneratedRegex(@"\w+")]
     private static partial Regex Word();

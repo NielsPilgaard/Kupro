@@ -33,7 +33,8 @@ The spike needs the Scaleway key (`SCALEWAY_AI_KEY` or the AppHost user-secrets)
      `meetingAgent.*.eurPer*` (cached input has its own price).
    - New model, prompt or context shape: run the spike, copy `tokIn`, `cached` and `tokOut` into
      `meetingAgent.extraction.{inputTokens,cachedShare,outputTokens}` and set `model`/`measured`. A model switch also
-     changes `ExtractionModel` in `src/Kupro.AppHost/MeetingAgent.cs` and ADR-015 (decision 2, IMP-006).
+     changes `ExtractionModel` in `src/Kupro.AppHost/MeetingAgent.cs`, `ChatModel` in
+     `src/Kupro.Api/Features/Ai/AiProviders.cs` and ADR-015 (decision 2, IMP-006).
 3. **Try what-ifs** and show the user the tradeoff: AI share of a seat, cost per trial, whether the standup example
    still fits. Customer-facing price changes are the user's call; apply limits they asked for directly.
 4. **Save** with `--write`, then **update every location** below with the calculator's numbers.
@@ -54,7 +55,7 @@ The spike needs the Scaleway key (`SCALEWAY_AI_KEY` or the AppHost user-secrets)
 | Hours per seat | ADR-013 TL;DR and "**Allowance**"; index.html Monthly tier "per seat/mo, pooled" and the note under the cost table; task 017 "hours per seat a month" and the "≈ 3.5 of N hours" panel example (team × hours) |
 | Cost per meeting hour | index.html cost-basis table (three rows plus the team row); ADR-013 "**Allowance**" history line; ADR-015 IMP-006 table (language model only) and NEG-004 multiple |
 | € per seat / per trial at most | index.html note under the cost table; ADR-013 "**Allowance**" |
-| Runtime config | Constants in `src/Kupro.AppHost/MeetingAgent.cs`: hours per seat, euro per hour (the calculator's hour cost), daily ceiling, and each model route's rates (they become `MeetingAgent__Budget__*` and `MeetingAgent__{Transcription\|Extraction}__EuroPer*`). Trial hours come with billing |
+| Runtime config | Constants in `src/Kupro.AppHost/MeetingAgent.cs`: hours per seat, euro per hour (the calculator's hour cost), daily ceiling, and each model route's rates (they become `MeetingAgent__Budget__*` and `MeetingAgent__{Transcription\|Extraction}__EuroPer*`). Trial hours come with billing; the same rates and model ids in `AiProviders.Scaleway` (`src/Kupro.Api/Features/Ai/AiProviders.cs`), which prices a workspace's own key (ADR-022) |
 
 ## Rules
 
